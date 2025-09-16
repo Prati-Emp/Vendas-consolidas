@@ -28,3 +28,35 @@ ENV/
 .idea/
 *.swp
 *.swo
+
+# Virtual env (hidden)
+.venv/
+
+# Packaging/build artifacts
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Testing/Coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+
+# Type checking/Lint caches
+.mypy_cache/
+.ruff_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Local data files
+*.sqlite
+*.db
+*.parquet
+*.duckdb
+
+# Streamlit
+.streamlit/
