@@ -17,10 +17,6 @@ from config import config_manager
 from orchestrator import orchestrator
 from data_processor import data_processor
 
-# Importar APIs existentes
-import reservas
-import workflow
-
 # Importar novas APIs
 from sienge_apis import obter_dados_sienge_completos
 from cv_vendas_api import obter_dados_cv_vendas
@@ -52,39 +48,30 @@ def get_motherduck_connection():
         raise
 
 async def obter_todos_dados():
-    """Obtém dados de todas as APIs"""
-    logger.info("Iniciando coleta de dados de todas as APIs")
-    
+    """Obtém dados somente das novas APIs (Sienge e CV Vendas)"""
+    logger.info("Iniciando coleta de dados das novas APIs (Sienge e CV Vendas)")
+
     dados = {}
-    
+
     try:
-        # APIs existentes (síncronas)
-        logger.info("Coletando dados de reservas...")
-        dados_reservas = reservas.obter_todos_dados()
-        dados['reservas'] = pd.DataFrame(dados_reservas)
-        
-        logger.info("Coletando dados de workflow...")
-        dados_workflow = workflow.obter_todos_dados()
-        dados['workflow'] = pd.DataFrame(dados_workflow)
-        
         # Novas APIs (assíncronas)
         logger.info("Coletando dados do Sienge...")
         dados_sienge = await obter_dados_sienge_completos()
         dados.update(dados_sienge)
-        
+
         logger.info("Coletando dados do CV Vendas...")
         dados_cv = await obter_dados_cv_vendas()
         dados['cv_vendas'] = dados_cv
-        
+
         # Estatísticas
         for fonte, df in dados.items():
             if isinstance(df, pd.DataFrame):
                 logger.info(f"{fonte}: {len(df)} registros")
             else:
                 logger.info(f"{fonte}: {len(df)} registros")
-        
+
         return dados
-        
+
     except Exception as e:
         logger.error(f"Erro ao coletar dados: {str(e)}")
         raise
@@ -96,53 +83,39 @@ def criar_tabelas_motherduck(conn, df_consolidado: pd.DataFrame):
     try:
         # Criar schema se não existir
         conn.sql("CREATE SCHEMA IF NOT EXISTS vendas_consolidadas.main")
-        
+
         # Remover tabelas antigas
-        logger.info("Removendo tabelas antigas...")
+        logger.info("Removendo tabelas antigas (apenas novas fontes)...")
         conn.sql("DROP TABLE IF EXISTS vendas_consolidadas.main.vendas_consolidadas")
-        conn.sql("DROP TABLE IF EXISTS vendas_consolidadas.main.reservas")
-        conn.sql("DROP TABLE IF EXISTS vendas_consolidadas.main.workflow")
         conn.sql("DROP TABLE IF EXISTS vendas_consolidadas.main.sienge_vendas_realizadas")
         conn.sql("DROP TABLE IF EXISTS vendas_consolidadas.main.sienge_vendas_canceladas")
         conn.sql("DROP TABLE IF EXISTS vendas_consolidadas.main.cv_vendas")
-        
+
         # Criar tabela consolidada principal
         logger.info("Criando tabela consolidada...")
         conn.execute("CREATE TABLE vendas_consolidadas.main.vendas_consolidadas AS SELECT * FROM df_consolidado")
-        
-        # Criar tabelas individuais por fonte
-        logger.info("Criando tabelas individuais...")
-        
-        # Tabela de reservas
-        if 'reservas' in df_consolidado['fonte'].values:
-            df_reservas = df_consolidado[df_consolidado['fonte'] == 'reservas']
-            conn.execute("CREATE TABLE vendas_consolidadas.main.reservas AS SELECT * FROM df_reservas")
-        
-        # Tabela de workflow
-        if 'workflow' in df_consolidado['fonte'].values:
-            df_workflow = df_consolidado[df_consolidado['fonte'] == 'workflow']
-            conn.execute("CREATE TABLE vendas_consolidadas.main.workflow AS SELECT * FROM df_workflow")
-        
+
+        # Criar tabelas individuais por fonte (apenas novas fontes)
+        logger.info("Criando tabelas individuais (Sienge e CV Vendas)...")
+
         # Tabelas do Sienge
         if 'sienge_realizadas' in df_consolidado['fonte'].values:
             df_sienge_realizadas = df_consolidado[df_consolidado['fonte'] == 'sienge_realizadas']
             conn.execute("CREATE TABLE vendas_consolidadas.main.sienge_vendas_realizadas AS SELECT * FROM df_sienge_realizadas")
-        
+
         if 'sienge_canceladas' in df_consolidado['fonte'].values:
             df_sienge_canceladas = df_consolidado[df_consolidado['fonte'] == 'sienge_canceladas']
             conn.execute("CREATE TABLE vendas_consolidadas.main.sienge_vendas_canceladas AS SELECT * FROM df_sienge_canceladas")
-        
+
         # Tabela CV Vendas
         if 'cv_vendas' in df_consolidado['fonte'].values:
             df_cv_vendas = df_consolidado[df_consolidado['fonte'] == 'cv_vendas']
             conn.execute("CREATE TABLE vendas_consolidadas.main.cv_vendas AS SELECT * FROM df_cv_vendas")
-        
+
         # Validar tabelas criadas
         logger.info("Validando tabelas criadas...")
         tabelas = [
             'vendas_consolidadas',
-            'reservas',
-            'workflow',
             'sienge_vendas_realizadas',
             'sienge_vendas_canceladas',
             'cv_vendas'
