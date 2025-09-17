@@ -107,6 +107,13 @@ class APIOrchestrator:
                     async with session.get(url, headers=headers, params=params) as response:
                         result = await response.json()
                         success = response.status == 200
+                        # Retry/backoff para 429
+                        if response.status == 429:
+                            retry_after = int(response.headers.get('Retry-After', '5'))
+                            wait = max(5, retry_after)
+                            logger.warning(f"429 em {api_name}. Aguardando {wait}s e tentando novamente...")
+                            await asyncio.sleep(wait)
+                            return await self.make_request(api_name, url, headers, params, data)
                 
                 response_time = time.time() - start_time
                 

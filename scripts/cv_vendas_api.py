@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """
-Integração com API do CV - Relatório de Vendas
+Integração com API do CV - Vendas
+Adaptação conforme código M (Power BI):
+- Endpoint: https://prati.cvcrm.com.br/api/v1/cvdw/vendas
+- Headers: accept, email, token
+- Paginação: parâmetro 'pagina' (inteiro iniciando em 1)
 """
 
 import asyncio
@@ -25,59 +29,50 @@ class CVVendasAPIClient:
         if not self.config:
             raise ValueError("Configuração da API CV Vendas não encontrada")
     
-    async def get_relatorio_vendas(self, data_inicio: str, data_fim: str,
-                                  pagina: int = 1, registros_por_pagina: int = 500) -> Dict[str, Any]:
+    async def get_pagina(self, pagina: int = 1) -> Dict[str, Any]:
         """
-        Busca relatório de vendas do CV
-        
-        Args:
-            data_inicio: Data de início (YYYY-MM-DD)
-            data_fim: Data de fim (YYYY-MM-DD)
-            pagina: Número da página
-            registros_por_pagina: Registros por página
+        Busca uma página das vendas do CV.
+
+        Observação: conforme o código M, a API usa apenas 'pagina'.
         """
-        endpoint = "/relatorio/vendas"
+        endpoint = ""  # base_url já aponta direto para /cvdw/vendas
         params = {
-            'data_inicio': data_inicio,
-            'data_fim': data_fim,
-            'pagina': pagina,
-            'registros_por_pagina': registros_por_pagina
+            'pagina': pagina
         }
-        
-        logger.info(f"Buscando relatório de vendas CV - Página {pagina}")
+
+        logger.info(f"Buscando CV Vendas - Página {pagina}")
         return await make_api_request('cv_vendas', endpoint, params)
     
-    async def get_all_relatorio_vendas(self, data_inicio: str, data_fim: str) -> List[Dict[str, Any]]:
-        """Busca todo o relatório de vendas paginado"""
+    async def get_all_vendas(self) -> List[Dict[str, Any]]:
+        """Busca todas as vendas paginadas até a última página automaticamente."""
         pagina = 1
-        todos_dados = []
-        
+        todos_dados: List[Dict[str, Any]] = []
+
         while True:
             try:
-                result = await self.get_relatorio_vendas(data_inicio, data_fim, pagina)
-                
+                result = await self.get_pagina(pagina)
+
                 if not result['success']:
                     logger.error(f"Erro na página {pagina}: {result.get('error', 'Erro desconhecido')}")
                     break
-                
+
                 dados = result['data'].get('dados', [])
                 if not dados:
+                    logger.info(f"Página {pagina} vazia. Fim da paginação.")
                     break
-                
+
                 todos_dados.extend(dados)
                 logger.info(f"Página {pagina} - {len(dados)} registros")
-                
-                # Se retornou menos que o esperado, é a última página
-                if len(dados) < 500:
-                    break
-                
+
+                # Sem 'registros_por_pagina' explícito, paramos quando vier vazio
                 pagina += 1
-                
+                await asyncio.sleep(1)  # leve atraso para evitar 429
+
             except Exception as e:
                 logger.error(f"Erro na página {pagina}: {str(e)}")
                 break
-        
-        logger.info(f"Total de registros do relatório CV: {len(todos_dados)}")
+
+        logger.info(f"Total de registros CV Vendas: {len(todos_dados)}")
         return todos_dados
 
 def processar_dados_cv_vendas(dados: List[Dict[str, Any]]) -> pd.DataFrame:
@@ -93,7 +88,7 @@ def processar_dados_cv_vendas(dados: List[Dict[str, Any]]) -> pd.DataFrame:
     
     df = pd.DataFrame(dados)
     
-    # Padronizar colunas de data
+    # Padronizar colunas de data (mantém compatível caso algumas não existam)
     colunas_data = ['data_venda', 'data_contrato', 'data_emissao', 'data_viagem']
     for col in colunas_data:
         if col in df.columns:
@@ -114,23 +109,13 @@ def processar_dados_cv_vendas(dados: List[Dict[str, Any]]) -> pd.DataFrame:
     logger.info(f"Dados processados - CV Vendas: {len(df)} registros")
     return df
 
-async def obter_dados_cv_vendas(data_inicio: str = "2024-01-01", 
-                               data_fim: str = None) -> pd.DataFrame:
-    """
-    Obtém todos os dados do relatório de vendas do CV
-    
-    Args:
-        data_inicio: Data de início (padrão: 2024-01-01)
-        data_fim: Data de fim (padrão: hoje)
-    """
-    if not data_fim:
-        data_fim = datetime.now().strftime("%Y-%m-%d")
-    
-    logger.info(f"Buscando dados do CV Vendas de {data_inicio} a {data_fim}")
-    
+async def obter_dados_cv_vendas() -> pd.DataFrame:
+    """Obtém todos os dados de vendas do CV com paginação automática."""
+    logger.info("Buscando dados do CV Vendas (todas as páginas)")
+
     client = CVVendasAPIClient()
-    dados = await client.get_all_relatorio_vendas(data_inicio, data_fim)
-    
+    dados = await client.get_all_vendas()
+
     return processar_dados_cv_vendas(dados)
 
 if __name__ == "__main__":
@@ -139,7 +124,7 @@ if __name__ == "__main__":
         print("=== Testando API CV Vendas ===")
         
         try:
-            df = await obter_dados_cv_vendas("2024-01-01", "2024-01-31")
+            df = await obter_dados_cv_vendas()
             
             print(f"Registros encontrados: {len(df)}")
             

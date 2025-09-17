@@ -8,7 +8,8 @@ import os
 import json
 from typing import Dict, Any, Optional
 from dataclasses import dataclass
-from dotenv import load_dotenv
+from dotenv import load_dotenv, dotenv_values
+from pathlib import Path
 import logging
 
 # Configurar logging
@@ -30,7 +31,30 @@ class APIConfigManager:
     """Gerenciador de configurações das APIs"""
     
     def __init__(self):
-        load_dotenv()
+        # Carregar .env explicitamente da raiz do projeto
+        try:
+            project_root = Path(__file__).resolve().parents[1]
+            env_path = project_root / '.env'
+            load_dotenv(dotenv_path=env_path, override=True)
+            logger.info(f".env carregado de: {env_path} (existe={env_path.exists()})")
+            # Normalizar chaves com possível BOM (\ufeff) e espaços
+            try:
+                raw_values = dotenv_values(env_path)
+                for raw_key, raw_val in raw_values.items():
+                    if raw_key is None:
+                        continue
+                    clean_key = str(raw_key).replace('\ufeff', '').strip()
+                    clean_val = '' if raw_val is None else str(raw_val).strip()
+                    os.environ[clean_key] = clean_val
+            except Exception as norm_err:
+                logger.warning(f"Falha ao normalizar chaves do .env: {norm_err}")
+            # Debug: mostrar valores lidos (mascarando token)
+            cv_email = os.environ.get('CV_VENDAS_EMAIL')
+            cv_token = os.environ.get('CV_VENDAS_TOKEN')
+            cv_base = os.environ.get('CV_VENDAS_BASE_URL')
+            logger.info(f"DEBUG ENV CV_VENDAS_EMAIL={repr(cv_email)} CV_VENDAS_BASE_URL={repr(cv_base)} TOKEN_SET={bool(cv_token)}")
+        except Exception as e:
+            logger.warning(f"Falha ao carregar .env: {e}")
         self.configs = self._load_configs()
     
     def _load_configs(self) -> Dict[str, APIConfig]:
@@ -94,7 +118,7 @@ class APIConfigManager:
                 'email': os.environ.get('CV_VENDAS_EMAIL', '').strip(),
                 'token': os.environ.get('CV_VENDAS_TOKEN', '').strip(),
             },
-            rate_limit=25
+            rate_limit=10
         )
         
         return configs
