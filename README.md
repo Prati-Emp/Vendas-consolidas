@@ -1,5 +1,7 @@
 ## Vendas Consolidadas
 
+![CI](https://github.com/Prati-Emp/Vendas-consolidas/actions/workflows/ci.yml/badge.svg)
+
 Integração e consolidação de dados de vendas a partir de múltiplas fontes:
 
 - CVCRM: Reservas e Workflow (existentes)
