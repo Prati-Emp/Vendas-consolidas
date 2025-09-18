@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from collections import defaultdict, deque
 import threading
 
-from config import get_api_config, get_all_rate_limits
+from scripts.config import get_api_config, get_all_rate_limits
 
 # Configurar logging
 logging.basicConfig(level=logging.INFO)

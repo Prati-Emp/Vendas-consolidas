@@ -13,8 +13,8 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Any, Optional
 import pandas as pd
 
-from orchestrator import make_api_request
-from config import get_api_config
+from scripts.orchestrator import make_api_request
+from scripts.config import get_api_config
 
 # Configurar logging
 logging.basicConfig(level=logging.INFO)
@@ -44,9 +44,20 @@ class CVVendasAPIClient:
         return await make_api_request('cv_vendas', endpoint, params)
     
     async def get_all_vendas(self) -> List[Dict[str, Any]]:
-        """Busca todas as vendas paginadas até a última página automaticamente."""
+        """Busca todas as vendas com rate limiting otimizado para madrugada"""
         pagina = 1
         todos_dados: List[Dict[str, Any]] = []
+        
+        # Rate limiting otimizado para madrugada (01:00-02:00)
+        agora = datetime.now()
+        hora_atual = agora.hour
+        
+        if hora_atual in [0, 1, 2]:  # Madrugada
+            delay_base = 0.3  # Mais rápido (sem concorrência)
+            logger.info("🌙 Modo madrugada: Rate limiting otimizado")
+        else:
+            delay_base = 1.0  # Mais conservador em outros horários
+            logger.info("☀️ Modo diurno: Rate limiting conservador")
 
         while True:
             try:
@@ -64,9 +75,8 @@ class CVVendasAPIClient:
                 todos_dados.extend(dados)
                 logger.info(f"Página {pagina} - {len(dados)} registros")
 
-                # Sem 'registros_por_pagina' explícito, paramos quando vier vazio
                 pagina += 1
-                await asyncio.sleep(1)  # leve atraso para evitar 429
+                await asyncio.sleep(delay_base)  # Rate limiting inteligente
 
             except Exception as e:
                 logger.error(f"Erro na página {pagina}: {str(e)}")

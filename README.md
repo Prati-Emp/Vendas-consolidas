@@ -1,14 +1,20 @@
-## Vendas Consolidadas
+# 🏢 Dashboard de Reservas - Sistema de Vendas Consolidadas
 
-![CI](https://github.com/Prati-Emp/Vendas-consolidas/actions/workflows/ci.yml/badge.svg)
+Sistema completo de integração e consolidação de dados de vendas a partir de múltiplas fontes, com dashboard interativo para análise e visualização.
 
-Integração e consolidação de dados de vendas a partir de múltiplas fontes:
+## 🎯 Funcionalidades
 
-- CVCRM: Reservas e Workflow (existentes)
-- Sienge: Vendas Realizadas e Vendas Canceladas
-- CVCRM: Relatório de Vendas (CV Vendas)
+- **Integração com múltiplas APIs**: CVCRM, Sienge, CV Vendas
+- **Dashboard interativo**: Streamlit com visualizações em tempo real
+- **Armazenamento na nuvem**: MotherDuck para dados consolidados
+- **Rate limiting inteligente**: Respeita limites das APIs
+- **Processamento assíncrono**: Coleta eficiente de grandes volumes de dados
 
-Os dados são tratados, padronizados e enviados para o MotherDuck, com orquestração de chamadas respeitando limites de requisição (rate limiting).
+## 📊 Fontes de Dados
+
+- **CVCRM**: Reservas e Workflow (existentes)
+- **Sienge**: Vendas Realizadas e Vendas Canceladas
+- **CVCRM**: Relatório de Vendas (CV Vendas)
 
 ### Requisitos
 
@@ -64,15 +70,26 @@ CV_VENDAS_TOKEN=seu_token_cv_vendas
 
 ### Uso Rápido
 
-1. Testar a integração:
+1. **Testar a integração**:
    ```bash
    python scripts/test_integration.py
    ```
 
-2. Executar a atualização completa no MotherDuck:
+2. **Executar upload de dados**:
+   ```bash
+   python upload_vendas_funcional.py
+   ```
+
+3. **Executar a atualização completa no MotherDuck**:
    ```bash
    python scripts/update_motherduck_vendas.py
    ```
+
+4. **Executar o dashboard**:
+   ```bash
+   streamlit run dashboard/Home.py
+   ```
+   Acesse: http://localhost:8501
 
 ### Tabelas no MotherDuck
 
@@ -83,10 +100,43 @@ CV_VENDAS_TOKEN=seu_token_cv_vendas
 - `vendas_consolidadas.main.sienge_vendas_canceladas`
 - `vendas_consolidadas.main.cv_vendas`
 
-### Observações
+## 🚀 Estrutura do Projeto
 
-- As chaves de API devem ser mantidas no `.env` (não versionado)
-- O orquestrador limita requisições para evitar bloqueios das APIs
-- Logs informam progresso e estatísticas durante a execução
+```
+dash-reservas/
+├── dashboard/                 # Dashboard Streamlit
+│   ├── Home.py               # Página principal
+│   ├── pages/                # Páginas do dashboard
+│   └── utils.py              # Utilitários
+├── scripts/                  # Scripts principais
+│   ├── config.py             # Configurações das APIs
+│   ├── cv_vendas_api.py      # API CV Vendas
+│   ├── sienge_apis.py        # APIs Sienge
+│   ├── orchestrator.py       # Orquestrador de requisições
+│   └── update_motherduck_vendas.py  # Pipeline completo
+├── upload_vendas_funcional.py # Script de upload otimizado
+├── create_vendas_direct.py   # Criação direta de tabelas
+├── requirements.txt          # Dependências Python
+├── .gitignore               # Arquivos ignorados pelo Git
+└── README.md                # Este arquivo
+```
+
+## 📝 Observações Importantes
+
+- **Segurança**: As chaves de API devem ser mantidas no `.env` (não versionado)
+- **Rate Limiting**: O orquestrador limita requisições para evitar bloqueios das APIs
+- **Logs**: Sistema informa progresso e estatísticas durante a execução
+- **Timeout**: Scripts têm timeout para evitar travamentos
+- **Dashboard**: Interface web para visualização dos dados consolidados
+
+## 🔧 Desenvolvimento
+
+Para contribuir com o projeto:
+
+1. Clone o repositório
+2. Crie um ambiente virtual
+3. Instale as dependências: `pip install -r requirements.txt`
+4. Configure o arquivo `.env` com suas credenciais
+5. Execute os testes: `python scripts/test_integration.py`
 
 

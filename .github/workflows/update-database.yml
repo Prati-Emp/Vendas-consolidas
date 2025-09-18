@@ -1,8 +1,9 @@
-name: Update Database
+name: Update Database - Madrugada
 
 on:
   schedule:
-    - cron: '0 9 * * *'  # Roda às 9:00 UTC (6:00 BRT) todos os dias
+    # Executar às 01:15 da manhã (horário ótimo - 4:15 BRT)
+    - cron: '15 1 * * *'
   workflow_dispatch:
     inputs:
       reason:
@@ -37,8 +38,18 @@ jobs:
           MOTHERDUCK_TOKEN: ${{ secrets.MOTHERDUCK_TOKEN }}
           CVCRM_EMAIL: ${{ secrets.CVCRM_EMAIL }}
           CVCRM_TOKEN: ${{ secrets.CVCRM_TOKEN }}
+          CV_VENDAS_BASE_URL: ${{ secrets.CV_VENDAS_BASE_URL }}
+          SIENGE_BASE_URL: ${{ secrets.SIENGE_BASE_URL }}
+          SIENGE_TOKEN: ${{ secrets.SIENGE_TOKEN }}
           PYTHONPATH: ${{ github.workspace }}/scripts:${{ github.workspace }}
         run: |
-          echo "Iniciando atualização do MotherDuck..."
-          cd scripts
-          python -u update_motherduck.py
+          echo "🌙 Iniciando atualização do MotherDuck (madrugada)..."
+          python -u scripts/update_motherduck_vendas.py
+      
+      - name: Notify success
+        if: success()
+        run: echo "✅ Database updated successfully at $(date)"
+      
+      - name: Notify failure
+        if: failure()
+        run: echo "❌ Database update failed at $(date)"

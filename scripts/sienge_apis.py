@@ -9,16 +9,80 @@ import logging
 from datetime import datetime, timedelta
 from typing import Dict, List, Any, Optional
 import pandas as pd
+import duckdb
+import os
 
-from orchestrator import make_api_request
-from config import get_api_config
+from scripts.orchestrator import make_api_request
+from scripts.config import get_api_config
 
 # Configurar logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+def obter_lista_empreendimentos_motherduck() -> List[Dict[str, Any]]:
+    """
+    Busca lista de empreendimentos da tabela reservas_abril no MotherDuck
+    + empreendimento fixo adicional
+    Retorna apenas as colunas necessárias para filtrar no Sienge
+    """
+    try:
+        # EMPREENDIMENTO FIXO (não está no conjunto de dados)
+        empreendimento_fixo = {
+            'id': 19,  # ID do empreendimento Ondina II
+            'nome': 'Ondina II'  # Nome do empreendimento fixo
+        }
+        
+        logger.info(f"Empreendimento fixo adicionado: {empreendimento_fixo['nome']} (ID: {empreendimento_fixo['id']})")
+        
+        # Configurar DuckDB
+        duckdb.sql("INSTALL motherduck")
+        duckdb.sql("LOAD motherduck")
+        
+        # Configurar token
+        token = os.environ.get('MOTHERDUCK_TOKEN', '').strip()
+        if not token:
+            logger.error("MOTHERDUCK_TOKEN não encontrado")
+            return [empreendimento_fixo]  # Retorna pelo menos o fixo
+        
+        os.environ['motherduck_token'] = token
+        
+        # Conectar ao MotherDuck
+        conn = duckdb.connect('md:reservas')
+        
+        # Buscar empreendimentos da tabela reservas_abril
+        # Colunas corretas: idempreendimento (BIGINT) e empreendimento (VARCHAR)
+        query = """
+        SELECT DISTINCT 
+            idempreendimento,
+            empreendimento
+        FROM reservas.main.reservas_abril 
+        WHERE idempreendimento IS NOT NULL
+        ORDER BY empreendimento
+        """
+        
+        logger.info("Buscando lista de empreendimentos do MotherDuck...")
+        result = conn.execute(query).fetchall()
+        
+        # Converter para lista de dicionários
+        empreendimentos = [empreendimento_fixo]  # Começar com o fixo
+        
+        for row in result:
+            empreendimentos.append({
+                'id': row[0],
+                'nome': row[1]
+            })
+        
+        conn.close()
+        logger.info(f"Total de empreendimentos: {len(empreendimentos)} (1 fixo + {len(result)} automáticos)")
+        return empreendimentos
+        
+    except Exception as e:
+        logger.error(f"Erro ao buscar empreendimentos: {str(e)}")
+        # Em caso de erro, retorna pelo menos o empreendimento fixo
+        return [empreendimento_fixo]
+
 class SiengeAPIClient:
-    """Cliente para APIs do Sienge"""
+    """Cliente para APIs do Sienge com controle de limite diário"""
     
     def __init__(self):
         self.config_vendas = get_api_config('sienge_vendas_realizadas')
@@ -26,11 +90,73 @@ class SiengeAPIClient:
         
         if not self.config_vendas or not self.config_canceladas:
             raise ValueError("Configurações do Sienge não encontradas")
+        
+        # Carregar lista de empreendimentos
+        self.empreendimentos = obter_lista_empreendimentos_motherduck()
+        
+        # Controle de limite diário (50 requisições por empreendimento)
+        self.limite_diario = 50
+        self.requisicoes_hoje = 0
+        self.modo_teste = os.environ.get('SIENGE_MODO_TESTE', 'false').lower() == 'true'
+        
+        # Calcular requisições necessárias por execução
+        self.empreendimentos_count = len(self.empreendimentos)
+        self.requisicoes_por_execucao = self.empreendimentos_count * 2  # 2 APIs (realizadas + canceladas)
+        self.execucoes_possiveis = self.limite_diario // self.requisicoes_por_execucao
+        
+        logger.info(f"📊 Controle de limite:")
+        logger.info(f"   - Empreendimentos: {self.empreendimentos_count}")
+        logger.info(f"   - Requisições por execução: {self.requisicoes_por_execucao}")
+        logger.info(f"   - Execuções possíveis por dia: {self.execucoes_possiveis}")
+        
+        if self.modo_teste:
+            logger.warning("🧪 MODO TESTE ATIVADO - Nenhuma requisição real será feita")
+    
+    def verificar_limite_requisicoes(self) -> bool:
+        """Verifica se ainda há requisições disponíveis para uma execução completa"""
+        # Verificar se há requisições suficientes para uma execução completa
+        if self.requisicoes_hoje + self.requisicoes_por_execucao > self.limite_diario:
+            logger.error(f"❌ LIMITE INSUFICIENTE para execução completa")
+            logger.error(f"   - Requisições já usadas: {self.requisicoes_hoje}")
+            logger.error(f"   - Requisições necessárias: {self.requisicoes_por_execucao}")
+            logger.error(f"   - Limite diário: {self.limite_diario}")
+            return False
+        
+        logger.info(f"📊 Requisições disponíveis: {self.limite_diario - self.requisicoes_hoje}/{self.limite_diario}")
+        logger.info(f"   - Requisições necessárias para execução: {self.requisicoes_por_execucao}")
+        return True
+    
+    def incrementar_contador(self, empreendimentos_count: int = 1):
+        """Incrementa o contador de requisições baseado no número de empreendimentos"""
+        # Cada empreendimento conta como uma requisição
+        self.requisicoes_hoje += empreendimentos_count
+        logger.info(f"📈 Requisições incrementadas: +{empreendimentos_count} (Total: {self.requisicoes_hoje})")
+    
+    def validar_parametros(self, data_inicio: str, data_fim: str) -> bool:
+        """Valida parâmetros antes de fazer requisições"""
+        try:
+            from datetime import datetime
+            
+            # Validar formato das datas
+            datetime.strptime(data_inicio, '%Y-%m-%d')
+            datetime.strptime(data_fim, '%Y-%m-%d')
+            
+            # Validar se data_inicio <= data_fim
+            if data_inicio > data_fim:
+                logger.error("❌ Data de início deve ser menor ou igual à data de fim")
+                return False
+            
+            logger.info(f"✅ Parâmetros válidos: {data_inicio} a {data_fim}")
+            return True
+            
+        except ValueError as e:
+            logger.error(f"❌ Formato de data inválido: {str(e)}")
+            return False
     
     async def get_vendas_realizadas(self, data_inicio: str, data_fim: str, 
                                    pagina: int = 1, registros_por_pagina: int = 500) -> Dict[str, Any]:
         """
-        Busca vendas realizadas do Sienge
+        Busca vendas realizadas do Sienge com controle de limite
         
         Args:
             data_inicio: Data de início (YYYY-MM-DD)
@@ -38,6 +164,27 @@ class SiengeAPIClient:
             pagina: Número da página
             registros_por_pagina: Registros por página
         """
+        # VALIDAÇÕES PRÉ-REQUISIÇÃO
+        if not self.validar_parametros(data_inicio, data_fim):
+            return {'success': False, 'error': 'Parâmetros inválidos'}
+        
+        if not self.verificar_limite_requisicoes():
+            return {'success': False, 'error': 'Limite diário de requisições atingido'}
+        
+        # MODO TESTE - Retorna dados simulados
+        if self.modo_teste:
+            logger.info("🧪 MODO TESTE - Retornando dados simulados para vendas realizadas")
+            return {
+                'success': True,
+                'data': {
+                    'dados': [],
+                    'total_registros': 0,
+                    'pagina_atual': pagina,
+                    'total_paginas': 1
+                },
+                'modo_teste': True
+            }
+        
         endpoint = "/vendas/realizadas"
         params = {
             'data_inicio': data_inicio,
@@ -46,13 +193,28 @@ class SiengeAPIClient:
             'registros_por_pagina': registros_por_pagina
         }
         
-        logger.info(f"Buscando vendas realizadas - Página {pagina}")
-        return await make_api_request('sienge_vendas_realizadas', endpoint, params)
+        # Adicionar lista de empreendimentos se disponível
+        if self.empreendimentos:
+            empreendimento_ids = [emp['id'] for emp in self.empreendimentos]
+            params['empreendimentos'] = empreendimento_ids
+            logger.info(f"Filtrando por {len(empreendimento_ids)} empreendimentos")
+        
+        logger.info(f"🔍 Buscando vendas realizadas - Página {pagina}")
+        
+        # Fazer requisição real
+        result = await make_api_request('sienge_vendas_realizadas', endpoint, params)
+        
+        # Incrementar contador apenas se a requisição foi bem-sucedida
+        if result.get('success', False):
+            # Cada empreendimento conta como uma requisição
+            self.incrementar_contador(self.empreendimentos_count)
+        
+        return result
     
     async def get_vendas_canceladas(self, data_inicio: str, data_fim: str,
                                    pagina: int = 1, registros_por_pagina: int = 500) -> Dict[str, Any]:
         """
-        Busca vendas canceladas do Sienge
+        Busca vendas canceladas do Sienge com controle de limite
         
         Args:
             data_inicio: Data de início (YYYY-MM-DD)
@@ -60,6 +222,27 @@ class SiengeAPIClient:
             pagina: Número da página
             registros_por_pagina: Registros por página
         """
+        # VALIDAÇÕES PRÉ-REQUISIÇÃO
+        if not self.validar_parametros(data_inicio, data_fim):
+            return {'success': False, 'error': 'Parâmetros inválidos'}
+        
+        if not self.verificar_limite_requisicoes():
+            return {'success': False, 'error': 'Limite diário de requisições atingido'}
+        
+        # MODO TESTE - Retorna dados simulados
+        if self.modo_teste:
+            logger.info("🧪 MODO TESTE - Retornando dados simulados para vendas canceladas")
+            return {
+                'success': True,
+                'data': {
+                    'dados': [],
+                    'total_registros': 0,
+                    'pagina_atual': pagina,
+                    'total_paginas': 1
+                },
+                'modo_teste': True
+            }
+        
         endpoint = "/vendas/canceladas"
         params = {
             'data_inicio': data_inicio,
@@ -68,8 +251,23 @@ class SiengeAPIClient:
             'registros_por_pagina': registros_por_pagina
         }
         
-        logger.info(f"Buscando vendas canceladas - Página {pagina}")
-        return await make_api_request('sienge_vendas_canceladas', endpoint, params)
+        # Adicionar lista de empreendimentos se disponível
+        if self.empreendimentos:
+            empreendimento_ids = [emp['id'] for emp in self.empreendimentos]
+            params['empreendimentos'] = empreendimento_ids
+            logger.info(f"Filtrando por {len(empreendimento_ids)} empreendimentos")
+        
+        logger.info(f"🔍 Buscando vendas canceladas - Página {pagina}")
+        
+        # Fazer requisição real
+        result = await make_api_request('sienge_vendas_canceladas', endpoint, params)
+        
+        # Incrementar contador apenas se a requisição foi bem-sucedida
+        if result.get('success', False):
+            # Cada empreendimento conta como uma requisição
+            self.incrementar_contador(self.empreendimentos_count)
+        
+        return result
     
     async def get_all_vendas_realizadas(self, data_inicio: str, data_fim: str) -> List[Dict[str, Any]]:
         """Busca todas as vendas realizadas paginadas"""

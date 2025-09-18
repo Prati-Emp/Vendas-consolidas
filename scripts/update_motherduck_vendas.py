@@ -13,17 +13,38 @@ from datetime import datetime
 from typing import Dict, Any
 
 from dotenv import load_dotenv
-from config import config_manager
-from orchestrator import orchestrator
-from data_processor import data_processor
+from scripts.config import config_manager
+from scripts.orchestrator import orchestrator
+from scripts.data_processor import data_processor
 
 # Importar novas APIs
-from sienge_apis import obter_dados_sienge_completos
-from cv_vendas_api import obter_dados_cv_vendas
+from scripts.sienge_apis import obter_dados_sienge_completos
+from scripts.cv_vendas_api import obter_dados_cv_vendas
 
 # Configurar logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+def verificar_horario_otimo() -> bool:
+    """Verifica se é o horário ótimo para execução (01:00-02:00)"""
+    agora = datetime.now()
+    hora_atual = agora.hour
+    minuto_atual = agora.minute
+    
+    # Horário ótimo: 01:00 às 02:00
+    if hora_atual == 1:  # 01:00-01:59
+        logger.info(f"🌙 HORÁRIO ÓTIMO: {hora_atual}:{minuto_atual:02d} - Execução noturna")
+        return True
+    elif hora_atual == 0:  # 00:00-00:59 (madrugada)
+        logger.info(f"🌙 MADRUGADA: {hora_atual}:{minuto_atual:02d} - Execução noturna")
+        return True
+    elif hora_atual == 2:  # 02:00-02:59 (ainda madrugada)
+        logger.info(f"🌙 MADRUGADA: {hora_atual}:{minuto_atual:02d} - Execução noturna")
+        return True
+    else:
+        logger.warning(f"⚠️ HORÁRIO NÃO ÓTIMO: {hora_atual}:{minuto_atual:02d}")
+        logger.info("💡 Horário recomendado: 01:00-02:00 (madrugada)")
+        return False
 
 def get_motherduck_connection():
     """Cria conexão com MotherDuck"""
@@ -40,7 +61,7 @@ def get_motherduck_connection():
     os.environ['motherduck_token'] = token
     
     try:
-        conn = duckdb.connect('md:vendas_consolidadas')
+        conn = duckdb.connect('md:reservas')
         logger.info("Conexão estabelecida com MotherDuck")
         return conn
     except Exception as e:
@@ -82,18 +103,18 @@ def criar_tabelas_motherduck(conn, df_consolidado: pd.DataFrame):
     
     try:
         # Criar schema se não existir
-        conn.sql("CREATE SCHEMA IF NOT EXISTS vendas_consolidadas.main")
+        conn.sql("CREATE SCHEMA IF NOT EXISTS reservas.vendas_consolidadas")
 
         # Remover tabelas antigas
         logger.info("Removendo tabelas antigas (apenas novas fontes)...")
-        conn.sql("DROP TABLE IF EXISTS vendas_consolidadas.main.vendas_consolidadas")
-        conn.sql("DROP TABLE IF EXISTS vendas_consolidadas.main.sienge_vendas_realizadas")
-        conn.sql("DROP TABLE IF EXISTS vendas_consolidadas.main.sienge_vendas_canceladas")
-        conn.sql("DROP TABLE IF EXISTS vendas_consolidadas.main.cv_vendas")
+        conn.sql("DROP TABLE IF EXISTS reservas.vendas_consolidadas.vendas_consolidadas")
+        conn.sql("DROP TABLE IF EXISTS reservas.vendas_consolidadas.sienge_vendas_realizadas")
+        conn.sql("DROP TABLE IF EXISTS reservas.vendas_consolidadas.sienge_vendas_canceladas")
+        conn.sql("DROP TABLE IF EXISTS reservas.vendas_consolidadas.cv_vendas")
 
         # Criar tabela consolidada principal
         logger.info("Criando tabela consolidada...")
-        conn.execute("CREATE TABLE vendas_consolidadas.main.vendas_consolidadas AS SELECT * FROM df_consolidado")
+        conn.execute("CREATE TABLE reservas.vendas_consolidadas.vendas_consolidadas AS SELECT * FROM df_consolidado")
 
         # Criar tabelas individuais por fonte (apenas novas fontes)
         logger.info("Criando tabelas individuais (Sienge e CV Vendas)...")
@@ -101,16 +122,16 @@ def criar_tabelas_motherduck(conn, df_consolidado: pd.DataFrame):
         # Tabelas do Sienge
         if 'sienge_realizadas' in df_consolidado['fonte'].values:
             df_sienge_realizadas = df_consolidado[df_consolidado['fonte'] == 'sienge_realizadas']
-            conn.execute("CREATE TABLE vendas_consolidadas.main.sienge_vendas_realizadas AS SELECT * FROM df_sienge_realizadas")
-
+            conn.execute("CREATE TABLE reservas.vendas_consolidadas.sienge_vendas_realizadas AS SELECT * FROM df_sienge_realizadas")
+        
         if 'sienge_canceladas' in df_consolidado['fonte'].values:
             df_sienge_canceladas = df_consolidado[df_consolidado['fonte'] == 'sienge_canceladas']
-            conn.execute("CREATE TABLE vendas_consolidadas.main.sienge_vendas_canceladas AS SELECT * FROM df_sienge_canceladas")
-
+            conn.execute("CREATE TABLE reservas.vendas_consolidadas.sienge_vendas_canceladas AS SELECT * FROM df_sienge_canceladas")
+        
         # Tabela CV Vendas
         if 'cv_vendas' in df_consolidado['fonte'].values:
             df_cv_vendas = df_consolidado[df_consolidado['fonte'] == 'cv_vendas']
-            conn.execute("CREATE TABLE vendas_consolidadas.main.cv_vendas AS SELECT * FROM df_cv_vendas")
+            conn.execute("CREATE TABLE reservas.vendas_consolidadas.cv_vendas AS SELECT * FROM df_cv_vendas")
 
         # Validar tabelas criadas
         logger.info("Validando tabelas criadas...")
@@ -123,7 +144,7 @@ def criar_tabelas_motherduck(conn, df_consolidado: pd.DataFrame):
         
         for tabela in tabelas:
             try:
-                count = conn.sql(f"SELECT COUNT(*) as count FROM vendas_consolidadas.main.{tabela}").fetchone()[0]
+                count = conn.sql(f"SELECT COUNT(*) as count FROM reservas.vendas_consolidadas.{tabela}").fetchone()[0]
                 logger.info(f"Tabela {tabela}: {count} registros")
             except:
                 logger.info(f"Tabela {tabela}: não criada (sem dados)")
@@ -156,10 +177,17 @@ def gerar_relatorio_final(relatorio: Dict[str, Any]):
         logger.info(f"Valor total de vendas: R$ {relatorio['valores']['total_vendas']:,.2f}")
         logger.info(f"Valor médio por venda: R$ {relatorio['valores']['media_venda']:,.2f}")
 
-async def update_motherduck_vendas():
-    """Função principal de atualização"""
+async def update_motherduck_vendas(force_execution: bool = False):
+    """Função principal de atualização com controle de horários"""
+    
+    # VERIFICAÇÃO DE HORÁRIO ÓTIMO
+    if not verificar_horario_otimo() and not force_execution:
+        logger.error("❌ Execução cancelada - não é horário ótimo")
+        logger.info("💡 Execute com --force para ignorar verificação de horário")
+        return False
+    
     start_time = datetime.now()
-    logger.info(f"Iniciando atualização do MotherDuck - {start_time}")
+    logger.info(f"🚀 Iniciando atualização do MotherDuck - {start_time}")
     
     try:
         # Carregar variáveis de ambiente
@@ -218,4 +246,12 @@ async def update_motherduck_vendas():
             pass
 
 if __name__ == "__main__":
-    asyncio.run(update_motherduck_vendas())
+    import sys
+    
+    # Verificar parâmetros de linha de comando
+    force_execution = '--force' in sys.argv
+    
+    if force_execution:
+        logger.warning("🚨 EXECUÇÃO FORÇADA - Ignorando verificação de horários")
+    
+    asyncio.run(update_motherduck_vendas(force_execution=force_execution))

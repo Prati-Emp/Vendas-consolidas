@@ -109,16 +109,16 @@ class APIConfigManager:
             rate_limit=30
         )
         
-        # API CV - Relatório de Vendas
+        # API CV - Relatório de Vendas (usa mesma autenticação do CVCRM)
         configs['cv_vendas'] = APIConfig(
             name='CV Relatório de Vendas',
             base_url=os.environ.get('CV_VENDAS_BASE_URL', '').strip(),
             headers={
                 'accept': 'application/json',
-                'email': os.environ.get('CV_VENDAS_EMAIL', '').strip(),
-                'token': os.environ.get('CV_VENDAS_TOKEN', '').strip(),
+                'email': os.environ.get('CVCRM_EMAIL', '').strip(),  # Reutiliza email do CVCRM
+                'token': os.environ.get('CVCRM_TOKEN', '').strip(),  # Reutiliza token do CVCRM
             },
-            rate_limit=10
+            rate_limit=20
         )
         
         return configs
