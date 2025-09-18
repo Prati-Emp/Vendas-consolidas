@@ -85,25 +85,31 @@ class APIConfigManager:
             rate_limit=20
         )
         
-        # API Sienge - Vendas Realizadas
+        # API Sienge - Vendas Realizadas (baseado no código M do Power BI)
+        sienge_token = os.environ.get('SIENGE_TOKEN', '').strip()
+        if sienge_token.startswith('Basic '):
+            auth_header = sienge_token
+        else:
+            auth_header = f"Basic {sienge_token}"
+            
         configs['sienge_vendas_realizadas'] = APIConfig(
             name='Sienge Vendas Realizadas',
-            base_url=os.environ.get('SIENGE_BASE_URL', '').strip(),
+            base_url=os.environ.get('SIENGE_BASE_URL', 'https://api.sienge.com.br/pratiemp/public/api/bulk-data/v1').strip(),
             headers={
-                'accept': 'application/json',
-                'Authorization': f"Bearer {os.environ.get('SIENGE_TOKEN', '').strip()}",
+                'Accept': 'application/json',
+                'Authorization': auth_header,  # Basic auth como no Power BI
                 'Content-Type': 'application/json'
             },
             rate_limit=30  # 30 requests per minute
         )
         
-        # API Sienge - Vendas Canceladas
+        # API Sienge - Vendas Canceladas (baseado no código M do Power BI)
         configs['sienge_vendas_canceladas'] = APIConfig(
             name='Sienge Vendas Canceladas',
-            base_url=os.environ.get('SIENGE_BASE_URL', '').strip(),
+            base_url=os.environ.get('SIENGE_BASE_URL', 'https://api.sienge.com.br/pratiemp/public/api/bulk-data/v1').strip(),
             headers={
-                'accept': 'application/json',
-                'Authorization': f"Bearer {os.environ.get('SIENGE_TOKEN', '').strip()}",
+                'Accept': 'application/json',
+                'Authorization': auth_header,  # Basic auth como no Power BI
                 'Content-Type': 'application/json'
             },
             rate_limit=30

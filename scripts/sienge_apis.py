@@ -185,19 +185,25 @@ class SiengeAPIClient:
                 'modo_teste': True
             }
         
-        endpoint = "/vendas/realizadas"
+        # Endpoint baseado no código M do Power BI
+        endpoint = "/sales"
+        
+        # Parâmetros baseados no código M (um empreendimento por vez)
+        # Usar apenas o primeiro empreendimento para teste
+        primeiro_empreendimento = self.empreendimentos[0] if self.empreendimentos else None
+        
+        if not primeiro_empreendimento:
+            return {'success': False, 'error': 'Nenhum empreendimento disponível'}
+        
         params = {
-            'data_inicio': data_inicio,
-            'data_fim': data_fim,
-            'pagina': pagina,
-            'registros_por_pagina': registros_por_pagina
+            'enterpriseId': str(primeiro_empreendimento['id']),  # Apenas um ID
+            'createdAfter': '2020-01-01',  # Data inicial fixa (como no Power BI)
+            'createdBefore': data_fim,     # Data final (atualizada)
+            'situation': 'SOLD'            # Apenas vendas realizadas
         }
         
-        # Adicionar lista de empreendimentos se disponível
-        if self.empreendimentos:
-            empreendimento_ids = [emp['id'] for emp in self.empreendimentos]
-            params['empreendimentos'] = empreendimento_ids
-            logger.info(f"Filtrando por {len(empreendimento_ids)} empreendimentos")
+        logger.info(f"Filtrando por {len(self.empreendimentos)} empreendimentos")
+        logger.info(f"Período: 2020-01-01 a {data_fim}")
         
         logger.info(f"🔍 Buscando vendas realizadas - Página {pagina}")
         
@@ -243,19 +249,25 @@ class SiengeAPIClient:
                 'modo_teste': True
             }
         
-        endpoint = "/vendas/canceladas"
+        # Endpoint baseado no código M do Power BI (mesmo das vendas realizadas)
+        endpoint = "/sales"
+        
+        # Parâmetros baseados no código M (um empreendimento por vez)
+        # Usar apenas o primeiro empreendimento para teste
+        primeiro_empreendimento = self.empreendimentos[0] if self.empreendimentos else None
+        
+        if not primeiro_empreendimento:
+            return {'success': False, 'error': 'Nenhum empreendimento disponível'}
+        
         params = {
-            'data_inicio': data_inicio,
-            'data_fim': data_fim,
-            'pagina': pagina,
-            'registros_por_pagina': registros_por_pagina
+            'enterpriseId': str(primeiro_empreendimento['id']),  # Apenas um ID
+            'createdAfter': '2020-01-01',  # Data inicial fixa (como no Power BI)
+            'createdBefore': data_fim,     # Data final (atualizada)
+            'situation': 'CANCELED'        # Apenas vendas canceladas
         }
         
-        # Adicionar lista de empreendimentos se disponível
-        if self.empreendimentos:
-            empreendimento_ids = [emp['id'] for emp in self.empreendimentos]
-            params['empreendimentos'] = empreendimento_ids
-            logger.info(f"Filtrando por {len(empreendimento_ids)} empreendimentos")
+        logger.info(f"Filtrando por {len(self.empreendimentos)} empreendimentos")
+        logger.info(f"Período: 2020-01-01 a {data_fim}")
         
         logger.info(f"🔍 Buscando vendas canceladas - Página {pagina}")
         
@@ -268,6 +280,127 @@ class SiengeAPIClient:
             self.incrementar_contador(self.empreendimentos_count)
         
         return result
+    
+    def processar_dados_vendas_realizadas(self, dados: List[Dict[str, Any]]) -> pd.DataFrame:
+        """
+        Processa dados de vendas realizadas baseado no código M do Power BI
+        """
+        if not dados:
+            logger.info("Nenhum dado de vendas realizadas para processar")
+            return pd.DataFrame()
+        
+        logger.info(f"Processando {len(dados)} registros de vendas realizadas")
+        
+        # Lista de colunas baseada no código M do Power BI
+        colunas_esperadas = [
+            "id", "enterpriseId", "receivableBillId", "refundBillId", "proRataIndexer",
+            "number", "situation", "externalId", "note", "cancellationReason",
+            "interestType", "lateInterestCalculationType", "financialInstitutionNumber",
+            "discountType", "correctionType", "anualCorrectionType", "associativeCredit",
+            "discountPercentage", "value", "totalSellingValue", "interestPercentage",
+            "fineRate", "dailyLateInterestValue", "creationDate", "contractDate",
+            "issueDate", "cancellationDate", "financialInstitutionDate",
+            "customers", "units", "paymentConditions", "brokers"
+        ]
+        
+        # Converter para DataFrame
+        df = pd.DataFrame(dados)
+        
+        # Garantir que todas as colunas esperadas existam
+        for coluna in colunas_esperadas:
+            if coluna not in df.columns:
+                df[coluna] = None
+        
+        # Selecionar apenas as colunas esperadas
+        df = df[colunas_esperadas]
+        
+        # Converter tipos de dados (baseado no código M)
+        try:
+            # Converter contractDate para datetime
+            if 'contractDate' in df.columns:
+                df['contractDate'] = pd.to_datetime(df['contractDate'], errors='coerce')
+            
+            # Converter valores numéricos
+            colunas_numericas = ['value', 'totalSellingValue', 'interestPercentage', 'fineRate', 'dailyLateInterestValue']
+            for col in colunas_numericas:
+                if col in df.columns:
+                    df[col] = pd.to_numeric(df[col], errors='coerce')
+            
+            # Converter IDs para string
+            colunas_id = ['id', 'enterpriseId', 'receivableBillId', 'refundBillId']
+            for col in colunas_id:
+                if col in df.columns:
+                    df[col] = df[col].astype(str)
+            
+        except Exception as e:
+            logger.warning(f"Erro ao converter tipos de dados: {str(e)}")
+        
+        # Substituir valores de erro por None (como no código M)
+        df = df.replace([float('inf'), float('-inf')], None)
+        
+        logger.info(f"DataFrame processado: {len(df)} registros, {len(df.columns)} colunas")
+        return df
+    
+    def processar_dados_vendas_canceladas(self, dados: List[Dict[str, Any]]) -> pd.DataFrame:
+        """
+        Processa dados de vendas canceladas baseado no código M do Power BI
+        (mesma estrutura das vendas realizadas)
+        """
+        if not dados:
+            logger.info("Nenhum dado de vendas canceladas para processar")
+            return pd.DataFrame()
+        
+        logger.info(f"Processando {len(dados)} registros de vendas canceladas")
+        
+        # Lista de colunas baseada no código M do Power BI (mesma das vendas realizadas)
+        colunas_esperadas = [
+            "id", "enterpriseId", "receivableBillId", "refundBillId", "proRataIndexer",
+            "number", "situation", "externalId", "note", "cancellationReason",
+            "interestType", "lateInterestCalculationType", "financialInstitutionNumber",
+            "discountType", "correctionType", "anualCorrectionType", "associativeCredit",
+            "discountPercentage", "value", "totalSellingValue", "interestPercentage",
+            "fineRate", "dailyLateInterestValue", "creationDate", "contractDate",
+            "issueDate", "cancellationDate", "financialInstitutionDate",
+            "customers", "units", "paymentConditions", "brokers"
+        ]
+        
+        # Converter para DataFrame
+        df = pd.DataFrame(dados)
+        
+        # Garantir que todas as colunas esperadas existam
+        for coluna in colunas_esperadas:
+            if coluna not in df.columns:
+                df[coluna] = None
+        
+        # Selecionar apenas as colunas esperadas
+        df = df[colunas_esperadas]
+        
+        # Converter tipos de dados (baseado no código M)
+        try:
+            # Converter contractDate para datetime
+            if 'contractDate' in df.columns:
+                df['contractDate'] = pd.to_datetime(df['contractDate'], errors='coerce')
+            
+            # Converter valores numéricos
+            colunas_numericas = ['value', 'totalSellingValue', 'interestPercentage', 'fineRate', 'dailyLateInterestValue']
+            for col in colunas_numericas:
+                if col in df.columns:
+                    df[col] = pd.to_numeric(df[col], errors='coerce')
+            
+            # Converter IDs para string
+            colunas_id = ['id', 'enterpriseId', 'receivableBillId', 'refundBillId']
+            for col in colunas_id:
+                if col in df.columns:
+                    df[col] = df[col].astype(str)
+            
+        except Exception as e:
+            logger.warning(f"Erro ao converter tipos de dados: {str(e)}")
+        
+        # Substituir valores de erro por None (como no código M)
+        df = df.replace([float('inf'), float('-inf')], None)
+        
+        logger.info(f"DataFrame processado: {len(df)} registros, {len(df.columns)} colunas")
+        return df
     
     async def get_all_vendas_realizadas(self, data_inicio: str, data_fim: str) -> List[Dict[str, Any]]:
         """Busca todas as vendas realizadas paginadas"""
@@ -301,39 +434,164 @@ class SiengeAPIClient:
         
         logger.info(f"Total de vendas realizadas: {len(todos_dados)}")
         return todos_dados
-    
-    async def get_all_vendas_canceladas(self, data_inicio: str, data_fim: str) -> List[Dict[str, Any]]:
-        """Busca todas as vendas canceladas paginadas"""
-        pagina = 1
+
+async def obter_dados_sienge_vendas_realizadas() -> pd.DataFrame:
+    """
+    Função principal para obter dados de vendas realizadas do Sienge
+    Busca dados de todos os empreendimentos
+    """
+    try:
+        from datetime import datetime, timedelta
+        
+        # Data limite = hoje (otimização: buscar até data atual)
+        data_fim = datetime.now().strftime('%Y-%m-%d')
+        data_inicio = '2020-01-01'  # Data inicial fixa como no Power BI
+        
+        logger.info(f"🔍 Buscando vendas realizadas do Sienge: {data_inicio} a {data_fim}")
+        
+        # Criar cliente
+        client = SiengeAPIClient()
+        
         todos_dados = []
         
-        while True:
-            try:
-                result = await self.get_vendas_canceladas(data_inicio, data_fim, pagina)
-                
-                if not result['success']:
-                    logger.error(f"Erro na página {pagina}: {result.get('error', 'Erro desconhecido')}")
-                    break
-                
-                dados = result['data'].get('dados', [])
-                if not dados:
-                    break
-                
-                todos_dados.extend(dados)
-                logger.info(f"Página {pagina} - {len(dados)} registros")
-                
-                # Se retornou menos que o esperado, é a última página
-                if len(dados) < 500:
-                    break
-                
-                pagina += 1
-                
-            except Exception as e:
-                logger.error(f"Erro na página {pagina}: {str(e)}")
-                break
+        # Buscar dados de cada empreendimento
+        for i, empreendimento in enumerate(client.empreendimentos, 1):
+            logger.info(f"📊 Empreendimento {i}/{len(client.empreendimentos)}: {empreendimento['nome']} (ID: {empreendimento['id']})")
+            
+            # Temporariamente modificar a lista para usar apenas este empreendimento
+            empreendimentos_originais = client.empreendimentos
+            client.empreendimentos = [empreendimento]
+            
+            # Buscar dados
+            result = await client.get_vendas_realizadas(data_inicio, data_fim)
+            
+            # Restaurar lista original
+            client.empreendimentos = empreendimentos_originais
+            
+            if result.get('success', False):
+                dados = result.get('data', {}).get('data', [])
+                if dados:
+                    todos_dados.extend(dados)
+                    logger.info(f"   ✅ {len(dados)} registros encontrados")
+                else:
+                    logger.info(f"   ⚪ Nenhum registro encontrado")
+            else:
+                logger.error(f"   ❌ Erro: {result.get('error', 'Erro desconhecido')}")
+            
+            # Pequeno delay entre requisições
+            await asyncio.sleep(0.5)
         
-        logger.info(f"Total de vendas canceladas: {len(todos_dados)}")
-        return todos_dados
+        if not todos_dados:
+            logger.info("Nenhuma venda realizada encontrada em nenhum empreendimento")
+            return pd.DataFrame()
+        
+        # Processar todos os dados
+        df = client.processar_dados_vendas_realizadas(todos_dados)
+        
+        logger.info(f"✅ Vendas realizadas processadas: {len(df)} registros de {len(client.empreendimentos)} empreendimentos")
+        return df
+        
+    except Exception as e:
+        logger.error(f"Erro ao obter vendas realizadas: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return pd.DataFrame()
+
+async def obter_dados_sienge_vendas_canceladas() -> pd.DataFrame:
+    """
+    Função principal para obter dados de vendas canceladas do Sienge
+    Busca dados de todos os empreendimentos
+    """
+    try:
+        from datetime import datetime, timedelta
+        
+        # Data limite = hoje (otimização: buscar até data atual)
+        data_fim = datetime.now().strftime('%Y-%m-%d')
+        data_inicio = '2020-01-01'  # Data inicial fixa como no Power BI
+        
+        logger.info(f"🔍 Buscando vendas canceladas do Sienge: {data_inicio} a {data_fim}")
+        
+        # Criar cliente
+        client = SiengeAPIClient()
+        
+        todos_dados = []
+        
+        # Buscar dados de cada empreendimento
+        for i, empreendimento in enumerate(client.empreendimentos, 1):
+            logger.info(f"📊 Empreendimento {i}/{len(client.empreendimentos)}: {empreendimento['nome']} (ID: {empreendimento['id']})")
+            
+            # Temporariamente modificar a lista para usar apenas este empreendimento
+            empreendimentos_originais = client.empreendimentos
+            client.empreendimentos = [empreendimento]
+            
+            # Buscar dados
+            result = await client.get_vendas_canceladas(data_inicio, data_fim)
+            
+            # Restaurar lista original
+            client.empreendimentos = empreendimentos_originais
+            
+            if result.get('success', False):
+                dados = result.get('data', {}).get('data', [])
+                if dados:
+                    todos_dados.extend(dados)
+                    logger.info(f"   ✅ {len(dados)} registros encontrados")
+                else:
+                    logger.info(f"   ⚪ Nenhum registro encontrado")
+            else:
+                logger.error(f"   ❌ Erro: {result.get('error', 'Erro desconhecido')}")
+            
+            # Pequeno delay entre requisições
+            await asyncio.sleep(0.5)
+        
+        if not todos_dados:
+            logger.info("Nenhuma venda cancelada encontrada em nenhum empreendimento")
+            return pd.DataFrame()
+        
+        # Processar todos os dados
+        df = client.processar_dados_vendas_canceladas(todos_dados)
+        
+        logger.info(f"✅ Vendas canceladas processadas: {len(df)} registros de {len(client.empreendimentos)} empreendimentos")
+        return df
+        
+    except Exception as e:
+        logger.error(f"Erro ao obter vendas canceladas: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return pd.DataFrame()
+
+async def get_all_vendas_canceladas(data_inicio: str, data_fim: str) -> List[Dict[str, Any]]:
+    """Busca todas as vendas canceladas paginadas"""
+    client = SiengeAPIClient()
+    pagina = 1
+    todos_dados = []
+    
+    while True:
+        try:
+            result = await client.get_vendas_canceladas(data_inicio, data_fim, pagina)
+            
+            if not result['success']:
+                logger.error(f"Erro na página {pagina}: {result.get('error', 'Erro desconhecido')}")
+                break
+            
+            dados = result['data'].get('dados', [])
+            if not dados:
+                break
+            
+            todos_dados.extend(dados)
+            logger.info(f"Página {pagina} - {len(dados)} registros")
+            
+            # Se retornou menos que o esperado, é a última página
+            if len(dados) < 500:
+                break
+            
+            pagina += 1
+            
+        except Exception as e:
+            logger.error(f"Erro na página {pagina}: {str(e)}")
+            break
+    
+    logger.info(f"Total de vendas canceladas: {len(todos_dados)}")
+    return todos_dados
 
 def processar_dados_sienge(dados: List[Dict[str, Any]], tipo: str) -> pd.DataFrame:
     """
@@ -387,8 +645,8 @@ async def obter_dados_sienge_completos(data_inicio: str = "2024-01-01",
     client = SiengeAPIClient()
     
     # Buscar dados em paralelo
-    vendas_realizadas_task = client.get_all_vendas_realizadas(data_inicio, data_fim)
-    vendas_canceladas_task = client.get_all_vendas_canceladas(data_inicio, data_fim)
+    vendas_realizadas_task = obter_dados_sienge_vendas_realizadas()
+    vendas_canceladas_task = obter_dados_sienge_vendas_canceladas()
     
     vendas_realizadas, vendas_canceladas = await asyncio.gather(
         vendas_realizadas_task,
@@ -396,9 +654,9 @@ async def obter_dados_sienge_completos(data_inicio: str = "2024-01-01",
         return_exceptions=True
     )
     
-    # Processar dados
-    df_realizadas = processar_dados_sienge(vendas_realizadas, 'realizadas')
-    df_canceladas = processar_dados_sienge(vendas_canceladas, 'canceladas')
+    # Os dados já vêm processados como DataFrames
+    df_realizadas = vendas_realizadas if not isinstance(vendas_realizadas, Exception) else pd.DataFrame()
+    df_canceladas = vendas_canceladas if not isinstance(vendas_canceladas, Exception) else pd.DataFrame()
     
     return {
         'vendas_realizadas': df_realizadas,
