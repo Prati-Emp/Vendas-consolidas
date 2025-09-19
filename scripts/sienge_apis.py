@@ -94,20 +94,21 @@ class SiengeAPIClient:
         # Carregar lista de empreendimentos
         self.empreendimentos = obter_lista_empreendimentos_motherduck()
         
-        # Controle de limite diário (50 requisições por empreendimento)
-        self.limite_diario = 50
+        # Controle de limite diário (36 requisições por execução = 2 execuções/dia)
+        self.limite_diario = 36
         self.requisicoes_hoje = 0
         self.modo_teste = os.environ.get('SIENGE_MODO_TESTE', 'false').lower() == 'true'
         
         # Calcular requisições necessárias por execução
         self.empreendimentos_count = len(self.empreendimentos)
-        self.requisicoes_por_execucao = self.empreendimentos_count * 2  # 2 APIs (realizadas + canceladas)
+        self.requisicoes_por_execucao = self.empreendimentos_count * 2  # 2 APIs (realizadas + canceladas) por empreendimento
         self.execucoes_possiveis = self.limite_diario // self.requisicoes_por_execucao
         
         logger.info(f"📊 Controle de limite:")
         logger.info(f"   - Empreendimentos: {self.empreendimentos_count}")
         logger.info(f"   - Requisições por execução: {self.requisicoes_por_execucao}")
         logger.info(f"   - Execuções possíveis por dia: {self.execucoes_possiveis}")
+        logger.info(f"   - Limite diário otimizado: {self.limite_diario} (permite 2 execuções/dia)")
         
         if self.modo_teste:
             logger.warning("🧪 MODO TESTE ATIVADO - Nenhuma requisição real será feita")
@@ -189,20 +190,25 @@ class SiengeAPIClient:
         endpoint = "/sales"
         
         # Parâmetros baseados no código M (um empreendimento por vez)
-        # Usar apenas o primeiro empreendimento para teste
+        # Usar apenas o primeiro empreendimento para esta requisição específica
+        if not self.empreendimentos:
+            return {'success': False, 'error': 'Nenhum empreendimento disponível'}
+        
+        # Para requisições individuais, usar apenas um empreendimento por vez
+        # O loop será feito na função que chama esta
         primeiro_empreendimento = self.empreendimentos[0] if self.empreendimentos else None
         
         if not primeiro_empreendimento:
             return {'success': False, 'error': 'Nenhum empreendimento disponível'}
         
         params = {
-            'enterpriseId': str(primeiro_empreendimento['id']),  # Apenas um ID
+            'enterpriseId': int(primeiro_empreendimento['id']),  # ID como inteiro
             'createdAfter': '2020-01-01',  # Data inicial fixa (como no Power BI)
             'createdBefore': data_fim,     # Data final (atualizada)
             'situation': 'SOLD'            # Apenas vendas realizadas
         }
         
-        logger.info(f"Filtrando por {len(self.empreendimentos)} empreendimentos")
+        logger.info(f"Filtrando por empreendimento: {primeiro_empreendimento['nome']} (ID: {primeiro_empreendimento['id']})")
         logger.info(f"Período: 2020-01-01 a {data_fim}")
         
         logger.info(f"🔍 Buscando vendas realizadas - Página {pagina}")
@@ -213,7 +219,7 @@ class SiengeAPIClient:
         # Incrementar contador apenas se a requisição foi bem-sucedida
         if result.get('success', False):
             # Cada empreendimento conta como uma requisição
-            self.incrementar_contador(self.empreendimentos_count)
+            self.incrementar_contador(1)
         
         return result
     
@@ -253,20 +259,25 @@ class SiengeAPIClient:
         endpoint = "/sales"
         
         # Parâmetros baseados no código M (um empreendimento por vez)
-        # Usar apenas o primeiro empreendimento para teste
+        # Usar apenas o primeiro empreendimento para esta requisição específica
+        if not self.empreendimentos:
+            return {'success': False, 'error': 'Nenhum empreendimento disponível'}
+        
+        # Para requisições individuais, usar apenas um empreendimento por vez
+        # O loop será feito na função que chama esta
         primeiro_empreendimento = self.empreendimentos[0] if self.empreendimentos else None
         
         if not primeiro_empreendimento:
             return {'success': False, 'error': 'Nenhum empreendimento disponível'}
         
         params = {
-            'enterpriseId': str(primeiro_empreendimento['id']),  # Apenas um ID
+            'enterpriseId': int(primeiro_empreendimento['id']),  # ID como inteiro
             'createdAfter': '2020-01-01',  # Data inicial fixa (como no Power BI)
             'createdBefore': data_fim,     # Data final (atualizada)
             'situation': 'CANCELED'        # Apenas vendas canceladas
         }
         
-        logger.info(f"Filtrando por {len(self.empreendimentos)} empreendimentos")
+        logger.info(f"Filtrando por empreendimento: {primeiro_empreendimento['nome']} (ID: {primeiro_empreendimento['id']})")
         logger.info(f"Período: 2020-01-01 a {data_fim}")
         
         logger.info(f"🔍 Buscando vendas canceladas - Página {pagina}")
@@ -277,7 +288,7 @@ class SiengeAPIClient:
         # Incrementar contador apenas se a requisição foi bem-sucedida
         if result.get('success', False):
             # Cada empreendimento conta como uma requisição
-            self.incrementar_contador(self.empreendimentos_count)
+            self.incrementar_contador(1)
         
         return result
     
@@ -454,6 +465,9 @@ async def obter_dados_sienge_vendas_realizadas() -> pd.DataFrame:
         
         todos_dados = []
         
+        # Buscar dados de cada empreendimento individualmente
+        logger.info(f"📊 Buscando dados de {len(client.empreendimentos)} empreendimentos")
+        
         # Buscar dados de cada empreendimento
         for i, empreendimento in enumerate(client.empreendimentos, 1):
             logger.info(f"📊 Empreendimento {i}/{len(client.empreendimentos)}: {empreendimento['nome']} (ID: {empreendimento['id']})")
@@ -478,7 +492,7 @@ async def obter_dados_sienge_vendas_realizadas() -> pd.DataFrame:
             else:
                 logger.error(f"   ❌ Erro: {result.get('error', 'Erro desconhecido')}")
             
-            # Pequeno delay entre requisições
+            # Pequeno delay entre requisições para evitar sobrecarga
             await asyncio.sleep(0.5)
         
         if not todos_dados:
@@ -516,6 +530,9 @@ async def obter_dados_sienge_vendas_canceladas() -> pd.DataFrame:
         
         todos_dados = []
         
+        # Buscar dados de cada empreendimento individualmente
+        logger.info(f"📊 Buscando dados de {len(client.empreendimentos)} empreendimentos")
+        
         # Buscar dados de cada empreendimento
         for i, empreendimento in enumerate(client.empreendimentos, 1):
             logger.info(f"📊 Empreendimento {i}/{len(client.empreendimentos)}: {empreendimento['nome']} (ID: {empreendimento['id']})")
@@ -540,7 +557,7 @@ async def obter_dados_sienge_vendas_canceladas() -> pd.DataFrame:
             else:
                 logger.error(f"   ❌ Erro: {result.get('error', 'Erro desconhecido')}")
             
-            # Pequeno delay entre requisições
+            # Pequeno delay entre requisições para evitar sobrecarga
             await asyncio.sleep(0.5)
         
         if not todos_dados:

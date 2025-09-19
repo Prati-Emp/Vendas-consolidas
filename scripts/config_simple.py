@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-Sistema de configuração simplificado para APIs
-Versão sem loops infinitos
+Configuração simplificada para APIs - versão sem loops
 """
 
 import os
 from typing import Dict, Any, Optional
 from dataclasses import dataclass
+from dotenv import load_dotenv
 
 @dataclass
 class APIConfig:
@@ -19,6 +19,8 @@ class APIConfig:
 
 def get_api_config(api_name: str) -> Optional[APIConfig]:
     """Obtém configuração de API de forma simples"""
+    # Carregar .env apenas quando necessário
+    load_dotenv()
     
     if api_name == 'cv_vendas':
         return APIConfig(
@@ -26,8 +28,8 @@ def get_api_config(api_name: str) -> Optional[APIConfig]:
             base_url='https://prati.cvcrm.com.br/api/v1/cvdw/vendas',
             headers={
                 'accept': 'application/json',
-                'email': os.environ.get('CVCRM_EMAIL', ''),
-                'token': os.environ.get('CVCRM_TOKEN', '')
+                'email': os.environ.get('CV_VENDAS_EMAIL', ''),
+                'token': os.environ.get('CV_VENDAS_TOKEN', '')
             },
             rate_limit=60
         )
@@ -41,7 +43,7 @@ def get_api_config(api_name: str) -> Optional[APIConfig]:
             
         return APIConfig(
             name='Sienge Vendas Realizadas',
-            base_url='https://api.sienge.com.br/pratiemp/public/api/bulk-data/v1',
+            base_url='https://api.sienge.com.br/public/api/v1/sales',
             headers={
                 'accept': 'application/json',
                 'authorization': auth_header
@@ -58,7 +60,7 @@ def get_api_config(api_name: str) -> Optional[APIConfig]:
             
         return APIConfig(
             name='Sienge Vendas Canceladas',
-            base_url='https://api.sienge.com.br/pratiemp/public/api/bulk-data/v1',
+            base_url='https://api.sienge.com.br/public/api/v1/sales/cancelled',
             headers={
                 'accept': 'application/json',
                 'authorization': auth_header
@@ -75,3 +77,4 @@ def get_all_rate_limits() -> Dict[str, int]:
         'sienge_vendas_realizadas': 50,
         'sienge_vendas_canceladas': 50
     }
+

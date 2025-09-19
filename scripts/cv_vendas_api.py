@@ -44,36 +44,63 @@ class CVVendasAPIClient:
         return await make_api_request('cv_vendas', endpoint, params)
     
     async def get_all_vendas(self) -> List[Dict[str, Any]]:
-        """Busca todas as vendas com rate limiting otimizado para madrugada"""
+        """Busca todas as vendas com rate limiting otimizado e lógica robusta"""
         pagina = 1
         todos_dados: List[Dict[str, Any]] = []
+        paginas_vazias = 0
+        max_paginas_vazias = 3  # Reduzido para ser mais eficiente
+        max_paginas_seguranca = 5000  # Aumentado para permitir mais dados
         
-        # Rate limiting otimizado para madrugada (01:00-02:00)
+        # Rate limiting flexível - sempre otimizado
         agora = datetime.now()
         hora_atual = agora.hour
         
         if hora_atual in [0, 1, 2]:  # Madrugada
-            delay_base = 0.3  # Mais rápido (sem concorrência)
+            delay_base = 0.2  # Mais rápido (sem concorrência)
             logger.info("🌙 Modo madrugada: Rate limiting otimizado")
         else:
-            delay_base = 1.0  # Mais conservador em outros horários
-            logger.info("☀️ Modo diurno: Rate limiting conservador")
+            delay_base = 0.3  # Mais flexível em outros horários (reduzido de 0.5 para 0.3)
+            logger.info("☀️ Modo diurno: Rate limiting flexível")
 
         while True:
+            # Verificar limite de segurança
+            if pagina > max_paginas_seguranca:
+                logger.warning(f"Limite de segurança atingido ({max_paginas_seguranca} páginas)")
+                break
+                
             try:
                 result = await self.get_pagina(pagina)
 
                 if not result['success']:
-                    logger.error(f"Erro na página {pagina}: {result.get('error', 'Erro desconhecido')}")
+                    error_msg = result.get('error', 'Erro desconhecido')
+                    logger.error(f"Erro na página {pagina}: {error_msg}")
+                    
+                    # Se for erro 404, pode ser fim dos dados
+                    if '404' in str(error_msg) or 'not found' in str(error_msg).lower():
+                        logger.info("Fim dos dados detectado (erro 404)")
+                        break
                     break
 
                 dados = result['data'].get('dados', [])
+                
                 if not dados:
-                    logger.info(f"Página {pagina} vazia. Fim da paginação.")
-                    break
-
-                todos_dados.extend(dados)
-                logger.info(f"Página {pagina} - {len(dados)} registros")
+                    paginas_vazias += 1
+                    logger.info(f"Página {pagina} vazia ({paginas_vazias}/{max_paginas_vazias})")
+                    
+                    if paginas_vazias >= max_paginas_vazias:
+                        logger.info(f"Fim da paginação: {paginas_vazias} páginas vazias consecutivas")
+                        break
+                else:
+                    paginas_vazias = 0  # Reset contador de páginas vazias
+                    todos_dados.extend(dados)
+                    logger.info(f"Página {pagina} - {len(dados)} registros (Total: {len(todos_dados)})")
+                    
+                    # Se retornou menos que 100 registros, pode ser fim dos dados
+                    if len(dados) < 100:
+                        logger.info(f"Página com poucos registros ({len(dados)}), pode ser fim dos dados")
+                        # Continuar por mais 2 páginas para confirmar
+                        if pagina > 10:  # Só aplicar esta lógica após algumas páginas
+                            paginas_vazias += 1
 
                 pagina += 1
                 await asyncio.sleep(delay_base)  # Rate limiting inteligente
@@ -82,7 +109,7 @@ class CVVendasAPIClient:
                 logger.error(f"Erro na página {pagina}: {str(e)}")
                 break
 
-        logger.info(f"Total de registros CV Vendas: {len(todos_dados)}")
+        logger.info(f"Total de registros CV Vendas: {len(todos_dados)} em {pagina-1} páginas")
         return todos_dados
 
 def processar_dados_cv_vendas(dados: List[Dict[str, Any]]) -> pd.DataFrame:
