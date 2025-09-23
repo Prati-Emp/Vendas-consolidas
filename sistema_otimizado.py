@@ -153,26 +153,29 @@ async def upload_dados_motherduck_otimizado(df_cv_vendas, df_sienge_realizadas, 
         print("✅ Conexão estabelecida")
         
         # Upload CV Vendas
+        print(f"3. CV Vendas - linhas no DataFrame: {len(df_cv_vendas):,}")
         if not df_cv_vendas.empty:
-            print("3. Fazendo upload CV Vendas...")
-            conn.sql("DROP TABLE IF EXISTS main.cv_vendas")
-            conn.execute("CREATE TABLE main.cv_vendas AS SELECT * FROM df_cv_vendas")
+            print("   Fazendo upload CV Vendas...")
+            conn.register("df_cv_vendas", df_cv_vendas)
+            conn.execute("CREATE OR REPLACE TABLE main.cv_vendas AS SELECT * FROM df_cv_vendas")
             count_cv = conn.sql("SELECT COUNT(*) FROM main.cv_vendas").fetchone()[0]
             print(f"   ✅ CV Vendas: {count_cv:,} registros")
         
         # Upload Sienge Vendas Realizadas
+        print(f"4. Sienge Realizadas - linhas no DataFrame: {len(df_sienge_realizadas):,}")
         if not df_sienge_realizadas.empty:
-            print("4. Fazendo upload Sienge Vendas Realizadas...")
-            conn.sql("DROP TABLE IF EXISTS main.sienge_vendas_realizadas")
-            conn.execute("CREATE TABLE main.sienge_vendas_realizadas AS SELECT * FROM df_sienge_realizadas")
+            print("   Fazendo upload Sienge Vendas Realizadas...")
+            conn.register("df_sienge_realizadas", df_sienge_realizadas)
+            conn.execute("CREATE OR REPLACE TABLE main.sienge_vendas_realizadas AS SELECT * FROM df_sienge_realizadas")
             count_realizadas = conn.sql("SELECT COUNT(*) FROM main.sienge_vendas_realizadas").fetchone()[0]
             print(f"   ✅ Sienge Realizadas: {count_realizadas:,} registros")
         
         # Upload Sienge Vendas Canceladas
+        print(f"5. Sienge Canceladas - linhas no DataFrame: {len(df_sienge_canceladas):,}")
         if not df_sienge_canceladas.empty:
-            print("5. Fazendo upload Sienge Vendas Canceladas...")
-            conn.sql("DROP TABLE IF EXISTS main.sienge_vendas_canceladas")
-            conn.execute("CREATE TABLE main.sienge_vendas_canceladas AS SELECT * FROM df_sienge_canceladas")
+            print("   Fazendo upload Sienge Vendas Canceladas...")
+            conn.register("df_sienge_canceladas", df_sienge_canceladas)
+            conn.execute("CREATE OR REPLACE TABLE main.sienge_vendas_canceladas AS SELECT * FROM df_sienge_canceladas")
             count_canceladas = conn.sql("SELECT COUNT(*) FROM main.sienge_vendas_canceladas").fetchone()[0]
             print(f"   ✅ Sienge Canceladas: {count_canceladas:,} registros")
         
