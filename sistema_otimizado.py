@@ -88,9 +88,9 @@ async def coletar_dados_sienge_otimizado():
         
         print(f"📊 Empreendimentos encontrados: {len(empreendimentos)}")
         
-        # Para teste, usar apenas alguns empreendimentos para não esgotar o limite
-        empreendimentos_teste = empreendimentos[:3]  # Apenas os primeiros 3
-        print(f"🧪 Modo teste: usando apenas {len(empreendimentos_teste)} empreendimentos")
+        # Usar todos os empreendimentos disponíveis
+        empreendimentos_teste = empreendimentos  # Todos os empreendimentos
+        print(f"📊 Usando todos os {len(empreendimentos_teste)} empreendimentos disponíveis")
         
         for i, emp in enumerate(empreendimentos_teste, 1):
             print(f"   {i}. {emp['nome']} (ID: {emp['id']})")
@@ -98,6 +98,11 @@ async def coletar_dados_sienge_otimizado():
         # Coletar dados de vendas realizadas
         print(f"\n📈 Coletando vendas realizadas...")
         df_realizadas = await obter_dados_sienge_vendas_realizadas()
+        
+        # Aguardar delay entre vendas realizadas e canceladas (5 minutos)
+        print(f"\n⏳ Aguardando 5 minutos antes de buscar vendas canceladas...")
+        import asyncio
+        await asyncio.sleep(300)  # 5 minutos = 300 segundos
         
         # Coletar dados de vendas canceladas
         print(f"\n📉 Coletando vendas canceladas...")

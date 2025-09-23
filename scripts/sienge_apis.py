@@ -94,8 +94,8 @@ class SiengeAPIClient:
         # Carregar lista de empreendimentos
         self.empreendimentos = obter_lista_empreendimentos_motherduck()
         
-        # Controle de limite diário (36 requisições por execução = 2 execuções/dia)
-        self.limite_diario = 36
+        # Controle de limite diário (40 requisições por dia, 16 por execução)
+        self.limite_diario = 40
         self.requisicoes_hoje = 0
         self.modo_teste = os.environ.get('SIENGE_MODO_TESTE', 'false').lower() == 'true'
         
@@ -108,7 +108,7 @@ class SiengeAPIClient:
         logger.info(f"   - Empreendimentos: {self.empreendimentos_count}")
         logger.info(f"   - Requisições por execução: {self.requisicoes_por_execucao}")
         logger.info(f"   - Execuções possíveis por dia: {self.execucoes_possiveis}")
-        logger.info(f"   - Limite diário otimizado: {self.limite_diario} (permite 2 execuções/dia)")
+        logger.info(f"   - Limite diário: {self.limite_diario} (permite 2 execuções/dia com 16 requisições cada)")
         
         if self.modo_teste:
             logger.warning("🧪 MODO TESTE ATIVADO - Nenhuma requisição real será feita")
