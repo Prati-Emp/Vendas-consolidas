@@ -36,6 +36,7 @@ MAPEAMENTO_SITUACAO_PADRAO = {
     "Aguardando projeto e Alvará": "Em Conformidade",
     "Aguardando Assinatura Formulários": "Em Conformidade",
     "Aguardando Assinatura Formulario": "Em Conformidade",
+    "Aguardando Assinatura Formularios": "Em Conformidade",  # Adicionado para cobrir variação
     "Análise de Conformidade": "Em Conformidade",
     "Inconforme": "Em Conformidade",
     "Validação Cohapar": "Em Conformidade",
@@ -47,6 +48,7 @@ MAPEAMENTO_SITUACAO_PADRAO = {
     "Espera - Demanda Mínima": "Em Espera",
     "Espera - Demanda Minima": "Em Espera",
     "Espera - Analisando Credito": "Em Espera",
+    "Espera -  Analisando Credito": "Em Espera",  # Adicionado para cobrir espaço extra
     "Espera - Analisando Crédito": "Em Espera",
     "Espera - Sem Análise": "Em Espera",
     "Espera - Análise Reprovada": "Em Espera",
@@ -57,6 +59,9 @@ MAPEAMENTO_SITUACAO_PADRAO = {
     "Prazo de contrato - com análise": "Em Espera",
     "Entrada no Registro": "Entrada no registro",
     "Venda a Investidor": "Venda a Investidor",
+    # Adicionando situações que estavam sem mapeamento
+    "Distrato": "Distrato",
+    "Cancelado": "Cancelado",
 }
 
 
