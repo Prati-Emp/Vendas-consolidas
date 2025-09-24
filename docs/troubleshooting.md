@@ -172,7 +172,21 @@ python: can't open file 'scripts/update_motherduck_vendas.py': [Errno 2] No such
 3. **Verificar Logs**:
    - Analisar respostas das APIs
    - Verificar status codes
-   - Confirmar estrutura de dados
+  - Confirmar estrutura de dados (chaves `data`/`dados`/`items`/`content`)
+  - Usar a função `_extrair_registros` (centralizada) no `scripts/sienge_apis.py`
+
+4. **Auditar Empreendimentos**:
+   - Rode `python -u scripts/auditar_sienge_empreendimentos.py`
+   - Consulte `reservas.main.sienge_empreendimentos_auditoria` no MotherDuck
+
+5. **Repasses (coluna “Para”)**:
+   - Script `scripts/cv_repasses_api.py` usa fallback "Sem Mapeamento"
+   - Ajuste mapeamentos em `reservas.main.de_para_repasse` quando surgirem novas situações
+
+6. **Limite de Requisições**:
+   - Se estiver perto do limite diário, pausar canceladas:
+     - Actions: `SIENGE_SKIP_CANCELADAS=true`
+     - Pipeline respeita `SIENGE_APENAS_REALIZADAS=true`
 
 ---
 

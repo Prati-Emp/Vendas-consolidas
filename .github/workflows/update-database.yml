@@ -42,6 +42,9 @@ jobs:
           SIENGE_BASE_URL: ${{ secrets.SIENGE_BASE_URL }}
           SIENGE_TOKEN: ${{ secrets.SIENGE_TOKEN }}
           PYTHONPATH: ${{ github.workspace }}/scripts:${{ github.workspace }}
+          # Flags de controle (default: pausar canceladas) e repasses habilitado
+          SIENGE_SKIP_CANCELADAS: ${{ vars.SIENGE_SKIP_CANCELADAS || 'true' }}
+          CV_REPASSES_ENABLED: 'true'
         run: |
           echo "🌙 Iniciando atualização do MotherDuck (madrugada)..."
           python -u scripts/update_motherduck_vendas.py

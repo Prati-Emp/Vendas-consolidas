@@ -32,6 +32,7 @@ O sistema integra com três principais fontes de dados através de APIs REST, ca
 - **Reservas**: `/reservas`
 - **Workflow**: `/workflow`
 - **CV Vendas**: `/cvdw/vendas`
+- **CV Repasses**: `/cvdw/repasses`
 
 ### Autenticação
 ```python
@@ -97,6 +98,22 @@ headers = {
       "origem": "string",
       "categoria": "string",
       "status": "string"
+    }
+  ]
+}
+```
+
+#### CV Repasses
+```json
+{
+  "dados": [
+    {
+      "data_cad": "YYYY-MM-DD",
+      "situacao": "string",
+      "codigointerno_empreendimento": 123,
+      "empreendimento": "string",
+      "valor_contrato": "1000,00",
+      "Para": "Em Assinatura Caixa"
     }
   ]
 }

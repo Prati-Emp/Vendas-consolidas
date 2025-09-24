@@ -76,10 +76,16 @@ pip install -r requirements.txt
 ### 4. **Execução da Atualização**
 ```yaml
 - name: Update database
-  env: [variáveis de ambiente]
+  env:
+    MOTHERDUCK_TOKEN: ${{ secrets.MOTHERDUCK_TOKEN }}
+    CVCRM_EMAIL: ${{ secrets.CVCRM_EMAIL }}
+    CVCRM_TOKEN: ${{ secrets.CVCRM_TOKEN }}
+    SIENGE_TOKEN: ${{ secrets.SIENGE_TOKEN }}
+    # Pausar canceladas temporariamente (apenas realizadas)
+    SIENGE_SKIP_CANCELADAS: ${{ vars.SIENGE_SKIP_CANCELADAS || 'true' }}
+    CV_REPASSES_ENABLED: 'true'
   run: |
     echo "🌙 Iniciando atualização do MotherDuck (madrugada)..."
-    # Executa apenas realizadas (canceladas pausadas via env)
     python -u scripts/update_motherduck_vendas.py
 ```
 

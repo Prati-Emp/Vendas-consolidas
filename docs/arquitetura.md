@@ -81,6 +81,7 @@ O sistema é uma solução de integração e consolidação de dados de vendas d
 
 ### 3. **Integrações Específicas**
 - **CV Vendas** (`scripts/cv_vendas_api.py`): API de relatórios de vendas
+- **CV Repasses** (`scripts/cv_repasses_api.py`): API de repasses (mesmas credenciais de CV Vendas)
 - **Sienge** (`scripts/sienge_apis.py`): APIs de vendas realizadas/canceladas
 - **Processamento** (`scripts/data_processor.py`): Normalização e consolidação
 

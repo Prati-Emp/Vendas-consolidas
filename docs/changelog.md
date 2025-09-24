@@ -1,18 +1,19 @@
 # 📝 Changelog - Sistema de Vendas Consolidadas
 
-## [Versão Atual] - 2024-09-23
+## [Versão Atual] - 2025-09-24
 
 ### ✅ Resolvido
-- **GitHub Actions**: Corrigido erro "No such file or directory" 
-  - Criado `scripts/update_motherduck_vendas.py`
-  - Pipeline funcionando perfeitamente
-  - Execução automática às 01:15 UTC
+- **Sienge (coleta)**: Parsing robusto do payload (`data`/`dados`/`items`/`content`) evitando DFs vazios
+- **Auditoria**: Adicionado `scripts/auditar_sienge_empreendimentos.py` e tabela `main.sienge_empreendimentos_auditoria`
+- **MotherDuck (upload)**: Validação e contagem pós-upload mantidas
+- **Ação temporária**: Flag para pausar canceladas no Actions (`SIENGE_SKIP_CANCELADAS=true`)
+- **CV Repasses (novo)**: API integrada (`scripts/cv_repasses_api.py`, `main.cv_repasses`), scripts de upload (`scripts/adicionar_cv_repasses.py`) e download (`scripts/baixar_cv_repasses.py`), coluna "Para" com fallback "Sem Mapeamento"
 
 ### 🎯 Status Atual
-- ✅ **Pipeline de Dados**: Operacional
-- ✅ **GitHub Actions**: Funcionando
-- ✅ **Dashboard**: Disponível
-- ✅ **Documentação**: Em construção
+- ✅ **CV Vendas**: OK
+- ✅ **Sienge Realizadas**: OK (rodando no Actions)
+- ⏸️ **Sienge Canceladas**: Pausado até reset de limite
+- ✅ **Dashboard**: Atualizando com novas tabelas
 
 ---
 
@@ -195,5 +196,5 @@
 
 ---
 
-*Última atualização: 2024-09-23*
-*Próxima revisão: 2024-10-23*
+*Última atualização: 2025-09-23*
+*Próxima revisão: 2025-10-23*
