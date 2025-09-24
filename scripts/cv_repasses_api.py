@@ -150,8 +150,8 @@ def processar_cv_repasses(dados: List[Dict[str, Any]], df_de_para: Optional[pd.D
     else:
         df['Para'] = 'Sem Mapeamento'
 
-    # Filtrar apenas "Venda a Investidor" (mantém o restante, mesmo sem mapeamento)
-    df = df[df['Para'] != 'Venda a Investidor']
+    # Filtrar "Venda a Investidor", "Distrato" e "Cancelado"
+    df = df[~df['Para'].isin(['Venda a Investidor', 'Distrato', 'Cancelado'])]
 
     df['fonte'] = 'cv_repasses'
     df['processado_em'] = datetime.now()
