@@ -19,6 +19,25 @@ from scripts.config import get_api_config
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+def _extrair_registros(result: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Extrai a lista de registros do payload retornado pelo orquestrador.
+
+    Suporta variações de chaves como 'data', 'dados', 'items', 'content'.
+    Retorna lista vazia quando não encontrar registros.
+    """
+    try:
+        payload = result.get("data", {})
+        if isinstance(payload, dict):
+            for key in ("data", "dados", "items", "content", "result"):
+                value = payload.get(key)
+                if isinstance(value, list):
+                    return value
+        if isinstance(payload, list):
+            return payload
+    except Exception:
+        pass
+    return []
+
 def obter_lista_empreendimentos_motherduck() -> List[Dict[str, Any]]:
     """
     Busca lista de empreendimentos da tabela reservas_abril no MotherDuck
@@ -426,7 +445,7 @@ class SiengeAPIClient:
                     logger.error(f"Erro na página {pagina}: {result.get('error', 'Erro desconhecido')}")
                     break
                 
-                dados = result['data'].get('dados', [])
+                dados = _extrair_registros(result)
                 if not dados:
                     break
                 
@@ -483,7 +502,7 @@ async def obter_dados_sienge_vendas_realizadas() -> pd.DataFrame:
             client.empreendimentos = empreendimentos_originais
             
             if result.get('success', False):
-                dados = result.get('data', {}).get('data', [])
+                dados = _extrair_registros(result)
                 if dados:
                     todos_dados.extend(dados)
                     logger.info(f"   ✅ {len(dados)} registros encontrados")
@@ -548,7 +567,7 @@ async def obter_dados_sienge_vendas_canceladas() -> pd.DataFrame:
             client.empreendimentos = empreendimentos_originais
             
             if result.get('success', False):
-                dados = result.get('data', {}).get('data', [])
+                dados = _extrair_registros(result)
                 if dados:
                     todos_dados.extend(dados)
                     logger.info(f"   ✅ {len(dados)} registros encontrados")
@@ -590,7 +609,7 @@ async def get_all_vendas_canceladas(data_inicio: str, data_fim: str) -> List[Dic
                 logger.error(f"Erro na página {pagina}: {result.get('error', 'Erro desconhecido')}")
                 break
             
-            dados = result['data'].get('dados', [])
+            dados = _extrair_registros(result)
             if not dados:
                 break
             

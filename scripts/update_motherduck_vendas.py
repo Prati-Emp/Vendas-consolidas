@@ -39,11 +39,13 @@ def main():
         from sistema_completo import sistema_completo
         
         print("\n🚀 Executando pipeline completo de atualização...")
+        # Permitir pausar canceladas via env (para economizar requisições)
+        # Quando SIENGE_SKIP_CANCELADAS=true, vamos forçar retorno vazio para canceladas
+        if os.environ.get('SIENGE_SKIP_CANCELADAS', 'false').lower() == 'true':
+            os.environ['SIENGE_APENAS_REALIZADAS'] = 'true'
         
         # Executar com timeout de 15 minutos
-        sucesso = asyncio.run(
-            asyncio.wait_for(sistema_completo(), timeout=900.0)
-        )
+        sucesso = asyncio.run(asyncio.wait_for(sistema_completo(), timeout=900.0))
         
         if sucesso:
             print("\n✅ ATUALIZAÇÃO CONCLUÍDA COM SUCESSO!")

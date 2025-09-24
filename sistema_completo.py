@@ -93,14 +93,19 @@ async def coletar_dados_sienge_completo():
         print(f"\n📈 Coletando vendas realizadas...")
         df_realizadas = await obter_dados_sienge_vendas_realizadas()
         
-        # Aguardar delay entre vendas realizadas e canceladas (5 minutos)
-        print(f"\n⏳ Aguardando 5 minutos antes de buscar vendas canceladas...")
-        import asyncio
-        await asyncio.sleep(300)  # 5 minutos = 300 segundos
-        
-        # Coletar dados de vendas canceladas
-        print(f"\n📉 Coletando vendas canceladas...")
-        df_canceladas = await obter_dados_sienge_vendas_canceladas()
+        df_canceladas = pd.DataFrame()
+        # Pausar canceladas via flag de ambiente
+        if os.environ.get('SIENGE_APENAS_REALIZADAS', 'false').lower() == 'true':
+            print("\n⏸️ Coleta de vendas canceladas pausada por configuração (SIENGE_APENAS_REALIZADAS=true)")
+        else:
+            # Aguardar delay entre vendas realizadas e canceladas (5 minutos)
+            print(f"\n⏳ Aguardando 5 minutos antes de buscar vendas canceladas...")
+            import asyncio
+            await asyncio.sleep(300)  # 5 minutos = 300 segundos
+            
+            # Coletar dados de vendas canceladas
+            print(f"\n📉 Coletando vendas canceladas...")
+            df_canceladas = await obter_dados_sienge_vendas_canceladas()
         
         print(f"\n📊 SIENGE - RESULTADO FINAL:")
         print(f"   - Vendas realizadas: {len(df_realizadas)} registros")

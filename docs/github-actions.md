@@ -30,6 +30,8 @@ on:
 ```yaml
 env:
   MOTHERDUCK_TOKEN: ${{ secrets.MOTHERDUCK_TOKEN }}
+  # Pausar canceladas temporariamente (apenas realizadas)
+  SIENGE_SKIP_CANCELADAS: 'true'
   CVCRM_EMAIL: ${{ secrets.CVCRM_EMAIL }}
   CVCRM_TOKEN: ${{ secrets.CVCRM_TOKEN }}
   CV_VENDAS_BASE_URL: ${{ secrets.CV_VENDAS_BASE_URL }}
@@ -77,6 +79,7 @@ pip install -r requirements.txt
   env: [variáveis de ambiente]
   run: |
     echo "🌙 Iniciando atualização do MotherDuck (madrugada)..."
+    # Executa apenas realizadas (canceladas pausadas via env)
     python -u scripts/update_motherduck_vendas.py
 ```
 
