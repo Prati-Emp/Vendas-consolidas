@@ -2,7 +2,7 @@
 
 ## Visão Geral
 
-O sistema utiliza GitHub Actions para automatizar a atualização diária dos dados no MotherDuck, executando às 01:15 UTC (04:15 BRT).
+O sistema utiliza GitHub Actions para automatizar a atualização dos dados no MotherDuck, executando às 01:15 UTC (04:15 BRT) nas segundas e quintas-feiras.
 
 ## 📋 Workflow Atual
 
@@ -13,8 +13,9 @@ name: Update Database - Madrugada
 
 on:
   schedule:
-    # Executar às 01:15 da manhã (horário ótimo - 4:15 BRT)
-    - cron: '15 1 * * *'
+    # Executar às 01:15 da manhã (4:15 BRT) - Segunda e Quinta-feira
+    - cron: '15 1 * * 1'  # Segunda-feira
+    - cron: '15 1 * * 4'  # Quinta-feira
   workflow_dispatch:
     inputs:
       reason:
@@ -81,8 +82,8 @@ pip install -r requirements.txt
     CVCRM_EMAIL: ${{ secrets.CVCRM_EMAIL }}
     CVCRM_TOKEN: ${{ secrets.CVCRM_TOKEN }}
     SIENGE_TOKEN: ${{ secrets.SIENGE_TOKEN }}
-    # Pausar canceladas temporariamente (apenas realizadas)
-    SIENGE_SKIP_CANCELADAS: ${{ vars.SIENGE_SKIP_CANCELADAS || 'true' }}
+    # Controle de execução (Sienge: 2x/semana, CV: diário)
+    SIENGE_SKIP_CANCELADAS: ${{ vars.SIENGE_SKIP_CANCELADAS || 'false' }}
     CV_REPASSES_ENABLED: 'true'
   run: |
     echo "🌙 Iniciando atualização do MotherDuck (madrugada)..."

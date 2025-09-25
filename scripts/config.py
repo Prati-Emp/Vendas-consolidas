@@ -54,7 +54,7 @@ def get_api_config(api_name: str) -> Optional[APIConfig]:
             
         return APIConfig(
             name='Sienge Vendas Realizadas',
-            base_url='https://api.sienge.com.br/pratiemp/public/api/bulk-data/v1',
+            base_url='https://api.sienge.com.br/pratiemp/public/api/bulk-data/v1/sales',
             headers={
                 'accept': 'application/json',
                 'authorization': auth_header
@@ -71,7 +71,7 @@ def get_api_config(api_name: str) -> Optional[APIConfig]:
             
         return APIConfig(
             name='Sienge Vendas Canceladas',
-            base_url='https://api.sienge.com.br/pratiemp/public/api/bulk-data/v1',
+            base_url='https://api.sienge.com.br/pratiemp/public/api/bulk-data/v1/sales',
             headers={
                 'accept': 'application/json',
                 'authorization': auth_header

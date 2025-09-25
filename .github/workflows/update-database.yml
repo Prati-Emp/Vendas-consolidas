@@ -2,8 +2,9 @@ name: Update Database - Madrugada
 
 on:
   schedule:
-    # Executar às 01:15 da manhã (horário ótimo - 4:15 BRT)
-    - cron: '15 1 * * *'
+    # Executar às 01:15 da manhã (4:15 BRT) - Segunda e Quinta-feira
+    - cron: '15 1 * * 1'  # Segunda-feira
+    - cron: '15 1 * * 4'  # Quinta-feira
   workflow_dispatch:
     inputs:
       reason:

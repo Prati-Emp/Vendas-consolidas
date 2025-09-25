@@ -68,18 +68,18 @@ def obter_lista_empreendimentos_motherduck() -> List[Dict[str, Any]]:
         # Conectar ao MotherDuck
         conn = duckdb.connect('md:reservas')
         
-        # Buscar empreendimentos da tabela reservas_abril
-        # Colunas corretas: idempreendimento (BIGINT) e empreendimento (VARCHAR)
+        # Buscar empreendimentos da tabela cv_vendas
+        # Colunas: codigointerno_empreendimento e empreendimento
         query = """
         SELECT DISTINCT 
-            idempreendimento,
+            codigointerno_empreendimento,
             empreendimento
-        FROM reservas.main.reservas_abril 
-        WHERE idempreendimento IS NOT NULL
+        FROM main.cv_vendas 
+        WHERE codigointerno_empreendimento IS NOT NULL
         ORDER BY empreendimento
         """
         
-        logger.info("Buscando lista de empreendimentos do MotherDuck...")
+        logger.info("Buscando lista de empreendimentos da tabela cv_vendas...")
         result = conn.execute(query).fetchall()
         
         # Converter para lista de dicionários
@@ -87,12 +87,12 @@ def obter_lista_empreendimentos_motherduck() -> List[Dict[str, Any]]:
         
         for row in result:
             empreendimentos.append({
-                'id': row[0],
-                'nome': row[1]
+                'id': row[0],  # codigointerno_empreendimento
+                'nome': row[1]  # empreendimento
             })
         
         conn.close()
-        logger.info(f"Total de empreendimentos: {len(empreendimentos)} (1 fixo + {len(result)} automáticos)")
+        logger.info(f"Total de empreendimentos: {len(empreendimentos)} (1 fixo + {len(result)} da cv_vendas)")
         return empreendimentos
         
     except Exception as e:
@@ -206,7 +206,7 @@ class SiengeAPIClient:
             }
         
         # Endpoint baseado no código M do Power BI
-        endpoint = "/sales"
+        endpoint = ""
         
         # Parâmetros baseados no código M (um empreendimento por vez)
         # Usar apenas o primeiro empreendimento para esta requisição específica
@@ -275,7 +275,7 @@ class SiengeAPIClient:
             }
         
         # Endpoint baseado no código M do Power BI (mesmo das vendas realizadas)
-        endpoint = "/sales"
+        endpoint = ""
         
         # Parâmetros baseados no código M (um empreendimento por vez)
         # Usar apenas o primeiro empreendimento para esta requisição específica
@@ -293,7 +293,7 @@ class SiengeAPIClient:
             'enterpriseId': int(primeiro_empreendimento['id']),  # ID como inteiro
             'createdAfter': '2020-01-01',  # Data inicial fixa (como no Power BI)
             'createdBefore': data_fim,     # Data final (atualizada)
-            'situation': 'CANCELED'        # Apenas vendas canceladas
+            'situation': 'CANCELLED'       # Apenas vendas canceladas
         }
         
         logger.info(f"Filtrando por empreendimento: {primeiro_empreendimento['nome']} (ID: {primeiro_empreendimento['id']})")

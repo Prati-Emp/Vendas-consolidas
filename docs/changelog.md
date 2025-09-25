@@ -1,19 +1,20 @@
 # 📝 Changelog - Sistema de Vendas Consolidadas
 
-## [Versão Atual] - 2025-09-24
+## [Versão Atual] - 2025-09-25
 
 ### ✅ Resolvido
 - **Sienge (coleta)**: Parsing robusto do payload (`data`/`dados`/`items`/`content`) evitando DFs vazios
-- **Auditoria**: Adicionado `scripts/auditar_sienge_empreendimentos.py` e tabela `main.sienge_empreendimentos_auditoria`
-- **MotherDuck (upload)**: Validação e contagem pós-upload mantidas
-- **Ação temporária**: Flag para pausar canceladas no Actions (`SIENGE_SKIP_CANCELADAS=true`)
+- **Sienge (endpoint)**: Corrigido endpoint para `/sales` com parâmetros corretos (`enterpriseId`, `createdAfter`, `createdBefore`, `situation`)
+- **Sienge (empreendimentos)**: Lista agora busca da tabela `main.cv_vendas` em vez de `reservas.main.reservas_abril`
+- **Sienge (agendamento)**: Alterado para 2x/semana (segunda e quinta-feira) em vez de diário
 - **CV Repasses (novo)**: API integrada (`scripts/cv_repasses_api.py`, `main.cv_repasses`), scripts de upload (`scripts/adicionar_cv_repasses.py`) e download (`scripts/baixar_cv_repasses.py`), coluna "Para" com fallback "Sem Mapeamento"
 
 ### 🎯 Status Atual
-- ✅ **CV Vendas**: OK
-- ✅ **Sienge Realizadas**: OK (rodando no Actions)
-- ⏸️ **Sienge Canceladas**: Pausado até reset de limite
-- ✅ **Dashboard**: Atualizando com novas tabelas
+- ✅ **CV Vendas**: OK (diário)
+- ✅ **Sienge Realizadas**: OK (2x/semana - seg/qui)
+- ✅ **Sienge Canceladas**: OK (2x/semana - seg/qui)
+- ✅ **CV Repasses**: OK (diário)
+- ✅ **Dashboard**: Atualizando com todas as tabelas
 
 ---
 
