@@ -14,6 +14,7 @@ from dotenv import load_dotenv
 from scripts.cv_vendas_api import CVVendasAPIClient, processar_dados_cv_vendas
 from scripts.cv_repasses_api import obter_dados_cv_repasses
 from scripts.cv_leads_api import obter_dados_cv_leads
+from scripts.cv_repasses_workflow_api import obter_dados_cv_repasses_workflow
 from scripts.sienge_apis import SiengeAPIClient, obter_dados_sienge_vendas_canceladas, obter_dados_sienge_vendas_realizadas
 
 async def coletar_dados_cv_vendas_completo():
@@ -130,7 +131,7 @@ async def coletar_dados_sienge_completo():
             'empreendimentos': 0
         }
 
-async def upload_dados_motherduck(df_cv_vendas, df_cv_repasses, df_cv_leads, df_sienge_realizadas, df_sienge_canceladas):
+async def upload_dados_motherduck(df_cv_vendas, df_cv_repasses, df_cv_leads, df_cv_repasses_workflow, df_sienge_realizadas, df_sienge_canceladas):
     """Faz upload dos dados para o MotherDuck"""
     print("\n📤 FAZENDO UPLOAD PARA MOTHERDUCK")
     print("=" * 50)
@@ -179,6 +180,15 @@ async def upload_dados_motherduck(df_cv_vendas, df_cv_repasses, df_cv_leads, df_
             conn.execute("CREATE OR REPLACE TABLE main.cv_leads AS SELECT * FROM df_cv_leads")
             count_leads = conn.sql("SELECT COUNT(*) FROM main.cv_leads").fetchone()[0]
             print(f"   ✅ CV Leads: {count_leads:,} registros")
+        
+        # Upload CV Repasses Workflow
+        print(f"3d. CV Repasses Workflow - linhas no DataFrame: {len(df_cv_repasses_workflow):,}")
+        if df_cv_repasses_workflow is not None and not df_cv_repasses_workflow.empty:
+            print("   Fazendo upload CV Repasses Workflow...")
+            conn.register("df_cv_repasses_workflow", df_cv_repasses_workflow)
+            conn.execute("CREATE OR REPLACE TABLE main.Repases_Workflow AS SELECT * FROM df_cv_repasses_workflow")
+            count_workflow = conn.sql("SELECT COUNT(*) FROM main.Repases_Workflow").fetchone()[0]
+            print(f"   ✅ CV Repasses Workflow: {count_workflow:,} registros")
         
         # Upload Sienge Vendas Realizadas
         print(f"4. Sienge Realizadas - linhas no DataFrame: {len(df_sienge_realizadas):,}")
@@ -291,12 +301,22 @@ async def sistema_completo():
             df_cv_leads = pd.DataFrame()
             print("⚠️ Falha ao coletar CV Leads - prosseguindo sem leads")
 
+        # 4.3 Coletar CV Repasses Workflow
+        print("\n4.3. Coletando dados CV Repasses Workflow...")
+        try:
+            df_cv_repasses_workflow = await obter_dados_cv_repasses_workflow()
+            print(f"✅ CV Repasses Workflow processado: {len(df_cv_repasses_workflow)} registros")
+        except Exception as _e:
+            df_cv_repasses_workflow = pd.DataFrame()
+            print("⚠️ Falha ao coletar CV Repasses Workflow - prosseguindo sem workflow")
+
         # 5. Upload para MotherDuck
         print("\n5. Fazendo upload para MotherDuck...")
         sucesso_upload = await upload_dados_motherduck(
             df_cv_vendas,
             df_cv_repasses,
             df_cv_leads,
+            df_cv_repasses_workflow,
             dados_sienge['vendas_realizadas'],
             dados_sienge['vendas_canceladas']
         )
@@ -311,6 +331,7 @@ async def sistema_completo():
         print(f"   - CV Vendas: {len(df_cv_vendas):,} registros")
         print(f"   - CV Repasses: {len(df_cv_repasses):,} registros")
         print(f"   - CV Leads: {len(df_cv_leads):,} registros")
+        print(f"   - CV Repasses Workflow: {len(df_cv_repasses_workflow):,} registros")
         print(f"   - Sienge Realizadas: {len(dados_sienge['vendas_realizadas']):,} registros")
         print(f"   - Sienge Canceladas: {len(dados_sienge['vendas_canceladas']):,} registros")
         print(f"   - Empreendimentos Sienge: {dados_sienge['empreendimentos']}")
