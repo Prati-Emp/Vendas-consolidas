@@ -10,3 +10,4 @@ python -m streamlit run dashboard_app/app.py
 echo.
 echo ✅ Dashboard finalizado!
 pause
+

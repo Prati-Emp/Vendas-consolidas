@@ -25,3 +25,4 @@ python -m streamlit run dashboard_app/app.py
 
 Write-Host ""
 Write-Host "✅ Dashboard finalizado!" -ForegroundColor Green
+
