@@ -20,8 +20,8 @@ O sistema integra com três principais fontes de dados através de APIs REST, ca
 │             │ │             │ │             │
 │ • Reservas  │ │ • Vendas    │ │ • Relatório │
 │ • Workflow  │ │   Realizadas│ │   de Vendas │
-│             │ │ • Vendas    │ │             │
-│             │ │   Canceladas│ │             │
+│ • Leads     │ │ • Vendas    │ │ • Repasses  │
+│             │ │   Canceladas│ │ • Leads     │
 └─────────────┘ └─────────────┘ └─────────────┘
 ```
 
@@ -33,6 +33,7 @@ O sistema integra com três principais fontes de dados através de APIs REST, ca
 - **Workflow**: `/workflow`
 - **CV Vendas**: `/cvdw/vendas`
 - **CV Repasses**: `/cvdw/repasses`
+- **CV Leads**: `/cvdw/leads`
 
 ### Autenticação
 ```python
@@ -116,6 +117,25 @@ headers = {
       "Para": "Em Assinatura Caixa"
     }
   ]
+}
+```
+
+#### CV Leads
+```json
+{
+  "dados": [
+    {
+      "idlead": "string",
+      "data_cad": "YYYY-MM-DD",
+      "situacao": "string",
+      "imobiliaria": "string",
+      "nome_situacao_anterior_lead": "string",
+      "gestor": "string",
+      "empreendimento_ultimo": "string"
+    }
+  ],
+  "total_de_paginas": 10,
+  "registros": 500
 }
 ```
 
@@ -242,6 +262,8 @@ class APIOrchestrator:
 ```python
 rate_limits = {
     'cv_vendas': 60,
+    'cv_repasses': 60,
+    'cv_leads': 60,
     'sienge_vendas_realizadas': 50,
     'sienge_vendas_canceladas': 50
 }
@@ -259,12 +281,22 @@ rate_limits = {
 Cliente → Paginação → Rate Limiting → Dados Brutos
 ```
 
-### 2. **Sienge**
+### 2. **CV Repasses**
+```
+Cliente → Paginação → Rate Limiting → Dados Brutos
+```
+
+### 3. **CV Leads**
+```
+Cliente → Paginação → Filtros → Rate Limiting → Dados Brutos
+```
+
+### 4. **Sienge**
 ```
 Empreendimentos → Loop por ID → Rate Limiting → Dados Brutos
 ```
 
-### 3. **Processamento**
+### 5. **Processamento**
 ```
 Dados Brutos → Normalização → DataFrames → MotherDuck
 ```

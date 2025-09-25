@@ -46,6 +46,7 @@ jobs:
           # Flags de controle (default: pausar canceladas) e repasses habilitado
           SIENGE_SKIP_CANCELADAS: ${{ vars.SIENGE_SKIP_CANCELADAS || 'true' }}
           CV_REPASSES_ENABLED: 'true'
+          CV_LEADS_ENABLED: 'true'
         run: |
           echo "🌙 Iniciando atualização do MotherDuck (madrugada)..."
           python -u scripts/update_motherduck_vendas.py

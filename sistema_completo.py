@@ -13,6 +13,7 @@ from datetime import datetime
 from dotenv import load_dotenv
 from scripts.cv_vendas_api import CVVendasAPIClient, processar_dados_cv_vendas
 from scripts.cv_repasses_api import obter_dados_cv_repasses
+from scripts.cv_leads_api import obter_dados_cv_leads
 from scripts.sienge_apis import SiengeAPIClient, obter_dados_sienge_vendas_canceladas, obter_dados_sienge_vendas_realizadas
 
 async def coletar_dados_cv_vendas_completo():
@@ -129,7 +130,7 @@ async def coletar_dados_sienge_completo():
             'empreendimentos': 0
         }
 
-async def upload_dados_motherduck(df_cv_vendas, df_cv_repasses, df_sienge_realizadas, df_sienge_canceladas):
+async def upload_dados_motherduck(df_cv_vendas, df_cv_repasses, df_cv_leads, df_sienge_realizadas, df_sienge_canceladas):
     """Faz upload dos dados para o MotherDuck"""
     print("\n📤 FAZENDO UPLOAD PARA MOTHERDUCK")
     print("=" * 50)
@@ -169,6 +170,15 @@ async def upload_dados_motherduck(df_cv_vendas, df_cv_repasses, df_sienge_realiz
             conn.execute("CREATE OR REPLACE TABLE main.cv_repasses AS SELECT * FROM df_cv_repasses")
             count_rep = conn.sql("SELECT COUNT(*) FROM main.cv_repasses").fetchone()[0]
             print(f"   ✅ CV Repasses: {count_rep:,} registros")
+        
+        # Upload CV Leads
+        print(f"3c. CV Leads - linhas no DataFrame: {len(df_cv_leads):,}")
+        if df_cv_leads is not None and not df_cv_leads.empty:
+            print("   Fazendo upload CV Leads...")
+            conn.register("df_cv_leads", df_cv_leads)
+            conn.execute("CREATE OR REPLACE TABLE main.cv_leads AS SELECT * FROM df_cv_leads")
+            count_leads = conn.sql("SELECT COUNT(*) FROM main.cv_leads").fetchone()[0]
+            print(f"   ✅ CV Leads: {count_leads:,} registros")
         
         # Upload Sienge Vendas Realizadas
         print(f"4. Sienge Realizadas - linhas no DataFrame: {len(df_sienge_realizadas):,}")
@@ -272,11 +282,21 @@ async def sistema_completo():
             df_cv_repasses = pd.DataFrame()
             print("⚠️ Falha ao coletar CV Repasses - prosseguindo sem repasses")
 
+        # 4.2 Coletar CV Leads
+        print("\n4.2. Coletando dados CV Leads...")
+        try:
+            df_cv_leads = await obter_dados_cv_leads()
+            print(f"✅ CV Leads processado: {len(df_cv_leads)} registros")
+        except Exception as _e:
+            df_cv_leads = pd.DataFrame()
+            print("⚠️ Falha ao coletar CV Leads - prosseguindo sem leads")
+
         # 5. Upload para MotherDuck
         print("\n5. Fazendo upload para MotherDuck...")
         sucesso_upload = await upload_dados_motherduck(
             df_cv_vendas,
             df_cv_repasses,
+            df_cv_leads,
             dados_sienge['vendas_realizadas'],
             dados_sienge['vendas_canceladas']
         )
@@ -289,9 +309,10 @@ async def sistema_completo():
         print(f"⏱️ Duração total: {duration}")
         print(f"📊 Resumo:")
         print(f"   - CV Vendas: {len(df_cv_vendas):,} registros")
+        print(f"   - CV Repasses: {len(df_cv_repasses):,} registros")
+        print(f"   - CV Leads: {len(df_cv_leads):,} registros")
         print(f"   - Sienge Realizadas: {len(dados_sienge['vendas_realizadas']):,} registros")
         print(f"   - Sienge Canceladas: {len(dados_sienge['vendas_canceladas']):,} registros")
-        print(f"   - CV Repasses: {len(df_cv_repasses):,} registros")
         print(f"   - Empreendimentos Sienge: {dados_sienge['empreendimentos']}")
         print(f"   - Upload: {'✅ Sucesso' if sucesso_upload else '❌ Falha'}")
         
