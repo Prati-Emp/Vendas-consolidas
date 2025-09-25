@@ -293,7 +293,7 @@ class SiengeAPIClient:
             'enterpriseId': int(primeiro_empreendimento['id']),  # ID como inteiro
             'createdAfter': '2020-01-01',  # Data inicial fixa (como no Power BI)
             'createdBefore': data_fim,     # Data final (atualizada)
-            'situation': 'CANCELLED'       # Apenas vendas canceladas
+            'situation': 'CANCELED'        # Apenas vendas canceladas
         }
         
         logger.info(f"Filtrando por empreendimento: {primeiro_empreendimento['nome']} (ID: {primeiro_empreendimento['id']})")
