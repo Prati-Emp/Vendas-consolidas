@@ -57,3 +57,4 @@ jobs:
       - name: Notify failure
         if: failure()
         run: echo "❌ Daily database update failed at $(date)"
+

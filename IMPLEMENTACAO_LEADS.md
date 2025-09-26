@@ -49,6 +49,7 @@ CREATE TABLE main.cv_leads (
     nome_situacao_anterior_lead VARCHAR,
     gestor VARCHAR,
     empreendimento_ultimo VARCHAR,
+    referencia_data TIMESTAMP,
     fonte VARCHAR DEFAULT 'cv_leads',
     processado_em TIMESTAMP
 );
@@ -202,3 +203,6 @@ python -u scripts/cv_leads_api.py
 **Data**: $(date)
 
 **Autor**: Sistema de Vendas Consolidadas
+
+
+

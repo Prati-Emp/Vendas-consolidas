@@ -54,3 +54,4 @@ jobs:
       - name: Notify failure
         if: failure()
         run: echo "❌ Sienge database update failed at $(date)"
+

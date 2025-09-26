@@ -120,3 +120,6 @@ if __name__ == "__main__":
         print(f"\n⚠️ Operação cancelada pelo usuário")
     except Exception as e:
         print(f"\n❌ Erro inesperado: {e}")
+
+
+

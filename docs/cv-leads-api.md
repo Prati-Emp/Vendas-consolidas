@@ -50,7 +50,8 @@ params = {
   "Imobiliaria": "string",
   "nome_situacao_anterior_lead": "string",
   "gestor": "string",
-  "empreendimento_ultimo": "string"
+  "empreendimento_ultimo": "string",
+  "referencia_data": "YYYY-MM-DD"
 }
 ```
 
@@ -140,6 +141,7 @@ CREATE TABLE main.cv_leads (
     nome_situacao_anterior_lead VARCHAR,
     gestor VARCHAR,
     empreendimento_ultimo VARCHAR,
+    referencia_data TIMESTAMP,
     fonte VARCHAR DEFAULT 'cv_leads',
     processado_em TIMESTAMP
 );
@@ -228,3 +230,6 @@ conn.execute("CREATE OR REPLACE TABLE main.cv_leads AS SELECT * FROM df_cv_leads
 - [Sistema de Vendas Consolidadas](./README.md)
 - [GitHub Actions](./github-actions.md)
 - [Troubleshooting](./troubleshooting.md)
+
+
+

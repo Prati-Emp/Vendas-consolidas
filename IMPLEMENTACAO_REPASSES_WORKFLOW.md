@@ -217,3 +217,5 @@ python -u scripts/cv_repasses_workflow_api.py
 **Autor**: Sistema de Vendas Consolidadas
 
 **Registros coletados**: 7.601 registros de workflow de repasses
+
+

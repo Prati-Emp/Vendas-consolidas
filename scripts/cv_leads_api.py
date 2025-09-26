@@ -128,6 +128,7 @@ class CVLeadsAPIClient:
                             "nome_situacao_anterior_lead": item.get("nome_situacao_anterior_lead"),
                             "gestor": item.get("gestor"),
                             "empreendimento_ultimo": item.get("empreendimento_ultimo"),
+                            "referencia_data": item.get("referencia_data"),
                         }
                         results.append(row)
 
@@ -172,6 +173,9 @@ def processar_dados_cv_leads(dados: List[Dict[str, Any]]) -> pd.DataFrame:
     if 'Data_cad' in df.columns:
         df['Data_cad'] = pd.to_datetime(df['Data_cad'], errors='coerce')
     
+    if 'referencia_data' in df.columns:
+        df['referencia_data'] = pd.to_datetime(df['referencia_data'], errors='coerce')
+    
     # Adicionar coluna de fonte
     df['fonte'] = 'cv_leads'
     
@@ -214,3 +218,6 @@ if __name__ == "__main__":
             print(f"Erro no teste: {str(e)}")
     
     asyncio.run(test_cv_leads())
+
+
+
