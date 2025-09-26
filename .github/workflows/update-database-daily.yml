@@ -1,21 +1,19 @@
-name: Update Database - Madrugada (DISABLED - Use Daily/Sienge workflows)
+name: Update Database - Daily (Non-Sienge)
 
 on:
-  # DESABILITADO - Usar update-database-daily.yml e update-database-sienge.yml
-  # schedule:
-  #   # Executar às 01:15 da manhã (4:15 BRT) - Segunda e Quinta-feira
-  #   - cron: '15 1 * * 1'  # Segunda-feira
-  #   - cron: '15 1 * * 4'  # Quinta-feira
+  schedule:
+    # Executar diariamente às 05:00 BRT (08:00 UTC) - antes das 06:00
+    - cron: '0 8 * * *'  # Diariamente às 08:00 UTC (05:00 BRT)
   workflow_dispatch:
     inputs:
       reason:
-        description: 'Razão para executar a atualização'
+        description: 'Razão para executar a atualização diária'
         required: false
-        default: 'Atualização manual'
+        default: 'Atualização manual diária'
         type: string
 
 jobs:
-  update-database:
+  update-database-daily:
     runs-on: ubuntu-latest
 
     steps:
@@ -35,28 +33,27 @@ jobs:
       - name: Set file permissions
         run: chmod +x scripts/*.py
 
-      - name: Update database
+      - name: Update database (Daily APIs)
         env:
           MOTHERDUCK_TOKEN: ${{ secrets.MOTHERDUCK_TOKEN }}
           CVCRM_EMAIL: ${{ secrets.CVCRM_EMAIL }}
           CVCRM_TOKEN: ${{ secrets.CVCRM_TOKEN }}
           CV_VENDAS_BASE_URL: ${{ secrets.CV_VENDAS_BASE_URL }}
-          SIENGE_BASE_URL: ${{ secrets.SIENGE_BASE_URL }}
-          SIENGE_TOKEN: ${{ secrets.SIENGE_TOKEN }}
           PYTHONPATH: ${{ github.workspace }}/scripts:${{ github.workspace }}
-          # Flags de controle (default: pausar canceladas) e repasses habilitado
-          SIENGE_SKIP_CANCELADAS: ${{ vars.SIENGE_SKIP_CANCELADAS || 'true' }}
+          # Flags para execução diária (sem Sienge)
+          DAILY_UPDATE_MODE: 'true'
+          SKIP_SIENGE_APIS: 'true'
           CV_REPASSES_ENABLED: 'true'
           CV_LEADS_ENABLED: 'true'
           CV_REPASSES_WORKFLOW_ENABLED: 'true'
         run: |
-          echo "🌙 Iniciando atualização do MotherDuck (madrugada)..."
-          python -u scripts/update_motherduck_vendas.py
+          echo "🌅 Iniciando atualização diária do MotherDuck (APIs não-Sienge)..."
+          python -u scripts/update_motherduck_daily.py
       
       - name: Notify success
         if: success()
-        run: echo "✅ Database updated successfully at $(date)"
+        run: echo "✅ Daily database updated successfully at $(date)"
       
       - name: Notify failure
         if: failure()
-        run: echo "❌ Database update failed at $(date)"
+        run: echo "❌ Daily database update failed at $(date)"

@@ -1,0 +1,56 @@
+name: Update Database - Sienge (2x/week)
+
+on:
+  schedule:
+    # Executar domingo às 23:40 BRT (02:40 UTC) e quarta às 01:15 BRT (04:15 UTC)
+    - cron: '40 2 * * 0'  # Domingo às 02:40 UTC (23:40 BRT)
+    - cron: '15 4 * * 3'  # Quarta-feira às 04:15 UTC (01:15 BRT)
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Razão para executar a atualização Sienge'
+        required: false
+        default: 'Atualização manual Sienge'
+        type: string
+
+jobs:
+  update-database-sienge:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install duckdb==1.2.2
+          pip install -r requirements.txt
+
+      - name: Set file permissions
+        run: chmod +x scripts/*.py
+
+      - name: Update database (Sienge APIs only)
+        env:
+          MOTHERDUCK_TOKEN: ${{ secrets.MOTHERDUCK_TOKEN }}
+          SIENGE_BASE_URL: ${{ secrets.SIENGE_BASE_URL }}
+          SIENGE_TOKEN: ${{ secrets.SIENGE_TOKEN }}
+          PYTHONPATH: ${{ github.workspace }}/scripts:${{ github.workspace }}
+          # Flags para execução apenas Sienge
+          SIENGE_ONLY_MODE: 'true'
+          SIENGE_SKIP_CANCELADAS: 'false'  # Incluir canceladas no Sienge
+        run: |
+          echo "🌙 Iniciando atualização Sienge do MotherDuck (2x/semana)..."
+          python -u scripts/update_motherduck_sienge.py
+      
+      - name: Notify success
+        if: success()
+        run: echo "✅ Sienge database updated successfully at $(date)"
+      
+      - name: Notify failure
+        if: failure()
+        run: echo "❌ Sienge database update failed at $(date)"
