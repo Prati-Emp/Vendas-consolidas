@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Sistema Completo de Coleta de Dados
-Integra CV Vendas e Sienge com coleta robusta e tratamento de erros
+Script para atualização manual completa do banco de dados
+Inclui a nova API VGV Empreendimentos
 """
 
 import os
@@ -18,124 +18,10 @@ from scripts.cv_repasses_workflow_api import obter_dados_cv_repasses_workflow
 from scripts.cv_vgv_empreendimentos_api import obter_dados_vgv_empreendimentos
 from scripts.sienge_apis import SiengeAPIClient, obter_dados_sienge_vendas_canceladas, obter_dados_sienge_vendas_realizadas
 
-async def coletar_dados_cv_vendas_completo():
-    """Coleta dados completos do CV Vendas com paginação robusta"""
-    print("🔍 COLETANDO DADOS CV VENDAS - BUSCA COMPLETA")
-    print("=" * 50)
-    
-    try:
-        client = CVVendasAPIClient()
-        
-        pagina = 1
-        total_registros = 0
-        paginas_vazias = 0
-        max_paginas_vazias = 3
-        max_paginas_seguranca = 100  # Limite de segurança
-        
-        print("📄 Iniciando coleta com paginação...")
-        
-        while True:
-            # Verificar limite de segurança
-            if pagina > max_paginas_seguranca:
-                print(f"   ⚠️ Limite de segurança atingido ({max_paginas_seguranca} páginas)")
-                break
-            
-            result = await client.get_pagina(pagina)
-            
-            if result['success']:
-                dados = result['data'].get('dados', [])
-                
-                if not dados:
-                    paginas_vazias += 1
-                    print(f"   Página {pagina}: Vazia ({paginas_vazias}/{max_paginas_vazias})")
-                    
-                    if paginas_vazias >= max_paginas_vazias:
-                        print(f"   ✅ Fim dos dados: {paginas_vazias} páginas vazias consecutivas")
-                        break
-                else:
-                    paginas_vazias = 0
-                    total_registros += len(dados)
-                    print(f"   Página {pagina}: {len(dados)} registros (Total: {total_registros})")
-                
-                pagina += 1
-                await asyncio.sleep(0.2)  # Rate limiting
-                
-            else:
-                print(f"   ❌ Erro na página {pagina}: {result.get('error')}")
-                break
-        
-        print(f"\n📊 CV VENDAS - RESULTADO FINAL:")
-        print(f"   - Total de registros: {total_registros}")
-        print(f"   - Páginas processadas: {pagina - 1}")
-        
-        if total_registros >= 600:
-            print(f"   ✅ Meta atingida: {total_registros} >= 600 registros")
-        else:
-            print(f"   ⚠️ Meta não atingida: {total_registros} < 600 registros")
-        
-        return total_registros
-        
-    except Exception as e:
-        print(f"❌ Erro na coleta CV Vendas: {str(e)}")
-        return 0
-
-async def coletar_dados_sienge_completo():
-    """Coleta dados completos do Sienge para todos os empreendimentos"""
-    print("\n🔍 COLETANDO DADOS SIENGE - TODOS OS EMPREENDIMENTOS")
-    print("=" * 50)
-    
-    try:
-        # Buscar lista de empreendimentos
-        from scripts.sienge_apis import obter_lista_empreendimentos_motherduck
-        empreendimentos = obter_lista_empreendimentos_motherduck()
-        
-        print(f"📊 Empreendimentos encontrados: {len(empreendimentos)}")
-        for i, emp in enumerate(empreendimentos, 1):
-            print(f"   {i}. {emp['nome']} (ID: {emp['id']})")
-        
-        # Coletar dados de vendas realizadas
-        print(f"\n📈 Coletando vendas realizadas...")
-        df_realizadas = await obter_dados_sienge_vendas_realizadas()
-        
-        df_canceladas = pd.DataFrame()
-        # Pausar canceladas via flag de ambiente
-        if os.environ.get('SIENGE_APENAS_REALIZADAS', 'false').lower() == 'true':
-            print("\n⏸️ Coleta de vendas canceladas pausada por configuração (SIENGE_APENAS_REALIZADAS=true)")
-        else:
-            # Aguardar delay entre vendas realizadas e canceladas (5 minutos)
-            print(f"\n⏳ Aguardando 5 minutos antes de buscar vendas canceladas...")
-            import asyncio
-            await asyncio.sleep(300)  # 5 minutos = 300 segundos
-            
-            # Coletar dados de vendas canceladas
-            print(f"\n📉 Coletando vendas canceladas...")
-            df_canceladas = await obter_dados_sienge_vendas_canceladas()
-        
-        print(f"\n📊 SIENGE - RESULTADO FINAL:")
-        print(f"   - Vendas realizadas: {len(df_realizadas)} registros")
-        print(f"   - Vendas canceladas: {len(df_canceladas)} registros")
-        print(f"   - Total: {len(df_realizadas) + len(df_canceladas)} registros")
-        
-        return {
-            'vendas_realizadas': df_realizadas,
-            'vendas_canceladas': df_canceladas,
-            'empreendimentos': len(empreendimentos)
-        }
-        
-    except Exception as e:
-        print(f"❌ Erro na coleta Sienge: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        return {
-            'vendas_realizadas': pd.DataFrame(),
-            'vendas_canceladas': pd.DataFrame(),
-            'empreendimentos': 0
-        }
-
-async def upload_dados_motherduck(df_cv_vendas, df_cv_repasses, df_cv_leads, df_cv_repasses_workflow, df_vgv_empreendimentos, df_sienge_realizadas, df_sienge_canceladas):
-    """Faz upload dos dados para o MotherDuck"""
-    print("\n📤 FAZENDO UPLOAD PARA MOTHERDUCK")
-    print("=" * 50)
+async def upload_banco_completo_vgv(df_cv_vendas, df_cv_repasses, df_cv_leads, df_cv_repasses_workflow, df_vgv_empreendimentos, df_sienge_realizadas, df_sienge_canceladas):
+    """Faz upload completo para o MotherDuck incluindo VGV Empreendimentos"""
+    print("\n📤 FAZENDO UPLOAD COMPLETO PARA MOTHERDUCK")
+    print("=" * 60)
     
     try:
         # Configurar DuckDB
@@ -231,17 +117,17 @@ async def upload_dados_motherduck(df_cv_vendas, df_cv_repasses, df_cv_leads, df_
                 print(f"   📊 {table_name}: (erro ao contar)")
         
         conn.close()
-        print("✅ Upload concluído com sucesso!")
+        print("✅ Upload completo concluído com sucesso!")
         return True
         
     except Exception as e:
         print(f"❌ Erro no upload: {str(e)}")
         return False
 
-async def sistema_completo():
-    """Sistema completo de coleta e upload de dados"""
-    print("🚀 SISTEMA COMPLETO DE COLETA DE DADOS")
-    print("=" * 60)
+async def atualizar_banco_completo_vgv():
+    """Atualização completa do banco incluindo VGV Empreendimentos"""
+    print("🚀 ATUALIZAÇÃO COMPLETA DO BANCO - COM VGV EMPREENDIMENTOS")
+    print("=" * 70)
     
     start_time = datetime.now()
     
@@ -261,16 +147,7 @@ async def sistema_completo():
         
         # 2. Coletar dados CV Vendas
         print("\n2. Coletando dados CV Vendas...")
-        total_cv = await coletar_dados_cv_vendas_completo()
-        
-        # 3. Coletar dados Sienge
-        print("\n3. Coletando dados Sienge...")
-        dados_sienge = await coletar_dados_sienge_completo()
-        
-        # 4. Processar dados CV Vendas
-        print("\n4. Processando dados CV Vendas...")
-        if total_cv > 0:
-            # Coletar dados reais para processamento
+        try:
             client = CVVendasAPIClient()
             todos_dados = []
             pagina = 1
@@ -290,63 +167,79 @@ async def sistema_completo():
             
             df_cv_vendas = processar_dados_cv_vendas(todos_dados)
             print(f"✅ CV Vendas processado: {len(df_cv_vendas)} registros")
-        else:
+        except Exception as e:
             df_cv_vendas = pd.DataFrame()
-            print("⚠️ Nenhum dado CV Vendas para processar")
-        
-        # 4.1 Coletar CV Repasses
-        print("\n4.1. Coletando dados CV Repasses...")
+            print(f"⚠️ Falha ao coletar CV Vendas: {e}")
+
+        # 3. Coletar CV Repasses
+        print("\n3. Coletando dados CV Repasses...")
         try:
             df_cv_repasses = await obter_dados_cv_repasses()
             print(f"✅ CV Repasses processado: {len(df_cv_repasses)} registros")
-        except Exception as _e:
+        except Exception as e:
             df_cv_repasses = pd.DataFrame()
-            print("⚠️ Falha ao coletar CV Repasses - prosseguindo sem repasses")
+            print(f"⚠️ Falha ao coletar CV Repasses: {e}")
 
-        # 4.2 Coletar CV Leads
-        print("\n4.2. Coletando dados CV Leads...")
+        # 4. Coletar CV Leads
+        print("\n4. Coletando dados CV Leads...")
         try:
             df_cv_leads = await obter_dados_cv_leads()
             print(f"✅ CV Leads processado: {len(df_cv_leads)} registros")
-        except Exception as _e:
+        except Exception as e:
             df_cv_leads = pd.DataFrame()
-            print("⚠️ Falha ao coletar CV Leads - prosseguindo sem leads")
+            print(f"⚠️ Falha ao coletar CV Leads: {e}")
 
-        # 4.3 Coletar CV Repasses Workflow
-        print("\n4.3. Coletando dados CV Repasses Workflow...")
+        # 5. Coletar CV Repasses Workflow
+        print("\n5. Coletando dados CV Repasses Workflow...")
         try:
             df_cv_repasses_workflow = await obter_dados_cv_repasses_workflow()
             print(f"✅ CV Repasses Workflow processado: {len(df_cv_repasses_workflow)} registros")
-        except Exception as _e:
+        except Exception as e:
             df_cv_repasses_workflow = pd.DataFrame()
-            print("⚠️ Falha ao coletar CV Repasses Workflow - prosseguindo sem workflow")
+            print(f"⚠️ Falha ao coletar CV Repasses Workflow: {e}")
 
-        # 4.4 Coletar VGV Empreendimentos
-        print("\n4.4. Coletando dados VGV Empreendimentos...")
+        # 6. Coletar VGV Empreendimentos
+        print("\n6. Coletando dados VGV Empreendimentos...")
         try:
             df_vgv_empreendimentos = await obter_dados_vgv_empreendimentos(1, 20)  # IDs 1-20
             print(f"✅ VGV Empreendimentos processado: {len(df_vgv_empreendimentos)} registros")
-        except Exception as _e:
+        except Exception as e:
             df_vgv_empreendimentos = pd.DataFrame()
-            print("⚠️ Falha ao coletar VGV Empreendimentos - prosseguindo sem empreendimentos")
+            print(f"⚠️ Falha ao coletar VGV Empreendimentos: {e}")
 
-        # 5. Upload para MotherDuck
-        print("\n5. Fazendo upload para MotherDuck...")
-        sucesso_upload = await upload_dados_motherduck(
+        # 7. Coletar dados Sienge
+        print("\n7. Coletando dados Sienge...")
+        try:
+            df_sienge_realizadas = await obter_dados_sienge_vendas_realizadas()
+            print(f"✅ Sienge Realizadas processado: {len(df_sienge_realizadas)} registros")
+        except Exception as e:
+            df_sienge_realizadas = pd.DataFrame()
+            print(f"⚠️ Falha ao coletar Sienge Realizadas: {e}")
+
+        try:
+            df_sienge_canceladas = await obter_dados_sienge_vendas_canceladas()
+            print(f"✅ Sienge Canceladas processado: {len(df_sienge_canceladas)} registros")
+        except Exception as e:
+            df_sienge_canceladas = pd.DataFrame()
+            print(f"⚠️ Falha ao coletar Sienge Canceladas: {e}")
+
+        # 8. Upload para MotherDuck
+        print("\n8. Fazendo upload completo para MotherDuck...")
+        sucesso_upload = await upload_banco_completo_vgv(
             df_cv_vendas,
             df_cv_repasses,
             df_cv_leads,
             df_cv_repasses_workflow,
             df_vgv_empreendimentos,
-            dados_sienge['vendas_realizadas'],
-            dados_sienge['vendas_canceladas']
+            df_sienge_realizadas,
+            df_sienge_canceladas
         )
         
-        # 6. Estatísticas finais
+        # 9. Estatísticas finais
         end_time = datetime.now()
         duration = end_time - start_time
         
-        print(f"\n🎉 SISTEMA COMPLETO FINALIZADO!")
+        print(f"\n🎉 ATUALIZAÇÃO COMPLETA FINALIZADA!")
         print(f"⏱️ Duração total: {duration}")
         print(f"📊 Resumo:")
         print(f"   - CV Vendas: {len(df_cv_vendas):,} registros")
@@ -354,47 +247,45 @@ async def sistema_completo():
         print(f"   - CV Leads: {len(df_cv_leads):,} registros")
         print(f"   - CV Repasses Workflow: {len(df_cv_repasses_workflow):,} registros")
         print(f"   - VGV Empreendimentos: {len(df_vgv_empreendimentos):,} registros")
-        print(f"   - Sienge Realizadas: {len(dados_sienge['vendas_realizadas']):,} registros")
-        print(f"   - Sienge Canceladas: {len(dados_sienge['vendas_canceladas']):,} registros")
-        print(f"   - Empreendimentos Sienge: {dados_sienge['empreendimentos']}")
+        print(f"   - Sienge Realizadas: {len(df_sienge_realizadas):,} registros")
+        print(f"   - Sienge Canceladas: {len(df_sienge_canceladas):,} registros")
         print(f"   - Upload: {'✅ Sucesso' if sucesso_upload else '❌ Falha'}")
         
         return sucesso_upload
         
     except Exception as e:
-        print(f"\n❌ Erro no sistema completo: {str(e)}")
+        print(f"\n❌ Erro na atualização completa: {str(e)}")
         import traceback
         traceback.print_exc()
         return False
 
 def main():
     """Função principal"""
-    print("⚠️ ATENÇÃO: Este script irá coletar dados de todas as APIs e fazer upload para o MotherDuck")
+    print("⚠️ ATENÇÃO: Este script irá atualizar TODOS os dados do banco incluindo VGV Empreendimentos")
     print("Pressione Ctrl+C para cancelar se necessário")
     print()
     
     try:
-        # Timeout total de 15 minutos
+        # Timeout total de 20 minutos
         sucesso = asyncio.run(
-            asyncio.wait_for(sistema_completo(), timeout=900.0)
+            asyncio.wait_for(atualizar_banco_completo_vgv(), timeout=1200.0)
         )
         
         if sucesso:
-            print("\n✅ Sistema completo executado com sucesso!")
+            print("\n✅ Atualização completa executada com sucesso!")
             print("🌐 Você pode agora validar visualmente no dashboard")
         else:
-            print("\n❌ Falha na execução do sistema completo")
+            print("\n❌ Falha na execução da atualização completa")
             
     except asyncio.TimeoutError:
-        print("\n⏰ Timeout - operação demorou mais de 15 minutos")
+        print("\n⏰ Timeout - operação demorou mais de 20 minutos")
     except KeyboardInterrupt:
-        print("\n⚠️ Sistema cancelado pelo usuário")
+        print("\n⚠️ Atualização cancelada pelo usuário")
     except Exception as e:
         print(f"\n❌ Erro inesperado: {e}")
     finally:
-        print("\n🏁 Sistema finalizado")
+        print("\n🏁 Atualização finalizada")
         sys.exit(0)
 
 if __name__ == "__main__":
     main()
-

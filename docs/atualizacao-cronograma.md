@@ -228,3 +228,5 @@ Em caso de problemas, é possível reativar o workflow original:
 *Versão: 1.0*
 *Status: Implementado - Aguardando Testes*
 
+
+

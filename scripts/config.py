@@ -72,6 +72,19 @@ def get_api_config(api_name: str) -> Optional[APIConfig]:
             rate_limit=60
         )
     
+    elif api_name == 'cv_vgv_empreendimentos':
+        # Mesmas credenciais de CV Vendas, endpoint diferente
+        return APIConfig(
+            name='CV VGV Empreendimentos',
+            base_url='https://prati.cvcrm.com.br/api/v1/cv/tabelasdepreco',
+            headers={
+                'accept': 'application/json',
+                'email': os.environ.get('CVCRM_EMAIL', ''),
+                'token': os.environ.get('CVCRM_TOKEN', '')
+            },
+            rate_limit=60
+        )
+    
     elif api_name == 'sienge_vendas_realizadas':
         token = os.environ.get('SIENGE_TOKEN', '')
         if token.startswith('Basic '):
@@ -115,6 +128,7 @@ def get_all_rate_limits() -> Dict[str, int]:
         'cv_repasses': 60,
         'cv_leads': 60,
         'cv_repasses_workflow': 60,
+        'cv_vgv_empreendimentos': 60,
         'sienge_vendas_realizadas': 50,
         'sienge_vendas_canceladas': 50
     }

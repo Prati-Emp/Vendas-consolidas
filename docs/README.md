@@ -25,6 +25,7 @@ Este diretório contém toda a documentação técnica do projeto **Sistema de V
 
 ### 🔧 Desenvolvimento
 - [**Setup de Desenvolvimento**](./setup-dev.md) - Como configurar o ambiente
+- [**Configuração de Ambiente**](./configuracao-ambiente.md) - ⚠️ IMPORTANTE: Arquivo .env
 - [**Estrutura do Código**](./estrutura-codigo.md) - Organização dos arquivos
 - [**Padrões de Código**](./padroes-codigo.md) - Convenções e boas práticas
 
