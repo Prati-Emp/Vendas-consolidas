@@ -28,6 +28,7 @@ async def sistema_diario():
         from scripts.cv_repasses_api import obter_dados_cv_repasses
         from scripts.cv_leads_api import obter_dados_cv_leads
         from scripts.cv_repasses_workflow_api import obter_dados_cv_repasses_workflow
+        from scripts.cv_vgv_empreendimentos_api import obter_dados_vgv_empreendimentos
         import duckdb
         import pandas as pd
         
@@ -80,6 +81,15 @@ async def sistema_diario():
             df_cv_repasses_workflow = pd.DataFrame()
             print(f"⚠️ Falha ao coletar CV Repasses Workflow: {e}")
         
+        # 4.1 Coletar VGV Empreendimentos
+        print("\n4.1. Coletando dados VGV Empreendimentos...")
+        try:
+            df_vgv_empreendimentos = await obter_dados_vgv_empreendimentos(1, 20)
+            print(f"✅ VGV Empreendimentos: {len(df_vgv_empreendimentos)} registros")
+        except Exception as e:
+            df_vgv_empreendimentos = pd.DataFrame()
+            print(f"⚠️ Falha ao coletar VGV Empreendimentos: {e}")
+        
         # 5. Upload para MotherDuck
         print("\n5. Fazendo upload para MotherDuck...")
         
@@ -92,7 +102,8 @@ async def sistema_diario():
             print("❌ MOTHERDUCK_TOKEN não encontrado")
             return False
         
-        os.environ['motherduck_token'] = token
+        # Configurar token corretamente
+        duckdb.sql(f"SET motherduck_token='{token}'")
         conn = duckdb.connect('md:reservas')
         
         # Upload CV Vendas
@@ -123,6 +134,13 @@ async def sistema_diario():
             count_workflow = conn.sql("SELECT COUNT(*) FROM main.Repases_Workflow").fetchone()[0]
             print(f"✅ CV Repasses Workflow upload: {count_workflow:,} registros")
         
+        # Upload VGV Empreendimentos
+        if df_vgv_empreendimentos is not None and not df_vgv_empreendimentos.empty:
+            conn.register("df_vgv_empreendimentos", df_vgv_empreendimentos)
+            conn.execute("CREATE OR REPLACE TABLE main.cv_vgv_empreendimentos AS SELECT * FROM df_vgv_empreendimentos")
+            count_vgv = conn.sql("SELECT COUNT(*) FROM main.cv_vgv_empreendimentos").fetchone()[0]
+            print(f"✅ VGV Empreendimentos upload: {count_vgv:,} registros")
+        
         conn.close()
         
         # 6. Estatísticas finais
@@ -136,6 +154,7 @@ async def sistema_diario():
         print(f"   - CV Repasses: {len(df_cv_repasses):,} registros")
         print(f"   - CV Leads: {len(df_cv_leads):,} registros")
         print(f"   - CV Repasses Workflow: {len(df_cv_repasses_workflow):,} registros")
+        print(f"   - VGV Empreendimentos: {len(df_vgv_empreendimentos):,} registros")
         print("   - Sienge: ⏸️ Pausado (execução 2x/semana)")
         
         return True

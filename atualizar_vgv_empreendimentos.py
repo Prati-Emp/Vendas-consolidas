@@ -42,8 +42,8 @@ async def upload_vgv_empreendimentos_motherduck(df_vgv_empreendimentos):
         if not df_vgv_empreendimentos.empty:
             print("   Fazendo upload VGV Empreendimentos...")
             conn.register("df_vgv_empreendimentos", df_vgv_empreendimentos)
-            conn.execute("CREATE OR REPLACE TABLE main.vgv_empreendimentos AS SELECT * FROM df_vgv_empreendimentos")
-            count_vgv = conn.sql("SELECT COUNT(*) FROM main.vgv_empreendimentos").fetchone()[0]
+            conn.execute("CREATE OR REPLACE TABLE main.cv_vgv_empreendimentos AS SELECT * FROM df_vgv_empreendimentos")
+            count_vgv = conn.sql("SELECT COUNT(*) FROM main.cv_vgv_empreendimentos").fetchone()[0]
             print(f"   ✅ VGV Empreendimentos: {count_vgv:,} registros")
         else:
             print("   ⚠️ Nenhum dado VGV Empreendimentos para upload")
@@ -51,11 +51,11 @@ async def upload_vgv_empreendimentos_motherduck(df_vgv_empreendimentos):
         # Verificar tabela criada
         print("\n4. Verificando tabela criada:")
         try:
-            count_final = conn.sql("SELECT COUNT(*) FROM main.vgv_empreendimentos").fetchone()[0]
+            count_final = conn.sql("SELECT COUNT(*) FROM main.cv_vgv_empreendimentos").fetchone()[0]
             print(f"   📊 Total de registros na tabela: {count_final:,}")
             
             # Mostrar algumas colunas para verificação
-            colunas = conn.sql("DESCRIBE main.vgv_empreendimentos").fetchall()
+            colunas = conn.sql("DESCRIBE main.cv_vgv_empreendimentos").fetchall()
             print(f"   📋 Colunas da tabela: {len(colunas)}")
             for col in colunas[:5]:  # Mostrar apenas as primeiras 5 colunas
                 print(f"      - {col[0]}: {col[1]}")

@@ -83,8 +83,8 @@ async def upload_banco_completo_vgv(df_cv_vendas, df_cv_repasses, df_cv_leads, d
         if df_vgv_empreendimentos is not None and not df_vgv_empreendimentos.empty:
             print("   Fazendo upload VGV Empreendimentos...")
             conn.register("df_vgv_empreendimentos", df_vgv_empreendimentos)
-            conn.execute("CREATE OR REPLACE TABLE main.vgv_empreendimentos AS SELECT * FROM df_vgv_empreendimentos")
-            count_vgv = conn.sql("SELECT COUNT(*) FROM main.vgv_empreendimentos").fetchone()[0]
+            conn.execute("CREATE OR REPLACE TABLE main.cv_vgv_empreendimentos AS SELECT * FROM df_vgv_empreendimentos")
+            count_vgv = conn.sql("SELECT COUNT(*) FROM main.cv_vgv_empreendimentos").fetchone()[0]
             print(f"   ✅ VGV Empreendimentos: {count_vgv:,} registros")
         
         # Upload Sienge Vendas Realizadas

@@ -1,0 +1,12 @@
+# Configuração do MCP MotherDuck
+# Para usar com Cursor ou outros clientes MCP
+
+# Configuração do servidor
+[mcp.servers.motherduck]
+command = "C:\Users\Odair_Santos\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\Scripts\mcp-server-motherduck.exe"
+args = ["--token", "${MOTHERDUCK_TOKEN}"]
+env = {"MOTHERDUCK_TOKEN": "${MOTHERDUCK_TOKEN}"}
+
+# Exemplo de uso:
+# 1. Configure a variável de ambiente MOTHERDUCK_TOKEN
+# 2. Use este arquivo de configuração no seu cliente MCP
