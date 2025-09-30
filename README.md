@@ -16,6 +16,15 @@ Sistema completo de integração e consolidação de dados de vendas a partir de
 - **Sienge**: Vendas Realizadas e Vendas Canceladas
 - **CVCRM**: Relatório de Vendas (CV Vendas)
 
+## 🔧 Correções Recentes
+
+### Normalização de Valores Monetários (2024-12-01)
+- ✅ **Problema Resolvido**: Valores monetários mal formatados causavam interpretação incorreta
+- ✅ **Solução Implementada**: Função de normalização otimizada para todos os processamentos
+- ✅ **Tabelas Corrigidas**: `cv_repasses` e `cv_vendas` já atualizadas no MotherDuck
+- ✅ **Código Atualizado**: Próximas importações usarão normalização automática
+- 📖 **Documentação**: [Correção de Valores Monetários](./docs/correcao-valores-monetarios.md)
+
 ### Requisitos
 
 - Python 3.10+
