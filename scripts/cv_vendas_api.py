@@ -112,9 +112,38 @@ class CVVendasAPIClient:
         logger.info(f"Total de registros CV Vendas: {len(todos_dados)} em {pagina-1} páginas")
         return todos_dados
 
+def normalizar_valor_monetario_otimizado(valor):
+    """
+    Normalização otimizada de valores monetários
+    - Se tem vírgula: já está no formato brasileiro correto
+    - Se tem pontos: substitui apenas o ÚLTIMO ponto por vírgula
+    - Se não tem nem pontos nem vírgulas: número simples
+    """
+    if pd.isna(valor) or valor is None:
+        return 0.0
+    
+    valor_str = str(valor).replace('R$', '').replace('$', '').strip()
+    
+    # Se já tem vírgula, está no formato brasileiro correto
+    if ',' in valor_str:
+        return float(valor_str.replace(',', '.'))
+    
+    # Se tem pontos, substituir apenas o ÚLTIMO ponto por vírgula
+    if '.' in valor_str:
+        ultimo_ponto = valor_str.rfind('.')
+        valor_corrigido = valor_str[:ultimo_ponto] + ',' + valor_str[ultimo_ponto+1:]
+        return float(valor_corrigido.replace(',', '.'))
+    
+    # Número simples sem formatação
+    try:
+        return float(valor_str)
+    except ValueError:
+        return 0.0
+
 def processar_dados_cv_vendas(dados: List[Dict[str, Any]]) -> pd.DataFrame:
     """
     Processa e padroniza dados do relatório de vendas do CV
+    VERSÃO CORRIGIDA com normalização otimizada de valores monetários
     
     Args:
         dados: Lista de dados brutos
@@ -131,11 +160,11 @@ def processar_dados_cv_vendas(dados: List[Dict[str, Any]]) -> pd.DataFrame:
         if col in df.columns:
             df[col] = pd.to_datetime(df[col], errors='coerce')
     
-    # Padronizar valores monetários
+    # CORREÇÃO: Padronizar valores monetários com função otimizada
     colunas_valor = ['valor_venda', 'valor_contrato', 'valor_comissao', 'valor_imposto']
     for col in colunas_valor:
         if col in df.columns:
-            df[col] = df[col].apply(lambda x: float(str(x).replace('R$', '').replace('.', '').replace(',', '.')) if pd.notna(x) else 0)
+            df[col] = df[col].apply(normalizar_valor_monetario_otimizado)
     
     # Adicionar coluna de fonte
     df['fonte'] = 'cv_vendas'

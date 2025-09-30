@@ -350,11 +350,11 @@ class SiengeAPIClient:
             if 'contractDate' in df.columns:
                 df['contractDate'] = pd.to_datetime(df['contractDate'], errors='coerce')
             
-            # Converter valores numéricos
+            # CORREÇÃO: Converter valores numéricos com normalização otimizada
             colunas_numericas = ['value', 'totalSellingValue', 'interestPercentage', 'fineRate', 'dailyLateInterestValue']
             for col in colunas_numericas:
                 if col in df.columns:
-                    df[col] = pd.to_numeric(df[col], errors='coerce')
+                    df[col] = df[col].apply(normalizar_valor_monetario_otimizado)
             
             # Converter IDs para string
             colunas_id = ['id', 'enterpriseId', 'receivableBillId', 'refundBillId']
@@ -375,6 +375,7 @@ class SiengeAPIClient:
         """
         Processa dados de vendas canceladas baseado no código M do Power BI
         (mesma estrutura das vendas realizadas)
+        VERSÃO CORRIGIDA com normalização otimizada de valores monetários
         """
         if not dados:
             logger.info("Nenhum dado de vendas canceladas para processar")
@@ -411,11 +412,11 @@ class SiengeAPIClient:
             if 'contractDate' in df.columns:
                 df['contractDate'] = pd.to_datetime(df['contractDate'], errors='coerce')
             
-            # Converter valores numéricos
+            # CORREÇÃO: Converter valores numéricos com normalização otimizada
             colunas_numericas = ['value', 'totalSellingValue', 'interestPercentage', 'fineRate', 'dailyLateInterestValue']
             for col in colunas_numericas:
                 if col in df.columns:
-                    df[col] = pd.to_numeric(df[col], errors='coerce')
+                    df[col] = df[col].apply(normalizar_valor_monetario_otimizado)
             
             # Converter IDs para string
             colunas_id = ['id', 'enterpriseId', 'receivableBillId', 'refundBillId']
@@ -629,6 +630,34 @@ async def get_all_vendas_canceladas(data_inicio: str, data_fim: str) -> List[Dic
     logger.info(f"Total de vendas canceladas: {len(todos_dados)}")
     return todos_dados
 
+def normalizar_valor_monetario_otimizado(valor):
+    """
+    Normalização otimizada de valores monetários
+    - Se tem vírgula: já está no formato brasileiro correto
+    - Se tem pontos: substitui apenas o ÚLTIMO ponto por vírgula
+    - Se não tem nem pontos nem vírgulas: número simples
+    """
+    if pd.isna(valor) or valor is None:
+        return 0.0
+    
+    valor_str = str(valor).replace('R$', '').replace('$', '').strip()
+    
+    # Se já tem vírgula, está no formato brasileiro correto
+    if ',' in valor_str:
+        return float(valor_str.replace(',', '.'))
+    
+    # Se tem pontos, substituir apenas o ÚLTIMO ponto por vírgula
+    if '.' in valor_str:
+        ultimo_ponto = valor_str.rfind('.')
+        valor_corrigido = valor_str[:ultimo_ponto] + ',' + valor_str[ultimo_ponto+1:]
+        return float(valor_corrigido.replace(',', '.'))
+    
+    # Número simples sem formatação
+    try:
+        return float(valor_str)
+    except ValueError:
+        return 0.0
+
 def processar_dados_sienge(dados: List[Dict[str, Any]], tipo: str) -> pd.DataFrame:
     """
     Processa e padroniza dados do Sienge
@@ -649,11 +678,11 @@ def processar_dados_sienge(dados: List[Dict[str, Any]], tipo: str) -> pd.DataFra
         if col in df.columns:
             df[col] = pd.to_datetime(df[col], errors='coerce')
     
-    # Padronizar valores monetários
+    # CORREÇÃO: Padronizar valores monetários com função otimizada
     colunas_valor = ['valor_venda', 'valor_contrato', 'valor_cancelamento']
     for col in colunas_valor:
         if col in df.columns:
-            df[col] = df[col].apply(lambda x: float(str(x).replace('R$', '').replace('.', '').replace(',', '.')) if pd.notna(x) else 0)
+            df[col] = df[col].apply(normalizar_valor_monetario_otimizado)
     
     # Adicionar coluna de tipo
     df['tipo_venda'] = tipo
