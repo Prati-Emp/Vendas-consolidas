@@ -129,6 +129,7 @@ class CVLeadsAPIClient:
                             "gestor": item.get("gestor"),
                             "empreendimento_ultimo": item.get("empreendimento_ultimo"),
                             "referencia_data": item.get("referencia_data"),
+                            "corretor": item.get("corretor"),
                         }
                         results.append(row)
 
@@ -181,6 +182,9 @@ def processar_dados_cv_leads(dados: List[Dict[str, Any]]) -> pd.DataFrame:
     
     # Adicionar timestamp de processamento
     df['processado_em'] = datetime.now()
+    
+    # Log das colunas disponíveis para debug
+    logger.info(f"Colunas disponíveis no DataFrame: {list(df.columns)}")
     
     logger.info(f"Dados processados - CV Leads: {len(df)} registros")
     return df

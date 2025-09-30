@@ -51,7 +51,8 @@ params = {
   "nome_situacao_anterior_lead": "string",
   "gestor": "string",
   "empreendimento_ultimo": "string",
-  "referencia_data": "YYYY-MM-DD"
+  "referencia_data": "YYYY-MM-DD",
+  "corretor": "string"
 }
 ```
 
@@ -142,6 +143,7 @@ CREATE TABLE main.cv_leads (
     gestor VARCHAR,
     empreendimento_ultimo VARCHAR,
     referencia_data TIMESTAMP,
+    corretor VARCHAR,
     fonte VARCHAR DEFAULT 'cv_leads',
     processado_em TIMESTAMP
 );
