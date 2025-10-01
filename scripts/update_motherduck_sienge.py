@@ -13,6 +13,9 @@ from dotenv import load_dotenv
 # Garante import do projeto quando rodar via Actions
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
+# Importar controle de concorrência
+from scripts.concurrency_control import check_concurrency, release_concurrency
+
 async def sistema_sienge():
     """Sistema de atualização Sienge (2x/semana)"""
     print("🌙 SISTEMA DE ATUALIZAÇÃO SIENGE (2X/SEMANA)")
@@ -124,6 +127,13 @@ def main():
     print(f"🐍 Python: {sys.version}")
     print(f"📁 Working directory: {os.getcwd()}")
     
+    # CORREÇÃO: Verificar concorrência antes de executar
+    print("\n🔒 Verificando controle de concorrência...")
+    if not check_concurrency():
+        print("❌ Outro workflow está executando. Abortando para evitar conflitos.")
+        sys.exit(1)
+    print("✅ Controle de concorrência OK - Prosseguindo com execução")
+    
     # Carregar variáveis de ambiente
     load_dotenv()
     
@@ -133,6 +143,7 @@ def main():
     
     if missing_vars:
         print(f"❌ Variáveis de ambiente faltando: {', '.join(missing_vars)}")
+        release_concurrency()  # Liberar lock em caso de erro
         sys.exit(1)
     
     print("✅ Variáveis de ambiente configuradas")
@@ -145,20 +156,24 @@ def main():
             print("\n✅ ATUALIZAÇÃO SIENGE CONCLUÍDA COM SUCESSO!")
             print("🌐 Dados Sienge atualizados no MotherDuck")
             print("📊 Dashboard pode ser consultado para validação")
+            release_concurrency()  # Liberar lock em caso de sucesso
             sys.exit(0)
         else:
             print("\n❌ FALHA NA ATUALIZAÇÃO SIENGE")
             print("🔍 Verifique os logs acima para detalhes")
+            release_concurrency()  # Liberar lock em caso de falha
             sys.exit(1)
             
     except asyncio.TimeoutError:
         print("\n⏰ TIMEOUT - Operação demorou mais de 15 minutos")
         print("🔍 Considere otimizar o pipeline ou aumentar o timeout")
+        release_concurrency()  # Liberar lock em caso de timeout
         sys.exit(1)
         
     except ImportError as e:
         print(f"\n❌ ERRO DE IMPORTAÇÃO: {e}")
         print("🔍 Verifique se todos os módulos estão disponíveis")
+        release_concurrency()  # Liberar lock em caso de erro de importação
         sys.exit(1)
         
     except Exception as e:
@@ -166,6 +181,7 @@ def main():
         print("🔍 Verifique a configuração e conectividade")
         import traceback
         traceback.print_exc()
+        release_concurrency()  # Liberar lock em caso de erro inesperado
         sys.exit(1)
 
 if __name__ == "__main__":

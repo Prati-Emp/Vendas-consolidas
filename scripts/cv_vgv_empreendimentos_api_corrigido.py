@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
 """
-Integração com API do CV - VGV Empreendimentos
+Integração com API do CV - VGV Empreendimentos (VERSÃO CORRIGIDA)
 Endpoint: https://prati.cvcrm.com.br/api/v1/cv/tabelasdepreco
 Credenciais: mesmas de CV Vendas (email, token)
 
-Baseado no código fornecido pelo usuário:
-- Testa IDs de empreendimentos de 1 a 20
-- Busca tabelas de preço por empreendimento
-- Seleciona tabela de financiamento (ou primeira disponível)
-- Expande unidades e normaliza dados
-- Remove saída em Excel (integração com MotherDuck)
+CORREÇÕES APLICADAS:
+- Timeout aumentado para 30 segundos
+- Pausas otimizadas entre requisições
+- Processamento síncrono para evitar problemas de concorrência
+- Logs melhorados para debug
 """
 
 import asyncio
@@ -20,7 +19,6 @@ from typing import Dict, List, Any, Optional
 import pandas as pd
 import requests
 
-from scripts.orchestrator import make_api_request
 from scripts.config import get_api_config
 
 # Configurar logging
@@ -28,7 +26,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class CVVGVEmpreendimentosAPIClient:
-    """Cliente para API de VGV Empreendimentos do CV"""
+    """Cliente para API de VGV Empreendimentos do CV - VERSÃO CORRIGIDA"""
     
     def __init__(self):
         # Usar configuração do CV Vendas (mesmas credenciais)
@@ -41,10 +39,10 @@ class CVVGVEmpreendimentosAPIClient:
         self.base_url = "https://prati.cvcrm.com.br/api/v1/cv/tabelasdepreco"
         self.headers = self.config.headers
     
-    async def testar_ids_empreendimentos(self, inicio: int = 1, fim: int = 20) -> List[int]:
+    def testar_ids_empreendimentos(self, inicio: int = 1, fim: int = 20) -> List[int]:
         """
         Testa IDs de empreendimentos e retorna lista de IDs válidos
-        CORREÇÃO: Timeout aumentado e pausas otimizadas
+        CORREÇÃO: Processamento síncrono com timeout aumentado
         """
         logger.info(f"=== TESTANDO IDs DE {inicio} A {fim} ===")
         ids_validos = []
@@ -77,10 +75,10 @@ class CVVGVEmpreendimentosAPIClient:
         logger.info(f"IDs válidos encontrados: {ids_validos}")
         return ids_validos
 
-    async def processar_empreendimento(self, id_empreendimento: int) -> Optional[Dict]:
+    def processar_empreendimento(self, id_empreendimento: int) -> Optional[Dict]:
         """
         Processa um empreendimento completo
-        CORREÇÃO: Timeouts aumentados e processamento mais robusto
+        CORREÇÃO: Processamento síncrono com timeouts aumentados
         """
         logger.info(f"\n=== PROCESSANDO ID {id_empreendimento} ===")
         
@@ -198,14 +196,15 @@ class CVVGVEmpreendimentosAPIClient:
             logger.error(f"  X Erro: {e}")
             return None
 
-    async def get_all_empreendimentos(self, inicio: int = 1, fim: int = 20) -> List[Dict]:
+    def get_all_empreendimentos(self, inicio: int = 1, fim: int = 20) -> List[Dict]:
         """
         Busca todos os empreendimentos válidos e processa seus dados
+        CORREÇÃO: Processamento síncrono com pausas otimizadas
         """
-        logger.info("=== VGV EMPREENDIMENTOS - VERSÃO FINAL ===")
+        logger.info("=== VGV EMPREENDIMENTOS - VERSÃO CORRIGIDA ===")
         
         # 1. Testar IDs
-        ids_validos = await self.testar_ids_empreendimentos(inicio, fim)
+        ids_validos = self.testar_ids_empreendimentos(inicio, fim)
         
         if not ids_validos:
             logger.warning("Nenhum ID válido encontrado. Encerrando.")
@@ -216,7 +215,7 @@ class CVVGVEmpreendimentosAPIClient:
         resultados = []
         
         for id_empreendimento in ids_validos:
-            resultado = await self.processar_empreendimento(id_empreendimento)
+            resultado = self.processar_empreendimento(id_empreendimento)
             if resultado:
                 resultados.append(resultado)
             # CORREÇÃO: Pausa aumentada entre processamento de empreendimentos
@@ -232,9 +231,6 @@ class CVVGVEmpreendimentosAPIClient:
 def processar_dados_vgv_empreendimentos(resultados: List[Dict]) -> pd.DataFrame:
     """
     Processa e padroniza dados dos empreendimentos VGV
-    
-    Args:
-        resultados: Lista de resultados de empreendimentos processados
     """
     if not resultados:
         logger.warning("Nenhum resultado para processar - VGV Empreendimentos")
@@ -270,18 +266,22 @@ def processar_dados_vgv_empreendimentos(resultados: List[Dict]) -> pd.DataFrame:
     return df_final
 
 async def obter_dados_vgv_empreendimentos(inicio: int = 1, fim: int = 20) -> pd.DataFrame:
-    """Obtém todos os dados de empreendimentos VGV com processamento completo."""
-    logger.info("Buscando dados do VGV Empreendimentos")
+    """
+    Obtém todos os dados de empreendimentos VGV com processamento completo.
+    CORREÇÃO: Wrapper assíncrono para manter compatibilidade
+    """
+    logger.info("Buscando dados do VGV Empreendimentos (VERSÃO CORRIGIDA)")
 
     client = CVVGVEmpreendimentosAPIClient()
-    resultados = await client.get_all_empreendimentos(inicio, fim)
+    # CORREÇÃO: Processamento síncrono dentro do wrapper assíncrono
+    resultados = client.get_all_empreendimentos(inicio, fim)
 
     return processar_dados_vgv_empreendimentos(resultados)
 
 if __name__ == "__main__":
     # Teste da API do VGV Empreendimentos
     async def test_vgv_empreendimentos():
-        print("=== Testando API VGV Empreendimentos ===")
+        print("=== Testando API VGV Empreendimentos (VERSÃO CORRIGIDA) ===")
         
         try:
             df = await obter_dados_vgv_empreendimentos(1, 5)  # Testar apenas IDs 1-5
@@ -296,4 +296,3 @@ if __name__ == "__main__":
             print(f"Erro no teste: {str(e)}")
     
     asyncio.run(test_vgv_empreendimentos())
-
