@@ -93,6 +93,16 @@ async def sistema_diario():
             df_vgv_empreendimentos = pd.DataFrame()
             print(f"⚠️ Falha ao coletar VGV Empreendimentos: {e}")
         
+        # 4.2 Coletar Sienge Contratos Suprimentos
+        print("\n4.2. Coletando dados Sienge Contratos Suprimentos...")
+        try:
+            from scripts.cv_sienge_contratos_suprimentos_api import obter_dados_sienge_contratos_suprimentos
+            df_sienge_contratos_suprimentos = await obter_dados_sienge_contratos_suprimentos("2020-01-01")
+            print(f"✅ Sienge Contratos Suprimentos: {len(df_sienge_contratos_suprimentos)} registros")
+        except Exception as e:
+            df_sienge_contratos_suprimentos = pd.DataFrame()
+            print(f"⚠️ Falha ao coletar Sienge Contratos Suprimentos: {e}")
+        
         # 5. Upload para MotherDuck
         print("\n5. Fazendo upload para MotherDuck...")
         
@@ -144,6 +154,13 @@ async def sistema_diario():
             count_vgv = conn.sql("SELECT COUNT(*) FROM main.cv_vgv_empreendimentos").fetchone()[0]
             print(f"✅ VGV Empreendimentos upload: {count_vgv:,} registros")
         
+        # Upload Sienge Contratos Suprimentos
+        if df_sienge_contratos_suprimentos is not None and not df_sienge_contratos_suprimentos.empty:
+            conn.register("df_sienge_contratos_suprimentos", df_sienge_contratos_suprimentos)
+            conn.execute("CREATE OR REPLACE TABLE main.sienge_contratos_suprimentos AS SELECT * FROM df_sienge_contratos_suprimentos")
+            count_contratos = conn.sql("SELECT COUNT(*) FROM main.sienge_contratos_suprimentos").fetchone()[0]
+            print(f"✅ Sienge Contratos Suprimentos upload: {count_contratos:,} registros")
+        
         conn.close()
         
         # 6. Estatísticas finais
@@ -158,7 +175,8 @@ async def sistema_diario():
         print(f"   - CV Leads: {len(df_cv_leads):,} registros")
         print(f"   - CV Repasses Workflow: {len(df_cv_repasses_workflow):,} registros")
         print(f"   - VGV Empreendimentos: {len(df_vgv_empreendimentos):,} registros")
-        print("   - Sienge: ⏸️ Pausado (execução 2x/semana)")
+        print(f"   - Sienge Contratos Suprimentos: {len(df_sienge_contratos_suprimentos):,} registros")
+        print("   - Sienge Vendas: ⏸️ Pausado (execução 2x/semana)")
         
         return True
         

@@ -119,6 +119,23 @@ def get_api_config(api_name: str) -> Optional[APIConfig]:
             rate_limit=50
         )
     
+    elif api_name == 'sienge_contratos_suprimentos':
+        token = os.environ.get('SIENGE_TOKEN', '')
+        if token.startswith('Basic '):
+            auth_header = token
+        else:
+            auth_header = f'Basic {token}'
+            
+        return APIConfig(
+            name='Sienge Contratos Suprimentos',
+            base_url='https://api.sienge.com.br/pratiemp/public/api/v1/supply-contracts/all',
+            headers={
+                'accept': 'application/json',
+                'authorization': auth_header
+            },
+            rate_limit=50
+        )
+    
     return None
 
 def get_all_rate_limits() -> Dict[str, int]:
@@ -130,5 +147,6 @@ def get_all_rate_limits() -> Dict[str, int]:
         'cv_repasses_workflow': 60,
         'cv_vgv_empreendimentos': 60,
         'sienge_vendas_realizadas': 50,
-        'sienge_vendas_canceladas': 50
+        'sienge_vendas_canceladas': 50,
+        'sienge_contratos_suprimentos': 50
     }
