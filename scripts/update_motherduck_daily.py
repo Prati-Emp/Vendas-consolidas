@@ -103,6 +103,16 @@ async def sistema_diario():
             df_sienge_contratos_suprimentos = pd.DataFrame()
             print(f"⚠️ Falha ao coletar Sienge Contratos Suprimentos: {e}")
         
+        # 4.3 Coletar Sienge Pedidos Compras
+        print("\n4.3. Coletando dados Sienge Pedidos Compras...")
+        try:
+            from scripts.cv_sienge_pedidos_compras_api import obter_dados_sienge_pedidos_compras
+            df_sienge_pedidos_compras = await obter_dados_sienge_pedidos_compras("2020-01-01")
+            print(f"✅ Sienge Pedidos Compras: {len(df_sienge_pedidos_compras)} registros")
+        except Exception as e:
+            df_sienge_pedidos_compras = pd.DataFrame()
+            print(f"⚠️ Falha ao coletar Sienge Pedidos Compras: {e}")
+        
         # 5. Upload para MotherDuck
         print("\n5. Fazendo upload para MotherDuck...")
         
@@ -161,6 +171,13 @@ async def sistema_diario():
             count_contratos = conn.sql("SELECT COUNT(*) FROM main.sienge_contratos_suprimentos").fetchone()[0]
             print(f"✅ Sienge Contratos Suprimentos upload: {count_contratos:,} registros")
         
+        # Upload Sienge Pedidos Compras
+        if df_sienge_pedidos_compras is not None and not df_sienge_pedidos_compras.empty:
+            conn.register("df_sienge_pedidos_compras", df_sienge_pedidos_compras)
+            conn.execute("CREATE OR REPLACE TABLE main.sienge_pedidos_compras AS SELECT * FROM df_sienge_pedidos_compras")
+            count_pedidos = conn.sql("SELECT COUNT(*) FROM main.sienge_pedidos_compras").fetchone()[0]
+            print(f"✅ Sienge Pedidos Compras upload: {count_pedidos:,} registros")
+        
         conn.close()
         
         # 6. Estatísticas finais
@@ -176,6 +193,7 @@ async def sistema_diario():
         print(f"   - CV Repasses Workflow: {len(df_cv_repasses_workflow):,} registros")
         print(f"   - VGV Empreendimentos: {len(df_vgv_empreendimentos):,} registros")
         print(f"   - Sienge Contratos Suprimentos: {len(df_sienge_contratos_suprimentos):,} registros")
+        print(f"   - Sienge Pedidos Compras: {len(df_sienge_pedidos_compras):,} registros")
         print("   - Sienge Vendas: ⏸️ Pausado (execução 2x/semana)")
         
         return True
