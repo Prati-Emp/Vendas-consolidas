@@ -133,14 +133,44 @@ def processar_cv_repasses(dados: List[Dict[str, Any]], df_de_para: Optional[pd.D
         df['codigointerno_empreendimento'] = pd.to_numeric(
             df['codigointerno_empreendimento'], errors='coerce'
         ).astype('Int64')
-    if 'valor_contrato' in df.columns:
-        df['valor_contrato'] = (
-            df['valor_contrato']
-            .astype(str)
-            .str.replace('.', '', regex=False)
-            .str.replace(',', '.', regex=False)
-        )
-        df['valor_contrato'] = pd.to_numeric(df['valor_contrato'], errors='coerce')
+    # CORREÇÃO: Normalização otimizada de valores monetários
+    def normalizar_valor_monetario_otimizado(valor):
+        """
+        Normalização otimizada de valores monetários
+        - Se tem vírgula: já está no formato brasileiro correto
+        - Se tem pontos: substitui apenas o ÚLTIMO ponto por vírgula
+        - Se não tem nem pontos nem vírgulas: número simples
+        """
+        if pd.isna(valor) or valor is None:
+            return 0.0
+        
+        valor_str = str(valor).replace('R$', '').replace('$', '').strip()
+        
+        # Se já tem vírgula, está no formato brasileiro correto
+        if ',' in valor_str:
+            return float(valor_str.replace(',', '.'))
+        
+        # Se tem pontos, substituir apenas o ÚLTIMO ponto por vírgula
+        if '.' in valor_str:
+            ultimo_ponto = valor_str.rfind('.')
+            valor_corrigido = valor_str[:ultimo_ponto] + ',' + valor_str[ultimo_ponto+1:]
+            return float(valor_corrigido.replace(',', '.'))
+        
+        # Número simples sem formatação
+        try:
+            return float(valor_str)
+        except ValueError:
+            return 0.0
+
+    # Aplicar normalização otimizada em todas as colunas de valor
+    colunas_valor = [
+        'valor_previsto', 'valor_divida', 'valor_subsidio', 
+        'valor_fgts', 'valor_registro', 'valor_financiado', 'valor_contrato'
+    ]
+    
+    for col in colunas_valor:
+        if col in df.columns:
+            df[col] = df[col].apply(normalizar_valor_monetario_otimizado)
 
     # Construção da coluna "Para" baseada em situacao
     if 'situacao' in df.columns:
