@@ -197,14 +197,14 @@ def main():
         print("=" * 50)
         
         if sucesso_repasses:
-            print("✅ cv_repasses: Correção aplicada com sucesso")
+            print("OK cv_repasses: Correção aplicada com sucesso")
         else:
-            print("❌ cv_repasses: Erro na correção")
+            print("ERRO cv_repasses: Erro na correção")
         
         if sucesso_vendas:
-            print("✅ cv_vendas: Correção aplicada com sucesso")
+            print("OK cv_vendas: Correção aplicada com sucesso")
         else:
-            print("❌ cv_vendas: Erro na correção")
+            print("ERRO cv_vendas: Erro na correção")
         
         print("\nNOTAS IMPORTANTES:")
         print("- Backups foram criados para todas as tabelas corrigidas")

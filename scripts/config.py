@@ -121,6 +121,10 @@ def get_api_config(api_name: str) -> Optional[APIConfig]:
     
     elif api_name == 'sienge_contratos_suprimentos':
         token = os.environ.get('SIENGE_TOKEN', '')
+        # Limpar token de caracteres extras
+        token = token.strip()
+        if token.startswith('sBasic '):
+            token = token[1:]  # Remove o 's' extra
         if token.startswith('Basic '):
             auth_header = token
         else:
