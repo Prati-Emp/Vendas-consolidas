@@ -19,7 +19,7 @@
 ### 3. **Integração no Sistema** (`sistema_completo.py`)
 - ✅ Import da API de Repasses Workflow
 - ✅ Coleta de dados no pipeline principal
-- ✅ Upload para tabela `main.Repases_Workflow` no MotherDuck
+- ✅ Upload para tabela `main.cv_repasses_workflow` no MotherDuck
 - ✅ Estatísticas incluídas no resumo final
 - ✅ Tratamento de erros e fallback
 
@@ -38,9 +38,9 @@
 
 ## 🗄️ Estrutura da Tabela
 
-### Tabela: `main.Repases_Workflow`
+### Tabela: `main.cv_repasses_workflow`
 ```sql
-CREATE TABLE main.Repases_Workflow (
+CREATE TABLE main.cv_repasses_workflow (
     referencia VARCHAR,
     referencia_data VARCHAR,
     ativo VARCHAR,

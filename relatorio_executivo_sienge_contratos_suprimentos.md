@@ -168,3 +168,4 @@ Este relatório apresenta uma análise completa da tabela `sienge_contratos_supr
 **Fonte**: Tabela sienge_contratos_suprimentos (MotherDuck)  
 **Total de registros analisados**: 321 contratos
 
+

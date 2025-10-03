@@ -128,3 +128,4 @@ Este relatório apresenta uma análise completa da tabela `sienge_vendas_consoli
 **Fonte**: Tabela sienge_vendas_consolidadas (MotherDuck)  
 **Total de registros analisados**: 1.136 contratos
 
+

@@ -73,8 +73,8 @@ async def main():
         print(f"3. CV Repasses Workflow - {len(df_workflow):,} registros")
         print("   Fazendo upload CV Repasses Workflow...")
         conn.register("df_cv_repasses_workflow", df_workflow)
-        conn.execute("CREATE OR REPLACE TABLE main.Repases_Workflow AS SELECT * FROM df_cv_repasses_workflow")
-        count_workflow = conn.sql("SELECT COUNT(*) FROM main.Repases_Workflow").fetchone()[0]
+        conn.execute("CREATE OR REPLACE TABLE main.cv_repasses_workflow AS SELECT * FROM df_cv_repasses_workflow")
+        count_workflow = conn.sql("SELECT COUNT(*) FROM main.cv_repasses_workflow").fetchone()[0]
         print(f"   ✅ CV Repasses Workflow: {count_workflow:,} registros")
         
         # Verificar tabelas
@@ -90,7 +90,7 @@ async def main():
         
         conn.close()
         print(f"\n✅ ATUALIZAÇÃO CONCLUÍDA!")
-        print(f"🎉 Tabela 'main.Repases_Workflow' atualizada com {count_workflow:,} registros")
+        print(f"🎉 Tabela 'main.cv_repasses_workflow' atualizada com {count_workflow:,} registros")
         
         return True
         
@@ -101,7 +101,7 @@ async def main():
         return False
 
 if __name__ == "__main__":
-    print("⚠️ ATENÇÃO: Este script irá atualizar a tabela Repases_Workflow")
+    print("⚠️ ATENÇÃO: Este script irá atualizar a tabela cv_repasses_workflow")
     print("Pressione Ctrl+C para cancelar se necessário")
     print()
     
@@ -110,7 +110,7 @@ if __name__ == "__main__":
         
         if sucesso:
             print(f"\n🎉 ATUALIZAÇÃO CONCLUÍDA COM SUCESSO!")
-            print(f"📊 A tabela 'main.Repases_Workflow' foi atualizada")
+            print(f"📊 A tabela 'main.cv_repasses_workflow' foi atualizada")
         else:
             print(f"\n❌ Falha na atualização")
             

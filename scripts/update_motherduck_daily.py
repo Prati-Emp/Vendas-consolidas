@@ -153,8 +153,8 @@ async def sistema_diario():
         # Upload CV Repasses Workflow
         if df_cv_repasses_workflow is not None and not df_cv_repasses_workflow.empty:
             conn.register("df_cv_repasses_workflow", df_cv_repasses_workflow)
-            conn.execute("CREATE OR REPLACE TABLE main.Repases_Workflow AS SELECT * FROM df_cv_repasses_workflow")
-            count_workflow = conn.sql("SELECT COUNT(*) FROM main.Repases_Workflow").fetchone()[0]
+            conn.execute("CREATE OR REPLACE TABLE main.cv_repasses_workflow AS SELECT * FROM df_cv_repasses_workflow")
+            count_workflow = conn.sql("SELECT COUNT(*) FROM main.cv_repasses_workflow").fetchone()[0]
             print(f"OK: CV Repasses Workflow upload: {count_workflow:,} registros")
         
         # Upload VGV Empreendimentos
