@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Atualização diária do MotherDuck (APIs não-Sienge)
-Executa CV Vendas, CV Repasses, CV Leads e CV Repasses Workflow
+Atualização diária do MotherDuck
+Executa CV Vendas, CV Repasses, CV Leads, CV Repasses Workflow e Sienge (Contratos Suprimentos, Pedidos Compras)
 """
 
 import asyncio
@@ -17,11 +17,11 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from scripts.concurrency_control import check_concurrency, release_concurrency
 
 async def sistema_diario():
-    """Sistema de atualização diária (sem APIs Sienge)"""
-    print("SISTEMA DE ATUALIZACAO DIARIA (NAO-SIENGE)")
+    """Sistema de atualização diária"""
+    print("SISTEMA DE ATUALIZACAO DIARIA")
     print("=" * 60)
     print(f"Timestamp: {datetime.now()}")
-    print(f"APIs: CV Vendas, CV Repasses, CV Leads, CV Repasses Workflow")
+    print(f"APIs: CV Vendas, CV Repasses, CV Leads, CV Repasses Workflow, Sienge Contratos Suprimentos, Sienge Pedidos Compras")
     
     start_time = datetime.now()
     
@@ -32,6 +32,8 @@ async def sistema_diario():
         from scripts.cv_leads_api import obter_dados_cv_leads
         from scripts.cv_repasses_workflow_api import obter_dados_cv_repasses_workflow
         from scripts.cv_vgv_empreendimentos_api import obter_dados_vgv_empreendimentos
+        from scripts.cv_sienge_contratos_suprimentos_api import obter_dados_sienge_contratos_suprimentos
+        from scripts.cv_sienge_pedidos_compras_api import obter_dados_sienge_pedidos_compras
         import duckdb
         import pandas as pd
         
