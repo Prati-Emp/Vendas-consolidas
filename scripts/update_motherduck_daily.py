@@ -18,10 +18,10 @@ from scripts.concurrency_control import check_concurrency, release_concurrency
 
 async def sistema_diario():
     """Sistema de atualização diária (sem APIs Sienge)"""
-    print("🌅 SISTEMA DE ATUALIZAÇÃO DIÁRIA (NÃO-SIENGE)")
+    print("SISTEMA DE ATUALIZACAO DIARIA (NAO-SIENGE)")
     print("=" * 60)
-    print(f"⏰ Timestamp: {datetime.now()}")
-    print(f"🎯 APIs: CV Vendas, CV Repasses, CV Leads, CV Repasses Workflow")
+    print(f"Timestamp: {datetime.now()}")
+    print(f"APIs: CV Vendas, CV Repasses, CV Leads, CV Repasses Workflow")
     
     start_time = datetime.now()
     
@@ -55,63 +55,63 @@ async def sistema_diario():
                 break
         
         df_cv_vendas = processar_dados_cv_vendas(todos_dados)
-        print(f"✅ CV Vendas: {len(df_cv_vendas)} registros")
+        print(f"OK: CV Vendas: {len(df_cv_vendas)} registros")
         
         # 2. Coletar CV Repasses
         print("\n2. Coletando dados CV Repasses...")
         try:
             df_cv_repasses = await obter_dados_cv_repasses()
-            print(f"✅ CV Repasses: {len(df_cv_repasses)} registros")
+            print(f"OK: CV Repasses: {len(df_cv_repasses)} registros")
         except Exception as e:
             df_cv_repasses = pd.DataFrame()
-            print(f"⚠️ Falha ao coletar CV Repasses: {e}")
+            print(f"AVISO: Falha ao coletar CV Repasses: {e}")
         
         # 3. Coletar CV Leads
         print("\n3. Coletando dados CV Leads...")
         try:
             df_cv_leads = await obter_dados_cv_leads()
-            print(f"✅ CV Leads: {len(df_cv_leads)} registros")
+            print(f"OK: CV Leads: {len(df_cv_leads)} registros")
         except Exception as e:
             df_cv_leads = pd.DataFrame()
-            print(f"⚠️ Falha ao coletar CV Leads: {e}")
+            print(f"AVISO: Falha ao coletar CV Leads: {e}")
         
         # 4. Coletar CV Repasses Workflow
         print("\n4. Coletando dados CV Repasses Workflow...")
         try:
             df_cv_repasses_workflow = await obter_dados_cv_repasses_workflow()
-            print(f"✅ CV Repasses Workflow: {len(df_cv_repasses_workflow)} registros")
+            print(f"OK: CV Repasses Workflow: {len(df_cv_repasses_workflow)} registros")
         except Exception as e:
             df_cv_repasses_workflow = pd.DataFrame()
-            print(f"⚠️ Falha ao coletar CV Repasses Workflow: {e}")
+            print(f"AVISO: Falha ao coletar CV Repasses Workflow: {e}")
         
         # 4.1 Coletar VGV Empreendimentos
         print("\n4.1. Coletando dados VGV Empreendimentos...")
         try:
             df_vgv_empreendimentos = await obter_dados_vgv_empreendimentos(1, 20)
-            print(f"✅ VGV Empreendimentos: {len(df_vgv_empreendimentos)} registros")
+            print(f"OK: VGV Empreendimentos: {len(df_vgv_empreendimentos)} registros")
         except Exception as e:
             df_vgv_empreendimentos = pd.DataFrame()
-            print(f"⚠️ Falha ao coletar VGV Empreendimentos: {e}")
+            print(f"AVISO: Falha ao coletar VGV Empreendimentos: {e}")
         
         # 4.2 Coletar Sienge Contratos Suprimentos
         print("\n4.2. Coletando dados Sienge Contratos Suprimentos...")
         try:
             from scripts.cv_sienge_contratos_suprimentos_api import obter_dados_sienge_contratos_suprimentos
             df_sienge_contratos_suprimentos = await obter_dados_sienge_contratos_suprimentos("2020-01-01")
-            print(f"✅ Sienge Contratos Suprimentos: {len(df_sienge_contratos_suprimentos)} registros")
+            print(f"OK: Sienge Contratos Suprimentos: {len(df_sienge_contratos_suprimentos)} registros")
         except Exception as e:
             df_sienge_contratos_suprimentos = pd.DataFrame()
-            print(f"⚠️ Falha ao coletar Sienge Contratos Suprimentos: {e}")
+            print(f"AVISO: Falha ao coletar Sienge Contratos Suprimentos: {e}")
         
         # 4.3 Coletar Sienge Pedidos Compras
         print("\n4.3. Coletando dados Sienge Pedidos Compras...")
         try:
             from scripts.cv_sienge_pedidos_compras_api import obter_dados_sienge_pedidos_compras
             df_sienge_pedidos_compras = await obter_dados_sienge_pedidos_compras("2020-01-01")
-            print(f"✅ Sienge Pedidos Compras: {len(df_sienge_pedidos_compras)} registros")
+            print(f"OK: Sienge Pedidos Compras: {len(df_sienge_pedidos_compras)} registros")
         except Exception as e:
             df_sienge_pedidos_compras = pd.DataFrame()
-            print(f"⚠️ Falha ao coletar Sienge Pedidos Compras: {e}")
+            print(f"AVISO: Falha ao coletar Sienge Pedidos Compras: {e}")
         
         # 5. Upload para MotherDuck
         print("\n5. Fazendo upload para MotherDuck...")
@@ -122,7 +122,7 @@ async def sistema_diario():
         
         token = os.environ.get('MOTHERDUCK_TOKEN', '').strip()
         if not token:
-            print("❌ MOTHERDUCK_TOKEN não encontrado")
+            print("ERRO: MOTHERDUCK_TOKEN não encontrado")
             return False
         
         # Configurar token corretamente
@@ -134,49 +134,49 @@ async def sistema_diario():
             conn.register("df_cv_vendas", df_cv_vendas)
             conn.execute("CREATE OR REPLACE TABLE main.cv_vendas AS SELECT * FROM df_cv_vendas")
             count_cv = conn.sql("SELECT COUNT(*) FROM main.cv_vendas").fetchone()[0]
-            print(f"✅ CV Vendas upload: {count_cv:,} registros")
+            print(f"OK: CV Vendas upload: {count_cv:,} registros")
         
         # Upload CV Repasses
         if df_cv_repasses is not None and not df_cv_repasses.empty:
             conn.register("df_cv_repasses", df_cv_repasses)
             conn.execute("CREATE OR REPLACE TABLE main.cv_repasses AS SELECT * FROM df_cv_repasses")
             count_rep = conn.sql("SELECT COUNT(*) FROM main.cv_repasses").fetchone()[0]
-            print(f"✅ CV Repasses upload: {count_rep:,} registros")
+            print(f"OK: CV Repasses upload: {count_rep:,} registros")
         
         # Upload CV Leads
         if df_cv_leads is not None and not df_cv_leads.empty:
             conn.register("df_cv_leads", df_cv_leads)
             conn.execute("CREATE OR REPLACE TABLE main.cv_leads AS SELECT * FROM df_cv_leads")
             count_leads = conn.sql("SELECT COUNT(*) FROM main.cv_leads").fetchone()[0]
-            print(f"✅ CV Leads upload: {count_leads:,} registros")
+            print(f"OK: CV Leads upload: {count_leads:,} registros")
         
         # Upload CV Repasses Workflow
         if df_cv_repasses_workflow is not None and not df_cv_repasses_workflow.empty:
             conn.register("df_cv_repasses_workflow", df_cv_repasses_workflow)
             conn.execute("CREATE OR REPLACE TABLE main.Repases_Workflow AS SELECT * FROM df_cv_repasses_workflow")
             count_workflow = conn.sql("SELECT COUNT(*) FROM main.Repases_Workflow").fetchone()[0]
-            print(f"✅ CV Repasses Workflow upload: {count_workflow:,} registros")
+            print(f"OK: CV Repasses Workflow upload: {count_workflow:,} registros")
         
         # Upload VGV Empreendimentos
         if df_vgv_empreendimentos is not None and not df_vgv_empreendimentos.empty:
             conn.register("df_vgv_empreendimentos", df_vgv_empreendimentos)
             conn.execute("CREATE OR REPLACE TABLE main.cv_vgv_empreendimentos AS SELECT * FROM df_vgv_empreendimentos")
             count_vgv = conn.sql("SELECT COUNT(*) FROM main.cv_vgv_empreendimentos").fetchone()[0]
-            print(f"✅ VGV Empreendimentos upload: {count_vgv:,} registros")
+            print(f"OK: VGV Empreendimentos upload: {count_vgv:,} registros")
         
         # Upload Sienge Contratos Suprimentos
         if df_sienge_contratos_suprimentos is not None and not df_sienge_contratos_suprimentos.empty:
             conn.register("df_sienge_contratos_suprimentos", df_sienge_contratos_suprimentos)
             conn.execute("CREATE OR REPLACE TABLE main.sienge_contratos_suprimentos AS SELECT * FROM df_sienge_contratos_suprimentos")
             count_contratos = conn.sql("SELECT COUNT(*) FROM main.sienge_contratos_suprimentos").fetchone()[0]
-            print(f"✅ Sienge Contratos Suprimentos upload: {count_contratos:,} registros")
+            print(f"OK: Sienge Contratos Suprimentos upload: {count_contratos:,} registros")
         
         # Upload Sienge Pedidos Compras
         if df_sienge_pedidos_compras is not None and not df_sienge_pedidos_compras.empty:
             conn.register("df_sienge_pedidos_compras", df_sienge_pedidos_compras)
             conn.execute("CREATE OR REPLACE TABLE main.sienge_pedidos_compras AS SELECT * FROM df_sienge_pedidos_compras")
             count_pedidos = conn.sql("SELECT COUNT(*) FROM main.sienge_pedidos_compras").fetchone()[0]
-            print(f"✅ Sienge Pedidos Compras upload: {count_pedidos:,} registros")
+            print(f"OK: Sienge Pedidos Compras upload: {count_pedidos:,} registros")
         
         conn.close()
         
@@ -184,9 +184,9 @@ async def sistema_diario():
         end_time = datetime.now()
         duration = end_time - start_time
         
-        print(f"\n🎉 ATUALIZAÇÃO DIÁRIA CONCLUÍDA!")
-        print(f"⏱️ Duração: {duration}")
-        print(f"📊 Resumo:")
+        print(f"\nATUALIZACAO DIARIA CONCLUIDA!")
+        print(f"Duracao: {duration}")
+        print(f"Resumo:")
         print(f"   - CV Vendas: {len(df_cv_vendas):,} registros")
         print(f"   - CV Repasses: {len(df_cv_repasses):,} registros")
         print(f"   - CV Leads: {len(df_cv_leads):,} registros")
@@ -194,30 +194,30 @@ async def sistema_diario():
         print(f"   - VGV Empreendimentos: {len(df_vgv_empreendimentos):,} registros")
         print(f"   - Sienge Contratos Suprimentos: {len(df_sienge_contratos_suprimentos):,} registros")
         print(f"   - Sienge Pedidos Compras: {len(df_sienge_pedidos_compras):,} registros")
-        print("   - Sienge Vendas: ⏸️ Pausado (execução 2x/semana)")
+        print("   - Sienge Vendas: Pausado (execucao 2x/semana)")
         
         return True
         
     except Exception as e:
-        print(f"\n❌ Erro na atualização diária: {str(e)}")
+        print(f"\nERRO na atualizacao diaria: {str(e)}")
         import traceback
         traceback.print_exc()
         return False
 
 def main():
     """Função principal para execução via GitHub Actions"""
-    print("🌅 INICIANDO ATUALIZAÇÃO DIÁRIA DO MOTHERDUCK")
+    print("INICIANDO ATUALIZACAO DIARIA DO MOTHERDUCK")
     print("=" * 60)
-    print(f"⏰ Timestamp: {datetime.now()}")
-    print(f"🐍 Python: {sys.version}")
-    print(f"📁 Working directory: {os.getcwd()}")
+    print(f"Timestamp: {datetime.now()}")
+    print(f"Python: {sys.version}")
+    print(f"Working directory: {os.getcwd()}")
     
     # CORREÇÃO: Verificar concorrência antes de executar
-    print("\n🔒 Verificando controle de concorrência...")
+    print("\nVerificando controle de concorrencia...")
     if not check_concurrency():
-        print("❌ Outro workflow está executando. Abortando para evitar conflitos.")
+        print("ERRO: Outro workflow esta executando. Abortando para evitar conflitos.")
         sys.exit(1)
-    print("✅ Controle de concorrência OK - Prosseguindo com execução")
+    print("OK: Controle de concorrencia OK - Prosseguindo com execucao")
     
     # Carregar variáveis de ambiente
     load_dotenv()
@@ -227,43 +227,43 @@ def main():
     missing_vars = [var for var in required_vars if not os.environ.get(var)]
     
     if missing_vars:
-        print(f"❌ Variáveis de ambiente faltando: {', '.join(missing_vars)}")
+        print(f"ERRO: Variaveis de ambiente faltando: {', '.join(missing_vars)}")
         release_concurrency()  # Liberar lock em caso de erro
         sys.exit(1)
     
-    print("✅ Variáveis de ambiente configuradas")
+    print("OK: Variaveis de ambiente configuradas")
     
     try:
         # Executar com timeout de 15 minutos
         sucesso = asyncio.run(asyncio.wait_for(sistema_diario(), timeout=900.0))
         
         if sucesso:
-            print("\n✅ ATUALIZAÇÃO DIÁRIA CONCLUÍDA COM SUCESSO!")
-            print("🌐 Dados atualizados no MotherDuck")
-            print("📊 Dashboard pode ser consultado para validação")
+            print("\nOK: ATUALIZACAO DIARIA CONCLUIDA COM SUCESSO!")
+            print("Dados atualizados no MotherDuck")
+            print("Dashboard pode ser consultado para validacao")
             release_concurrency()  # Liberar lock em caso de sucesso
             sys.exit(0)
         else:
-            print("\n❌ FALHA NA ATUALIZAÇÃO DIÁRIA")
-            print("🔍 Verifique os logs acima para detalhes")
+            print("\nERRO: FALHA NA ATUALIZACAO DIARIA")
+            print("Verifique os logs acima para detalhes")
             release_concurrency()  # Liberar lock em caso de falha
             sys.exit(1)
             
     except asyncio.TimeoutError:
-        print("\n⏰ TIMEOUT - Operação demorou mais de 15 minutos")
-        print("🔍 Considere otimizar o pipeline ou aumentar o timeout")
+        print("\nTIMEOUT - Operacao demorou mais de 15 minutos")
+        print("Considere otimizar o pipeline ou aumentar o timeout")
         release_concurrency()  # Liberar lock em caso de timeout
         sys.exit(1)
         
     except ImportError as e:
-        print(f"\n❌ ERRO DE IMPORTAÇÃO: {e}")
-        print("🔍 Verifique se todos os módulos estão disponíveis")
+        print(f"\nERRO DE IMPORTACAO: {e}")
+        print("Verifique se todos os modulos estao disponiveis")
         release_concurrency()  # Liberar lock em caso de erro de importação
         sys.exit(1)
         
     except Exception as e:
-        print(f"\n❌ ERRO INESPERADO: {e}")
-        print("🔍 Verifique a configuração e conectividade")
+        print(f"\nERRO INESPERADO: {e}")
+        print("Verifique a configuracao e conectividade")
         import traceback
         traceback.print_exc()
         release_concurrency()  # Liberar lock em caso de erro inesperado
