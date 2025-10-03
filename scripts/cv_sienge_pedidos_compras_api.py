@@ -58,8 +58,12 @@ class PedidosComprasSiengeAPIClient:
         offset = 0
         
         while True:
-            # Parâmetros da requisição mais básicos
+            # Parâmetros da requisição baseados no código M do Power BI
             params = {
+                'startDate': data_inicio,
+                'endDate': data_fim,
+                'authorized': 'true',
+                'statusApproval': 'APPROVED',
                 'limit': limit,
                 'offset': offset
             }
@@ -127,25 +131,20 @@ class PedidosComprasSiengeAPIClient:
             if col in df.columns:
                 df = df.drop(columns=[col])
         
-        # Renomeia colunas conforme o código fornecido
+        # Renomeia colunas conforme o código M do Power BI
         mapeamento_colunas = {
-            'documentId': 'Documento',
-            'orderNumber': 'Numero_Pedido',
-            'supplierId': 'ID_Fornecedor',
-            'supplierName': 'Fornecedor',
-            'companyName': 'Empresa',
-            'responsibleId': 'Responsavel',
+            'id': 'ID_Pedido',
             'status': 'Status',
-            'statusApproval': 'Aprovacao',
-            'isAuthorized': 'Autorizacao',
-            'orderDate': 'Data_Pedido',
-            'startDate': 'Data_Inicio_Pedido',
-            'endDate': 'Data_Final_Pedido',
-            'object': 'Objeto',
-            'totalLaborValue': 'Total_MaoObra',
-            'totalMaterialValue': 'Total_Material',
-            'consistent': 'Consistente',
-            'internalNotes': 'Notas'
+            'deliveryLate': 'Atrasado',
+            'supplierId': 'ID_Fornecedor',
+            'buildingId': 'ID_Empreendimento',
+            'buyerId': 'Comprador',
+            'date': 'Data_Pedido',
+            'internalNotes': 'Notas',
+            'discount': 'Desconto',
+            'increase': 'Acrescimos',
+            'totalAmount': 'Valor_Total',
+            'totalFreight': 'Total_Frete'
         }
         
         # Aplicar mapeamento apenas para colunas que existem
@@ -153,37 +152,31 @@ class PedidosComprasSiengeAPIClient:
             if col_original in df.columns:
                 df = df.rename(columns={col_original: col_nova})
         
-        # Reordena colunas conforme o código fornecido
+        # Reordena colunas conforme o código M do Power BI
         ordem_colunas = [
-            'Documento', 'Numero_Pedido', 'ID_Fornecedor', 'Fornecedor', 
-            'Empresa', 'Responsavel', 'Status', 'Aprovacao', 'Autorizacao',
-            'Data_Pedido', 'Data_Inicio_Pedido', 'Data_Final_Pedido',
-            'Total_MaoObra', 'Total_Material', 'Consistente', 'Objeto', 'Notas'
+            'ID_Pedido', 'Status', 'Atrasado', 'ID_Fornecedor', 'ID_Empreendimento',
+            'Comprador', 'Data_Pedido', 'Notas', 'Desconto', 'Acrescimos',
+            'Valor_Total', 'Total_Frete'
         ]
         
         # Mantém apenas as colunas que existem no DataFrame
         colunas_existentes = [col for col in ordem_colunas if col in df.columns]
         df = df[colunas_existentes]
         
-        # Converte tipos de dados
+        # Converte tipos de dados conforme o código M do Power BI
         conversoes_tipo = {
-            'Documento': 'string',
-            'Numero_Pedido': 'string',
-            'ID_Fornecedor': 'Int64',
-            'Fornecedor': 'string',
-            'Empresa': 'string',
-            'Responsavel': 'string',
+            'ID_Pedido': 'Int64',
             'Status': 'string',
-            'Aprovacao': 'string',
-            'Autorizacao': 'boolean',
+            'Atrasado': 'boolean',
+            'ID_Fornecedor': 'Int64',
+            'ID_Empreendimento': 'Int64',
+            'Comprador': 'string',
             'Data_Pedido': 'datetime64[ns]',
-            'Data_Inicio_Pedido': 'datetime64[ns]',
-            'Data_Final_Pedido': 'datetime64[ns]',
-            'Total_MaoObra': 'float64',
-            'Total_Material': 'Int64',
-            'Consistente': 'boolean',
-            'Objeto': 'string',
-            'Notas': 'string'
+            'Notas': 'string',
+            'Desconto': 'float64',
+            'Acrescimos': 'Int64',
+            'Valor_Total': 'float64',
+            'Total_Frete': 'float64'
         }
         
         for coluna, tipo in conversoes_tipo.items():
