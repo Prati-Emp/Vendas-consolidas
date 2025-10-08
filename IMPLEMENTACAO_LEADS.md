@@ -51,6 +51,8 @@ CREATE TABLE main.cv_leads (
     empreendimento_ultimo VARCHAR,
     referencia_data TIMESTAMP,
     corretor VARCHAR,
+    campos_adicionais_idcampo VARCHAR,
+    campos_adicionais_nome VARCHAR,
     fonte VARCHAR DEFAULT 'cv_leads',
     processado_em TIMESTAMP
 );

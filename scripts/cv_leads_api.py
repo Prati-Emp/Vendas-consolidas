@@ -120,6 +120,18 @@ class CVLeadsAPIClient:
                             continue
 
                         total_filtered += 1
+                        
+                        # Extrair campos adicionais expansíveis
+                        campos_adicionais = item.get("campos_adicionais", [])
+                        idcampo_values = []
+                        nome_values = []
+                        
+                        if isinstance(campos_adicionais, list):
+                            for campo in campos_adicionais:
+                                if isinstance(campo, dict):
+                                    idcampo_values.append(campo.get("idcampo"))
+                                    nome_values.append(campo.get("nome"))
+                        
                         row = {
                             "Idlead": item.get("idlead"),
                             "Data_cad": item.get("data_cad"),
@@ -130,6 +142,8 @@ class CVLeadsAPIClient:
                             "empreendimento_ultimo": item.get("empreendimento_ultimo"),
                             "referencia_data": item.get("referencia_data"),
                             "corretor": item.get("corretor"),
+                            "campos_adicionais_idcampo": idcampo_values,
+                            "campos_adicionais_nome": nome_values,
                         }
                         results.append(row)
 
@@ -183,8 +197,21 @@ def processar_dados_cv_leads(dados: List[Dict[str, Any]]) -> pd.DataFrame:
     # Adicionar timestamp de processamento
     df['processado_em'] = datetime.now()
     
+    # Processar campos expansíveis (listas)
+    campos_expansiveis = ['campos_adicionais_idcampo', 'campos_adicionais_nome']
+    for campo in campos_expansiveis:
+        if campo in df.columns:
+            # Converter listas para strings separadas por vírgula para armazenamento
+            df[campo] = df[campo].apply(lambda x: ', '.join(map(str, x)) if isinstance(x, list) and x else '')
+    
     # Log das colunas disponíveis para debug
     logger.info(f"Colunas disponíveis no DataFrame: {list(df.columns)}")
+    
+    # Log de exemplo dos campos adicionais
+    if 'campos_adicionais_idcampo' in df.columns and not df.empty:
+        exemplo_campos = df[df['campos_adicionais_idcampo'] != '']['campos_adicionais_idcampo'].head(3)
+        if not exemplo_campos.empty:
+            logger.info(f"Exemplos de campos adicionais idcampo: {list(exemplo_campos)}")
     
     logger.info(f"Dados processados - CV Leads: {len(df)} registros")
     return df

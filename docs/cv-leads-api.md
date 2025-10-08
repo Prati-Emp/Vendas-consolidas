@@ -52,9 +52,19 @@ params = {
   "gestor": "string",
   "empreendimento_ultimo": "string",
   "referencia_data": "YYYY-MM-DD",
-  "corretor": "string"
+  "corretor": "string",
+  "campos_adicionais_idcampo": "string (valores separados por vírgula)",
+  "campos_adicionais_nome": "string (valores separados por vírgula)"
 }
 ```
+
+### Campos Adicionais Expansíveis
+
+A coluna `campos_adicionais` é expansível e contém uma lista de objetos com:
+- **idcampo**: Identificador do campo adicional
+- **nome**: Nome do campo adicional
+
+Os valores são extraídos e armazenados como strings separadas por vírgula para facilitar consultas.
 
 ### Campos Adicionais (Processamento)
 - **fonte**: `'cv_leads'` (identificador da fonte)
@@ -144,6 +154,8 @@ CREATE TABLE main.cv_leads (
     empreendimento_ultimo VARCHAR,
     referencia_data TIMESTAMP,
     corretor VARCHAR,
+    campos_adicionais_idcampo VARCHAR,
+    campos_adicionais_nome VARCHAR,
     fonte VARCHAR DEFAULT 'cv_leads',
     processado_em TIMESTAMP
 );
