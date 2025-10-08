@@ -155,63 +155,64 @@ async function automacaoCompletaSienge() {{
     const WAIT_HEAVY = parseInt(process.env.HEAVY_WAIT_MS || '20000', 10); // 20s padrão
 
     console.log('🗓️ Preenchendo datas...');
-    const dataInicialRole = page.getByRole('textbox', { name: /Data inicial\*/i });
+    const candidatosDataInicial = [
+      page.getByRole('textbox', {{ name: /Data inicial\*/i }}),
+      page.locator('input[name*="dataInicial" i]'),
+      page.locator('input[placeholder*="Data inicial" i]')
+    ];
     let dataInicialField = null;
+    for (const locator of candidatosDataInicial) {{
+      try {{
+        const candidate = locator.first();
+        await candidate.waitFor({{ timeout: 7000 }});
+        if (await candidate.count()) {{
+          dataInicialField = candidate;
+          break;
+        }}
+      }} catch (err) {{
+        continue;
+      }}
+    }}
 
-    try {
-      await dataInicialRole.waitFor({ timeout: 20000 });
-      dataInicialField = dataInicialRole.first();
-    } catch (err) {
-      console.log('⚠️ Campo "Data inicial" não encontrado por role, tentando seletores alternativos...');
-      const altByName = page.locator('input[name*="dataInicial" i]').first();
-      if (await altByName.count()) {
-        dataInicialField = altByName;
-      } else {
-        const altByPlaceholder = page.locator('input[placeholder*="Data inicial" i]').first();
-        if (await altByPlaceholder.count()) {
-          dataInicialField = altByPlaceholder;
-        }
-      }
-    }
-
-    if (!dataInicialField || !(await dataInicialField.count())) {
+    if (!dataInicialField || !(await dataInicialField.count())) {{
       console.log('❌ Campo "Data inicial" não encontrado após tentativas');
-      await page.screenshot({ path: 'debug_erro_data_inicial.png', fullPage: true });
+      await page.screenshot({{ path: 'debug_erro_data_inicial.png', fullPage: true }});
       throw new Error('Campo "Data inicial" não encontrado');
-    }
+    }}
 
-    await dataInicialField.click({ force: true });
-    await dataInicialField.press('Control+A').catch(() => {});
-    await dataInicialField.type(START, { delay: 20 });
+    await dataInicialField.click({{ force: true }});
+    await dataInicialField.press('Control+A').catch(() => {{}});
+    await dataInicialField.type(START, {{ delay: 20 }});
 
     const hojePtBr = new Date().toLocaleDateString('pt-BR');
+    const candidatosDataFinal = [
+      page.getByRole('textbox', {{ name: /Data final\*/i }}),
+      page.locator('input[name*="dataFinal" i]'),
+      page.locator('input[placeholder*="Data final" i]')
+    ];
     let dataFinalField = null;
-    const dataFinalRole = page.getByRole('textbox', { name: /Data final\*/i });
-    try {
-      await dataFinalRole.waitFor({ timeout: 20000 });
-      dataFinalField = dataFinalRole.first();
-    } catch (err) {
-      console.log('⚠️ Campo "Data final" não encontrado por role, tentando seletores alternativos...');
-      const altByNameFinal = page.locator('input[name*="dataFinal" i]').first();
-      if (await altByNameFinal.count()) {
-        dataFinalField = altByNameFinal;
-      } else {
-        const altByPlaceholderFinal = page.locator('input[placeholder*="Data final" i]').first();
-        if (await altByPlaceholderFinal.count()) {
-          dataFinalField = altByPlaceholderFinal;
-        }
-      }
-    }
+    for (const locator of candidatosDataFinal) {{
+      try {{
+        const candidate = locator.first();
+        await candidate.waitFor({{ timeout: 7000 }});
+        if (await candidate.count()) {{
+          dataFinalField = candidate;
+          break;
+        }}
+      }} catch (err) {{
+        continue;
+      }}
+    }}
 
-    if (!dataFinalField || !(await dataFinalField.count())) {
+    if (!dataFinalField || !(await dataFinalField.count())) {{
       console.log('❌ Campo "Data final" não encontrado após tentativas');
-      await page.screenshot({ path: 'debug_erro_data_final.png', fullPage: true });
+      await page.screenshot({{ path: 'debug_erro_data_final.png', fullPage: true }});
       throw new Error('Campo "Data final" não encontrado');
-    }
+    }}
 
-    await dataFinalField.click({ force: true });
-    await dataFinalField.press('Control+A').catch(() => {});
-    await dataFinalField.type(hojePtBr, { delay: 20 });
+    await dataFinalField.click({{ force: true }});
+    await dataFinalField.press('Control+A').catch(() => {{}});
+    await dataFinalField.type(hojePtBr, {{ delay: 20 }});
 
     // ========= NOVO: CONSULTAR =========
     console.log('🔎 Consultando...');
