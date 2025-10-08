@@ -259,6 +259,11 @@ automacaoCompletaSienge().catch(e => {{
             f.write(script_js)
 
         try:
+            # Instalar Playwright se necessário
+            print("📦 Verificando dependências do Playwright...")
+            subprocess.run(['npm', 'install', 'playwright'], check=True, capture_output=True, shell=True)
+            subprocess.run(['npx', 'playwright', 'install', 'chromium'], check=True, capture_output=True, shell=True)
+            
             result = subprocess.run(
                 ['node', 'sienge_mcp_completo_temp.js'],
                 capture_output=True, text=True, encoding='utf-8', errors='ignore', timeout=1200
