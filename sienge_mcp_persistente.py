@@ -283,18 +283,27 @@ automacaoCompletaSienge().catch(e => {{
             
             print("📦 Verificando dependências do Playwright...")
             
-            # Verificar se node_modules existe
-            if os.path.exists('node_modules/playwright'):
-                print("✅ Playwright encontrado em node_modules")
+            # Verificar se node_modules/playwright/lib/inprocess existe
+            inprocess_path = 'node_modules/playwright/lib/inprocess'
+            if os.path.exists(inprocess_path):
+                print("✅ Playwright completamente instalado")
             else:
-                print("⚠️ Playwright não encontrado, tentando instalar...")
+                print("⚠️ Playwright incompleto, reinstalando...")
                 try:
-                    # Tentar instalar apenas se necessário
-                    subprocess.run(['npm', 'install'], 
-                                 capture_output=True, text=True, shell=shell_mode, timeout=60)
-                    subprocess.run(['npx', 'playwright', 'install', 'chromium'], 
+                    # Reinstalar completamente
+                    print("📦 Executando npm install...")
+                    install_result = subprocess.run(['npm', 'install'], 
                                  capture_output=True, text=True, shell=shell_mode, timeout=120)
-                    print("✅ Instalação concluída")
+                    if install_result.returncode != 0:
+                        print(f"⚠️ Erro no npm install: {install_result.stderr}")
+                    
+                    print("🌐 Instalando browsers do Playwright...")
+                    browser_result = subprocess.run(['npx', 'playwright', 'install', 'chromium', '--with-deps'], 
+                                 capture_output=True, text=True, shell=shell_mode, timeout=300)
+                    if browser_result.returncode != 0:
+                        print(f"⚠️ Erro na instalação do browser: {browser_result.stderr}")
+                    else:
+                        print("✅ Instalação concluída")
                 except Exception as e:
                     print(f"⚠️ Aviso na instalação: {e}")
                     print("📋 Continuando mesmo assim...")
