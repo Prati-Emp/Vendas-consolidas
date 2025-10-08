@@ -60,8 +60,10 @@ async function automacaoCompletaSienge() {{
   const downloadPath = path.resolve('{self.download_dir}');
   if (!fs.existsSync(downloadPath)) fs.mkdirSync(downloadPath, {{ recursive: true }});
 
+  const isCI = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true' || process.env.HEADLESS === 'true';
+
   const context = await chromium.launchPersistentContext(userDataDir, {{
-    headless: false,
+    headless: isCI,
     viewport: {{ width: 1920, height: 1080 }},
     acceptDownloads: true,
     args: [
