@@ -115,6 +115,52 @@ async def sistema_diario():
             df_sienge_pedidos_compras = pd.DataFrame()
             print(f"AVISO: Falha ao coletar Sienge Pedidos Compras: {e}")
         
+        # 4.4 Coletar Relatórios (Download Automático)
+        print("\n4.4. Coletando dados de Relatórios...")
+        try:
+            from scripts.relatorio_download_api import obter_dados_relatorio_download
+            
+            # Configuração do relatório (ajustar conforme seu sistema)
+            config_relatorio = {
+                'nome_fonte': 'relatorio_sistema_principal',
+                'login_url': os.environ.get('RELATORIO_LOGIN_URL', ''),
+                'url': os.environ.get('RELATORIO_URL', ''),
+                'username_field': os.environ.get('RELATORIO_USERNAME_FIELD', 'email'),
+                'password_field': os.environ.get('RELATORIO_PASSWORD_FIELD', 'senha'),
+                'username': os.environ.get('RELATORIO_USERNAME', ''),
+                'password': os.environ.get('RELATORIO_PASSWORD', ''),
+                'tipo_arquivo': os.environ.get('RELATORIO_TIPO_ARQUIVO', 'csv'),
+                'seletor_botao_download': os.environ.get('RELATORIO_BOTAO_DOWNLOAD', '#btn-download-csv'),
+                'separador_csv': os.environ.get('RELATORIO_SEPARADOR', ';'),
+                'encoding': os.environ.get('RELATORIO_ENCODING', 'utf-8'),
+                'filtros': {
+                    'data_inicio': (datetime.now().replace(day=1)).strftime('%Y-%m-%d'),  # Primeiro dia do mês
+                    'data_fim': datetime.now().strftime('%Y-%m-%d'),  # Hoje
+                    'campo_data_inicio': os.environ.get('RELATORIO_CAMPO_DATA_INICIO', 'data_inicio'),
+                    'campo_data_fim': os.environ.get('RELATORIO_CAMPO_DATA_FIM', 'data_fim')
+                },
+                'mapeamento_colunas': {
+                    'id': 'ID_Relatorio',
+                    'data': 'Data_Relatorio',
+                    'valor': 'Valor_Relatorio',
+                    'cliente': 'Cliente_Relatorio'
+                },
+                'tipos_dados': {
+                    'ID_Relatorio': 'int64',
+                    'Data_Relatorio': 'datetime',
+                    'Valor_Relatorio': 'numeric'
+                },
+                # Fallback para extração da tela
+                'tabela_selector': os.environ.get('RELATORIO_TABELA_SELECTOR', '#tabela-dados'),
+                'aguardar_elemento': os.environ.get('RELATORIO_AGUARDAR_ELEMENTO', '#tabela-dados tbody tr')
+            }
+            
+            df_relatorio = await obter_dados_relatorio_download(config_relatorio)
+            print(f"OK: Relatório: {len(df_relatorio)} registros")
+        except Exception as e:
+            df_relatorio = pd.DataFrame()
+            print(f"AVISO: Falha ao coletar Relatório: {e}")
+        
         # 5. Upload para MotherDuck
         print("\n5. Fazendo upload para MotherDuck...")
         
@@ -180,6 +226,13 @@ async def sistema_diario():
             count_pedidos = conn.sql("SELECT COUNT(*) FROM main.sienge_pedidos_compras").fetchone()[0]
             print(f"OK: Sienge Pedidos Compras upload: {count_pedidos:,} registros")
         
+        # Upload Relatório
+        if df_relatorio is not None and not df_relatorio.empty:
+            conn.register("df_relatorio", df_relatorio)
+            conn.execute("CREATE OR REPLACE TABLE main.relatorio_download AS SELECT * FROM df_relatorio")
+            count_relatorio = conn.sql("SELECT COUNT(*) FROM main.relatorio_download").fetchone()[0]
+            print(f"OK: Relatório upload: {count_relatorio:,} registros")
+        
         conn.close()
         
         # 6. Estatísticas finais
@@ -196,6 +249,7 @@ async def sistema_diario():
         print(f"   - VGV Empreendimentos: {len(df_vgv_empreendimentos):,} registros")
         print(f"   - Sienge Contratos Suprimentos: {len(df_sienge_contratos_suprimentos):,} registros")
         print(f"   - Sienge Pedidos Compras: {len(df_sienge_pedidos_compras):,} registros")
+        print(f"   - Relatório Download: {len(df_relatorio):,} registros")
         print("   - Sienge Vendas: Pausado (execucao 2x/semana)")
         
         return True

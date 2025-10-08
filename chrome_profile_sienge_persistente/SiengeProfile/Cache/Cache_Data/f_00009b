@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<meta http-equiv="X-UA-Compatible" content="IE=8" />
+
+
+
+
+
+
+
+
+<script type="text/javascript" >
+	function getValue(id) {
+		return $('#'+id).val();
+	}
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<html>
+<head>
+	<script>
+
+		
+
+		
+
+	</script>
+	<title>Sienge</title>
+	<meta name="robots" content="noindex">
+	<script language="javascript" type="text/JavaScript" src="/sienge/js/spwBotao.js"></script>
+	<script language="JavaScript" src="/sienge/js/spwBrowserUtils.js"></script>
+	<script language="JavaScript" src="/sienge/js/spwFuncoesString.js"></script>
+	<script language="JavaScript" src="/sienge/js/spwResources.js"></script>
+	<script type='text/javascript' src='/sienge/js/togglePasswordVisibility.js'></script>
+	<script language="JavaScript" src="/sienge/js/spwLoginCertificado.js"></script>
+	<script language="JavaScript" src="/sienge/js/sieMain.js"></script>
+	<script language="JavaScript" src="/sienge/js/deviceid.min.js?rnd=0.5526547189401361"></script>
+
+	<script type="text/javascript">var localeJS = "pt_BR";</script>
+<script type="text/javascript" src="/sienge/js/spwResourceMsg.js"></script> 
+<script type="text/javascript" src="/sienge/js/spwResourceMap_pt.js"></script>
+
+	<script type="text/javascript">
+		var isRunningIE7OrBelow = false;
+	</script>
+	
+	
+		<script type="text/javascript">
+			try {
+				const parentWindow = window.parent;
+				if (parentWindow !== window) {
+					window.top.location.href = window.location.origin + '/sienge';
+				}
+			} catch (error) {
+				console.log('redirect: ' + error.message);
+			}
+		</script>
+	
+	
+	<script src="/sienge/sienge8/src/bower_components/jquery/dist/jquery.js"></script>
+	<link rel="stylesheet" href="/sienge/sienge8/src/css/icons.css">
+	<link rel="stylesheet" href="/sienge/sienge8/src/css/roboto.css" >
+	<link rel="stylesheet" href="/sienge/sienge-app-sienge9.css">
+	<link rel="stylesheet" href="/sienge/ajustesLogin-sienge9.css" >
+
+
+	
+	
+
+	
+
+
+</head>
+<body onload="onLoadLogin();">
+<div class="Login">
+	<div id="versaoNavegadorDesatualizado" style="display: none">
+		<span id="versaoNavegadorDesatualizadoTitulo"></span>
+		<br>
+		<span>Para uma melhor visualização do SIENGE atualize-o ou escolha outro navegador.</span>
+		<br>
+		<a href="http://br.mozdev.org/"><img src="/sienge/imagens/n_firefox.png"> </a>
+		<a href="http://www.google.com/chrome?hl=pt-BR"><img src="/sienge/imagens/n_chrome.png"></a>
+		<a href="http://windows.microsoft.com/pt-BR/internet-explorer/products/ie/home"><img src="/sienge/imagens/n_ie.png"></a>
+	</div>
+
+	<div class="_inner">
+		<div class="_content">
+			<div>
+				<div class="ta-xs-c">
+					<a href="https://www.sienge.com.br/" target="_blank">
+						<img src="/sienge/sienge8/src/images/logo-sienge-9.svg" onerror="this.onerror=null; this.src='/sienge/sienge8/src/images/logo-sienge-9.png';" alt="Sienge">
+					</a>
+				</div>
+				<div id="divLogin">
+					<h2 class="ta-xs-c">Bem-vindo!</h2>
+					<div class="_client">
+					
+						PRATI EMPREENDIMENTOS LTDA
+					</div>
+					<form id="submitForm" action="/sienge/internal-api/v1/auth/login" method="post" onsubmit="pegarUsernameCorreto(this.id); toggleBotaoLogin({disabled: true});">
+						<input type="hidden" id="did_hidden" name="did"/>
+						
+							<input type="hidden" id="username_hidden" name="username" />
+							<div class="ControlInner ControlInner-iconLeft mt-xs-24">
+								<input type="text" id="username" class="Control" placeholder="" autocomplete="off" >
+								<label for="username">Usuário</label>
+							</div>
+							<div class="ControlInner ControlInner-iconLeft mt-xs-16">
+								<input type="password" id="password" name="password" class="Control" placeholder=""  autocomplete="off" >
+								<label for="password">Senha</label>
+								<span id="password-toggle" class="password-toggle">
+	<div id="show-password" class="show-password">
+		<img src="/sienge/sienge8/src/svg/icon-show-password.svg" onerror="this.style.display='none'" alt="Exibir senha"/>
+	</div>
+	<div id="hide-password" class="hide-password" style="display:none;">
+		<img src="/sienge/sienge8/src/svg/icon-hide-password.svg" onerror="this.style.display='none'" alt="Esconder senha"/>
+	</div>
+</span>
+							
+							</div>
+						
+
+						
+							<div class="mt-xs-16 clearfix" id="linksLogin">
+								<ul class="Nav Nav-lightActions ta-xs-c">
+									<li><a href="javascript:esqueceuSenha()" >Esqueceu sua senha?</a></li>
+								</ul>
+							</div>
+						
+
+						<div id="alerts">
+							
+								<div class="spwAlertaAviso">
+									<i class="_icon icon-atencao"></i>
+										
+                                            
+                                                <span class="_summary">Limite de usuários simultâneos atingido</span>
+                                            
+                                            
+                                        
+									<p class="_detail">
+										O número máximo de usuários simultâneos contratados foi alcançado. Por favor, tente novamente mais tarde. <a target='_blank' href='https://ajuda.sienge.com.br/support/solutions/articles/153000237604-acessos-simult%C3%A2neos-e-sess%C3%A3o-expirada'> Saiba mais.</a>
+										<a href="#" onclick="popup('/sienge/atualizaChaveAtivacao')"></a>
+										
+										<br>Para verificar os usuários logados 
+										<a onclick="sessaoAtiva()" href="#">
+											clique aqui.
+										</a>
+									</p>
+								</div>
+							
+
+							
+								
+
+								
+								
+							
+
+						</div>
+
+
+
+						
+							<div class="mt-xs-16 clearfix">
+								<button type="submit" id="submit"  class="Button-prim fl-xs-l">Entrar</button>
+							</div>
+						
+
+						
+							<div class="mt-xs-16 clearfix">
+								<button id="btnEntrarComSiengeID" type="button" onclick="fazerLoginComSiengeId()" class="Button-prim fl-xs-l" >Entrar com <b>Sienge ID</b></button>
+							</div>
+						
+
+
+						<div id="checkJavaScript" class="mt-xs-16 ta-xs-c">
+							Seu browser não suporta javascript.
+							<br>
+							<a href="javascriptDesabilitado.html" target="newWindow">Clique aqui para solucionar este problema</a>
+						</div>
+
+					</form>
+				</div>
+
+				
+					<div id="divEsqueceuSenha"  style="display: none;" >
+						<h2 class="ta-xs-c">Redefina sua senha</h2>
+						<div class="_client">
+							PRATI EMPREENDIMENTOS LTDA
+						</div>
+						<p class="ta-xs-c">Iremos enviar um e-mail com link para você recuperar sua conta.</p>
+						<form id="formEsqueceuSenha" action="javascript:void(0);">
+							<input type="hidden" id="username_hidden" name="username" />
+							<div class="ControlInner ControlInner-iconLeft mt-xs-24">
+								<input type="text" id="username" class="Control" placeholder="">
+								<label>Usuário</label>
+							</div>
+
+							<div class="mt-xs-16 clearfix">
+								<ul class="Nav Nav-lightActions ta-xs-c">
+									<li><a href="javascript:login()">Já tenho senha</a></li>
+								</ul>
+								
+									<div class="spwAlertaAviso">
+										<i class="_icon icon-atencao"></i>
+										<span class="_summary">Atenção</span>
+										<p class="_detail">O número máximo de usuários simultâneos contratados foi alcançado. Por favor, tente novamente mais tarde. <a target='_blank' href='https://ajuda.sienge.com.br/support/solutions/articles/153000237604-acessos-simult%C3%A2neos-e-sess%C3%A3o-expirada'> Saiba mais.</a></p>
+									</div>
+								
+
+								<button id="btnEnviarEmail" type="button" onclick="enviaEmailPassword();" class="Button-prim mt-xs-16">Enviar e-mail</button>
+							</div>
+						</form>
+					</div>
+
+					<div id="divNovoUsuario" style="display: none;">
+						<h2 class="ta-xs-c">Bem-vindo</h2>
+						<div class="_client" >
+							
+
+
+8635 - PRATI EMPREENDIMENTOS LTDA
+						</div>
+						<form id="formNovoUsuario" action="javascript:void(0);">
+							<input type="hidden" id="username_hidden" name="username" />
+							<input type="hidden" name="usuario.nmSenha" />
+							<div class="ControlInner ControlInner-iconLeft mt-xs-24">
+								<input type="text" id="username" name="nome" class="Control" placeholder="" >
+								<label for="username">Usuário</label>
+							</div>
+							<div class="ControlInner ControlInner-iconLeft mt-xs-16">
+								<input type="password" id="novaSenha" name="novaSenha" class="Control" placeholder=""
+																		title="Informe a senha com pelo menos um letra em maíuscula e pelo um número" autocomplete="off">
+								<label for="novaSenha">Senha</label>
+							</div>
+							<div class="ControlInner ControlInner-iconLeft mt-xs-16">
+							<input type="password" id="confirmacao" name="confirmacao" class="Control" placeholder="" autocomplete="off">
+								<label for="confirmacao">Confirmar senha</label>
+							</div>
+							
+								<div class="spwAlertaAviso">
+									<i class="_icon icon-atencao"></i>
+									<span class="_summary">Mensagem 1</span>
+									<p class="_detail">Faltam 10000 tentativas para seu usuário ser bloqueado.</p>
+								</div>
+							
+							<div class="mt-xs-16 clearfix">
+								<ul class="Nav Nav-lightActions ta-xs-c">
+									<li><a href="javascript:login()">Já tenho senha</a></li>
+								</ul>
+								<button type="submit" class="Button-prim mt-xs-16" >Entrar</button>
+							</div>
+						</form>
+					</div>
+				
+			</div>
+			<a  href="https://ajuda.sienge.com.br/support/login" target="_blank" class="botao-ajuda-suporte">
+    <svg width="24" height="25" viewBox="0 0 24 25" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path fill-rule="evenodd" clip-rule="evenodd" d="M6 10.3125C6 6.99879 8.68629 4.3125 12 4.3125C15.3137 4.3125 18 6.99879 18 10.3125H16.5V18.5625H17.8366C17.6204 19.0568 17.1995 19.5198 16.6324 19.9168C15.7867 20.5088 14.809 20.8125 14.25 20.8125C13.8358 20.8125 13.5 21.1483 13.5 21.5625C13.5 21.9767 13.8358 22.3125 14.25 22.3125C15.191 22.3125 16.4633 21.8662 17.4926 21.1457C18.3394 20.5529 19.153 19.6786 19.4137 18.5625H19.5C21.1569 18.5625 22.5 17.5211 22.5 15.8125V13.0625C22.5 11.3539 21.1569 10.3125 19.5 10.3125C19.5 6.17036 16.1421 2.8125 12 2.8125C7.85786 2.8125 4.5 6.17036 4.5 10.3125C2.84315 10.3125 1.5 11.3539 1.5 13.0625V15.8125C1.5 17.5211 2.84315 18.5625 4.5 18.5625H7.5V10.3125H6ZM19.5 17.0625H18V11.8125H19.5C20.3284 11.8125 21 12.2082 21 13.0625V15.8125C21 16.6668 20.3284 17.0625 19.5 17.0625ZM4.5 17.0625H6V11.8125H4.5C3.67157 11.8125 3 12.2082 3 13.0625V15.8125C3 16.6668 3.67157 17.0625 4.5 17.0625Z" fill="white"></path>
+    </svg>
+    <span>Ajuda</span>
+</a>
+		</div>
+		<div class="Font-small fonte-login container-infos">
+			<div class="versao">Versão 9.0.2-75 - 8635</div>
+		</div>
+	</div>
+</div>
+
+<script type="text/javascript">
+	function login() {
+		jQuery('#divEsqueceuSenha').hide();
+		jQuery('#divLogin').show();
+	}
+
+	function fazerLoginComSiengeId() {
+		toggleBotaoLogin({disabled: true});
+		window.location = "/sienge/internal-api/v1/auth/sso/login?did="+jQuery('#did_hidden').val();
+	}
+
+	function novoUsuario() {
+		jQuery('#divEsqueceuSenha').hide();
+		jQuery('#divLogin').hide();
+	}
+
+	function esqueceuSenha() {
+		jQuery('#divEsqueceuSenha').show();
+		jQuery('#divLogin').hide();
+	}
+
+	function enviaEmailPassword() {
+		var cdUsuario = jQuery('#divEsqueceuSenha input[id=username]').val();
+		if (cdUsuario != null && cdUsuario.trim() !== '') {
+			document.getElementById("btnEnviarEmail").disabled = true;
+			window.location = '/sienge/esqueciMinhaSenha.do?cdUsuario=' + cdUsuario;
+			
+		} else {
+			alert(resourceMap.getResource('label.js.identificacaoObrigatorio'));
+		}
+		esqueceuSenha();
+	}
+
+	function pegarUsernameCorreto(formId) {
+		var campoUsernameHidden = jQuery("#"+formId+" input[name='username']");
+		var campoUsername = jQuery("#"+formId+" input[id='username']");
+		campoUsernameHidden.attr('value',campoUsername.val().toLowerCase());
+		var userName = getValue('username');
+		if("" != userName){
+			sessionStorage.setItem("username", userName);
+		}
+	}
+
+	function adicionarEspacoNoUsername() {
+		var campoUsername = jQuery('#username');
+		campoUsername.attr('value',campoUsername.val() + " ");
+	}
+
+
+	function adicionarEspacoNoUsername() {
+		var campoUsername = jQuery('#username');
+		campoUsername.attr('value',campoUsername.val() + " ");
+	}
+
+
+	function onLoadLogin() {
+		validaVersaoNavegador();
+		checaJavaScript();
+		onFocus();
+		generateAndSetDID();
+		clearMenuLocalStorage();
+	}
+	
+	function clearMenuLocalStorage(){
+		const menuCache = localStorage.getItem("sienge-sidebar-data");
+        if(menuCache){
+            const menuData = JSON.parse(menuCache);
+            const newMenuData ={...menuData, open: false, selectedModule: {...menuData.selectedModule, data: null}};
+            localStorage.setItem("sienge-sidebar-data", JSON.stringify(newMenuData));
+        }
+	}
+
+	function validaVersaoNavegador() {
+		if (isRunningIE7OrBelow) {
+			document.getElementById('versaoNavegadorDesatualizado').style.display = 'block';
+			document.getElementById('versaoNavegadorDesatualizadoTitulo').innerHTML = 'Seu Internet Explorer está desatualizado.'
+		}
+		if (/Firefox[\/\s](\d+\.\d+)/.test(navigator.userAgent)) { //test for Firefox/x.x or Firefox x.x (ignoring remaining digits);
+			var ffversion=new Number(RegExp.$1) // capture x.x portion and store as a number
+			if (ffversion < 3.6) {
+				document.getElementById('versaoNavegadorDesatualizado').style.display = 'block';
+				document.getElementById('versaoNavegadorDesatualizadoTitulo').innerHTML = 'Seu Mozilla Firefox está desatualizado.'
+			}
+		}
+		if (/Chrome[\/\s](\d+\.\d+)/.test(navigator.userAgent)) { //test for Chrome/x.x or Chrome x.x (ignoring remaining digits);
+			var cversion=new Number(RegExp.$1) // capture x.x portion and store as a number
+			if (cversion < 12) {
+				document.getElementById('versaoNavegadorDesatualizado').style.display = 'block';
+				document.getElementById('versaoNavegadorDesatualizadoTitulo').innerHTML = 'Seu Google Chrome está desatualizado.'
+			}
+		}
+	}
+
+	function carregaNaRaizDoBrowser() {
+		// variavel relogin é utilizada para não recarregar a página como janela principal quando esta tela for utilizada para alterar a senha e relogar o usuário, ou seja, não tira...
+		if (window != window.parent && !window.parent.relogin) {
+			window.parent.location.href='/sienge/avisos/sessaoExpirada.html';
+			this.close();
+		}
+	}
+
+	function esqueciMinhaSenha() {
+		var cdUsuario = document.getElementById('username').value;
+		if (cdUsuario != null && cdUsuario != '') {
+			window.location = '/sienge/esqueciMinhaSenha.do?cdUsuario=' + cdUsuario;
+		} else {
+			alert(resourceMap.getResource('label.js.identificacaoObrigatorio'));
+		}
+	}
+	
+
+	function onFocus() {
+		if (true) {
+			document.getElementById('submit').disabled = false;
+			document.getElementById('username').focus();
+		}
+	}
+
+	function generateAndSetDID() {
+		let uuid = ('; '+document.cookie).split(`; MVNBF3W3pfUQa7XvMVyUFlph8Q=`).pop().split(';')[0];
+		if (!uuid) {
+			DID.get().then(hash => {
+				document.cookie = "MVNBF3W3pfUQa7XvMVyUFlph8Q="+hash+"; expires= "+ new Date(new Date().setFullYear(new Date().getFullYear() + 10)).toUTCString()+"; path=/; domain=.sienge.com.br";
+				document.getElementById("did_hidden").value = hash;
+			});
+		}
+		document.getElementById("did_hidden").value = uuid;
+	}
+
+	function popup(url){
+		var objWin = window.open(url, '_popup', 'status=yes, toolbar=no, scrollbars=yes, titlebar=no, menubar=no, resizable=no, width=640, height=320, directories=no, location=no');
+		if(!objWin){
+			alert("O seu browser possui bloqueador de pop-up.\nVocê precisa desativá-lo.");
+		}
+	}
+
+	function checaJavaScript(){
+		document.getElementById('checkJavaScript').style.display = 'none';
+	}
+
+	
+
+	function forcaLoginPaginaPrincipal() {
+		if (false) {
+			var locationPadrao = 'https://pratiemp.sienge.com.br' + '/sienge/';
+			if (top.location != locationPadrao) {
+				top.location = locationPadrao;
+			}
+		}
+	}
+	
+	function sessaoAtiva() {
+		popupCentralizadoCustomizado('/sienge/sessaoAtiva',640,380);
+	}
+	
+	
+	if (true) {
+		togglePasswordVisibility("password", "password-toggle", "show-password", "hide-password");
+	}
+	
+	function toggleBotaoLogin({disabled}) {
+		if (true) {
+			document.getElementById("submit").disabled = disabled
+		}
+		if (true) {
+			document.getElementById("btnEntrarComSiengeID").disabled = disabled
+		}
+	}
+
+	(function () {
+		// Habilita os botões de login caso a página seja recarregada, apertando o voltar do navegador, por exemplo. 
+		window.onpageshow = function(event) {
+			if (event.persisted) {
+				toggleBotaoLogin({disabled: false});
+			}
+		};
+		// Habilita os botões de login caso a pessoa aperte ESC
+		document.addEventListener('keydown', function(event) {
+			if (event.key === "Escape") {
+				toggleBotaoLogin({disabled: false});
+			}
+		});
+	})();
+	
+</script>
+</body>
+</html>

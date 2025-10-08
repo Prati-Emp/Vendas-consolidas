@@ -9,3 +9,5 @@ plotly>=5.18.0
 aiohttp>=3.8.0
 asyncio
 numpy>=1.24.0
+# Dependências para webscraping Sienge
+playwright>=1.40.0

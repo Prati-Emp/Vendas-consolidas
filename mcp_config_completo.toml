@@ -1,0 +1,55 @@
+# Configuração Completa do MCP
+# Para usar com Cursor - inclui MotherDuck e Browser Tools
+
+# Configuração do servidor MotherDuck
+[mcp.servers.motherduck]
+command = "C:\\Users\\Odair_Santos\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\Scripts\\mcp-server-motherduck.exe"
+args = ["--token", "${MOTHERDUCK_TOKEN}"]
+env = {"MOTHERDUCK_TOKEN": "${MOTHERDUCK_TOKEN}"}
+
+# Configuração do servidor Browser Tools
+[mcp.servers.browser-tools]
+command = "npx"
+args = ["@agentdeskai/browser-tools-mcp@latest"]
+env = {}
+
+# Configurações específicas do navegador
+[mcp.servers.browser-tools.config]
+# Perfil persistente para manter sessões
+user_data_dir = "chrome_profile_sienge_persistente"
+profile_directory = "SiengeProfile"
+
+# Configurações de download
+download_directory = "downloads_tmp"
+download_prompt = false
+
+# Configurações de segurança e performance
+disable_security = false
+disable_dev_shm_usage = true
+no_sandbox = true
+disable_blink_features = "AutomationControlled"
+exclude_switches = ["enable-automation"]
+use_automation_extension = false
+
+# Configurações de janela
+window_size = "1920,1080"
+headless = false
+
+# Configurações de timeout
+page_load_timeout = 30000
+implicit_wait_timeout = 10000
+script_timeout = 30000
+
+# Configurações de screenshot
+screenshot_quality = 90
+screenshot_format = "png"
+
+# Configurações de logging
+log_level = "INFO"
+enable_logging = true
+
+# Como usar:
+# 1. Configure a variável de ambiente MOTHERDUCK_TOKEN
+# 2. Use este arquivo no Cursor como configuração MCP
+# 3. O navegador usará o perfil persistente para manter sessões
+# 4. Downloads serão salvos na pasta downloads_tmp

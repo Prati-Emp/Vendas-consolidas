@@ -1,0 +1,66 @@
+# Configuração do MCP Browser Tools
+# Para usar com Cursor ou outros clientes MCP
+
+# Configuração do servidor MCP do navegador
+[mcp.servers.browser-tools]
+command = "mcp-server-browser-tools"
+args = []
+env = {}
+
+# Configurações específicas do navegador
+[mcp.servers.browser-tools.config]
+# Perfil do Chrome para manter sessões
+user_data_dir = "chrome_profile_sienge_persistente"
+profile_directory = "SiengeProfile"
+
+# Configurações de download
+download_directory = "downloads_tmp"
+download_prompt = false
+
+# Configurações de segurança
+disable_security = false
+disable_dev_shm_usage = true
+no_sandbox = true
+
+# Configurações de automação
+disable_blink_features = "AutomationControlled"
+exclude_switches = ["enable-automation"]
+use_automation_extension = false
+
+# Configurações de performance
+disable_gpu = false
+disable_software_rasterizer = false
+disable_background_timer_throttling = true
+disable_backgrounding_occluded_windows = true
+disable_renderer_backgrounding = true
+
+# Configurações de rede
+disable_web_security = false
+disable_features = "VizDisplayCompositor"
+
+# Configurações de janela
+window_size = "1920,1080"
+headless = false
+
+# Configurações de timeout
+page_load_timeout = 30000
+implicit_wait_timeout = 10000
+script_timeout = 30000
+
+# Configurações de screenshot
+screenshot_quality = 90
+screenshot_format = "png"
+
+# Configurações de logging
+log_level = "INFO"
+enable_logging = true
+
+# Exemplo de uso:
+# 1. Este arquivo deve ser usado no cliente MCP (Cursor)
+# 2. As configurações são aplicadas automaticamente
+# 3. O perfil persistente mantém sessões salvas
+# 4. Downloads são salvos na pasta downloads_tmp
+
+
+
+

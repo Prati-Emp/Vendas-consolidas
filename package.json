@@ -1,0 +1,11 @@
+{
+  "name": "sienge-webscraping",
+  "version": "1.0.0",
+  "description": "Dependências Node.js para webscraping Sienge",
+  "scripts": {
+    "install-playwright": "npx playwright install chromium"
+  },
+  "dependencies": {
+    "playwright": "^1.40.0"
+  }
+}

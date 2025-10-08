@@ -1,0 +1,15 @@
+2025/10/08-15:59:46.669 295c Reusing MANIFEST C:\Users\Odair_Santos\Desktop\Cursor\Vendas_Consolidadas\chrome_profile_sienge_persistente\SiengeProfile\Local Storage\leveldb/MANIFEST-000001
+2025/10/08-15:59:46.679 295c Recovering log #55
+2025/10/08-15:59:46.684 295c Reusing old log C:\Users\Odair_Santos\Desktop\Cursor\Vendas_Consolidadas\chrome_profile_sienge_persistente\SiengeProfile\Local Storage\leveldb/000055.log 
+2025/10/08-16:00:46.702 2a04 Level-0 table #59: started
+2025/10/08-16:00:46.710 2a04 Level-0 table #59: 11556 bytes OK
+2025/10/08-16:00:46.712 2a04 Delete type=0 #55
+2025/10/08-16:00:46.713 2a04 Compacting 4@0 + 1@1 files
+2025/10/08-16:00:46.723 2a04 Generated table #60@0: 2295 keys, 35409 bytes
+2025/10/08-16:00:46.723 2a04 Compacted 4@0 + 1@1 files => 35409 bytes
+2025/10/08-16:00:46.724 2a04 compacted to: files[ 0 1 1 0 0 0 0 ]
+2025/10/08-16:00:46.725 2a04 Delete type=2 #47
+2025/10/08-16:00:46.725 2a04 Delete type=2 #50
+2025/10/08-16:00:46.725 2a04 Delete type=2 #53
+2025/10/08-16:00:46.725 2a04 Delete type=2 #56
+2025/10/08-16:00:46.725 2a04 Delete type=2 #59

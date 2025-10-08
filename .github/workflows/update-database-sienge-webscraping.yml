@@ -1,0 +1,65 @@
+name: Update Database - Sienge Webscraping (Daily)
+
+on:
+  schedule:
+    # Executar diariamente às 06:00 BRT (09:00 UTC)
+    - cron: '0 9 * * *'  # Diariamente às 09:00 UTC (06:00 BRT)
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Razão para executar o webscraping Sienge'
+        required: false
+        default: 'Atualização manual Sienge webscraping'
+        type: string
+
+jobs:
+  update-database-sienge-webscraping:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install duckdb==1.2.2
+          pip install -r requirements.txt
+
+      - name: Install Node.js dependencies
+        run: |
+          npm install playwright
+          npx playwright install chromium
+
+      - name: Set file permissions
+        run: chmod +x scripts/*.py
+
+      - name: Update database (Sienge Webscraping)
+        env:
+          MOTHERDUCK_TOKEN: ${{ secrets.MOTHERDUCK_TOKEN }}
+          PYTHONPATH: ${{ github.workspace }}/scripts:${{ github.workspace }}
+          # Configurações do Sienge (se necessário)
+          RELATORIO_LOGIN_URL: ${{ secrets.RELATORIO_LOGIN_URL }}
+          RELATORIO_URL: ${{ secrets.RELATORIO_URL }}
+          RELATORIO_USERNAME: ${{ secrets.RELATORIO_USERNAME }}
+          RELATORIO_PASSWORD: ${{ secrets.RELATORIO_PASSWORD }}
+        run: |
+          echo "🌐 Iniciando webscraping Sienge do MotherDuck (diário)..."
+          python -u scripts/sienge_webscraping_completo.py
+      
+      - name: Notify success
+        if: success()
+        run: echo "✅ Sienge webscraping database updated successfully at $(date)"
+      
+      - name: Notify failure
+        if: failure()
+        run: echo "❌ Sienge webscraping database update failed at $(date)"
