@@ -32,7 +32,24 @@ class SiengeMCPPersistente:
         print("📥 Executando automação completa com MCP...")
 
         script_js = f"""
-const {{ chromium }} = require('playwright');
+// Verificar se o Playwright está disponível
+let playwright;
+try {{
+  playwright = require('playwright');
+  console.log('✅ Playwright carregado com sucesso');
+}} catch (error) {{
+  console.error('❌ Erro ao carregar Playwright:', error.message);
+  console.log('📋 Tentando carregar playwright-core...');
+  try {{
+    playwright = require('playwright-core');
+    console.log('✅ playwright-core carregado');
+  }} catch (error2) {{
+    console.error('❌ Erro ao carregar playwright-core:', error2.message);
+    process.exit(1);
+  }}
+}}
+
+const {{ chromium }} = playwright;
 const path = require('path');
 const fs = require('fs');
 
@@ -259,10 +276,28 @@ automacaoCompletaSienge().catch(e => {{
             f.write(script_js)
 
         try:
-            # Instalar Playwright se necessário
+            # Detectar sistema operacional
+            import platform
+            is_windows = platform.system() == 'Windows'
+            shell_mode = is_windows
+            
             print("📦 Verificando dependências do Playwright...")
-            subprocess.run(['npm', 'install', 'playwright'], check=True, capture_output=True, shell=True)
-            subprocess.run(['npx', 'playwright', 'install', 'chromium'], check=True, capture_output=True, shell=True)
+            
+            # Verificar se node_modules existe
+            if os.path.exists('node_modules/playwright'):
+                print("✅ Playwright encontrado em node_modules")
+            else:
+                print("⚠️ Playwright não encontrado, tentando instalar...")
+                try:
+                    # Tentar instalar apenas se necessário
+                    subprocess.run(['npm', 'install'], 
+                                 capture_output=True, text=True, shell=shell_mode, timeout=60)
+                    subprocess.run(['npx', 'playwright', 'install', 'chromium'], 
+                                 capture_output=True, text=True, shell=shell_mode, timeout=120)
+                    print("✅ Instalação concluída")
+                except Exception as e:
+                    print(f"⚠️ Aviso na instalação: {e}")
+                    print("📋 Continuando mesmo assim...")
             
             result = subprocess.run(
                 ['node', 'sienge_mcp_completo_temp.js'],
