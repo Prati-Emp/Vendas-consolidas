@@ -53,18 +53,25 @@ params = {
   "empreendimento_ultimo": "string",
   "referencia_data": "YYYY-MM-DD",
   "corretor": "string",
-  "campos_adicionais_idcampo": "string (valores separados por vírgula)",
-  "campos_adicionais_nome": "string (valores separados por vírgula)"
+  "campo_[nome_dinamico]": "string (valor do campo)"
 }
 ```
 
-### Campos Adicionais Expansíveis
+### Campos Adicionais Dinâmicos
 
 A coluna `campos_adicionais` é expansível e contém uma lista de objetos com:
-- **idcampo**: Identificador do campo adicional
-- **nome**: Nome do campo adicional
+- **nome**: Nome do campo adicional (vira nome da coluna)
+- **valor**: Valor do campo adicional
 
-Os valores são extraídos e armazenados como strings separadas por vírgula para facilitar consultas.
+**Processamento Dinâmico:**
+- Cada item único da coluna `nome` vira uma coluna separada
+- Nome da coluna: `campo_[nome_normalizado]`
+- Valor da coluna: conteúdo da coluna `valor` correspondente
+- Normalização: espaços viram `_`, caracteres especiais são removidos, tudo em minúsculas
+
+**Exemplo:**
+- Se `nome` = "Situação Especial" → coluna `campo_situacao_especial`
+- Se `nome` = "Tipo-Cliente" → coluna `campo_tipo_cliente`
 
 ### Campos Adicionais (Processamento)
 - **fonte**: `'cv_leads'` (identificador da fonte)
@@ -154,12 +161,13 @@ CREATE TABLE main.cv_leads (
     empreendimento_ultimo VARCHAR,
     referencia_data TIMESTAMP,
     corretor VARCHAR,
-    campos_adicionais_idcampo VARCHAR,
-    campos_adicionais_nome VARCHAR,
+    campo_[nome_dinamico] VARCHAR,  -- Colunas dinâmicas baseadas nos nomes únicos
     fonte VARCHAR DEFAULT 'cv_leads',
     processado_em TIMESTAMP
 );
 ```
+
+**Nota:** As colunas `campo_[nome_dinamico]` são criadas dinamicamente baseadas nos valores únicos encontrados na coluna `nome` dos campos adicionais. O número e nomes dessas colunas podem variar conforme os dados.
 
 ## 🔄 Fluxo de Execução
 

@@ -51,12 +51,13 @@ CREATE TABLE main.cv_leads (
     empreendimento_ultimo VARCHAR,
     referencia_data TIMESTAMP,
     corretor VARCHAR,
-    campos_adicionais_idcampo VARCHAR,
-    campos_adicionais_nome VARCHAR,
+    campo_[nome_dinamico] VARCHAR,  -- Colunas dinâmicas baseadas nos nomes únicos
     fonte VARCHAR DEFAULT 'cv_leads',
     processado_em TIMESTAMP
 );
 ```
+
+**Nota:** As colunas `campo_[nome_dinamico]` são criadas dinamicamente baseadas nos valores únicos encontrados na coluna `nome` dos campos adicionais. O número e nomes dessas colunas podem variar conforme os dados.
 
 ## 🔧 Como usar
 

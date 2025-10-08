@@ -125,12 +125,14 @@ class CVLeadsAPIClient:
                         campos_adicionais = item.get("campos_adicionais", [])
                         idcampo_values = []
                         nome_values = []
+                        valor_values = []
                         
                         if isinstance(campos_adicionais, list):
                             for campo in campos_adicionais:
                                 if isinstance(campo, dict):
                                     idcampo_values.append(campo.get("idcampo"))
                                     nome_values.append(campo.get("nome"))
+                                    valor_values.append(campo.get("valor"))
                         
                         row = {
                             "Idlead": item.get("idlead"),
@@ -144,6 +146,7 @@ class CVLeadsAPIClient:
                             "corretor": item.get("corretor"),
                             "campos_adicionais_idcampo": idcampo_values,
                             "campos_adicionais_nome": nome_values,
+                            "campos_adicionais_valor": valor_values,
                         }
                         results.append(row)
 
@@ -197,8 +200,42 @@ def processar_dados_cv_leads(dados: List[Dict[str, Any]]) -> pd.DataFrame:
     # Adicionar timestamp de processamento
     df['processado_em'] = datetime.now()
     
-    # Processar campos expansíveis (listas)
-    campos_expansiveis = ['campos_adicionais_idcampo', 'campos_adicionais_nome']
+    # Processar campos expansíveis e criar colunas dinâmicas
+    if 'campos_adicionais_nome' in df.columns and 'campos_adicionais_valor' in df.columns:
+        # Criar colunas dinâmicas baseadas nos nomes únicos
+        logger.info("Processando campos adicionais para criar colunas dinâmicas...")
+        
+        # Coletar todos os nomes únicos
+        todos_nomes = set()
+        for idx, row in df.iterrows():
+            if isinstance(row['campos_adicionais_nome'], list) and isinstance(row['campos_adicionais_valor'], list):
+                for nome in row['campos_adicionais_nome']:
+                    if nome:  # Ignorar valores vazios
+                        todos_nomes.add(str(nome).strip())
+        
+        logger.info(f"Nomes únicos encontrados: {sorted(todos_nomes)}")
+        
+        # Criar colunas dinâmicas
+        for nome in todos_nomes:
+            coluna_nome = f"campo_{nome.replace(' ', '_').replace('-', '_').replace('.', '_').lower()}"
+            df[coluna_nome] = None
+        
+        # Mapear valores para as colunas corretas
+        for idx, row in df.iterrows():
+            if isinstance(row['campos_adicionais_nome'], list) and isinstance(row['campos_adicionais_valor'], list):
+                for nome, valor in zip(row['campos_adicionais_nome'], row['campos_adicionais_valor']):
+                    if nome and valor:  # Ignorar valores vazios
+                        coluna_nome = f"campo_{str(nome).replace(' ', '_').replace('-', '_').replace('.', '_').lower()}"
+                        if coluna_nome in df.columns:
+                            df.at[idx, coluna_nome] = valor
+        
+        # Remover as colunas originais dos campos adicionais
+        df = df.drop(columns=['campos_adicionais_idcampo', 'campos_adicionais_nome', 'campos_adicionais_valor'], errors='ignore')
+        
+        logger.info(f"Colunas dinâmicas criadas: {[col for col in df.columns if col.startswith('campo_')]}")
+    
+    # Processar outros campos expansíveis se existirem
+    campos_expansiveis = []  # Removido campos_adicionais pois já foram processados
     for campo in campos_expansiveis:
         if campo in df.columns:
             # Converter listas para strings separadas por vírgula para armazenamento
@@ -207,11 +244,14 @@ def processar_dados_cv_leads(dados: List[Dict[str, Any]]) -> pd.DataFrame:
     # Log das colunas disponíveis para debug
     logger.info(f"Colunas disponíveis no DataFrame: {list(df.columns)}")
     
-    # Log de exemplo dos campos adicionais
-    if 'campos_adicionais_idcampo' in df.columns and not df.empty:
-        exemplo_campos = df[df['campos_adicionais_idcampo'] != '']['campos_adicionais_idcampo'].head(3)
-        if not exemplo_campos.empty:
-            logger.info(f"Exemplos de campos adicionais idcampo: {list(exemplo_campos)}")
+    # Log de exemplo das colunas dinâmicas
+    colunas_dinamicas = [col for col in df.columns if col.startswith('campo_')]
+    if colunas_dinamicas and not df.empty:
+        logger.info(f"Exemplos de colunas dinâmicas criadas: {colunas_dinamicas[:5]}")  # Mostrar apenas as primeiras 5
+        for col in colunas_dinamicas[:3]:  # Mostrar exemplos das primeiras 3 colunas
+            valores_nao_nulos = df[df[col].notna()][col].head(3)
+            if not valores_nao_nulos.empty:
+                logger.info(f"Exemplos de valores em {col}: {list(valores_nao_nulos)}")
     
     logger.info(f"Dados processados - CV Leads: {len(df)} registros")
     return df
