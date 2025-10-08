@@ -283,30 +283,43 @@ automacaoCompletaSienge().catch(e => {{
             
             print("📦 Verificando dependências do Playwright...")
             
-            # Verificar se node_modules/playwright/lib/inprocess existe
-            inprocess_path = 'node_modules/playwright/lib/inprocess'
-            if os.path.exists(inprocess_path):
-                print("✅ Playwright completamente instalado")
-            else:
-                print("⚠️ Playwright incompleto, reinstalando...")
-                try:
-                    # Reinstalar completamente
-                    print("📦 Executando npm install...")
-                    install_result = subprocess.run(['npm', 'install'], 
-                                 capture_output=True, text=True, shell=shell_mode, timeout=120)
-                    if install_result.returncode != 0:
-                        print(f"⚠️ Erro no npm install: {install_result.stderr}")
+            # Forçar reinstalação completa do Playwright
+            print("🔄 Forçando reinstalação completa do Playwright...")
+            try:
+                # Remover node_modules se existir
+                if os.path.exists('node_modules'):
+                    print("🗑️ Removendo node_modules existente...")
+                    import shutil
+                    shutil.rmtree('node_modules', ignore_errors=True)
+                
+                # Reinstalar do zero
+                print("📦 Reinstalando npm packages...")
+                install_result = subprocess.run(['npm', 'install'], 
+                             capture_output=True, text=True, shell=shell_mode, timeout=180)
+                if install_result.returncode != 0:
+                    print(f"⚠️ Erro no npm install: {install_result.stderr}")
+                else:
+                    print("✅ npm install concluído")
+                
+                # Instalar browsers do Playwright
+                print("🌐 Instalando browsers do Playwright...")
+                browser_result = subprocess.run(['npx', 'playwright', 'install', 'chromium', '--with-deps'], 
+                             capture_output=True, text=True, shell=shell_mode, timeout=300)
+                if browser_result.returncode != 0:
+                    print(f"⚠️ Erro na instalação do browser: {browser_result.stderr}")
+                else:
+                    print("✅ Browsers instalados")
+                
+                # Verificar se lib/inprocess existe agora
+                inprocess_path = 'node_modules/playwright/lib/inprocess'
+                if os.path.exists(inprocess_path):
+                    print("✅ Playwright completamente instalado")
+                else:
+                    print("⚠️ lib/inprocess ainda não encontrado, mas continuando...")
                     
-                    print("🌐 Instalando browsers do Playwright...")
-                    browser_result = subprocess.run(['npx', 'playwright', 'install', 'chromium', '--with-deps'], 
-                                 capture_output=True, text=True, shell=shell_mode, timeout=300)
-                    if browser_result.returncode != 0:
-                        print(f"⚠️ Erro na instalação do browser: {browser_result.stderr}")
-                    else:
-                        print("✅ Instalação concluída")
-                except Exception as e:
-                    print(f"⚠️ Aviso na instalação: {e}")
-                    print("📋 Continuando mesmo assim...")
+            except Exception as e:
+                print(f"⚠️ Erro na reinstalação: {e}")
+                print("📋 Continuando mesmo assim...")
             
             result = subprocess.run(
                 ['node', 'sienge_mcp_completo_temp.js'],
