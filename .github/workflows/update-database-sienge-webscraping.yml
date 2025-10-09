@@ -29,6 +29,14 @@ jobs:
         with:
           node-version: '18'
 
+      - name: Cache npm
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
@@ -37,7 +45,7 @@ jobs:
 
       - name: Install Node.js dependencies
         run: |
-          npm install playwright
+          npm install
           npx playwright install chromium
 
       - name: Set file permissions
@@ -47,19 +55,32 @@ jobs:
         env:
           MOTHERDUCK_TOKEN: ${{ secrets.MOTHERDUCK_TOKEN }}
           PYTHONPATH: ${{ github.workspace }}/scripts:${{ github.workspace }}
-          # Configurações do Sienge (se necessário)
-          RELATORIO_LOGIN_URL: ${{ secrets.RELATORIO_LOGIN_URL }}
+          LOGIN_URL: ${{ secrets.RELATORIO_LOGIN_URL }}
           RELATORIO_URL: ${{ secrets.RELATORIO_URL }}
           RELATORIO_USERNAME: ${{ secrets.RELATORIO_USERNAME }}
           RELATORIO_PASSWORD: ${{ secrets.RELATORIO_PASSWORD }}
+          START_DATE_BR: "01/01/2020"
+          HEAVY_WAIT_MS: "30000"
+          HEADLESS: "true"
         run: |
           echo "🌐 Iniciando webscraping Sienge do MotherDuck (diário)..."
           python -u scripts/sienge_webscraping_completo.py
-      
+
+      - name: Upload artifacts (debug & downloads)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sienge-debug-${{ github.run_id }}
+          path: |
+            downloads_tmp/**
+            **/debug_*.png
+            **/*.log
+          if-no-files-found: warn
+
       - name: Notify success
         if: success()
         run: echo "✅ Sienge webscraping database updated successfully at $(date)"
-      
+
       - name: Notify failure
         if: failure()
         run: echo "❌ Sienge webscraping database update failed at $(date)"

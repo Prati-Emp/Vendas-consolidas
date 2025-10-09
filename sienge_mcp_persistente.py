@@ -53,6 +53,35 @@ const {{ chromium }} = playwright;
 const path = require('path');
 const fs = require('fs');
 
+async function findInAllFrames(page, locatorFactory) {{
+  try {{
+    const rootResult = await locatorFactory(page);
+    if (rootResult) {{
+      console.log('🔎 Elemento localizado no contexto principal:', typeof page.url === 'function' ? page.url() : 'page');
+      return rootResult;
+    }}
+  }} catch (err) {{}}
+
+  const frames = page.frames ? page.frames().filter(f => f !== page.mainFrame?.()) : [];
+  if (frames.length) {{
+    console.log('🧩 Frames detectados:', frames.map(f => {{ try {{ return f.url(); }} catch {{ return '[sem URL]'; }} }}).slice(0, 10));
+  }}
+
+  for (const frame of frames) {{
+    try {{
+      const result = await locatorFactory(frame);
+      if (result) {{
+        let frameUrl = '[frame sem URL]';
+        try {{ frameUrl = frame.url(); }} catch {{}}
+        console.log('🔎 Elemento localizado no frame:', frameUrl);
+        return result;
+      }}
+    }} catch (err) {{}}
+  }}
+
+  return null;
+}}
+
 async function automacaoCompletaSienge() {{
   console.log('🚀 Iniciando automação completa com MCP...');
 
@@ -111,6 +140,22 @@ async function automacaoCompletaSienge() {{
     await page.reload({{ waitUntil: 'networkidle', timeout: 120000 }});
     await page.waitForTimeout(isCI ? 6000 : 4000);
 
+    console.log('🔎 Checando render do relatório...');
+    const anchorFound = await Promise.race([
+      page.getByText(/Relação de pedidos/i).waitFor({ timeout: 12000 }).then(() => true).catch(() => false),
+      page.getByRole('button', { name: /CONSULTAR/i }).waitFor({ timeout: 12000 }).then(() => true).catch(() => false)
+    ]);
+
+    if (!anchorFound) {
+      const frameCandidates = page.frames ? page.frames().filter(f => /sienge/i.test((() => { try { return f.url(); } catch { return ''; } })())) : [];
+      if (frameCandidates.length) {
+        console.log('🎯 Focando frame Sienge:', frameCandidates[0].url());
+      } else {
+        console.log('⚠️ Anchor do relatório não encontrada; salvando evidência.');
+        await page.screenshot({ path: 'debug_sem_anchor.png', fullPage: true });
+      }
+    }
+
     // ========= Detecta se está em tela de login =========
     const isLoginPage = await page.evaluate(() => {{
       const url = location.href;
@@ -155,64 +200,66 @@ async function automacaoCompletaSienge() {{
     const WAIT_HEAVY = parseInt(process.env.HEAVY_WAIT_MS || '20000', 10); // 20s padrão
 
     console.log('🗓️ Preenchendo datas...');
-    const candidatosDataInicial = [
-      page.getByRole('textbox', {{ name: /Data inicial\*/i }}),
-      page.locator('input[name*="dataInicial" i]'),
-      page.locator('input[placeholder*="Data inicial" i]')
-    ];
-    let dataInicialField = null;
-    for (const locator of candidatosDataInicial) {{
-      try {{
-        const candidate = locator.first();
-        await candidate.waitFor({{ timeout: 7000 }});
-        if (await candidate.count()) {{
-          dataInicialField = candidate;
-          break;
-        }}
-      }} catch (err) {{
-        continue;
-      }}
-    }}
+    const dataInicialHandle = await findInAllFrames(page, async (ctx) => {
+      const candidates = [
+        ctx.getByRole ? ctx.getByRole('textbox', { name: /Data inicial\*/i }) : null,
+        ctx.locator ? ctx.locator('input[name*="dataInicial" i]') : null,
+        ctx.locator ? ctx.locator('input[placeholder*="Data inicial" i]') : null,
+        ctx.locator ? ctx.locator('label:has-text("Data inicial")').locator('..').locator('input') : null
+      ].filter(Boolean);
 
-    if (!dataInicialField || !(await dataInicialField.count())) {{
-      console.log('❌ Campo "Data inicial" não encontrado após tentativas');
-      await page.screenshot({{ path: 'debug_erro_data_inicial.png', fullPage: true }});
+      for (const locator of candidates) {
+        try {
+          const first = locator.first();
+          await first.waitFor({ timeout: 8000 });
+          if (await first.count()) {
+            return { handle: ctx, locator: first };
+          }
+        } catch (err) {}
+      }
+      return null;
+    });
+
+    if (!dataInicialHandle || !(await dataInicialHandle.locator.count())) {
+      console.log('❌ Campo "Data inicial" não encontrado (frames incluidos)');
+      await page.screenshot({ path: 'debug_erro_data_inicial.png', fullPage: true });
       throw new Error('Campo "Data inicial" não encontrado');
-    }}
+    }
 
-    await dataInicialField.click({{ force: true }});
-    await dataInicialField.press('Control+A').catch(() => {{}});
-    await dataInicialField.type(START, {{ delay: 20 }});
+    await dataInicialHandle.locator.click({ force: true });
+    await dataInicialHandle.locator.press('Control+A').catch(() => {});
+    await dataInicialHandle.locator.type(START, { delay: 15 });
 
     const hojePtBr = new Date().toLocaleDateString('pt-BR');
-    const candidatosDataFinal = [
-      page.getByRole('textbox', {{ name: /Data final\*/i }}),
-      page.locator('input[name*="dataFinal" i]'),
-      page.locator('input[placeholder*="Data final" i]')
-    ];
-    let dataFinalField = null;
-    for (const locator of candidatosDataFinal) {{
-      try {{
-        const candidate = locator.first();
-        await candidate.waitFor({{ timeout: 7000 }});
-        if (await candidate.count()) {{
-          dataFinalField = candidate;
-          break;
-        }}
-      }} catch (err) {{
-        continue;
-      }}
-    }}
+    const dataFinalHandle = await findInAllFrames(page, async (ctx) => {
+      const candidates = [
+        ctx.getByRole ? ctx.getByRole('textbox', { name: /Data final\*/i }) : null,
+        ctx.locator ? ctx.locator('input[name*="dataFinal" i]') : null,
+        ctx.locator ? ctx.locator('input[placeholder*="Data final" i]') : null,
+        ctx.locator ? ctx.locator('label:has-text("Data final")').locator('..').locator('input') : null
+      ].filter(Boolean);
 
-    if (!dataFinalField || !(await dataFinalField.count())) {{
-      console.log('❌ Campo "Data final" não encontrado após tentativas');
-      await page.screenshot({{ path: 'debug_erro_data_final.png', fullPage: true }});
+      for (const locator of candidates) {
+        try {
+          const first = locator.first();
+          await first.waitFor({ timeout: 8000 });
+          if (await first.count()) {
+            return { handle: ctx, locator: first };
+          }
+        } catch (err) {}
+      }
+      return null;
+    });
+
+    if (!dataFinalHandle || !(await dataFinalHandle.locator.count())) {
+      console.log('❌ Campo "Data final" não encontrado (frames incluidos)');
+      await page.screenshot({ path: 'debug_erro_data_final.png', fullPage: true });
       throw new Error('Campo "Data final" não encontrado');
-    }}
+    }
 
-    await dataFinalField.click({{ force: true }});
-    await dataFinalField.press('Control+A').catch(() => {{}});
-    await dataFinalField.type(hojePtBr, {{ delay: 20 }});
+    await dataFinalHandle.locator.click({ force: true });
+    await dataFinalHandle.locator.press('Control+A').catch(() => {});
+    await dataFinalHandle.locator.type(hojePtBr, { delay: 15 });
 
     // ========= NOVO: CONSULTAR =========
     console.log('🔎 Consultando...');
