@@ -23,8 +23,9 @@ load_dotenv(env_path)
 
 # Fallback: definir token diretamente se não foi carregado do .env
 if not os.getenv('MOTHERDUCK_TOKEN') and not os.getenv('Token_MD'):
-    # Token do MotherDuck (fallback direto)
-    os.environ['MOTHERDUCK_TOKEN'] = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6InByYXRpcHJvamV0b3NAZ21haWwuY29tIiwic2Vzc2lvbiI6InByYXRpcHJvamV0b3MuZ21haWwuY29tIiwicGF0IjoiZXVWQ1RUMjh2NURGaEFpT3ZKX2NveU5jcG1yNlNzX2lielRRM1pZbkdmZyIsInVzZXJJZCI6ImFkZThmZGM0LTc1MDktNGU4Ny1hZTcwLTMwZGVkMTQ4Y2RlOSIsImlzcyI6Im1kX3BhdCIsInJlYWRPbmx5IjpmYWxzZSwidG9rZW5UeXBlIjoicmVhZF93cml0ZSIsImlhdCI6MTc1OTE2NTk4N30.GDtQ_o06Xz0jkRrXTs0mSXR94F3C3b80zcaEg683LbE'
+    # Token do MotherDuck (fallback direto) - REMOVIDO POR SEGURANÇA
+    # Configure MOTHERDUCK_TOKEN no arquivo .env ou secrets.toml
+    pass
 
 class MotherDuckConnection:
     """Classe para gerenciar conexões com MotherDuck."""

@@ -1,73 +1,35 @@
-# Arquivos de configuração sensíveis
+# Arquivos de ambiente e secrets
 .env
-.env.local
-.env.production
+*.env
+secrets.toml
+motherduck_config.env
 
-# Cache Python
+# Arquivos de configuração sensíveis
+config_*.env
+*_config.env
+
+# Logs
+*.log
+
+# Cache
 __pycache__/
-*.py[cod]
-*$py.class
-*.so
-
-# Distribuição / empacotamento
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-
-# Ambientes virtuais
-venv/
-env/
-ENV/
-env.bak/
-venv.bak/
+*.pyc
+*.pyo
 
 # IDEs
 .vscode/
 .idea/
-*.swp
-*.swo
-*~
 
-# Logs
-*.log
-logs/
-
-# Arquivos temporários
-*.tmp
-*.temp
+# OS
 .DS_Store
 Thumbs.db
 
-# Arquivos de configuração local
-mcp_config.json
-config_local.py
+# Node modules
+node_modules/
 
-# Arquivos de teste e desenvolvimento
-test_*.py
-*_test.py
-teste_*.py
-*_teste.py
+# Chrome profiles
+chrome_profile_*/
 
-# Arquivos de backup
-*.bak
-*.backup
-*~
-
-# Arquivos específicos do projeto
-upload_vendas.log
-diagnostico_*.py
-validacao_*.py
-verificar_*.py
+# Backup files
+*_backup/
+backup_*/
