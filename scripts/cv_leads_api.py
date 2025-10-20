@@ -142,9 +142,20 @@ class CVLeadsAPIClient:
                             "nome_situacao_anterior_lead": item.get("nome_situacao_anterior_lead"),
                             "gestor": item.get("gestor"),
                             "empreendimento_ultimo": item.get("empreendimento_ultimo"),
+                            "empreendimento_primeiro": item.get("empreendimento_primeiro"),
                             "referencia_data": item.get("referencia_data"),
                             "data_reativacao": item.get("data_reativacao"),
                             "corretor": item.get("corretor"),
+                            "midia_original": item.get("midia_original"),
+                            "motivo_cancelamento": item.get("motivo_cancelamento"),
+                            "data_cancelamento": item.get("data_cancelamento"),
+                            "ultima_data_conversao": item.get("ultima_data_conversao"),
+                            "descricao_motivo_cancelamento": item.get("descricao_motivo_cancelamento"),
+                            "possibilidade_venda": item.get("possibilidade_venda"),
+                            "score": item.get("score"),
+                            "novo": item.get("novo"),
+                            "retorno": item.get("retorno"),
+                            "data_ultima_alteracao": item.get("data_ultima_alteracao"),
                             "campos_adicionais_idcampo": idcampo_values,
                             "campos_adicionais_nome": nome_values,
                             "campos_adicionais_valor": valor_values,
@@ -199,6 +210,15 @@ def processar_dados_cv_leads(dados: List[Dict[str, Any]]) -> pd.DataFrame:
     if 'data_reativacao' in df.columns:
         df['data_reativacao'] = pd.to_datetime(df['data_reativacao'], errors='coerce')
     
+    # Tratar campos de data adicionais
+    for col_data in [
+        'data_cancelamento',
+        'ultima_data_conversao',
+        'data_ultima_alteracao'
+    ]:
+        if col_data in df.columns:
+            df[col_data] = pd.to_datetime(df[col_data], errors='coerce')
+
     # Adicionar coluna de fonte
     df['fonte'] = 'cv_leads'
     
