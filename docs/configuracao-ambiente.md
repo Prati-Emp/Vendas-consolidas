@@ -12,22 +12,22 @@ O arquivo `.env` contém as **credenciais reais** do sistema e **NUNCA** deve se
 
 ### 📋 Estrutura do Arquivo .env
 
-O arquivo `.env` já existe e contém as credenciais reais:
+O arquivo `.env` deve conter as credenciais reais (exemplo abaixo):
 
 ```env
 # CVCRM - Sistema Principal
-CVCRM_EMAIL=email_real@prati.com.br
-CVCRM_TOKEN=token_real_cvcrm
+CVCRM_EMAIL=seu_email@exemplo.com
+CVCRM_TOKEN=seu_token_cvcrm
 
 # Sienge - Sistema Imobiliário  
-SIENGE_TOKEN=token_real_sienge
+SIENGE_TOKEN=seu_token_sienge
 
 # MotherDuck - Banco de Dados
-MOTHERDUCK_TOKEN=token_real_motherduck
+MOTHERDUCK_TOKEN=seu_token_motherduck
 
 # URLs das APIs (opcional)
-CV_VENDAS_BASE_URL=https://prati.cvcrm.com.br/api/v1/cvdw/vendas
-SIENGE_BASE_URL=https://api.sienge.com.br/pratiemp/public/api/bulk-data/v1
+CV_VENDAS_BASE_URL=https://exemplo.cvcrm.com.br/api/v1/cvdw/vendas
+SIENGE_BASE_URL=https://api.sienge.com.br/exemplo/public/api/bulk-data/v1
 
 # Flags de controle
 SIENGE_SKIP_CANCELADAS=false

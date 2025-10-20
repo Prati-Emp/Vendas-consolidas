@@ -8,6 +8,9 @@ motherduck_config.env
 config_*.env
 *_config.env
 
+# Documentação com informações sensíveis
+docs/configuracao-ambiente.md
+
 # Logs
 *.log
 
