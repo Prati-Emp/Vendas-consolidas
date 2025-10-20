@@ -55,6 +55,7 @@ params = {
   "referencia_data": "YYYY-MM-DD",
   "data_reativacao": "YYYY-MM-DD",
   "corretor": "string",
+  "tags": "string (valores separados por vírgula)",
   "midia_original": "string",
   "motivo_cancelamento": "string",
   "data_cancelamento": "YYYY-MM-DD",
@@ -175,6 +176,10 @@ CREATE TABLE main.cv_leads (
     referencia_data TIMESTAMP,
     data_reativacao TIMESTAMP,
     corretor VARCHAR,
+    tags VARCHAR, -- coluna original
+    tag1 VARCHAR, -- colunas derivadas dinamicamente
+    tag2 VARCHAR,
+    tagN VARCHAR,
     midia_original VARCHAR,
     motivo_cancelamento VARCHAR,
     data_cancelamento TIMESTAMP,

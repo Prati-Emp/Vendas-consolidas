@@ -146,6 +146,7 @@ class CVLeadsAPIClient:
                             "referencia_data": item.get("referencia_data"),
                             "data_reativacao": item.get("data_reativacao"),
                             "corretor": item.get("corretor"),
+                            "tags": item.get("tags"),
                             "midia_original": item.get("midia_original"),
                             "motivo_cancelamento": item.get("motivo_cancelamento"),
                             "data_cancelamento": item.get("data_cancelamento"),
@@ -259,6 +260,21 @@ def processar_dados_cv_leads(dados: List[Dict[str, Any]]) -> pd.DataFrame:
         
         logger.info(f"Colunas dinâmicas criadas: {[col for col in df.columns if col.startswith('campo_')]}")
     
+    # Processar 'tags' em colunas dinâmicas tag1..tagN
+    if 'tags' in df.columns:
+        logger.info("Processando coluna 'tags' em colunas tag1..tagN")
+        # Garantir string e dividir por vírgula
+        tags_split = df['tags'].fillna('').astype(str).apply(lambda x: [t.strip() for t in x.split(',') if t.strip()])
+        # Descobrir o número máximo de tags
+        max_tags = tags_split.apply(len).max() if not tags_split.empty else 0
+        # Criar colunas tag1..tagN
+        for i in range(1, max_tags + 1):
+            col_name = f"tag{i}"
+            df[col_name] = tags_split.apply(lambda lst, idx=i-1: lst[idx] if len(lst) > idx else None)
+        logger.info(f"Colunas de tags criadas: {[f'tag{i}' for i in range(1, max_tags + 1)]}")
+        # Remover coluna original 'tags' se desejado manter apenas tags normalizadas
+        # df = df.drop(columns=['tags'])
+
     # Processar outros campos expansíveis se existirem
     campos_expansiveis = []  # Removido campos_adicionais pois já foram processados
     for campo in campos_expansiveis:
