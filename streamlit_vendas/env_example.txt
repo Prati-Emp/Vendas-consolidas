@@ -1,0 +1,16 @@
+# Configuração do app Streamlit de vendas
+# Copie este arquivo para .env e preencha com suas credenciais
+
+# MotherDuck - Banco de Dados
+# Use o token do arquivo motherduck_config.env do projeto principal
+MOTHERDUCK_TOKEN=seu_token_motherduck_aqui
+
+# Alternativa: se o projeto usar Token_MD
+# Token_MD=seu_token_motherduck_aqui
+
+# Configurações opcionais do app
+# APP_TITLE=Dashboard de Vendas Consolidadas
+# APP_DESCRIPTION=Sistema de análise de vendas integrado
+# DEFAULT_DATE_RANGE_DAYS=30
+# CACHE_TTL_MINUTES=5
+

@@ -1,0 +1,31 @@
+# Dependências do app Streamlit de vendas
+# Baseado nos padrões do projeto Vendas_Consolidadas
+
+# Core Streamlit
+streamlit>=1.37.0
+
+# Data processing
+pandas>=2.2.0
+numpy>=1.24.0
+
+# Database
+duckdb>=1.0.0
+duckdb-engine>=0.11.0
+
+# Environment
+python-dotenv>=1.0.1
+
+# Visualizations
+plotly>=5.22.0
+
+# Advanced tables
+streamlit-aggrid>=0.3.4
+
+# Additional utilities
+requests>=2.31.0
+babel>=2.14.0
+
+# Optional: Para melhor performance
+# cachetools>=5.3.0
+# python-dateutil>=2.8.0
+

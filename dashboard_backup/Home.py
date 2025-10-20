@@ -7,7 +7,7 @@ def get_logo_path():
     return os.path.join(current_dir, "logo.png")
 
 # Configuração da página
-st.set_page_config(page_title="Relatório de Vendas", layout="wide")
+st.set_page_config(page_title="Relatório de Reservas", layout="wide")
 
 from utils import display_navigation
 # Display navigation bar (includes logo)
@@ -45,12 +45,77 @@ def format_currency(value):
     except:
         return f"R$ {value}"
 
-# Sistema de autenticação removido por questões de segurança
-# Para implementar autenticação segura, use:
-# - Azure Active Directory
-# - AWS Cognito  
-# - Auth0
-# - ou outro provedor de identidade confiável
+# def hide_sidebar():
+#     st.markdown("""
+#     <style>
+#         [data-testid="stSidebar"] {
+#             display: none;
+#         }
+#         .stTextInput > div > div > input {
+#             width: 200px !important;
+#         }
+#         .small-font {
+#             font-size: 14px !important;
+#             font-weight: normal !important;
+#             text-align: center !important;
+#         }
+#         div[data-testid="stImage"] {
+#             display: flex;
+#             justify-content: center;
+#         }
+#         div.stButton > button {
+#             width: 200px;
+#             margin: 0 auto;
+#             display: block;
+#         }
+#         div[data-testid="column"] {
+#             display: flex;
+#             flex-direction: column;
+#             align-items: center;
+#             justify-content: center;
+#         }
+#     </style>
+#     """, unsafe_allow_html=True)
+
+# # Função para verificar senha
+# def check_password():
+#     """Returns `True` if the user had the correct password."""
+    
+#     if "password_correct" not in st.session_state:
+#         # First run, hide sidebar and show password input
+#         hide_sidebar()
+        
+#         col1, col2, col3 = st.columns([1, 1, 1])
+#         with col2:
+#             # Logo centralizada usando arquivo local
+#             st.image(get_logo_path(), width=400)
+#             st.markdown("<br>", unsafe_allow_html=True)
+            
+#             # Campo de senha com label menor e centralizado
+#             st.markdown('<p class="small-font">Por favor, digite a senha para acessar o dashboard:</p>', unsafe_allow_html=True)
+#             password = st.text_input(
+#                 "",
+#                 type="password",
+#                 key="password",
+#                 label_visibility="collapsed"
+#             )
+            
+#             # Botão de entrar
+#             if st.button("Entrar"):
+#                 if password == "prati2025":
+#                     st.session_state["password_correct"] = True
+#                     st.rerun()
+#                 else:
+#                     st.error("😕 Senha incorreta")
+#         return False
+    
+#     return st.session_state.get("password_correct", False)
+
+# # Verifica a senha antes de mostrar qualquer conteúdo
+# if not check_password():
+#     st.stop()  # Não mostra nada além deste ponto se a senha estiver errada
+
+# # Se chegou aqui, a senha está correta
 # Título do aplicativo
 st.title("📊 Relatório De Reservas")
 
@@ -310,23 +375,6 @@ reservas_por_situacao = pd.concat([reservas_por_situacao, totais], ignore_index=
 
 st.table(reservas_por_situacao)
 
-# Funil de Reservas por Situação
-try:
-    import plotly.graph_objects as go
-    funnel_df = reservas_por_situacao[reservas_por_situacao['Situação'] != 'Total']
-    fig = go.Figure(go.Funnel(
-        y=funnel_df['Situação'],
-        x=funnel_df['Quantidade'],
-        textinfo="value+percent initial"
-    ))
-    fig.update_layout(
-        title="Funil de Reservas por Situação",
-        height=500
-    )
-    st.plotly_chart(fig, use_container_width=True)
-except Exception as e:
-    st.warning(f"Não foi possível renderizar o funil: {str(e)}")
-
 st.divider()
 
 # Reservas por Empreendimento
@@ -375,4 +423,88 @@ reservas_por_empreendimento = pd.concat([reservas_por_empreendimento, totais_emp
 
 st.table(reservas_por_empreendimento)
 
-# Página Home simplificada - apenas os quadros principais
+st.divider()
+
+# Tabela detalhada
+st.subheader("Lista De Reservas")
+
+# Calcular o tempo na situação atual
+df_sem_canceladas_vendidas['tempo_na_situacao'] = (datetime.now() - pd.to_datetime(df_sem_canceladas_vendidas['data_ultima_alteracao_situacao'])).dt.days
+
+# Verificar quais reservas estão fora do prazo
+df_sem_canceladas_vendidas['fora_do_prazo'] = df_sem_canceladas_vendidas.apply(check_time_limit, axis=1)
+
+# Função para estilizar o DataFrame
+def highlight_fora_prazo(s):
+    return ['color: red' if df_sem_canceladas_vendidas['fora_do_prazo'].iloc[i] else '' for i in range(len(s))]
+
+# Preparar e exibir o DataFrame com estilo
+colunas_exibir = ['idreserva', 'cliente', 'empreendimento', 'situacao', 
+                'tempo_na_situacao', 'valor_contrato', 'imobiliaria']
+
+# Formatar o valor do contrato antes de exibir
+df_exibir = df_sem_canceladas_vendidas[colunas_exibir].copy()
+df_exibir['valor_contrato'] = df_exibir['valor_contrato'].apply(format_currency)
+
+# Renomear as colunas para title case
+df_exibir.columns = ['Id Reserva', 'Cliente', 'Empreendimento', 'Situação', 
+                   'Tempo Na Situação', 'Valor Contrato', 'Imobiliária']
+
+st.dataframe(
+    df_exibir.style.apply(highlight_fora_prazo, axis=0),
+    use_container_width=True
+)
+
+st.divider()
+
+# Análise de workflow
+st.subheader("Análise De Workflow")
+
+# Definir ordem do funil de vendas
+ordem_situacoes = [
+    'Reserva (7)',
+    'Crédito (CEF) (3)',
+    'Negociação (5)',
+    'Mútuo',
+    'Análise Diretoria',
+    'Contrato - Elaboração',
+    'Contrato - Assinatura',
+   # 'Vendida',
+    # 'Distrato'
+]
+
+# Criar DataFrame com a ordem correta
+workflow_agregado = df_filtrado.groupby('situacao')['idreserva'].count().reset_index()
+workflow_agregado.columns = ['situacao', 'quantidade']
+
+# Criar mapeamento para ordem
+ordem_mapping = {situacao: idx for idx, situacao in enumerate(ordem_situacoes)}
+workflow_agregado['ordem'] = workflow_agregado['situacao'].map(ordem_mapping)
+
+# Remover situações que não estão no mapeamento ou têm quantidade zero
+workflow_agregado = workflow_agregado.dropna(subset=['ordem'])  # Remove situações que não estão no mapeamento
+workflow_agregado = workflow_agregado[workflow_agregado['quantidade'] > 0]  # Remove situações com quantidade zero
+workflow_agregado = workflow_agregado.sort_values('ordem').drop('ordem', axis=1)
+
+# Criar gráfico com plotly express
+import plotly.express as px
+
+fig = px.bar(workflow_agregado, 
+             x='situacao', 
+             y='quantidade',
+             text='quantidade',
+             labels={'situacao': 'Situação', 'quantidade': 'Quantidade'},
+             title='Análise do Funil de Vendas')
+
+fig.update_layout(
+    xaxis_title="Situação",
+    yaxis_title="Quantidade",
+    showlegend=False
+)
+
+st.plotly_chart(fig, use_container_width=True)
+
+# Exibir tabela com os dados
+st.write("Detalhamento por Situação:")
+workflow_agregado.columns = ['Situação', 'Quantidade']
+st.table(workflow_agregado)
