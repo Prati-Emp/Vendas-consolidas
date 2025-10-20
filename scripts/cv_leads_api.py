@@ -143,6 +143,7 @@ class CVLeadsAPIClient:
                             "gestor": item.get("gestor"),
                             "empreendimento_ultimo": item.get("empreendimento_ultimo"),
                             "referencia_data": item.get("referencia_data"),
+                            "data_reativacao": item.get("data_reativacao"),
                             "corretor": item.get("corretor"),
                             "campos_adicionais_idcampo": idcampo_values,
                             "campos_adicionais_nome": nome_values,
@@ -193,6 +194,10 @@ def processar_dados_cv_leads(dados: List[Dict[str, Any]]) -> pd.DataFrame:
     
     if 'referencia_data' in df.columns:
         df['referencia_data'] = pd.to_datetime(df['referencia_data'], errors='coerce')
+    
+    # Nova coluna: data_reativacao
+    if 'data_reativacao' in df.columns:
+        df['data_reativacao'] = pd.to_datetime(df['data_reativacao'], errors='coerce')
     
     # Adicionar coluna de fonte
     df['fonte'] = 'cv_leads'

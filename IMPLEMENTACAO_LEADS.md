@@ -50,6 +50,7 @@ CREATE TABLE main.cv_leads (
     gestor VARCHAR,
     empreendimento_ultimo VARCHAR,
     referencia_data TIMESTAMP,
+    data_reativacao TIMESTAMP,
     corretor VARCHAR,
     campo_[nome_dinamico] VARCHAR,  -- Colunas dinâmicas baseadas nos nomes únicos
     fonte VARCHAR DEFAULT 'cv_leads',

@@ -52,6 +52,7 @@ params = {
   "gestor": "string",
   "empreendimento_ultimo": "string",
   "referencia_data": "YYYY-MM-DD",
+  "data_reativacao": "YYYY-MM-DD",
   "corretor": "string",
   "campo_[nome_dinamico]": "string (valor do campo)"
 }
@@ -160,6 +161,7 @@ CREATE TABLE main.cv_leads (
     gestor VARCHAR,
     empreendimento_ultimo VARCHAR,
     referencia_data TIMESTAMP,
+    data_reativacao TIMESTAMP,
     corretor VARCHAR,
     campo_[nome_dinamico] VARCHAR,  -- Colunas dinâmicas baseadas nos nomes únicos
     fonte VARCHAR DEFAULT 'cv_leads',

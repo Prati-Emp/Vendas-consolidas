@@ -16,7 +16,7 @@ from cv_leads_api import obter_dados_cv_leads
 
 async def test_referencia_data():
     """Testa se os campos referencia_data, corretor e colunas dinâmicas estão sendo capturados"""
-    print("🧪 TESTE: Campos 'referencia_data', 'corretor' e colunas dinâmicas na API CV Leads")
+    print("🧪 TESTE: Campos 'referencia_data', 'data_reativacao', 'corretor' e colunas dinâmicas na API CV Leads")
     print("=" * 60)
     
     try:
@@ -43,7 +43,7 @@ async def test_referencia_data():
         print(f"📊 Colunas disponíveis: {list(df.columns)}")
         
         # Verificar se os campos estão presentes
-        campos_esperados = ['referencia_data', 'corretor']
+        campos_esperados = ['referencia_data', 'data_reativacao', 'corretor']
         campos_encontrados = []
         campos_faltando = []
         
@@ -111,7 +111,7 @@ def main():
         
         if sucesso:
             print("\n🎉 TESTE CONCLUÍDO COM SUCESSO!")
-            print("✅ Os campos 'referencia_data', 'corretor' e colunas dinâmicas estão sendo capturados corretamente")
+            print("✅ Os campos 'referencia_data', 'data_reativacao', 'corretor' e colunas dinâmicas estão sendo capturados corretamente")
         else:
             print("\n❌ TESTE FALHOU!")
             print("⚠️ Verifique a implementação e as credenciais")
