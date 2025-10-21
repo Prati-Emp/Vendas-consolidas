@@ -240,8 +240,8 @@ else:
         .sort_values("Leads", ascending=False)
     )
     total_topo = max(int(por_corretor["Leads"].sum()), 1)
-    por_corretor["%"] = (por_corretor["Leads"] / total_topo * 100).round(1)
-    por_corretor["%"] = por_corretor["%"].astype(str) + "%"
+    por_corretor["% Leads"] = (por_corretor["Leads"] / total_topo * 100).round(1)
+    por_corretor["% Leads"] = por_corretor["% Leads"].astype(str) + "%"
     st.dataframe(por_corretor, use_container_width=True)
 
 st.markdown("---")
