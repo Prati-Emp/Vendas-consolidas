@@ -230,62 +230,60 @@ for col in ["corretor", "midia_original"]:
 
 base_df = filtered_df.copy()
 
-col_a, col_b = st.columns(2)
-
 # Tabela por Corretor (todos os leads filtrados)
-with col_a:
-    st.markdown("**Por Corretor**")
-    if base_df.empty:
-        st.info("Sem leads no topo do funil para o filtro atual.")
-    else:
-        por_corretor = (
-            base_df.groupby("corretor")["idlead"].count().reset_index(name="Leads")
-            .sort_values("Leads", ascending=False)
-        )
-        total_topo = max(int(por_corretor["Leads"].sum()), 1)
-        por_corretor["%"] = (por_corretor["Leads"] / total_topo * 100).round(1)
-        por_corretor["%"] = por_corretor["%"].astype(str) + "%"
-        st.dataframe(por_corretor, use_container_width=True)
+st.markdown("**Por Corretor**")
+if base_df.empty:
+    st.info("Sem leads no topo do funil para o filtro atual.")
+else:
+    por_corretor = (
+        base_df.groupby("corretor")["idlead"].count().reset_index(name="Leads")
+        .sort_values("Leads", ascending=False)
+    )
+    total_topo = max(int(por_corretor["Leads"].sum()), 1)
+    por_corretor["%"] = (por_corretor["Leads"] / total_topo * 100).round(1)
+    por_corretor["%"] = por_corretor["%"].astype(str) + "%"
+    st.dataframe(por_corretor, use_container_width=True)
 
-# Tabela por Mídia (todos os leads filtrados)
-with col_b:
-    st.markdown("**Por Mídia**")
-    if base_df.empty:
-        st.info("Sem leads no topo do funil para o filtro atual.")
-    else:
-        # Contar leads por mídia
-        por_midia = base_df.groupby("midia_original")["idlead"].count().reset_index()
-        por_midia.columns = ["Mídia", "Total Leads"]
+st.markdown("---")
+
+# Tabela por Mídia (todos os leads filtrados) - com mais espaço horizontal
+st.markdown("**Por Mídia**")
+if base_df.empty:
+    st.info("Sem leads no topo do funil para o filtro atual.")
+else:
+    # Contar leads por mídia
+    por_midia = base_df.groupby("midia_original")["idlead"].count().reset_index()
+    por_midia.columns = ["Mídia", "Total Leads"]
+    
+    # Adicionar colunas de situação/etapa
+    for mídia in por_midia["Mídia"]:
+        mask = base_df["midia_original"] == mídia
         
-        # Adicionar colunas de situação/etapa
-        for mídia in por_midia["Mídia"]:
-            mask = base_df["midia_original"] == mídia
-            
-            # Em atendimento
-            em_atendimento = base_df[mask & (base_df["situacao_nome"] == "aguardando atendimento")]["idlead"].count()
-            por_midia.loc[por_midia["Mídia"] == mídia, "Em atendimento"] = em_atendimento
-            
-            # Visita Realizada
-            visita_realizada = base_df[mask & (base_df["funil_etapa"] == "Visita Realizada")]["idlead"].count()
-            por_midia.loc[por_midia["Mídia"] == mídia, "Visita Realizada"] = visita_realizada
-            
-            # Com reserva
-            com_reserva = base_df[mask & (base_df["funil_etapa"] == "Com reserva")]["idlead"].count()
-            por_midia.loc[por_midia["Mídia"] == mídia, "Com reserva"] = com_reserva
-            
-            # Venda realizada
-            venda_realizada = base_df[mask & (base_df["funil_etapa"] == "Venda realizada")]["idlead"].count()
-            por_midia.loc[por_midia["Mídia"] == mídia, "Venda realizada"] = venda_realizada
+        # Em atendimento
+        em_atendimento = base_df[mask & (base_df["situacao_nome"] == "aguardando atendimento")]["idlead"].count()
+        por_midia.loc[por_midia["Mídia"] == mídia, "Em atendimento"] = em_atendimento
         
-        # Calcular percentuais
-        total_topo_m = max(int(por_midia["Total Leads"].sum()), 1)
-        por_midia["% Total"] = (por_midia["Total Leads"] / total_topo_m * 100).round(1)
-        por_midia["% Total"] = por_midia["% Total"].astype(str) + "%"
+        # Visita Realizada
+        visita_realizada = base_df[mask & (base_df["funil_etapa"] == "Visita Realizada")]["idlead"].count()
+        por_midia.loc[por_midia["Mídia"] == mídia, "Visita Realizada"] = visita_realizada
         
-        # Ordenar por total de leads
-        por_midia = por_midia.sort_values("Total Leads", ascending=False)
+        # Com reserva
+        com_reserva = base_df[mask & (base_df["funil_etapa"] == "Com reserva")]["idlead"].count()
+        por_midia.loc[por_midia["Mídia"] == mídia, "Com reserva"] = com_reserva
         
-        st.dataframe(por_midia, use_container_width=True)
+        # Venda realizada
+        venda_realizada = base_df[mask & (base_df["funil_etapa"] == "Venda realizada")]["idlead"].count()
+        por_midia.loc[por_midia["Mídia"] == mídia, "Venda realizada"] = venda_realizada
+    
+    # Calcular percentuais
+    total_topo_m = max(int(por_midia["Total Leads"].sum()), 1)
+    por_midia["% Total"] = (por_midia["Total Leads"] / total_topo_m * 100).round(1)
+    por_midia["% Total"] = por_midia["% Total"].astype(str) + "%"
+    
+    # Ordenar por total de leads
+    por_midia = por_midia.sort_values("Total Leads", ascending=False)
+    
+    st.dataframe(por_midia, use_container_width=True)
 
 st.markdown("---")
 st.subheader("Leads detalhados")
