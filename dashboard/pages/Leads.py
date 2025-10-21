@@ -231,7 +231,11 @@ for col in ["corretor_consolidado", "midia_consolidada"]:
 base_df = filtered_df.copy()
 
 # Tabela por Corretor (todos os leads filtrados)
-st.markdown("**Por Corretor**")
+col1, col2 = st.columns([1, 0.1])
+with col1:
+    st.markdown("**Por Corretor**")
+with col2:
+    st.markdown("?", help="Coluna corretor: Consolida corretor + corretor_ultimo")
 
 if base_df.empty:
     st.info("Sem leads no topo do funil para o filtro atual.")
@@ -246,17 +250,16 @@ else:
     por_corretor["% Leads"] = (por_corretor["Leads"] / total_topo * 100).round(1)
     por_corretor["% Leads"] = por_corretor["% Leads"].astype(str) + "%"
     
-    # Adicionar tooltip ao lado direito da tabela
-    col1, col2 = st.columns([0.95, 0.05])
-    with col1:
-        st.dataframe(por_corretor, use_container_width=True)
-    with col2:
-        st.markdown("ℹ️", help="Coluna corretor: Consolida corretor + corretor_ultimo")
+    st.dataframe(por_corretor, use_container_width=True)
 
 st.markdown("---")
 
 # Tabela por Mídia (todos os leads filtrados) - com mais espaço horizontal
-st.markdown("**Por Mídia**")
+col1, col2 = st.columns([1, 0.1])
+with col1:
+    st.markdown("**Por Mídia**")
+with col2:
+    st.markdown("?", help="Coluna Mídia: Baseada na última movimentação de mídia registrada")
 
 if base_df.empty:
     st.info("Sem leads no topo do funil para o filtro atual.")
@@ -305,12 +308,7 @@ else:
     # Adicionar tooltip explicativo
     st.markdown("💡 **Dica**: A primeira coluna (índice) ordena automaticamente pela taxa de conversão do maior para o menor.")
     
-    # Adicionar tooltip ao lado direito da tabela
-    col1, col2 = st.columns([0.95, 0.05])
-    with col1:
-        st.dataframe(por_midia_display, use_container_width=True)
-    with col2:
-        st.markdown("ℹ️", help="Coluna Mídia: Baseada na última movimentação de mídia registrada")
+    st.dataframe(por_midia_display, use_container_width=True)
 
 st.markdown("---")
 st.subheader("Leads detalhados")
