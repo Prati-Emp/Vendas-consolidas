@@ -421,10 +421,10 @@ col_total, col1, col2, col3, col4 = st.columns(5)
 
 tooltip_texts_ativos = {
     "Total de leads ativos": "Soma de todas as situações ativas (exclui descartados, em pré-cadastro, venda realizada e vencido).",
-    "Leads": "Total de leads na etapa inicial (excluindo descartados, em pré-cadastro e venda realizada).",
-    "Em atendimento": "Leads nas situações relacionadas a atendimento (excluindo descartados, em pré-cadastro e venda realizada).",
-    "Visita Realizada": "Leads que realizaram visita (excluindo descartados, em pré-cadastro e venda realizada).",
-    "Com reserva": "Leads com reserva confirmada (excluindo descartados, em pré-cadastro e venda realizada)."
+    "Leads": "Total de leads na etapa inicial (excluindo descartados, em pré-cadastro, venda realizada e vencido).",
+    "Em atendimento": "Leads nas situações relacionadas a atendimento (excluindo descartados, em pré-cadastro, venda realizada e vencido).",
+    "Visita Realizada": "Leads que realizaram visita (excluindo descartados, em pré-cadastro, venda realizada e vencido).",
+    "Com reserva": "Leads com reserva confirmada (excluindo descartados, em pré-cadastro, venda realizada e vencido)."
 }
 
 col_total.metric(label="Total de leads ativos", value=total_ativos, help=tooltip_texts_ativos['Total de leads ativos'])
