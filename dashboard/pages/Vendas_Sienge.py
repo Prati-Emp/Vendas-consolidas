@@ -13,6 +13,12 @@ import sys
 from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
 
+# Importar sistema de autenticação
+from auth import require_auth
+
+# Proteger com autenticação
+require_auth()
+
 # Importar utilitários locais
 from utils.md_conn import (
     get_md_connection, 

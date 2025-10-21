@@ -4,6 +4,17 @@ import pandas as pd
 import plotly.graph_objects as go
 from datetime import datetime
 import os
+import sys
+from pathlib import Path
+
+# Adicionar o diretório pai ao path para importar auth
+sys.path.append(str(Path(__file__).parent.parent))
+
+# Importar sistema de autenticação
+from auth import require_auth
+
+# Proteger com autenticação
+require_auth()
 
 from utils import display_navigation
 
