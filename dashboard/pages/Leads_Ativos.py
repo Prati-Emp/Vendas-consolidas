@@ -82,8 +82,8 @@ if selected_imobiliaria != "Todas":
 if selected_empreendimento != "Todos":
     filtered_df = filtered_df[filtered_df['empreendimento_ultimo'] == selected_empreendimento]
 
-# Exclude converted leads: Descartado, Em Pré-Cadastro, Venda realizada
-exclude_situations = ['descartado', 'em pré-cadastro', 'venda realizada']
+# Exclude converted leads: Descartado, Em Pré-Cadastro, Venda realizada, Vencido
+exclude_situations = ['descartado', 'em pré-cadastro', 'venda realizada', 'vencido']
 filtered_df = filtered_df[~filtered_df['situacao_nome'].str.lower().str.strip().isin(exclude_situations)]
 
 # Mapeamento do funil baseado na tabela "de" (situação atual) -> "para" (etapa), com especial para "descartado" usando anterior
@@ -154,7 +154,7 @@ total_ativos = int(filtered_df.shape[0])
 col_total, col1, col2, col3, col4 = st.columns(5)
 
 tooltip_texts = {
-    "Total de leads ativos": "Soma de todas as situações ativas (exclui descartados, em pré-cadastro e venda realizada).",
+    "Total de leads ativos": "Soma de todas as situações ativas (exclui descartados, em pré-cadastro, venda realizada e vencido).",
     "Leads": "Total de leads na etapa inicial (excluindo descartados, em pré-cadastro e venda realizada).",
     "Em atendimento": "Leads nas situações relacionadas a atendimento (excluindo descartados, em pré-cadastro e venda realizada).",
     "Visita Realizada": "Leads que realizaram visita (excluindo descartados, em pré-cadastro e venda realizada).",
