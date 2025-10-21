@@ -242,6 +242,9 @@ else:
     )
     # Renomear coluna para "corretor"
     por_corretor = por_corretor.rename(columns={"corretor_consolidado": "corretor"})
+    
+    # Ocultar informações do corretor "Odair Dias dos Santos"
+    por_corretor = por_corretor[por_corretor["corretor"] != "ODAIR DIAS DOS SANTOS"]
     total_topo = max(int(por_corretor["Leads"].sum()), 1)
     por_corretor["% Leads"] = (por_corretor["Leads"] / total_topo * 100).round(1)
     por_corretor["% Leads"] = por_corretor["% Leads"].astype(str) + "%"
