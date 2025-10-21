@@ -87,7 +87,7 @@ if 'midia_consolidada' in leads_df.columns:
     midias = sorted(leads_periodo.get('midia_consolidada', pd.Series(dtype=str)).dropna().unique())
 else:
     midias = []
-selected_midias = st.sidebar.multiselect("Mídia", midias, default=[])
+selected_midias = st.sidebar.multiselect("Mídia", midias, default=[], help="Baseada na última movimentação de mídia registrada")
 
 # Corretor filter (opcional, múltipla escolha) - apenas corretores com leads no período
 if 'corretor_consolidado' in leads_df.columns:
@@ -99,7 +99,7 @@ if 'corretor_consolidado' in leads_df.columns:
     corretores = sorted(leads_periodo.get('corretor_consolidado', pd.Series(dtype=str)).dropna().unique())
 else:
     corretores = []
-selected_corretores = st.sidebar.multiselect("Corretor", corretores, default=[])
+selected_corretores = st.sidebar.multiselect("Corretor", corretores, default=[], help="Consolida corretor + corretor_ultimo")
 
 # Apply filters using data_cad
 filtered_df = leads_df[
@@ -232,7 +232,6 @@ base_df = filtered_df.copy()
 
 # Tabela por Corretor (todos os leads filtrados)
 st.markdown("**Por Corretor**")
-st.info("ℹ️ **Corretor Consolidado**: Informação consolidada das colunas 'corretor' e 'corretor_ultimo'. Se 'corretor' não tiver informação, utiliza 'corretor_ultimo'.")
 if base_df.empty:
     st.info("Sem leads no topo do funil para o filtro atual.")
 else:
@@ -249,7 +248,6 @@ st.markdown("---")
 
 # Tabela por Mídia (todos os leads filtrados) - com mais espaço horizontal
 st.markdown("**Por Mídia**")
-st.info("ℹ️ **Mídia Consolidada**: Baseada na última movimentação de mídia registrada para o lead.")
 if base_df.empty:
     st.info("Sem leads no topo do funil para o filtro atual.")
 else:
