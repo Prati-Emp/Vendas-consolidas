@@ -1,8 +1,8 @@
 import streamlit as st
 import os
 
-# Importar sistema de autenticação
-from auth import require_auth
+# Importar sistema de autenticação avançado
+from advanced_auth import require_auth
 
 # Função para obter o caminho absoluto da logo
 def get_logo_path():

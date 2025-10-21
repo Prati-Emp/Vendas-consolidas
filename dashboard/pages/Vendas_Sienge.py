@@ -13,8 +13,8 @@ import sys
 from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
 
-# Importar sistema de autenticação
-from auth import require_auth
+# Importar sistema de autenticação avançado
+from advanced_auth import require_auth
 
 # Proteger com autenticação
 require_auth()
