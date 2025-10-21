@@ -97,6 +97,8 @@ if 'corretor_consolidado' in leads_df.columns:
         (leads_df['data_cad'].dt.date <= data_fim)
     ]
     corretores = sorted(leads_periodo.get('corretor_consolidado', pd.Series(dtype=str)).dropna().unique())
+    # Remover "ODAIR DIAS DOS SANTOS" do filtro
+    corretores = [c for c in corretores if c != "ODAIR DIAS DOS SANTOS"]
 else:
     corretores = []
 selected_corretores = st.sidebar.multiselect("Corretor", corretores, default=[], help="Consolida corretor + corretor_ultimo")
