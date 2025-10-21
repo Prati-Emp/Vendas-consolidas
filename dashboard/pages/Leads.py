@@ -282,12 +282,16 @@ else:
     
     # Calcular taxa de conversão (Venda realizada / Total Leads)
     por_midia["% Conversão"] = (por_midia["Venda realizada"] / por_midia["Total Leads"] * 100).round(1)
-    por_midia["% Conversão"] = por_midia["% Conversão"].astype(str) + "%"
     
     # Ordenar por total de leads
     por_midia = por_midia.sort_values("Total Leads", ascending=False)
     
-    st.dataframe(por_midia, use_container_width=True)
+    # Formatar colunas de percentual para exibição
+    por_midia_display = por_midia.copy()
+    por_midia_display["% Leads"] = por_midia_display["% Leads"].astype(str) + "%"
+    por_midia_display["% Conversão"] = por_midia_display["% Conversão"].astype(str) + "%"
+    
+    st.dataframe(por_midia_display, use_container_width=True)
 
 st.markdown("---")
 st.subheader("Leads detalhados")
