@@ -56,9 +56,11 @@ params = {
   "data_reativacao": "YYYY-MM-DD",
   "corretor": "string",
   "corretor_ultimo": "string",
+  "corretor_consolidado": "string (corretor + fallback corretor_ultimo)",
   "tags": "string (valores separados por vírgula)",
   "midia_original": "string",
   "midia_ultimo": "string",
+  "midia_consolidada": "string (midia_ultimo + fallback midia_original)",
   "motivo_cancelamento": "string",
   "data_cancelamento": "YYYY-MM-DD",
   "ultima_data_conversao": "YYYY-MM-DD",
@@ -179,12 +181,14 @@ CREATE TABLE main.cv_leads (
     data_reativacao TIMESTAMP,
     corretor VARCHAR,
     corretor_ultimo VARCHAR,
+    corretor_consolidado VARCHAR, -- corretor + fallback corretor_ultimo
     tags VARCHAR, -- coluna original
     tag1 VARCHAR, -- colunas derivadas dinamicamente
     tag2 VARCHAR,
     tagN VARCHAR,
     midia_original VARCHAR,
     midia_ultimo VARCHAR,
+    midia_consolidada VARCHAR, -- midia_ultimo + fallback midia_original
     motivo_cancelamento VARCHAR,
     data_cancelamento TIMESTAMP,
     ultima_data_conversao TIMESTAMP,

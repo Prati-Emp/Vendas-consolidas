@@ -277,6 +277,25 @@ def processar_dados_cv_leads(dados: List[Dict[str, Any]]) -> pd.DataFrame:
         # Remover coluna original 'tags' se desejado manter apenas tags normalizadas
         # df = df.drop(columns=['tags'])
 
+    # Criar colunas consolidadas
+    logger.info("Criando colunas consolidadas...")
+    
+    # corretor_consolidado: corretor ou corretor_ultimo se corretor estiver vazio
+    if 'corretor' in df.columns and 'corretor_ultimo' in df.columns:
+        df['corretor_consolidado'] = df['corretor'].fillna('').astype(str)
+        # Aplicar fallback para corretor_ultimo quando corretor estiver vazio
+        mask_vazio = (df['corretor_consolidado'] == '') | (df['corretor_consolidado'] == 'nan') | (df['corretor_consolidado'].isna())
+        df.loc[mask_vazio, 'corretor_consolidado'] = df.loc[mask_vazio, 'corretor_ultimo'].fillna('')
+        logger.info("Coluna 'corretor_consolidado' criada com fallback para corretor_ultimo")
+    
+    # midia_consolidada: midia_ultimo ou midia_original se midia_ultimo estiver vazio
+    if 'midia_ultimo' in df.columns and 'midia_original' in df.columns:
+        df['midia_consolidada'] = df['midia_ultimo'].fillna('').astype(str)
+        # Aplicar fallback para midia_original quando midia_ultimo estiver vazio
+        mask_vazio = (df['midia_consolidada'] == '') | (df['midia_consolidada'] == 'nan') | (df['midia_consolidada'].isna())
+        df.loc[mask_vazio, 'midia_consolidada'] = df.loc[mask_vazio, 'midia_original'].fillna('')
+        logger.info("Coluna 'midia_consolidada' criada com fallback para midia_original")
+
     # Processar outros campos expansíveis se existirem
     campos_expansiveis = []  # Removido campos_adicionais pois já foram processados
     for campo in campos_expansiveis:
