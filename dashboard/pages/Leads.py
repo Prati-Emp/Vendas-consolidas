@@ -44,8 +44,8 @@ def get_all_leads_duckdb():
         Referencia_data as referencia_data,
         Situacao as situacao_nome,
         Imobiliaria as imobiliaria,
-        COALESCE(NULLIF(TRIM(Corretor), ''), '—') AS corretor,
-        COALESCE(NULLIF(TRIM(Midia_original), ''), '—') AS midia_original,
+        COALESCE(NULLIF(TRIM(Corretor_consolidado), ''), '—') AS corretor_consolidado,
+        COALESCE(NULLIF(TRIM(Midia_consolidada), ''), '—') AS midia_consolidada,
         nome_situacao_anterior_lead,
         gestor,
         empreendimento_ultimo
@@ -77,26 +77,26 @@ data_fim = st.sidebar.date_input("Data Final", value=datetime.now().date())
 empreendimentos = sorted(leads_df['empreendimento_ultimo'].dropna().unique())
 selected_empreendimento = st.sidebar.selectbox("Empreendimento de Interesse", ["Todos"] + list(empreendimentos))
 
-# Mídia filter (baseado em midia_original)
-if 'midia_original' in leads_df.columns:
+# Mídia filter (baseado em midia_consolidada)
+if 'midia_consolidada' in leads_df.columns:
     # Primeiro aplicar filtros de data para obter mídias disponíveis no período
     leads_periodo = leads_df[
         (leads_df['data_cad'].dt.date >= data_inicio) &
         (leads_df['data_cad'].dt.date <= data_fim)
     ]
-    midias = sorted(leads_periodo.get('midia_original', pd.Series(dtype=str)).dropna().unique())
+    midias = sorted(leads_periodo.get('midia_consolidada', pd.Series(dtype=str)).dropna().unique())
 else:
     midias = []
 selected_midias = st.sidebar.multiselect("Mídia", midias, default=[])
 
 # Corretor filter (opcional, múltipla escolha) - apenas corretores com leads no período
-if 'corretor' in leads_df.columns:
+if 'corretor_consolidado' in leads_df.columns:
     # Primeiro aplicar filtros de data para obter corretores disponíveis no período
     leads_periodo = leads_df[
         (leads_df['data_cad'].dt.date >= data_inicio) &
         (leads_df['data_cad'].dt.date <= data_fim)
     ]
-    corretores = sorted(leads_periodo.get('corretor', pd.Series(dtype=str)).dropna().unique())
+    corretores = sorted(leads_periodo.get('corretor_consolidado', pd.Series(dtype=str)).dropna().unique())
 else:
     corretores = []
 selected_corretores = st.sidebar.multiselect("Corretor", corretores, default=[])
@@ -111,12 +111,12 @@ if selected_empreendimento != "Todos":
     filtered_df = filtered_df[filtered_df['empreendimento_ultimo'] == selected_empreendimento]
 
 # Aplicar filtro de mídia, quando houver seleção
-if 'midia_original' in filtered_df.columns and len(selected_midias) > 0:
-    filtered_df = filtered_df[filtered_df['midia_original'].isin(selected_midias)]
+if 'midia_consolidada' in filtered_df.columns and len(selected_midias) > 0:
+    filtered_df = filtered_df[filtered_df['midia_consolidada'].isin(selected_midias)]
 
 # Aplicar filtro de corretor, quando houver seleção
-if 'corretor' in filtered_df.columns and len(selected_corretores) > 0:
-    filtered_df = filtered_df[filtered_df['corretor'].isin(selected_corretores)]
+if 'corretor_consolidado' in filtered_df.columns and len(selected_corretores) > 0:
+    filtered_df = filtered_df[filtered_df['corretor_consolidado'].isin(selected_corretores)]
 
 # Mapeamento do funil baseado na tabela "de" (situação atual) -> "para" (etapa), com especial para "descartado" usando anterior
 mapa_funil = {
@@ -224,7 +224,7 @@ st.markdown("---")
 st.subheader("Análise de Funil — Distribuições por Corretor e Mídia")
 
 # Garantir colunas necessárias
-for col in ["corretor", "midia_original"]:
+for col in ["corretor_consolidado", "midia_consolidada"]:
     if col not in filtered_df.columns:
         filtered_df[col] = '—'
 
@@ -232,11 +232,12 @@ base_df = filtered_df.copy()
 
 # Tabela por Corretor (todos os leads filtrados)
 st.markdown("**Por Corretor**")
+st.info("ℹ️ **Corretor Consolidado**: Informação consolidada das colunas 'corretor' e 'corretor_ultimo'. Se 'corretor' não tiver informação, utiliza 'corretor_ultimo'.")
 if base_df.empty:
     st.info("Sem leads no topo do funil para o filtro atual.")
 else:
     por_corretor = (
-        base_df.groupby("corretor")["idlead"].count().reset_index(name="Leads")
+        base_df.groupby("corretor_consolidado")["idlead"].count().reset_index(name="Leads")
         .sort_values("Leads", ascending=False)
     )
     total_topo = max(int(por_corretor["Leads"].sum()), 1)
@@ -248,16 +249,17 @@ st.markdown("---")
 
 # Tabela por Mídia (todos os leads filtrados) - com mais espaço horizontal
 st.markdown("**Por Mídia**")
+st.info("ℹ️ **Mídia Consolidada**: Baseada na última movimentação de mídia registrada para o lead.")
 if base_df.empty:
     st.info("Sem leads no topo do funil para o filtro atual.")
 else:
     # Contar leads por mídia
-    por_midia = base_df.groupby("midia_original")["idlead"].count().reset_index()
+    por_midia = base_df.groupby("midia_consolidada")["idlead"].count().reset_index()
     por_midia.columns = ["Mídia", "Total Leads"]
     
     # Adicionar colunas de situação/etapa
     for mídia in por_midia["Mídia"]:
-        mask = base_df["midia_original"] == mídia
+        mask = base_df["midia_consolidada"] == mídia
         
         # Em atendimento
         em_atendimento = base_df[mask & (base_df["situacao_nome"] == "aguardando atendimento")]["idlead"].count()
