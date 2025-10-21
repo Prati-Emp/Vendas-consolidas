@@ -40,7 +40,7 @@ def display_navigation():
                 st.switch_page("pages/Vendas_Sienge.py")
         with cols[1]:
             if st.button("Reservas", use_container_width=True):
-                st.switch_page("Home.py")
+                st.switch_page("Reservas.py")
         with cols[2]:
             if st.button("Leads", use_container_width=True):
                 st.switch_page("pages/Leads.py")
