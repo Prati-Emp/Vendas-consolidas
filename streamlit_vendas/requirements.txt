@@ -15,6 +15,9 @@ duckdb-engine>=0.11.0
 # Environment
 python-dotenv>=1.0.1
 
+# Security
+cryptography>=41.0.0
+
 # Visualizations
 plotly>=5.22.0
 

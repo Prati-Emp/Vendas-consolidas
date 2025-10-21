@@ -10,6 +10,9 @@ import plotly.graph_objects as go
 from datetime import datetime, date, timedelta
 from typing import List, Optional
 
+# Importar sistema de autenticação
+from auth import require_auth
+
 # Importar utilitários locais
 from utils.md_conn import (
     get_md_connection, 
@@ -357,6 +360,9 @@ def render_export_section():
 
 def main():
     """Função principal do app."""
+    # Proteger com autenticação
+    require_auth()
+    
     # Inicializar estado da sessão
     initialize_session_state()
     

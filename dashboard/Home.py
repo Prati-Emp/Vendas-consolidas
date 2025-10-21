@@ -1,6 +1,9 @@
 import streamlit as st
 import os
 
+# Importar sistema de autenticação
+from auth import require_auth
+
 # Função para obter o caminho absoluto da logo
 def get_logo_path():
     current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -8,6 +11,9 @@ def get_logo_path():
 
 # Configuração da página
 st.set_page_config(page_title="Relatório de Vendas", layout="wide")
+
+# Proteger com autenticação
+require_auth()
 
 from utils import display_navigation
 # Display navigation bar (includes logo)

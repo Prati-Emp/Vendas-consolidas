@@ -1,16 +1,31 @@
-# Configuração do app Streamlit de vendas
-# Copie este arquivo para .env e preencha com suas credenciais
+# Configuração do Dashboard de Vendas Consolidadas
+# Copie este arquivo para .env e configure suas credenciais
 
-# MotherDuck - Banco de Dados
-# Use o token do arquivo motherduck_config.env do projeto principal
+# ===========================================
+# CONFIGURAÇÃO DE AUTENTICAÇÃO
+# ===========================================
+# Credenciais para acesso ao dashboard
+# IMPORTANTE: Use senhas fortes e mantenha este arquivo seguro!
+DASHBOARD_USER=admin
+DASHBOARD_PASSWORD=vendas2024
+
+# ===========================================
+# CONFIGURAÇÃO DO MOTHERDUCK
+# ===========================================
+# Token de acesso ao MotherDuck (obrigatório)
 MOTHERDUCK_TOKEN=seu_token_motherduck_aqui
 
-# Alternativa: se o projeto usar Token_MD
-# Token_MD=seu_token_motherduck_aqui
+# ===========================================
+# CONFIGURAÇÕES OPCIONAIS
+# ===========================================
+# Timeout da sessão em segundos (padrão: 3600 = 1 hora)
+# SESSION_TIMEOUT=3600
 
-# Configurações opcionais do app
-# APP_TITLE=Dashboard de Vendas Consolidadas
-# APP_DESCRIPTION=Sistema de análise de vendas integrado
-# DEFAULT_DATE_RANGE_DAYS=30
-# CACHE_TTL_MINUTES=5
-
+# ===========================================
+# INSTRUÇÕES DE SEGURANÇA
+# ===========================================
+# 1. NUNCA commite o arquivo .env no Git
+# 2. Use senhas fortes e únicas
+# 3. Mantenha as credenciais em local seguro
+# 4. Para produção, use variáveis de ambiente do servidor
+# 5. Considere usar autenticação OAuth para maior segurança
