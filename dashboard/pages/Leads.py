@@ -278,7 +278,6 @@ else:
     # Calcular percentuais
     total_topo_m = max(int(por_midia["Total Leads"].sum()), 1)
     por_midia["% Leads"] = (por_midia["Total Leads"] / total_topo_m * 100).round(1)
-    por_midia["% Leads"] = por_midia["% Leads"].astype(str) + "%"
     
     # Calcular taxa de conversão (Venda realizada / Total Leads)
     por_midia["% Conversão"] = (por_midia["Venda realizada"] / por_midia["Total Leads"] * 100).round(1)
@@ -289,7 +288,7 @@ else:
     # Formatar colunas de percentual para exibição
     por_midia_display = por_midia.copy()
     por_midia_display["% Leads"] = por_midia_display["% Leads"].astype(str) + "%"
-    por_midia_display["% Conversão"] = por_midia_display["% Conversão"].astype(str) + "%"
+    # Manter % Conversão sem símbolo % para ordenação numérica correta
     
     st.dataframe(por_midia_display, use_container_width=True)
 
