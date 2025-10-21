@@ -10,7 +10,7 @@ def get_logo_path():
     return os.path.join(current_dir, "logo.png")
 
 # Configuração da página
-st.set_page_config(page_title="Relatório de Vendas", layout="wide")
+st.set_page_config(page_title="Relatório de Reservas", layout="wide")
 
 # Proteger com autenticação
 require_auth()
@@ -58,7 +58,7 @@ def format_currency(value):
 # - Auth0
 # - ou outro provedor de identidade confiável
 # Título do aplicativo
-st.title("📊 Relatório De Reservas")
+st.title("📊 Relatório de Reservas")
 
 def extract_days(situacao):
     # Extrai o número entre parênteses da situação
