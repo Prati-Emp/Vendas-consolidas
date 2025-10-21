@@ -231,11 +231,7 @@ for col in ["corretor_consolidado", "midia_consolidada"]:
 base_df = filtered_df.copy()
 
 # Tabela por Corretor (todos os leads filtrados)
-col1, col2 = st.columns([1, 0.1])
-with col1:
-    st.markdown("**Por Corretor**")
-with col2:
-    st.markdown("ℹ️", help="Consolida corretor + corretor_ultimo")
+st.markdown("**Por Corretor**")
 
 if base_df.empty:
     st.info("Sem leads no topo do funil para o filtro atual.")
@@ -244,19 +240,23 @@ else:
         base_df.groupby("corretor_consolidado")["idlead"].count().reset_index(name="Leads")
         .sort_values("Leads", ascending=False)
     )
+    # Renomear coluna para "corretor"
+    por_corretor = por_corretor.rename(columns={"corretor_consolidado": "corretor"})
     total_topo = max(int(por_corretor["Leads"].sum()), 1)
     por_corretor["% Leads"] = (por_corretor["Leads"] / total_topo * 100).round(1)
     por_corretor["% Leads"] = por_corretor["% Leads"].astype(str) + "%"
-    st.dataframe(por_corretor, use_container_width=True)
+    
+    # Adicionar tooltip ao lado direito da tabela
+    col1, col2 = st.columns([0.9, 0.1])
+    with col1:
+        st.dataframe(por_corretor, use_container_width=True)
+    with col2:
+        st.markdown("ℹ️", help="Coluna corretor: Consolida corretor + corretor_ultimo")
 
 st.markdown("---")
 
 # Tabela por Mídia (todos os leads filtrados) - com mais espaço horizontal
-col1, col2 = st.columns([1, 0.1])
-with col1:
-    st.markdown("**Por Mídia**")
-with col2:
-    st.markdown("ℹ️", help="Baseada na última movimentação de mídia registrada")
+st.markdown("**Por Mídia**")
 
 if base_df.empty:
     st.info("Sem leads no topo do funil para o filtro atual.")
@@ -305,7 +305,12 @@ else:
     # Adicionar tooltip explicativo
     st.markdown("💡 **Dica**: A primeira coluna (índice) ordena automaticamente pela taxa de conversão do maior para o menor.")
     
-    st.dataframe(por_midia_display, use_container_width=True)
+    # Adicionar tooltip ao lado direito da tabela
+    col1, col2 = st.columns([0.9, 0.1])
+    with col1:
+        st.dataframe(por_midia_display, use_container_width=True)
+    with col2:
+        st.markdown("ℹ️", help="Coluna Mídia: Baseada na última movimentação de mídia registrada")
 
 st.markdown("---")
 st.subheader("Leads detalhados")
