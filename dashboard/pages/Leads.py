@@ -247,7 +247,7 @@ else:
     por_corretor["% Leads"] = por_corretor["% Leads"].astype(str) + "%"
     
     # Adicionar tooltip ao lado direito da tabela
-    col1, col2 = st.columns([0.9, 0.1])
+    col1, col2 = st.columns([0.95, 0.05])
     with col1:
         st.dataframe(por_corretor, use_container_width=True)
     with col2:
@@ -306,7 +306,7 @@ else:
     st.markdown("💡 **Dica**: A primeira coluna (índice) ordena automaticamente pela taxa de conversão do maior para o menor.")
     
     # Adicionar tooltip ao lado direito da tabela
-    col1, col2 = st.columns([0.9, 0.1])
+    col1, col2 = st.columns([0.95, 0.05])
     with col1:
         st.dataframe(por_midia_display, use_container_width=True)
     with col2:
