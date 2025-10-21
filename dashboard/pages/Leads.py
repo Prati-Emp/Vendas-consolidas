@@ -294,3 +294,146 @@ st.dataframe(
     filtered_df[display_columns].sort_values("data_cad", ascending=False),
     use_container_width=True
 )
+
+# =============================================================================
+# SEÇÃO LEADS ATIVOS (não afetada pelos filtros da página principal)
+# =============================================================================
+st.markdown("---")
+st.markdown("## 📊 Funil de Leads Ativos")
+
+# Carregar dados completos para leads ativos (sem filtros de data)
+def get_leads_ativos_data():
+    con = duckdb.connect(f"md:reservas?token={MOTHERDUCK_TOKEN}")
+    query = """
+    SELECT Idlead as idlead,
+           Data_cad as data_cad,
+           Referencia_data as referencia_data,
+           Situacao as situacao_nome,
+           Imobiliaria as imobiliaria,
+           nome_situacao_anterior_lead,
+           gestor,
+           empreendimento_ultimo
+    FROM cv_leads
+    ORDER BY data_cad DESC
+    """
+    df = con.execute(query).df()
+    con.close()
+    return df
+
+# Sidebar para filtros específicos de Leads Ativos
+st.sidebar.markdown("---")
+st.sidebar.markdown("### Filtros - Leads Ativos")
+
+# Imobiliaria filter para leads ativos
+imobiliarias_ativos = sorted(leads_df['imobiliaria'].dropna().unique())
+selected_imobiliaria_ativos = st.sidebar.selectbox("Imobiliária (Leads Ativos)", ["Todas"] + list(imobiliarias_ativos))
+
+# Empreendimento filter para leads ativos
+empreendimentos_ativos = sorted(leads_df['empreendimento_ultimo'].dropna().unique())
+selected_empreendimento_ativos = st.sidebar.selectbox("Empreendimento (Leads Ativos)", ["Todos"] + list(empreendimentos_ativos))
+
+# Carregar dados para leads ativos
+leads_ativos_df = get_leads_ativos_data()
+
+# Aplicar filtros específicos para leads ativos
+filtered_ativos_df = leads_ativos_df.copy()
+
+if selected_imobiliaria_ativos != "Todas":
+    filtered_ativos_df = filtered_ativos_df[filtered_ativos_df['imobiliaria'] == selected_imobiliaria_ativos]
+
+if selected_empreendimento_ativos != "Todos":
+    filtered_ativos_df = filtered_ativos_df[filtered_ativos_df['empreendimento_ultimo'] == selected_empreendimento_ativos]
+
+# Exclude converted leads: Descartado, Em Pré-Cadastro, Venda realizada, Vencido
+exclude_situations = ['descartado', 'em pré-cadastro', 'venda realizada', 'vencido']
+filtered_ativos_df = filtered_ativos_df[~filtered_ativos_df['situacao_nome'].str.lower().str.strip().isin(exclude_situations)]
+
+# Mapeamento do funil para leads ativos
+mapa_funil_ativos = {
+    "aguardando atendimento": "Leads",
+    "qualificação": "Leads",
+    "descoberta": "Leads",
+    "em atendimento": "Em atendimento",
+    "atendimento futuro": "Em atendimento",
+    "visita agendada": "Em atendimento",
+    "visita realizada": "Visita realizada",
+    "atendimento pos visita": "Visita realizada",
+    "atendimento pós visita": "Visita realizada",
+    "pre cadastro": "Com reserva",
+    "pre cadastro pos visita": "Com reserva",
+    "em pré-cadastro": "Com reserva",
+    "com reserva": "Com reserva",
+    "venda realizada": "Venda realizada"
+}
+
+def get_funil_etapa_ativos(prev_situacao, curr_situacao):
+    # Normalizar entradas
+    if pd.isna(curr_situacao):
+        curr_key = None
+    else:
+        curr_key = str(curr_situacao).strip().lower()
+    
+    # Caso especial: "descartado" sempre usa etapa da situação anterior
+    if curr_key == "descartado":
+        if pd.isna(prev_situacao):
+            return "Leads"
+        prev_key = str(prev_situacao).strip().lower()
+        return mapa_funil_ativos.get(prev_key, "Leads")
+    
+    # Para outras situações, usa mapeamento da atual
+    if curr_key is None:
+        return "Leads"
+    return mapa_funil_ativos.get(curr_key, "Leads")
+
+filtered_ativos_df["funil_etapa"] = filtered_ativos_df.apply(lambda row: get_funil_etapa_ativos(row['nome_situacao_anterior_lead'], row['situacao_nome']), axis=1)
+
+funil_etapas_ativos = [
+    "Leads",
+    "Em atendimento",
+    "Visita realizada",
+    "Com reserva"
+]
+
+etapa_counts_ativos = [filtered_ativos_df[filtered_ativos_df["funil_etapa"] == etapa].shape[0] for etapa in funil_etapas_ativos]
+
+# Calcular tempo ativo (dias desde a data de cadastro até hoje)
+filtered_ativos_df["data_cad"] = pd.to_datetime(filtered_ativos_df["data_cad"], errors="coerce")
+now_ts = pd.Timestamp.now()
+filtered_ativos_df["dias_ativo"] = (now_ts - filtered_ativos_df["data_cad"]).dt.days
+# Formatar como "X dias" para exibição
+filtered_ativos_df["tempo_ativo"] = filtered_ativos_df["dias_ativo"].apply(lambda d: f"{int(d)} dias" if pd.notna(d) else "-")
+
+# Gráfico de funil para leads ativos
+fig_ativos = go.Figure(go.Funnel(
+    y=funil_etapas_ativos,
+    x=etapa_counts_ativos,
+    textinfo="value+percent initial"
+))
+st.plotly_chart(fig_ativos, use_container_width=True)
+
+st.markdown("---")
+# Cartão de total de leads ativos (todas as situações consideradas ativas)
+total_ativos = int(filtered_ativos_df.shape[0])
+col_total, col1, col2, col3, col4 = st.columns(5)
+
+tooltip_texts_ativos = {
+    "Total de leads ativos": "Soma de todas as situações ativas (exclui descartados, em pré-cadastro, venda realizada e vencido).",
+    "Leads": "Total de leads na etapa inicial (excluindo descartados, em pré-cadastro e venda realizada).",
+    "Em atendimento": "Leads nas situações relacionadas a atendimento (excluindo descartados, em pré-cadastro e venda realizada).",
+    "Visita Realizada": "Leads que realizaram visita (excluindo descartados, em pré-cadastro e venda realizada).",
+    "Com reserva": "Leads com reserva confirmada (excluindo descartados, em pré-cadastro e venda realizada)."
+}
+
+col_total.metric(label="Total de leads ativos", value=total_ativos, help=tooltip_texts_ativos['Total de leads ativos'])
+col1.metric(label="Leads", value=etapa_counts_ativos[0], help=tooltip_texts_ativos['Leads'])
+col2.metric(label="Em atendimento", value=etapa_counts_ativos[1], help=tooltip_texts_ativos['Em atendimento'])
+col3.metric(label="Visita Realizada", value=etapa_counts_ativos[2], help=tooltip_texts_ativos['Visita Realizada'])
+col4.metric(label="Com reserva", value=etapa_counts_ativos[3], help=tooltip_texts_ativos['Com reserva'])
+
+st.markdown("---")
+st.subheader("Leads ativos detalhados")
+display_columns_ativos = ["idlead", "situacao_nome", "nome_situacao_anterior_lead", "funil_etapa", "gestor", "imobiliaria", "empreendimento_ultimo", "data_cad", "tempo_ativo"]
+st.dataframe(
+    filtered_ativos_df[display_columns_ativos].sort_values("data_cad", ascending=False),
+    use_container_width=True
+)
