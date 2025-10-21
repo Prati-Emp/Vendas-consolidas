@@ -142,38 +142,37 @@ def get_current_user() -> Optional[Dict]:
 def login_form() -> bool:
     """Exibe formulário de login avançado"""
     st.markdown("""
-    <div style="text-align: center; padding: 2rem; background: linear-gradient(135deg, #1e3a8a 0%, #dc2626 100%); border-radius: 10px; margin-bottom: 2rem;">
-        <h1 style="color: white; margin: 0; font-size: 2.5rem; font-weight: bold;">🔐 Dashboard de Vendas</h1>
-        <h2 style="color: #fbbf24; margin: 0.5rem 0; font-size: 1.8rem; font-weight: 600;">Grupo Prati</h2>
-        <p style="color: #f3f4f6; margin: 0; font-size: 1.1rem;">Acesso restrito a funcionários autorizados</p>
+    <div style="text-align: center; padding: 1.5rem; background: linear-gradient(135deg, #1e3a8a 0%, #dc2626 100%); border-radius: 8px; margin-bottom: 1.5rem;">
+        <h1 style="color: white; margin: 0; font-size: 1.8rem; font-weight: 600;">🔐 Dashboard de Vendas</h1>
+        <p style="color: #f3f4f6; margin: 0.5rem 0 0 0; font-size: 0.95rem;">Grupo Prati - Acesso restrito</p>
     </div>
     """, unsafe_allow_html=True)
     
     with st.form("login_form"):
         st.markdown("""
-        <div style="background-color: #f8fafc; padding: 1.5rem; border-radius: 8px; border-left: 4px solid #dc2626; margin-bottom: 1rem;">
-            <h3 style="color: #1e3a8a; margin: 0 0 1rem 0; font-size: 1.3rem;">🔑 Autenticação</h3>
+        <div style="background-color: #f8fafc; padding: 1rem; border-radius: 6px; border-left: 3px solid #dc2626; margin-bottom: 0.8rem;">
+            <h3 style="color: #1e3a8a; margin: 0; font-size: 1.1rem;">🔑 Autenticação</h3>
         </div>
         """, unsafe_allow_html=True)
         
         email = st.text_input(
-            "📧 Email Corporativo",
+            "📧 Email",
             placeholder="seu.email@grupoprati.com",
-            help="Use seu email corporativo do Grupo Prati"
+            help="Email corporativo"
         )
         
         password = st.text_input(
             "🔒 Senha",
             type="password",
             placeholder="Digite sua senha",
-            help="Senha fornecida pelo administrador"
+            help="Senha de acesso"
         )
         
         col1, col2, col3 = st.columns([1, 1, 1])
         
         with col2:
             submitted = st.form_submit_button(
-                "🚀 Entrar",
+                "Entrar",
                 use_container_width=True,
                 type="primary"
             )
@@ -197,13 +196,13 @@ def login_form() -> bool:
     # Informações de segurança
     st.markdown("---")
     st.markdown("""
-    <div style="background: linear-gradient(135deg, #1e3a8a 0%, #dc2626 100%); padding: 1.5rem; border-radius: 8px; margin-top: 2rem;">
-        <h4 style="color: white; margin: 0 0 1rem 0; font-size: 1.2rem;">🛡️ Informações de Segurança</h4>
-        <ul style="color: #f3f4f6; margin: 0; padding-left: 1.2rem;">
-            <li style="margin-bottom: 0.5rem;">Este dashboard contém dados confidenciais do Grupo Prati</li>
-            <li style="margin-bottom: 0.5rem;">O acesso é restrito a funcionários autorizados</li>
-            <li style="margin-bottom: 0.5rem;">A sessão expira automaticamente após 1 hora</li>
-            <li style="margin-bottom: 0;">Para suporte, procure o responsável pelo desenvolvimento do material</li>
+    <div style="background-color: #f8fafc; padding: 1rem; border-radius: 6px; border-left: 3px solid #1e3a8a; margin-top: 1.5rem;">
+        <h4 style="color: #1e3a8a; margin: 0 0 0.8rem 0; font-size: 1rem;">🛡️ Informações de Segurança</h4>
+        <ul style="color: #4b5563; margin: 0; padding-left: 1rem; font-size: 0.9rem;">
+            <li style="margin-bottom: 0.3rem;">Dados confidenciais do Grupo Prati</li>
+            <li style="margin-bottom: 0.3rem;">Acesso restrito a funcionários autorizados</li>
+            <li style="margin-bottom: 0.3rem;">Sessão expira em 1 hora</li>
+            <li style="margin-bottom: 0;">Para suporte, procure o responsável pelo desenvolvimento</li>
         </ul>
     </div>
     """, unsafe_allow_html=True)
@@ -229,14 +228,12 @@ def require_auth():
         with st.sidebar:
             st.markdown("---")
             st.markdown("""
-            <div style="background: linear-gradient(135deg, #1e3a8a 0%, #dc2626 100%); padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
-                <h3 style="color: white; margin: 0 0 0.5rem 0; font-size: 1.1rem;">👤 Sessão Ativa</h3>
+            <div style="background-color: #f8fafc; padding: 0.8rem; border-radius: 6px; border-left: 3px solid #dc2626; margin-bottom: 0.8rem;">
+                <h3 style="color: #1e3a8a; margin: 0; font-size: 0.95rem;">👤 Sessão Ativa</h3>
             </div>
             """, unsafe_allow_html=True)
-            st.markdown(f"**Usuário:** {user_data['name']}")
-            st.markdown(f"**Email:** {user_data.get('email', 'N/A')}")
-            st.markdown(f"**Função:** {user_data['role'].title()}")
-            st.markdown(f"**Departamento:** {user_data.get('department', 'N/A')}")
+            st.markdown(f"**{user_data['name']}**")
+            st.markdown(f"*{user_data['role'].title()}*")
             
             if st.session_state.login_time:
                 import time
@@ -245,7 +242,7 @@ def require_auth():
                 minutes = remaining // 60
                 seconds = remaining % 60
                 
-                st.markdown(f"**Tempo restante:** {minutes:02d}:{seconds:02d}")
+                st.markdown(f"⏱️ {minutes:02d}:{seconds:02d}")
             
             if st.button("🚪 Sair", use_container_width=True, type="primary"):
                 logout()
