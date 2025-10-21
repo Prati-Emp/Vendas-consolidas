@@ -231,7 +231,12 @@ for col in ["corretor_consolidado", "midia_consolidada"]:
 base_df = filtered_df.copy()
 
 # Tabela por Corretor (todos os leads filtrados)
-st.markdown("**Por Corretor**")
+col1, col2 = st.columns([1, 0.1])
+with col1:
+    st.markdown("**Por Corretor**")
+with col2:
+    st.markdown("ℹ️", help="Consolida corretor + corretor_ultimo")
+
 if base_df.empty:
     st.info("Sem leads no topo do funil para o filtro atual.")
 else:
@@ -247,7 +252,12 @@ else:
 st.markdown("---")
 
 # Tabela por Mídia (todos os leads filtrados) - com mais espaço horizontal
-st.markdown("**Por Mídia**")
+col1, col2 = st.columns([1, 0.1])
+with col1:
+    st.markdown("**Por Mídia**")
+with col2:
+    st.markdown("ℹ️", help="Baseada na última movimentação de mídia registrada")
+
 if base_df.empty:
     st.info("Sem leads no topo do funil para o filtro atual.")
 else:
