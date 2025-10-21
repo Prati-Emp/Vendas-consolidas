@@ -277,8 +277,12 @@ else:
     
     # Calcular percentuais
     total_topo_m = max(int(por_midia["Total Leads"].sum()), 1)
-    por_midia["% Total"] = (por_midia["Total Leads"] / total_topo_m * 100).round(1)
-    por_midia["% Total"] = por_midia["% Total"].astype(str) + "%"
+    por_midia["% Leads"] = (por_midia["Total Leads"] / total_topo_m * 100).round(1)
+    por_midia["% Leads"] = por_midia["% Leads"].astype(str) + "%"
+    
+    # Calcular taxa de conversão (Venda realizada / Total Leads)
+    por_midia["% Conversão"] = (por_midia["Venda realizada"] / por_midia["Total Leads"] * 100).round(1)
+    por_midia["% Conversão"] = por_midia["% Conversão"].astype(str) + "%"
     
     # Ordenar por total de leads
     por_midia = por_midia.sort_values("Total Leads", ascending=False)
