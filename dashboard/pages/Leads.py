@@ -302,7 +302,7 @@ st.markdown("---")
 st.markdown("## 📊 Funil de Leads Ativos")
 
 # Tooltip informativo sobre a seção Leads Ativos
-st.info("ℹ️ **Importante**: Esta seção mostra a foto atual de todos os leads ativos. Os filtros de data da página principal não se aplicam aqui - esta é uma visão independente dos leads ativos no momento.")
+st.info("ℹ️ **Importante**: Esta seção mostra a foto atual de todos os leads ativos. Os filtros de data da página principal não se aplicam aqui.")
 
 # Carregar dados completos para leads ativos (sem filtros de data)
 def get_leads_ativos_data():
