@@ -288,7 +288,7 @@ else:
     # Formatar colunas de percentual para exibição
     por_midia_display = por_midia.copy()
     por_midia_display["% Leads"] = por_midia_display["% Leads"].astype(str) + "%"
-    # Manter % Conversão sem símbolo % para ordenação numérica correta
+    por_midia_display["% Conversão"] = por_midia_display["% Conversão"].astype(str) + "%"
     
     st.dataframe(por_midia_display, use_container_width=True)
 
