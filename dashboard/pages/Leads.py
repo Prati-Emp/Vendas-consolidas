@@ -287,23 +287,8 @@ def render_novo_funil_status():
     
     st.plotly_chart(fig_novo, use_container_width=True)
     
-    # Cards de resumo
-    st.markdown("---")
-    col1, col2, col3, col4, col5 = st.columns(5)
-    
-    tooltip_texts_novo = {
-        "Leads": "Total de leads em todas as situações (mesmo cálculo atual).",
-        "Em atendimento": "Leads com status_em_atendimento = 'sim'.",
-        "Visita realizada": "Leads com status_visita_realizada = 'sim'.",
-        "Com reserva": "Leads com status_reserva = 'sim'.",
-        "Venda realizada": "Leads com status_venda_realizada = 'sim'."
-    }
-    
-    col1.metric(label="Leads", value=total_leads, help=tooltip_texts_novo['Leads'])
-    col2.metric(label="Em atendimento", value=em_atendimento, help=tooltip_texts_novo['Em atendimento'])
-    col3.metric(label="Visita realizada", value=visita_realizada, help=tooltip_texts_novo['Visita realizada'])
-    col4.metric(label="Com reserva", value=com_reserva, help=tooltip_texts_novo['Com reserva'])
-    col5.metric(label="Venda realizada", value=venda_realizada, help=tooltip_texts_novo['Venda realizada'])
+    # Cards de resumo (movidos para ficar lado a lado com funil antigo)
+    # Não renderizar cards aqui, serão renderizados junto com os do funil antigo
 
 # Mostrar informações do período selecionado
 st.info(f"📊 **Período de Análise**: {data_inicio_novo.strftime('%d/%m/%Y')} a {data_fim_novo.strftime('%d/%m/%Y')} | **Total de Leads**: {len(filtered_df_novo):,}")
@@ -322,13 +307,26 @@ tooltip_texts = {
     "Venda realizada": "Leads que resultaram em venda."
 }
 
-col1, col2, col3, col4, col5 = st.columns(5)
+# Cards lado a lado: Funil Antigo | Funil Novo
+st.markdown("### 📊 Comparação de Métricas")
 
+# Funil Antigo (esquerda)
+st.markdown("**Funil Antigo**")
+col1, col2, col3, col4, col5 = st.columns(5)
 col1.metric(label="Leads", value=etapa_counts[0], help=tooltip_texts['Leads'])
 col2.metric(label="Em atendimento", value=etapa_counts[1], help=tooltip_texts['Em atendimento'])
 col3.metric(label="Visita Realizada", value=etapa_counts[2], help=tooltip_texts['Visita Realizada'])
 col4.metric(label="Com reserva", value=etapa_counts[3], help=tooltip_texts['Com reserva'])
 col5.metric(label="Venda realizada", value=etapa_counts[4], help=tooltip_texts['Venda realizada'])
+
+# Funil Novo (direita)
+st.markdown("**Funil Novo**")
+col1, col2, col3, col4, col5 = st.columns(5)
+col1.metric(label="Leads", value=total_leads, help=tooltip_texts_novo['Leads'])
+col2.metric(label="Em atendimento", value=em_atendimento, help=tooltip_texts_novo['Em atendimento'])
+col3.metric(label="Visita realizada", value=visita_realizada, help=tooltip_texts_novo['Visita realizada'])
+col4.metric(label="Com reserva", value=com_reserva, help=tooltip_texts_novo['Com reserva'])
+col5.metric(label="Venda realizada", value=venda_realizada, help=tooltip_texts_novo['Venda realizada'])
 
 # =============================================================================
 # ANÁLISE DE FUNIL - DISTRIBUIÇÕES POR CORRETOR E MÍDIA (FUNIL ANTIGO)
