@@ -220,12 +220,13 @@ col1, col2 = st.columns(2)
 
 with col1:
     # Data inicial travada em 22/10/2025
-    data_inicio_novo = st.date_input(
+    st.date_input(
         "Data Inicial (Novo Funil)", 
         value=datetime(2025, 10, 22).date(),
-        max_value=datetime(2025, 10, 22).date(),
+        disabled=True,
         help="Data inicial travada em 22/10/2025"
     )
+    data_inicio_novo = datetime(2025, 10, 22).date()
 
 with col2:
     # Data final - usuário pode selecionar datas anteriores
