@@ -11,5 +11,5 @@ from advanced_auth import require_auth
 # Proteger com autenticação
 require_auth()
 
-# Redirecionar para a página de Vendas (primeira página)
-st.switch_page("pages/Vendas.py")
+# Redirecionar para a página de Reservas
+st.switch_page("Reservas.py")
