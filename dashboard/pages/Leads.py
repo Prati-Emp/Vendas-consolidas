@@ -119,7 +119,8 @@ data_inicio_novo = st.sidebar.date_input(
     "Data Inicial (Leads Novo)", 
     value=datetime(2025, 10, 22).date(),
     min_value=datetime(2025, 10, 22).date(),
-    help="Data inicial (mínimo: 22/10/2025)"
+    max_value=datetime.now().date(),
+    help="Data inicial (mínimo: 22/10/2025, máximo: hoje)"
 )
 
 data_fim_novo = st.sidebar.date_input(
