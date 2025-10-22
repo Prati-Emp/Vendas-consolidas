@@ -108,6 +108,28 @@ else:
     corretores = []
 selected_corretores = st.sidebar.multiselect("Corretor", corretores, default=[], help="Consolida corretor + corretor_ultimo")
 
+# =============================================================================
+# FILTROS PARA LEADS NOVO (NOVO FUNIL)
+# =============================================================================
+st.sidebar.markdown("---")
+st.sidebar.header("Leads, Novo")
+
+# Filtros de data para o novo funil
+data_inicio_novo = st.sidebar.date_input(
+    "Data Inicial (Leads Novo)", 
+    value=datetime(2025, 10, 22).date(),
+    min_value=datetime(2025, 10, 22).date(),
+    help="Data inicial (mínimo: 22/10/2025)"
+)
+
+data_fim_novo = st.sidebar.date_input(
+    "Data Final (Leads Novo)", 
+    value=datetime.now().date(),
+    min_value=data_inicio_novo,
+    max_value=datetime.now().date(),
+    help="Data final (máximo: hoje)"
+)
+
 # Apply filters using data_consolidada
 filtered_df = leads_df[
     (leads_df['data_consolidada'].dt.date >= data_inicio) &
@@ -214,58 +236,8 @@ st.plotly_chart(fig, use_container_width=True)
 st.markdown("---")
 st.markdown("## 📊 Funil de Leads (Versão Nova)")
 
-# Filtros específicos para o novo funil
-st.markdown("### 📅 Filtros do Novo Funil")
-
-# Opção de análise: período completo ou período específico
-tipo_analise = st.radio(
-    "Tipo de Análise:",
-    ["📊 Período Completo (22/10/2025 até hoje)", "🎯 Período Específico"],
-    help="Escolha entre análise do período completo ou um período específico"
-)
-
-if tipo_analise == "📊 Período Completo (22/10/2025 até hoje)":
-    # Período completo - data inicial fixa, data final = hoje
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.date_input(
-            "Data Inicial", 
-            value=datetime(2025, 10, 22).date(),
-            disabled=True,
-            help="Data inicial fixa em 22/10/2025"
-        )
-        data_inicio_novo = datetime(2025, 10, 22).date()
-    
-    with col2:
-        st.date_input(
-            "Data Final", 
-            value=datetime.now().date(),
-            disabled=True,
-            help="Data final = hoje"
-        )
-        data_fim_novo = datetime.now().date()
-        
-else:
-    # Período específico - usuário escolhe o período
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        data_inicio_novo = st.date_input(
-            "Data Inicial do Período", 
-            value=datetime(2025, 10, 22).date(),
-            min_value=datetime(2025, 10, 22).date(),
-            help="Data inicial (mínimo: 22/10/2025)"
-        )
-    
-    with col2:
-        data_fim_novo = st.date_input(
-            "Data Final do Período", 
-            value=datetime.now().date(),
-            min_value=data_inicio_novo,
-            max_value=datetime.now().date(),
-            help="Data final (máximo: hoje)"
-        )
+# Filtros específicos para o novo funil (movidos para sidebar)
+# Será implementado na sidebar
 
 # Aplicar filtros específicos para o novo funil
 filtered_df_novo = leads_df[
@@ -334,8 +306,7 @@ def render_novo_funil_status():
     col5.metric(label="Venda realizada", value=venda_realizada, help=tooltip_texts_novo['Venda realizada'])
 
 # Mostrar informações do período selecionado
-tipo_analise_texto = "Período Completo" if tipo_analise == "📊 Período Completo (22/10/2025 até hoje)" else "Período Específico"
-st.info(f"📊 **Tipo de Análise**: {tipo_analise_texto} | **Período**: {data_inicio_novo.strftime('%d/%m/%Y')} a {data_fim_novo.strftime('%d/%m/%Y')} | **Total de Leads**: {len(filtered_df_novo):,}")
+st.info(f"📊 **Período de Análise**: {data_inicio_novo.strftime('%d/%m/%Y')} a {data_fim_novo.strftime('%d/%m/%Y')} | **Total de Leads**: {len(filtered_df_novo):,}")
 
 # Renderizar o novo funil
 render_novo_funil_status()
