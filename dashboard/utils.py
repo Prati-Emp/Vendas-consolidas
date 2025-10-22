@@ -54,7 +54,7 @@ def display_navigation():
                 st.switch_page("pages/Leads_Ativos.py")
         with cols[6]:
             if st.button("Vendas Sienge", use_container_width=True):
-                st.switch_page("pages/Vendas_Sienge.py")
+                st.switch_page("pages/Vendas.py")
         
         # Logo in the last column
         with cols[7]:

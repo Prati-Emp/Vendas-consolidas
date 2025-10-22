@@ -12,4 +12,4 @@ from advanced_auth import require_auth
 require_auth()
 
 # Redirecionar para a página de Vendas (primeira página)
-st.switch_page("pages/Vendas_Sienge.py")
+st.switch_page("pages/Vendas.py")

@@ -37,7 +37,7 @@ def display_navigation():
         # Navigation buttons - Nova ordem: Vendas (1º), Reservas (2º), Leads (3º), Motivos fora do prazo (4º)
         with cols[0]:
             if st.button("Vendas", use_container_width=True):
-                st.switch_page("pages/Vendas_Sienge.py")
+                st.switch_page("pages/Vendas.py")
         with cols[1]:
             if st.button("Reservas", use_container_width=True):
                 st.switch_page("Reservas.py")
