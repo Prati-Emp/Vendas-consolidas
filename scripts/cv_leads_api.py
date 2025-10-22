@@ -372,6 +372,24 @@ def processar_dados_cv_leads(dados: List[Dict[str, Any]]) -> pd.DataFrame:
     
     logger.info("Colunas de status criadas com lógica hierárquica aplicada")
 
+    # Criar coluna data_consolidada com fallback
+    logger.info("Criando coluna 'data_consolidada' com fallback...")
+    
+    if 'data_reativacao' in df.columns and 'Data_cad' in df.columns:
+        # Inicializar com data_reativacao
+        df['data_consolidada'] = df['data_reativacao']
+        
+        # Aplicar fallback para Data_cad quando data_reativacao estiver vazio
+        mask_vazio = (df['data_reativacao'].isna()) | (df['data_reativacao'] == '') | (df['data_reativacao'] == 'NaT')
+        df.loc[mask_vazio, 'data_consolidada'] = df.loc[mask_vazio, 'Data_cad']
+        
+        # Converter para datetime se necessário
+        df['data_consolidada'] = pd.to_datetime(df['data_consolidada'], errors='coerce')
+        
+        logger.info("Coluna 'data_consolidada' criada com fallback para Data_cad")
+    else:
+        logger.warning("Colunas 'data_reativacao' ou 'Data_cad' não encontradas para criar data_consolidada")
+
     # Processar outros campos expansíveis se existirem
     campos_expansiveis = []  # Removido campos_adicionais pois já foram processados
     for campo in campos_expansiveis:
