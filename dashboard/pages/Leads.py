@@ -26,7 +26,7 @@ st.session_state['current_page'] = __file__
 
 st.set_page_config(page_title="Leads - Funil de Vendas", page_icon="📊", layout="wide")
 
-st.title("📊 Funil de Leads")
+st.title("📊 Funil de Leads (Versão Antiga)")
 
 # Carregar token do MotherDuck de forma segura
 MOTHERDUCK_TOKEN = st.secrets.get("MOTHERDUCK_TOKEN", os.getenv("MOTHERDUCK_TOKEN", ""))
@@ -211,34 +211,13 @@ st.plotly_chart(fig, use_container_width=True)
 # NOVO FUNIL - VERSÃO COM COLUNAS DE STATUS
 # =============================================================================
 st.markdown("---")
-st.markdown("## 🆕 Funil de Leads - Nova Versão")
+st.markdown("## 📊 Funil de Leads (Versão Nova)")
 
 # Funil baseado nas novas colunas de status
 def render_novo_funil_status():
     # Contar leads por status usando as novas colunas
     total_leads = len(filtered_df)
     
-    # Debug: Verificar valores únicos nas colunas de status
-    st.write("🔍 **Debug - Valores únicos nas colunas de status:**")
-    col1, col2, col3, col4 = st.columns(4)
-    
-    with col1:
-        st.write("**status_em_atendimento:**")
-        st.write(filtered_df['status_em_atendimento'].value_counts().head(10))
-    
-    with col2:
-        st.write("**status_visita_realizada:**")
-        st.write(filtered_df['status_visita_realizada'].value_counts().head(10))
-    
-    with col3:
-        st.write("**status_reserva:**")
-        st.write(filtered_df['status_reserva'].value_counts().head(10))
-    
-    with col4:
-        st.write("**status_venda_realizada:**")
-        st.write(filtered_df['status_venda_realizada'].value_counts().head(10))
-    
-    st.markdown("---")
     
     # Contar por status usando as colunas específicas (buscar por "sim" em qualquer variação)
     em_atendimento = len(filtered_df[filtered_df.get('status_em_atendimento', '').str.lower() == 'sim'])
@@ -259,7 +238,7 @@ def render_novo_funil_status():
     
     # Adicionar título e formatação
     fig_novo.update_layout(
-        title="Funil de Leads - Nova Versão (Baseado em Status)",
+        title="Funil de Leads (Baseado em Status)",
         font=dict(size=12),
         margin=dict(l=0, r=0, t=40, b=0)
     )
