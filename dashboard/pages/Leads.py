@@ -48,7 +48,11 @@ def get_all_leads_duckdb():
         COALESCE(NULLIF(TRIM(Midia_consolidada), ''), '—') AS midia_consolidada,
         nome_situacao_anterior_lead,
         gestor,
-        empreendimento_ultimo
+        empreendimento_ultimo,
+        status_em_atendimento,
+        status_visita_realizada,
+        status_reserva,
+        status_venda_realizada
     FROM cv_leads
     ORDER BY data_cad DESC
     """
@@ -202,6 +206,64 @@ fig = go.Figure(go.Funnel(
     textinfo="value+percent initial"
 ))
 st.plotly_chart(fig, use_container_width=True)
+
+# =============================================================================
+# NOVO FUNIL - VERSÃO COM COLUNAS DE STATUS
+# =============================================================================
+st.markdown("---")
+st.markdown("## 🆕 Funil de Leads - Nova Versão")
+
+# Funil baseado nas novas colunas de status
+def render_novo_funil_status():
+    # Contar leads por status usando as novas colunas
+    total_leads = len(filtered_df)
+    
+    # Contar por status usando as colunas específicas
+    em_atendimento = len(filtered_df[filtered_df.get('status_em_atendimento', '') == 'sim'])
+    visita_realizada = len(filtered_df[filtered_df.get('status_visita_realizada', '') == 'sim'])
+    com_reserva = len(filtered_df[filtered_df.get('status_reserva', '') == 'sim'])
+    venda_realizada = len(filtered_df[filtered_df.get('status_venda_realizada', '') == 'sim'])
+    
+    # Criar dados para o funil
+    funil_etapas_novo = ["Leads", "Em atendimento", "Visita realizada", "Com reserva", "Venda realizada"]
+    etapa_counts_novo = [total_leads, em_atendimento, visita_realizada, com_reserva, venda_realizada]
+    
+    # Criar gráfico de funil
+    fig_novo = go.Figure(go.Funnel(
+        y=funil_etapas_novo,
+        x=etapa_counts_novo,
+        textinfo="value+percent initial"
+    ))
+    
+    # Adicionar título e formatação
+    fig_novo.update_layout(
+        title="Funil de Leads - Nova Versão (Baseado em Status)",
+        font=dict(size=12),
+        margin=dict(l=0, r=0, t=40, b=0)
+    )
+    
+    st.plotly_chart(fig_novo, use_container_width=True)
+    
+    # Cards de resumo
+    st.markdown("---")
+    col1, col2, col3, col4, col5 = st.columns(5)
+    
+    tooltip_texts_novo = {
+        "Leads": "Total de leads em todas as situações (mesmo cálculo atual).",
+        "Em atendimento": "Leads com status_em_atendimento = 'sim'.",
+        "Visita realizada": "Leads com status_visita_realizada = 'sim'.",
+        "Com reserva": "Leads com status_reserva = 'sim'.",
+        "Venda realizada": "Leads com status_venda_realizada = 'sim'."
+    }
+    
+    col1.metric(label="Leads", value=total_leads, help=tooltip_texts_novo['Leads'])
+    col2.metric(label="Em atendimento", value=em_atendimento, help=tooltip_texts_novo['Em atendimento'])
+    col3.metric(label="Visita realizada", value=visita_realizada, help=tooltip_texts_novo['Visita realizada'])
+    col4.metric(label="Com reserva", value=com_reserva, help=tooltip_texts_novo['Com reserva'])
+    col5.metric(label="Venda realizada", value=venda_realizada, help=tooltip_texts_novo['Venda realizada'])
+
+# Renderizar o novo funil
+render_novo_funil_status()
 
 st.markdown("---")
 col1, col2, col3, col4, col5 = st.columns(5)
