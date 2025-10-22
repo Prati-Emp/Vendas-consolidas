@@ -41,6 +41,7 @@ def get_all_leads_duckdb():
     SELECT 
         Idlead as idlead,
         Data_cad as data_cad,
+        data_consolidada,
         Referencia_data as referencia_data,
         Situacao as situacao_nome,
         Imobiliaria as imobiliaria,
@@ -54,7 +55,7 @@ def get_all_leads_duckdb():
         status_reserva,
         status_venda_realizada
     FROM cv_leads
-    ORDER BY data_cad DESC
+    ORDER BY data_consolidada DESC
     """
     df = con.execute(query).df()
     con.close()
@@ -73,7 +74,7 @@ if leads_df.empty:
 # Sidebar for filters
 st.sidebar.header("Filtros")
 
-# Date filters stacked vertically (using data_cad)
+# Date filters stacked vertically (using data_consolidada)
 data_inicio = st.sidebar.date_input("Data Inicial", value=datetime(2022, 4, 13).date())
 data_fim = st.sidebar.date_input("Data Final", value=datetime.now().date())
 
@@ -85,8 +86,8 @@ selected_empreendimento = st.sidebar.selectbox("Empreendimento de Interesse", ["
 if 'midia_consolidada' in leads_df.columns:
     # Primeiro aplicar filtros de data para obter mídias disponíveis no período
     leads_periodo = leads_df[
-        (leads_df['data_cad'].dt.date >= data_inicio) &
-        (leads_df['data_cad'].dt.date <= data_fim)
+        (leads_df['data_consolidada'].dt.date >= data_inicio) &
+        (leads_df['data_consolidada'].dt.date <= data_fim)
     ]
     midias = sorted(leads_periodo.get('midia_consolidada', pd.Series(dtype=str)).dropna().unique())
 else:
@@ -97,8 +98,8 @@ selected_midias = st.sidebar.multiselect("Mídia", midias, default=[], help="Bas
 if 'corretor_consolidado' in leads_df.columns:
     # Primeiro aplicar filtros de data para obter corretores disponíveis no período
     leads_periodo = leads_df[
-        (leads_df['data_cad'].dt.date >= data_inicio) &
-        (leads_df['data_cad'].dt.date <= data_fim)
+        (leads_df['data_consolidada'].dt.date >= data_inicio) &
+        (leads_df['data_consolidada'].dt.date <= data_fim)
     ]
     corretores = sorted(leads_periodo.get('corretor_consolidado', pd.Series(dtype=str)).dropna().unique())
     # Remover "ODAIR DIAS DOS SANTOS" do filtro
@@ -107,10 +108,10 @@ else:
     corretores = []
 selected_corretores = st.sidebar.multiselect("Corretor", corretores, default=[], help="Consolida corretor + corretor_ultimo")
 
-# Apply filters using data_cad
+# Apply filters using data_consolidada
 filtered_df = leads_df[
-    (leads_df['data_cad'].dt.date >= data_inicio) &
-    (leads_df['data_cad'].dt.date <= data_fim)
+    (leads_df['data_consolidada'].dt.date >= data_inicio) &
+    (leads_df['data_consolidada'].dt.date <= data_fim)
 ].copy()
 
 if selected_empreendimento != "Todos":
@@ -372,9 +373,9 @@ else:
 
 st.markdown("---")
 st.subheader("Leads detalhados")
-display_columns = ["idlead", "situacao_nome", "nome_situacao_anterior_lead", "funil_etapa", "gestor", "imobiliaria", "empreendimento_ultimo", "data_cad"]
+display_columns = ["idlead", "situacao_nome", "nome_situacao_anterior_lead", "funil_etapa", "gestor", "imobiliaria", "empreendimento_ultimo", "data_consolidada"]
 st.dataframe(
-    filtered_df[display_columns].sort_values("data_cad", ascending=False),
+    filtered_df[display_columns].sort_values("data_consolidada", ascending=False),
     use_container_width=True
 )
 
@@ -393,6 +394,7 @@ def get_leads_ativos_data():
     query = """
     SELECT Idlead as idlead,
            Data_cad as data_cad,
+           data_consolidada,
            Referencia_data as referencia_data,
            Situacao as situacao_nome,
            Imobiliaria as imobiliaria,
@@ -400,7 +402,7 @@ def get_leads_ativos_data():
            gestor,
            empreendimento_ultimo
     FROM cv_leads
-    ORDER BY data_cad DESC
+    ORDER BY data_consolidada DESC
     """
     df = con.execute(query).df()
     con.close()
@@ -482,10 +484,10 @@ funil_etapas_ativos = [
 
 etapa_counts_ativos = [filtered_ativos_df[filtered_ativos_df["funil_etapa"] == etapa].shape[0] for etapa in funil_etapas_ativos]
 
-# Calcular tempo ativo (dias desde a data de cadastro até hoje)
-filtered_ativos_df["data_cad"] = pd.to_datetime(filtered_ativos_df["data_cad"], errors="coerce")
+# Calcular tempo ativo (dias desde a data consolidada até hoje)
+filtered_ativos_df["data_consolidada"] = pd.to_datetime(filtered_ativos_df["data_consolidada"], errors="coerce")
 now_ts = pd.Timestamp.now()
-filtered_ativos_df["dias_ativo"] = (now_ts - filtered_ativos_df["data_cad"]).dt.days
+filtered_ativos_df["dias_ativo"] = (now_ts - filtered_ativos_df["data_consolidada"]).dt.days
 # Formatar como "X dias" para exibição
 filtered_ativos_df["tempo_ativo"] = filtered_ativos_df["dias_ativo"].apply(lambda d: f"{int(d)} dias" if pd.notna(d) else "-")
 
@@ -518,8 +520,8 @@ col4.metric(label="Com reserva", value=etapa_counts_ativos[3], help=tooltip_text
 
 st.markdown("---")
 st.subheader("Leads ativos detalhados")
-display_columns_ativos = ["idlead", "situacao_nome", "nome_situacao_anterior_lead", "funil_etapa", "gestor", "imobiliaria", "empreendimento_ultimo", "data_cad", "tempo_ativo"]
+display_columns_ativos = ["idlead", "situacao_nome", "nome_situacao_anterior_lead", "funil_etapa", "gestor", "imobiliaria", "empreendimento_ultimo", "data_consolidada", "tempo_ativo"]
 st.dataframe(
-    filtered_ativos_df[display_columns_ativos].sort_values("data_cad", ascending=False),
+    filtered_ativos_df[display_columns_ativos].sort_values("data_consolidada", ascending=False),
     use_container_width=True
 )
