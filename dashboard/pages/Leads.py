@@ -214,17 +214,55 @@ st.plotly_chart(fig, use_container_width=True)
 st.markdown("---")
 st.markdown("## 📊 Funil de Leads (Versão Nova)")
 
+# Filtros específicos para o novo funil
+st.markdown("### 📅 Filtros do Novo Funil")
+col1, col2 = st.columns(2)
+
+with col1:
+    # Data inicial travada em 22/10/2025
+    data_inicio_novo = st.date_input(
+        "Data Inicial (Novo Funil)", 
+        value=datetime(2025, 10, 22).date(),
+        max_value=datetime(2025, 10, 22).date(),
+        help="Data inicial travada em 22/10/2025"
+    )
+
+with col2:
+    # Data final - usuário pode selecionar datas anteriores
+    data_fim_novo = st.date_input(
+        "Data Final (Novo Funil)", 
+        value=datetime(2025, 10, 22).date(),
+        max_value=datetime(2025, 10, 22).date(),
+        help="Selecione a data final para o período de análise"
+    )
+
+# Aplicar filtros específicos para o novo funil
+filtered_df_novo = leads_df[
+    (leads_df['data_consolidada'].dt.date >= data_inicio_novo) &
+    (leads_df['data_consolidada'].dt.date <= data_fim_novo)
+].copy()
+
+# Aplicar outros filtros (empreendimento, mídia, corretor) se selecionados
+if selected_empreendimento != "Todos":
+    filtered_df_novo = filtered_df_novo[filtered_df_novo['empreendimento_ultimo'] == selected_empreendimento]
+
+if selected_midias:
+    filtered_df_novo = filtered_df_novo[filtered_df_novo['midia_consolidada'].isin(selected_midias)]
+
+if selected_corretores:
+    filtered_df_novo = filtered_df_novo[filtered_df_novo['corretor_consolidado'].isin(selected_corretores)]
+
 # Funil baseado nas novas colunas de status
 def render_novo_funil_status():
-    # Contar leads por status usando as novas colunas
-    total_leads = len(filtered_df)
+    # Contar leads por status usando as novas colunas (com filtros específicos)
+    total_leads = len(filtered_df_novo)
     
     
     # Contar por status usando as colunas específicas (buscar por "sim" em qualquer variação)
-    em_atendimento = len(filtered_df[filtered_df.get('status_em_atendimento', '').str.lower() == 'sim'])
-    visita_realizada = len(filtered_df[filtered_df.get('status_visita_realizada', '').str.lower() == 'sim'])
-    com_reserva = len(filtered_df[filtered_df.get('status_reserva', '').str.lower() == 'sim'])
-    venda_realizada = len(filtered_df[filtered_df.get('status_venda_realizada', '').str.lower() == 'sim'])
+    em_atendimento = len(filtered_df_novo[filtered_df_novo.get('status_em_atendimento', '').str.lower() == 'sim'])
+    visita_realizada = len(filtered_df_novo[filtered_df_novo.get('status_visita_realizada', '').str.lower() == 'sim'])
+    com_reserva = len(filtered_df_novo[filtered_df_novo.get('status_reserva', '').str.lower() == 'sim'])
+    venda_realizada = len(filtered_df_novo[filtered_df_novo.get('status_venda_realizada', '').str.lower() == 'sim'])
     
     # Criar dados para o funil
     funil_etapas_novo = ["Leads", "Em atendimento", "Visita realizada", "Com reserva", "Venda realizada"]
@@ -263,6 +301,9 @@ def render_novo_funil_status():
     col3.metric(label="Visita realizada", value=visita_realizada, help=tooltip_texts_novo['Visita realizada'])
     col4.metric(label="Com reserva", value=com_reserva, help=tooltip_texts_novo['Com reserva'])
     col5.metric(label="Venda realizada", value=venda_realizada, help=tooltip_texts_novo['Venda realizada'])
+
+# Mostrar informações do período selecionado
+st.info(f"📊 **Período de Análise**: {data_inicio_novo.strftime('%d/%m/%Y')} a {data_fim_novo.strftime('%d/%m/%Y')} | **Total de Leads**: {len(filtered_df_novo):,}")
 
 # Renderizar o novo funil
 render_novo_funil_status()
