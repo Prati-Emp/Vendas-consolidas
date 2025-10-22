@@ -112,7 +112,7 @@ selected_corretores = st.sidebar.multiselect("Corretor", corretores, default=[],
 # FILTROS PARA LEADS NOVO (NOVO FUNIL)
 # =============================================================================
 st.sidebar.markdown("---")
-st.sidebar.header("Leads, Novo")
+st.sidebar.header("Filtros - Leads Novo")
 
 # Filtros de data para o novo funil
 data_inicio_novo = st.sidebar.date_input(
@@ -330,6 +330,9 @@ col3.metric(label="Visita Realizada", value=etapa_counts[2], help=tooltip_texts[
 col4.metric(label="Com reserva", value=etapa_counts[3], help=tooltip_texts['Com reserva'])
 col5.metric(label="Venda realizada", value=etapa_counts[4], help=tooltip_texts['Venda realizada'])
 
+# =============================================================================
+# ANÁLISE DE FUNIL - DISTRIBUIÇÕES POR CORRETOR E MÍDIA (FUNIL ANTIGO)
+# =============================================================================
 st.markdown("---")
 st.subheader("Análise de Funil — Distribuições por Corretor e Mídia")
 
@@ -423,6 +426,7 @@ st.dataframe(
     filtered_df[display_columns].sort_values("data_consolidada", ascending=False),
     use_container_width=True
 )
+
 
 # =============================================================================
 # SEÇÃO LEADS ATIVOS (não afetada pelos filtros da página principal)
