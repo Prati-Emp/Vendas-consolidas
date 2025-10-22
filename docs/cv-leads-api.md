@@ -61,6 +61,12 @@ params = {
   "midia_original": "string",
   "midia_ultimo": "string",
   "midia_consolidada": "string (midia_ultimo + fallback midia_original)",
+  "status_venda_realizada": "string (Sim/Não baseado em tags)",
+  "status_reserva": "string (Sim/Não baseado em tags)",
+  "status_visita_realizada": "string (Sim/Não baseado em tags)",
+  "status_em_atendimento": "string (Sim/Não baseado em tags)",
+  "status_descoberta": "string (Sim/Não baseado em tags)",
+  "status_qualificacao": "string (Sim/Não baseado em tags)",
   "motivo_cancelamento": "string",
   "data_cancelamento": "YYYY-MM-DD",
   "ultima_data_conversao": "YYYY-MM-DD",
@@ -189,6 +195,12 @@ CREATE TABLE main.cv_leads (
     midia_original VARCHAR,
     midia_ultimo VARCHAR,
     midia_consolidada VARCHAR, -- midia_ultimo + fallback midia_original
+    status_venda_realizada VARCHAR, -- Sim/Não baseado em tags
+    status_reserva VARCHAR, -- Sim/Não baseado em tags
+    status_visita_realizada VARCHAR, -- Sim/Não baseado em tags
+    status_em_atendimento VARCHAR, -- Sim/Não baseado em tags
+    status_descoberta VARCHAR, -- Sim/Não baseado em tags
+    status_qualificacao VARCHAR, -- Sim/Não baseado em tags
     motivo_cancelamento VARCHAR,
     data_cancelamento TIMESTAMP,
     ultima_data_conversao TIMESTAMP,

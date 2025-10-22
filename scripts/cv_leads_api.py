@@ -296,6 +296,82 @@ def processar_dados_cv_leads(dados: List[Dict[str, Any]]) -> pd.DataFrame:
         df.loc[mask_vazio, 'midia_consolidada'] = df.loc[mask_vazio, 'midia_original'].fillna('')
         logger.info("Coluna 'midia_consolidada' criada com fallback para midia_original")
 
+    # Criar colunas de status baseadas em tags com lógica hierárquica
+    logger.info("Criando colunas de status baseadas em tags...")
+    
+    # Definir status e suas variações (incluindo palavras concatenadas)
+    status_definitions = {
+        'status_venda_realizada': ['venda realizada', 'vendarealizada', 'vendarealizada'],
+        'status_reserva': ['reserva'],
+        'status_visita_realizada': ['visita realizada', 'visitarealizada', 'visitarealizada'],
+        'status_em_atendimento': ['em atendimento'],  # Apenas "em atendimento", não "em atendimento corretor"
+        'status_descoberta': ['descoberta'],
+        'status_qualificacao': ['qualificação', 'qualificacao', 'qualificaçao']
+    }
+    
+    # Inicializar todas as colunas de status como 'Não'
+    for status_col in status_definitions.keys():
+        df[status_col] = 'Não'
+    
+    # Percorrer todas as colunas de tags dinamicamente
+    tag_columns = [col for col in df.columns if col.startswith('tag') and col[3:].isdigit()]
+    logger.info(f"Colunas de tags encontradas: {tag_columns}")
+    
+    for idx, row in df.iterrows():
+        # Coletar todas as tags da linha
+        all_tags = []
+        for tag_col in tag_columns:
+            tag_value = row[tag_col]
+            if pd.notna(tag_value) and str(tag_value).strip() != '':
+                all_tags.append(str(tag_value).strip().lower())
+        
+        # Verificar cada status nas tags
+        status_found = {}
+        for status_col, variations in status_definitions.items():
+            for tag in all_tags:
+                for variation in variations:
+                    if variation.lower() in tag:
+                        status_found[status_col] = True
+                        break
+        
+        # Aplicar lógica hierárquica
+        # Hierarquia: venda realizada > reserva > visita realizada > em atendimento > descoberta > qualificação
+        if status_found.get('status_venda_realizada', False):
+            # Se venda realizada, todos os status são 'Sim'
+            df.at[idx, 'status_venda_realizada'] = 'Sim'
+            df.at[idx, 'status_reserva'] = 'Sim'
+            df.at[idx, 'status_visita_realizada'] = 'Sim'
+            df.at[idx, 'status_em_atendimento'] = 'Sim'
+            df.at[idx, 'status_descoberta'] = 'Sim'
+            df.at[idx, 'status_qualificacao'] = 'Sim'
+        elif status_found.get('status_reserva', False):
+            # Se reserva, todos os anteriores são 'Sim'
+            df.at[idx, 'status_reserva'] = 'Sim'
+            df.at[idx, 'status_visita_realizada'] = 'Sim'
+            df.at[idx, 'status_em_atendimento'] = 'Sim'
+            df.at[idx, 'status_descoberta'] = 'Sim'
+            df.at[idx, 'status_qualificacao'] = 'Sim'
+        elif status_found.get('status_visita_realizada', False):
+            # Se visita realizada, todos os anteriores são 'Sim'
+            df.at[idx, 'status_visita_realizada'] = 'Sim'
+            df.at[idx, 'status_em_atendimento'] = 'Sim'
+            df.at[idx, 'status_descoberta'] = 'Sim'
+            df.at[idx, 'status_qualificacao'] = 'Sim'
+        elif status_found.get('status_em_atendimento', False):
+            # Se em atendimento, descoberta e qualificação são 'Sim'
+            df.at[idx, 'status_em_atendimento'] = 'Sim'
+            df.at[idx, 'status_descoberta'] = 'Sim'
+            df.at[idx, 'status_qualificacao'] = 'Sim'
+        elif status_found.get('status_descoberta', False):
+            # Se descoberta, qualificação é 'Sim'
+            df.at[idx, 'status_descoberta'] = 'Sim'
+            df.at[idx, 'status_qualificacao'] = 'Sim'
+        elif status_found.get('status_qualificacao', False):
+            # Se apenas qualificação
+            df.at[idx, 'status_qualificacao'] = 'Sim'
+    
+    logger.info("Colunas de status criadas com lógica hierárquica aplicada")
+
     # Processar outros campos expansíveis se existirem
     campos_expansiveis = []  # Removido campos_adicionais pois já foram processados
     for campo in campos_expansiveis:
