@@ -359,11 +359,35 @@ else:
     
     # Ocultar informações do corretor "Odair Dias dos Santos"
     por_corretor = por_corretor[por_corretor["corretor"] != "ODAIR DIAS DOS SANTOS"]
+    
+    # Adicionar colunas de situação/etapa
+    for corretor in por_corretor["corretor"]:
+        mask = base_df["corretor_consolidado"] == corretor
+        
+        # Venda realizada
+        venda_realizada = base_df[mask & (base_df["funil_etapa"] == "Venda realizada")]["idlead"].count()
+        por_corretor.loc[por_corretor["corretor"] == corretor, "Venda realizada"] = venda_realizada
+    
     total_topo = max(int(por_corretor["Leads"].sum()), 1)
     por_corretor["% Leads"] = (por_corretor["Leads"] / total_topo * 100).round(1)
-    por_corretor["% Leads"] = por_corretor["% Leads"].astype(str) + "%"
     
-    st.dataframe(por_corretor, use_container_width=True)
+    # Calcular taxa de conversão (Venda realizada / Total Leads)
+    por_corretor["% Conversão"] = (por_corretor["Venda realizada"] / por_corretor["Leads"] * 100).round(1)
+    
+    # Ordenar por taxa de conversão (maior para menor) e usar como índice para ordenação
+    por_corretor = por_corretor.sort_values("% Conversão", ascending=False)
+    por_corretor = por_corretor.reset_index(drop=True)
+    por_corretor.index = por_corretor.index + 1  # Começar do 1 em vez de 0
+    
+    # Formatar colunas de percentual para exibição
+    por_corretor_display = por_corretor.copy()
+    por_corretor_display["% Leads"] = por_corretor_display["% Leads"].astype(str) + "%"
+    por_corretor_display["% Conversão"] = por_corretor_display["% Conversão"].astype(str) + "%"
+    
+    # Adicionar tooltip explicativo
+    st.markdown("💡 **Dica**: A primeira coluna (índice) ordena automaticamente pela taxa de conversão do maior para o menor.")
+    
+    st.dataframe(por_corretor_display, use_container_width=True)
 
 st.markdown("---")
 
