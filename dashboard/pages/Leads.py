@@ -53,7 +53,8 @@ def get_all_leads_duckdb():
         status_em_atendimento,
         status_visita_realizada,
         status_reserva,
-        status_venda_realizada
+        status_venda_realizada,
+        motivo_cancelamento_consolidada
     FROM cv_leads
     ORDER BY data_consolidada DESC
     """
