@@ -381,18 +381,6 @@ else:
     for mídia in por_midia["Mídia"]:
         mask = base_df["midia_consolidada"] == mídia
         
-        # Em atendimento
-        em_atendimento = base_df[mask & (base_df["situacao_nome"] == "aguardando atendimento")]["idlead"].count()
-        por_midia.loc[por_midia["Mídia"] == mídia, "Em atendimento"] = em_atendimento
-        
-        # Visita Realizada
-        visita_realizada = base_df[mask & (base_df["funil_etapa"] == "Visita Realizada")]["idlead"].count()
-        por_midia.loc[por_midia["Mídia"] == mídia, "Visita Realizada"] = visita_realizada
-        
-        # Com reserva
-        com_reserva = base_df[mask & (base_df["funil_etapa"] == "Com reserva")]["idlead"].count()
-        por_midia.loc[por_midia["Mídia"] == mídia, "Com reserva"] = com_reserva
-        
         # Venda realizada
         venda_realizada = base_df[mask & (base_df["funil_etapa"] == "Venda realizada")]["idlead"].count()
         por_midia.loc[por_midia["Mídia"] == mídia, "Venda realizada"] = venda_realizada
