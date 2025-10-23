@@ -397,6 +397,9 @@ else:
     # Calcular taxa de conversão (Venda realizada / Total Leads)
     por_corretor["% Conversão vendas"] = (por_corretor["Venda realizada"] / por_corretor["Leads"] * 100).round(1)
     
+    # Calcular taxa de cancelamento (Total Cancelamentos / Total Leads)
+    por_corretor["% Cancelamento leads"] = (por_corretor["Total Cancelamentos"] / por_corretor["Leads"] * 100).round(1)
+    
     # Ordenar por taxa de conversão (maior para menor) e usar como índice para ordenação
     por_corretor = por_corretor.sort_values("% Conversão vendas", ascending=False)
     por_corretor = por_corretor.reset_index(drop=True)
@@ -406,6 +409,7 @@ else:
     por_corretor_display = por_corretor.copy()
     por_corretor_display["% Leads"] = por_corretor_display["% Leads"].astype(str) + "%"
     por_corretor_display["% Conversão vendas"] = por_corretor_display["% Conversão vendas"].astype(str) + "%"
+    por_corretor_display["% Cancelamento leads"] = por_corretor_display["% Cancelamento leads"].astype(str) + "%"
     
     # Adicionar tooltip explicativo
     st.markdown("💡 **Dica**: A primeira coluna (índice) ordena automaticamente pela taxa de conversão de vendas do maior para o menor.")
