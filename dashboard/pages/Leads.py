@@ -368,8 +368,10 @@ else:
         venda_realizada = base_df[mask & (base_df["funil_etapa"] == "Venda realizada")]["idlead"].count()
         por_corretor.loc[por_corretor["corretor"] == corretor, "Venda realizada"] = venda_realizada
         
-        # Visita realizada
-        visita_realizada = base_df[mask & (base_df["funil_etapa"] == "Visita realizada")]["idlead"].count()
+        # Visita realizada (cumulativo - igual ao funil)
+        visita_realizada = base_df[mask & (base_df["funil_etapa"] == "Visita realizada")]["idlead"].count() + \
+                          base_df[mask & (base_df["funil_etapa"] == "Com reserva")]["idlead"].count() + \
+                          base_df[mask & (base_df["funil_etapa"] == "Venda realizada")]["idlead"].count()
         por_corretor.loc[por_corretor["corretor"] == corretor, "Visita realizada"] = visita_realizada
     
     total_topo = max(int(por_corretor["Leads"].sum()), 1)
