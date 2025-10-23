@@ -367,12 +367,19 @@ else:
         # Venda realizada
         venda_realizada = base_df[mask & (base_df["funil_etapa"] == "Venda realizada")]["idlead"].count()
         por_corretor.loc[por_corretor["corretor"] == corretor, "Venda realizada"] = venda_realizada
+        
+        # Visita realizada
+        visita_realizada = base_df[mask & (base_df["funil_etapa"] == "Visita realizada")]["idlead"].count()
+        por_corretor.loc[por_corretor["corretor"] == corretor, "Visita realizada"] = visita_realizada
     
     total_topo = max(int(por_corretor["Leads"].sum()), 1)
     por_corretor["% Leads"] = (por_corretor["Leads"] / total_topo * 100).round(1)
     
     # Calcular taxa de conversão (Venda realizada / Total Leads)
     por_corretor["% Conversão"] = (por_corretor["Venda realizada"] / por_corretor["Leads"] * 100).round(1)
+    
+    # Calcular taxa de conversão para visitas (Visita realizada / Total Leads)
+    por_corretor["% Conv. visitas"] = (por_corretor["Visita realizada"] / por_corretor["Leads"] * 100).round(1)
     
     # Ordenar por taxa de conversão (maior para menor) e usar como índice para ordenação
     por_corretor = por_corretor.sort_values("% Conversão", ascending=False)
@@ -383,6 +390,7 @@ else:
     por_corretor_display = por_corretor.copy()
     por_corretor_display["% Leads"] = por_corretor_display["% Leads"].astype(str) + "%"
     por_corretor_display["% Conversão"] = por_corretor_display["% Conversão"].astype(str) + "%"
+    por_corretor_display["% Conv. visitas"] = por_corretor_display["% Conv. visitas"].astype(str) + "%"
     
     # Adicionar tooltip explicativo
     st.markdown("💡 **Dica**: A primeira coluna (índice) ordena automaticamente pela taxa de conversão do maior para o menor.")
