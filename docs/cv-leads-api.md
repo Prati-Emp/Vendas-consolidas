@@ -69,6 +69,7 @@ params = {
   "status_qualificacao": "string (Sim/Não baseado em tags)",
   "data_consolidada": "YYYY-MM-DD (data_reativacao + fallback Data_cad)",
   "motivo_cancelamento": "string",
+  "motivo_cancelamento_consolidada": "string (tratamento de texto - remove 'Descartar Lead -')",
   "data_cancelamento": "YYYY-MM-DD",
   "ultima_data_conversao": "YYYY-MM-DD",
   "descricao_motivo_cancelamento": "string",
@@ -204,6 +205,7 @@ CREATE TABLE main.cv_leads (
     status_qualificacao VARCHAR, -- Sim/Não baseado em tags
     data_consolidada TIMESTAMP, -- data_reativacao + fallback Data_cad
     motivo_cancelamento VARCHAR,
+    motivo_cancelamento_consolidada VARCHAR, -- tratamento de texto
     data_cancelamento TIMESTAMP,
     ultima_data_conversao TIMESTAMP,
     descricao_motivo_cancelamento VARCHAR,

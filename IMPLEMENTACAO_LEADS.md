@@ -70,6 +70,7 @@ CREATE TABLE main.cv_leads (
     status_qualificacao VARCHAR,
     data_consolidada TIMESTAMP,
     motivo_cancelamento VARCHAR,
+    motivo_cancelamento_consolidada VARCHAR,
     data_cancelamento TIMESTAMP,
     ultima_data_conversao TIMESTAMP,
     descricao_motivo_cancelamento VARCHAR,

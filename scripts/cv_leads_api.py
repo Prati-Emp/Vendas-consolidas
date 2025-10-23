@@ -390,6 +390,27 @@ def processar_dados_cv_leads(dados: List[Dict[str, Any]]) -> pd.DataFrame:
     else:
         logger.warning("Colunas 'data_reativacao' ou 'Data_cad' não encontradas para criar data_consolidada")
 
+    # Criar coluna motivo_cancelamento_consolidada com tratamento de texto
+    logger.info("Criando coluna 'motivo_cancelamento_consolidada' com tratamento de texto...")
+    
+    if 'motivo_cancelamento' in df.columns:
+        # Inicializar com o valor original
+        df['motivo_cancelamento_consolidada'] = df['motivo_cancelamento'].fillna('').astype(str)
+        
+        # Aplicar tratamento para textos que começam com "Descartar Lead -"
+        mask_descartar = df['motivo_cancelamento_consolidada'].str.startswith('Descartar Lead -', na=False)
+        
+        if mask_descartar.any():
+            # Para registros que começam com "Descartar Lead -", extrair apenas a parte após o primeiro "-"
+            df.loc[mask_descartar, 'motivo_cancelamento_consolidada'] = df.loc[mask_descartar, 'motivo_cancelamento_consolidada'].str.split(' - ', n=1).str[1].fillna('')
+            logger.info(f"Tratamento aplicado em {mask_descartar.sum()} registros com 'Descartar Lead -'")
+        else:
+            logger.info("Nenhum registro encontrado com 'Descartar Lead -' para tratamento")
+        
+        logger.info("Coluna 'motivo_cancelamento_consolidada' criada com tratamento de texto")
+    else:
+        logger.warning("Coluna 'motivo_cancelamento' não encontrada para criar motivo_cancelamento_consolidada")
+
     # Processar outros campos expansíveis se existirem
     campos_expansiveis = []  # Removido campos_adicionais pois já foram processados
     for campo in campos_expansiveis:
