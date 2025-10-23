@@ -92,12 +92,7 @@ corretores_removidos = [
 ]
 
 # Remover leads desses corretores do conjunto de dados
-leads_df_antes = len(leads_df)
 leads_df = leads_df[~leads_df['corretor_consolidado'].isin(corretores_removidos)]
-leads_df_depois = len(leads_df)
-
-# Debug: mostrar quantos leads foram removidos
-st.sidebar.info(f"🔍 Debug: {leads_df_antes - leads_df_depois} leads removidos ({leads_df_antes} → {leads_df_depois})")
 
 # Sidebar for filters
 st.sidebar.header("Filtros")
