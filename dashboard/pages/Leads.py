@@ -378,21 +378,21 @@ else:
     por_corretor["% Leads"] = (por_corretor["Leads"] / total_topo * 100).round(1)
     
     # Calcular taxa de conversão (Venda realizada / Total Leads)
-    por_corretor["% Conversão"] = (por_corretor["Venda realizada"] / por_corretor["Leads"] * 100).round(1)
+    por_corretor["% Conversão vendas"] = (por_corretor["Venda realizada"] / por_corretor["Leads"] * 100).round(1)
     
     # Calcular taxa de conversão para visitas (Visita realizada / Total Leads)
-    por_corretor["% Conv. visitas"] = (por_corretor["Visita realizada"] / por_corretor["Leads"] * 100).round(1)
+    por_corretor["% Conversão visitas"] = (por_corretor["Visita realizada"] / por_corretor["Leads"] * 100).round(1)
     
     # Ordenar por taxa de conversão (maior para menor) e usar como índice para ordenação
-    por_corretor = por_corretor.sort_values("% Conversão", ascending=False)
+    por_corretor = por_corretor.sort_values("% Conversão vendas", ascending=False)
     por_corretor = por_corretor.reset_index(drop=True)
     por_corretor.index = por_corretor.index + 1  # Começar do 1 em vez de 0
     
     # Formatar colunas de percentual para exibição
     por_corretor_display = por_corretor.copy()
     por_corretor_display["% Leads"] = por_corretor_display["% Leads"].astype(str) + "%"
-    por_corretor_display["% Conversão"] = por_corretor_display["% Conversão"].astype(str) + "%"
-    por_corretor_display["% Conv. visitas"] = por_corretor_display["% Conv. visitas"].astype(str) + "%"
+    por_corretor_display["% Conversão vendas"] = por_corretor_display["% Conversão vendas"].astype(str) + "%"
+    por_corretor_display["% Conversão visitas"] = por_corretor_display["% Conversão visitas"].astype(str) + "%"
     
     # Adicionar tooltip explicativo
     st.markdown("💡 **Dica**: A primeira coluna (índice) ordena automaticamente pela taxa de conversão do maior para o menor.")
@@ -424,17 +424,17 @@ else:
     por_midia["% Leads"] = (por_midia["Total Leads"] / total_topo_m * 100).round(1)
     
     # Calcular taxa de conversão (Venda realizada / Total Leads)
-    por_midia["% Conversão"] = (por_midia["Venda realizada"] / por_midia["Total Leads"] * 100).round(1)
+    por_midia["% Conversão vendas"] = (por_midia["Venda realizada"] / por_midia["Total Leads"] * 100).round(1)
     
     # Ordenar por taxa de conversão (maior para menor) e usar como índice para ordenação
-    por_midia = por_midia.sort_values("% Conversão", ascending=False)
+    por_midia = por_midia.sort_values("% Conversão vendas", ascending=False)
     por_midia = por_midia.reset_index(drop=True)
     por_midia.index = por_midia.index + 1  # Começar do 1 em vez de 0
     
     # Formatar colunas de percentual para exibição
     por_midia_display = por_midia.copy()
     por_midia_display["% Leads"] = por_midia_display["% Leads"].astype(str) + "%"
-    por_midia_display["% Conversão"] = por_midia_display["% Conversão"].astype(str) + "%"
+    por_midia_display["% Conversão vendas"] = por_midia_display["% Conversão vendas"].astype(str) + "%"
     
     # Adicionar tooltip explicativo
     st.markdown("💡 **Dica**: A primeira coluna (índice) ordena automaticamente pela taxa de conversão do maior para o menor.")
