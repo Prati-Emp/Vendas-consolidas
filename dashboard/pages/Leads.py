@@ -391,6 +391,11 @@ else:
                           base_df[mask & (base_df["funil_etapa"] == "Com reserva")]["idlead"].count() + \
                           base_df[mask & (base_df["funil_etapa"] == "Venda realizada")]["idlead"].count()
         por_corretor.loc[por_corretor["corretor"] == corretor, "Visita realizada"] = visita_realizada
+        
+        # Total cancelamentos
+        cancelamentos = base_df[mask & base_df['motivo_cancelamento_consolidada'].notna() & 
+                               (base_df['motivo_cancelamento_consolidada'] != '')]["idlead"].count()
+        por_corretor.loc[por_corretor["corretor"] == corretor, "Total Cancelamentos"] = cancelamentos
     
     total_topo = max(int(por_corretor["Leads"].sum()), 1)
     por_corretor["% Leads"] = (por_corretor["Leads"] / total_topo * 100).round(1)
@@ -418,14 +423,10 @@ else:
     st.dataframe(por_corretor_display, use_container_width=True)
 
 # =============================================================================
-# TABELA DE CANCELAMENTOS POR CORRETOR
+# SEÇÃO EXPANDÍVEL PARA DETALHES DE CANCELAMENTOS
 # =============================================================================
 st.markdown("---")
-st.markdown("**Cancelamentos por Corretor**", help="Análise de motivos de cancelamento por corretor")
-
-if base_df.empty:
-    st.info("Sem leads no topo do funil para o filtro atual.")
-else:
+with st.expander("📊 **Ver Detalhes dos Motivos de Cancelamento por Corretor**"):
     # Filtrar apenas leads com cancelamentos
     leads_cancelados = base_df[base_df['motivo_cancelamento_consolidada'].notna() & 
                               (base_df['motivo_cancelamento_consolidada'] != '')].copy()
@@ -462,32 +463,22 @@ else:
         
         # Ordenar por total de cancelamentos
         cancelamentos_por_corretor = cancelamentos_por_corretor.sort_values('Total Cancelamentos', ascending=False)
-        cancelamentos_por_corretor = cancelamentos_por_corretor.reset_index(drop=True)
-        cancelamentos_por_corretor.index = cancelamentos_por_corretor.index + 1
         
-        # Mostrar tabela principal
-        st.dataframe(cancelamentos_por_corretor[['Corretor', 'Total Cancelamentos']], use_container_width=True)
-        
-        # Seção expandível para detalhes
-        st.markdown("---")
-        with st.expander("📊 **Ver Detalhes dos Motivos de Cancelamento por Corretor**"):
-            for idx, row in cancelamentos_por_corretor.iterrows():
-                st.markdown(f"**{row['Corretor']}** - {row['Total Cancelamentos']} cancelamentos")
-                
-                # Criar tabela de motivos para este corretor
-                motivos_df = pd.DataFrame(list(row['Motivos Detalhados'].items()), 
-                                        columns=['Motivo', 'Quantidade'])
-                motivos_df = motivos_df.sort_values('Quantidade', ascending=False)
-                
-                # Calcular percentual
-                total = motivos_df['Quantidade'].sum()
-                motivos_df['% do Total'] = (motivos_df['Quantidade'] / total * 100).round(1)
-                motivos_df['% do Total'] = motivos_df['% do Total'].astype(str) + '%'
-                
-                st.dataframe(motivos_df, use_container_width=True)
-                st.markdown("---")
-
-st.markdown("---")
+        for idx, row in cancelamentos_por_corretor.iterrows():
+            st.markdown(f"**{row['Corretor']}** - {row['Total Cancelamentos']} cancelamentos")
+            
+            # Criar tabela de motivos para este corretor
+            motivos_df = pd.DataFrame(list(row['Motivos Detalhados'].items()), 
+                                    columns=['Motivo', 'Quantidade'])
+            motivos_df = motivos_df.sort_values('Quantidade', ascending=False)
+            
+            # Calcular percentual
+            total = motivos_df['Quantidade'].sum()
+            motivos_df['% do Total'] = (motivos_df['Quantidade'] / total * 100).round(1)
+            motivos_df['% do Total'] = motivos_df['% do Total'].astype(str) + '%'
+            
+            st.dataframe(motivos_df, use_container_width=True)
+            st.markdown("---")
 
 # Tabela por Mídia (todos os leads filtrados) - com mais espaço horizontal
 st.markdown("**Por Mídia**", help="Coluna Mídia: Baseada na última movimentação de mídia registrada")
