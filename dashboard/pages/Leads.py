@@ -386,12 +386,6 @@ else:
         venda_realizada = base_df[mask & (base_df["funil_etapa"] == "Venda realizada")]["idlead"].count()
         por_corretor.loc[por_corretor["corretor"] == corretor, "Venda realizada"] = venda_realizada
         
-        # Visita realizada (cumulativo - igual ao funil)
-        visita_realizada = base_df[mask & (base_df["funil_etapa"] == "Visita realizada")]["idlead"].count() + \
-                          base_df[mask & (base_df["funil_etapa"] == "Com reserva")]["idlead"].count() + \
-                          base_df[mask & (base_df["funil_etapa"] == "Venda realizada")]["idlead"].count()
-        por_corretor.loc[por_corretor["corretor"] == corretor, "Visita realizada"] = visita_realizada
-        
         # Total cancelamentos
         cancelamentos = base_df[mask & base_df['motivo_cancelamento_consolidada'].notna() & 
                                (base_df['motivo_cancelamento_consolidada'] != '')]["idlead"].count()
@@ -403,9 +397,6 @@ else:
     # Calcular taxa de conversão (Venda realizada / Total Leads)
     por_corretor["% Conversão vendas"] = (por_corretor["Venda realizada"] / por_corretor["Leads"] * 100).round(1)
     
-    # Calcular taxa de conversão para visitas (Visita realizada / Total Leads)
-    por_corretor["% Conversão visitas"] = (por_corretor["Visita realizada"] / por_corretor["Leads"] * 100).round(1)
-    
     # Ordenar por taxa de conversão (maior para menor) e usar como índice para ordenação
     por_corretor = por_corretor.sort_values("% Conversão vendas", ascending=False)
     por_corretor = por_corretor.reset_index(drop=True)
@@ -415,7 +406,6 @@ else:
     por_corretor_display = por_corretor.copy()
     por_corretor_display["% Leads"] = por_corretor_display["% Leads"].astype(str) + "%"
     por_corretor_display["% Conversão vendas"] = por_corretor_display["% Conversão vendas"].astype(str) + "%"
-    por_corretor_display["% Conversão visitas"] = por_corretor_display["% Conversão visitas"].astype(str) + "%"
     
     # Adicionar tooltip explicativo
     st.markdown("💡 **Dica**: A primeira coluna (índice) ordena automaticamente pela taxa de conversão de vendas do maior para o menor.")
