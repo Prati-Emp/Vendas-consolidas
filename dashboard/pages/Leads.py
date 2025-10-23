@@ -102,8 +102,25 @@ if 'corretor_consolidado' in leads_df.columns:
         (leads_df['data_consolidada'].dt.date <= data_fim)
     ]
     corretores = sorted(leads_periodo.get('corretor_consolidado', pd.Series(dtype=str)).dropna().unique())
-    # Remover "ODAIR DIAS DOS SANTOS" do filtro
-    corretores = [c for c in corretores if c != "ODAIR DIAS DOS SANTOS"]
+    
+    # Lista de corretores a serem ocultados do filtro
+    corretores_ocultos = [
+        "ODAIR DIAS DOS SANTOS",
+        "Sabrina M. da Silva dos Santos",
+        "Alex Anderson Fritzen da Silva",
+        "DAIANA PINHEIRO FÜHR",
+        "GRAZIELE GODOI",
+        "ROSANGELA CRISTINA BEVILAQUA",
+        "Alan Rafael Giombelli",
+        "Marcos Roberto ferla",
+        "JULIANO RAFAEL SIMON",
+        "HYORRANA LOPES",
+        "Sabrina maria da silva dos santos",
+        "VANESSA CARDOSO NAZARIN"
+    ]
+    
+    # Remover corretores da lista de seleção
+    corretores = [c for c in corretores if c not in corretores_ocultos]
 else:
     corretores = []
 selected_corretores = st.sidebar.multiselect("Corretor", corretores, default=[], help="Consolida corretor + corretor_ultimo")
