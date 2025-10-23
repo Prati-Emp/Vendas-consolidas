@@ -416,6 +416,76 @@ else:
     
     st.dataframe(por_corretor_display, use_container_width=True)
 
+# =============================================================================
+# TABELA DE CANCELAMENTOS POR CORRETOR
+# =============================================================================
+st.markdown("---")
+st.markdown("**Cancelamentos por Corretor**", help="Análise de motivos de cancelamento por corretor")
+
+if base_df.empty:
+    st.info("Sem leads no topo do funil para o filtro atual.")
+else:
+    # Filtrar apenas leads com cancelamentos
+    leads_cancelados = base_df[base_df['motivo_cancelamento_consolidada'].notna() & 
+                              (base_df['motivo_cancelamento_consolidada'] != '')].copy()
+    
+    if leads_cancelados.empty:
+        st.info("Nenhum cancelamento encontrado para o período selecionado.")
+    else:
+        # Análise por corretor
+        cancelamentos_por_corretor = leads_cancelados.groupby('corretor_consolidado').agg({
+            'idlead': 'count',
+            'motivo_cancelamento_consolidada': lambda x: x.value_counts().to_dict()
+        }).reset_index()
+        
+        cancelamentos_por_corretor.columns = ['Corretor', 'Total Cancelamentos', 'Motivos Detalhados']
+        
+        # Ocultar corretores da lista de exclusão
+        corretores_ocultos = [
+            "ODAIR DIAS DOS SANTOS",
+            "Sabrina M. da Silva dos Santos",
+            "Alex Anderson Fritzen da Silva",
+            "DAIANA PINHEIRO FÜHR",
+            "GRAZIELE GODOI",
+            "ROSANGELA CRISTINA BEVILAQUA",
+            "Alan Rafael Giombelli",
+            "Marcos Roberto ferla",
+            "JULIANO RAFAEL SIMON",
+            "HYORRANA LOPES",
+            "Sabrina maria da silva dos santos",
+            "VANESSA CARDOSO NAZARIN"
+        ]
+        cancelamentos_por_corretor = cancelamentos_por_corretor[
+            ~cancelamentos_por_corretor['Corretor'].isin(corretores_ocultos)
+        ]
+        
+        # Ordenar por total de cancelamentos
+        cancelamentos_por_corretor = cancelamentos_por_corretor.sort_values('Total Cancelamentos', ascending=False)
+        cancelamentos_por_corretor = cancelamentos_por_corretor.reset_index(drop=True)
+        cancelamentos_por_corretor.index = cancelamentos_por_corretor.index + 1
+        
+        # Mostrar tabela principal
+        st.dataframe(cancelamentos_por_corretor[['Corretor', 'Total Cancelamentos']], use_container_width=True)
+        
+        # Seção expandível para detalhes
+        st.markdown("---")
+        with st.expander("📊 **Ver Detalhes dos Motivos de Cancelamento por Corretor**"):
+            for idx, row in cancelamentos_por_corretor.iterrows():
+                st.markdown(f"**{row['Corretor']}** - {row['Total Cancelamentos']} cancelamentos")
+                
+                # Criar tabela de motivos para este corretor
+                motivos_df = pd.DataFrame(list(row['Motivos Detalhados'].items()), 
+                                        columns=['Motivo', 'Quantidade'])
+                motivos_df = motivos_df.sort_values('Quantidade', ascending=False)
+                
+                # Calcular percentual
+                total = motivos_df['Quantidade'].sum()
+                motivos_df['% do Total'] = (motivos_df['Quantidade'] / total * 100).round(1)
+                motivos_df['% do Total'] = motivos_df['% do Total'].astype(str) + '%'
+                
+                st.dataframe(motivos_df, use_container_width=True)
+                st.markdown("---")
+
 st.markdown("---")
 
 # Tabela por Mídia (todos os leads filtrados) - com mais espaço horizontal
