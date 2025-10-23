@@ -395,7 +395,7 @@ else:
     por_corretor_display["% Conversão visitas"] = por_corretor_display["% Conversão visitas"].astype(str) + "%"
     
     # Adicionar tooltip explicativo
-    st.markdown("💡 **Dica**: A primeira coluna (índice) ordena automaticamente pela taxa de conversão do maior para o menor.")
+    st.markdown("💡 **Dica**: A primeira coluna (índice) ordena automaticamente pela taxa de conversão de vendas do maior para o menor.")
     
     st.dataframe(por_corretor_display, use_container_width=True)
 
@@ -437,7 +437,7 @@ else:
     por_midia_display["% Conversão vendas"] = por_midia_display["% Conversão vendas"].astype(str) + "%"
     
     # Adicionar tooltip explicativo
-    st.markdown("💡 **Dica**: A primeira coluna (índice) ordena automaticamente pela taxa de conversão do maior para o menor.")
+    st.markdown("💡 **Dica**: A primeira coluna (índice) ordena automaticamente pela taxa de conversão de vendas do maior para o menor.")
     
     st.dataframe(por_midia_display, use_container_width=True)
 
