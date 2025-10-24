@@ -256,12 +256,45 @@ def get_user_permissions(user_data: Dict) -> List[str]:
     }
     return permissions.get(user_data['role'], ['view_dashboards'])
 
+def get_user_pages(user_data: Dict) -> List[str]:
+    """Retorna páginas que o usuário pode acessar baseado no role"""
+    page_permissions = {
+        'admin': ['vendas', 'leads', 'reservas', 'motivo_fora_prazo'],
+        'manager': ['vendas', 'leads', 'reservas', 'motivo_fora_prazo'],
+        'analyst': ['vendas', 'leads']  # Analistas só veem vendas e leads
+    }
+    return page_permissions.get(user_data['role'], ['vendas'])
+
 def has_permission(permission: str) -> bool:
     """Verifica se usuário atual tem permissão específica"""
     user_data = get_current_user()
     if not user_data:
         return False
     return permission in get_user_permissions(user_data)
+
+def can_access_page(page_name: str) -> bool:
+    """Verifica se usuário atual pode acessar uma página específica"""
+    user_data = get_current_user()
+    if not user_data:
+        return False
+    allowed_pages = get_user_pages(user_data)
+    return page_name in allowed_pages
+
+def require_page_access(page_name: str):
+    """Protege uma página específica - redireciona se usuário não tem acesso"""
+    if not can_access_page(page_name):
+        st.error(f"🚫 Acesso negado! Você não tem permissão para acessar esta página.")
+        st.info("💡 Entre em contato com o administrador para solicitar acesso.")
+        
+        # Mostrar páginas disponíveis para o usuário
+        user_data = get_current_user()
+        if user_data:
+            allowed_pages = get_user_pages(user_data)
+            st.markdown("### 📋 Páginas disponíveis para você:")
+            for page in allowed_pages:
+                st.markdown(f"- {page.title()}")
+        
+        st.stop()
 
 def is_admin() -> bool:
     """Verifica se o usuário atual é admin"""

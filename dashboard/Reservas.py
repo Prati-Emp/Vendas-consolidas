@@ -2,7 +2,7 @@ import streamlit as st
 import os
 
 # Importar sistema de autenticação avançado
-from advanced_auth import require_auth
+from advanced_auth import require_auth, require_page_access
 
 # Função para obter o caminho absoluto da logo
 def get_logo_path():
@@ -14,6 +14,9 @@ st.set_page_config(page_title="Relatório de Reservas", layout="wide")
 
 # Proteger com autenticação
 require_auth()
+
+# Proteger acesso à página específica
+require_page_access("reservas")
 
 from utils import display_navigation
 # Display navigation bar (includes logo)

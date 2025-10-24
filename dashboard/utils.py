@@ -1,8 +1,16 @@
 import streamlit as st
 import os
+import sys
+from pathlib import Path
+
+# Adicionar o diretório pai ao path para importar auth
+sys.path.append(str(Path(__file__).parent.parent))
+
+# Importar sistema de autenticação avançado
+from advanced_auth import can_access_page, get_current_user
 
 def display_navigation():
-    """Display a horizontal navigation bar at the top of the page"""
+    """Display a horizontal navigation bar at the top of the page with access control"""
     # Custom CSS for the navigation bar
     st.markdown("""
         <style>
@@ -19,6 +27,11 @@ def display_navigation():
             border-color: rgba(128, 128, 128, 0.8);
         }
         
+        .stButton button:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+        
         .nav-container {
             margin-bottom: 2rem;
             padding: 1rem;
@@ -26,39 +39,40 @@ def display_navigation():
         </style>
     """, unsafe_allow_html=True)
     
+    # Get current user and their permissions
+    user_data = get_current_user()
+    
     # Create navigation container
     with st.container():
         st.markdown('<div class="nav-container">', unsafe_allow_html=True)
-        cols = st.columns([1, 1, 1, 1, 1, 1, 1, 0.5])  # 7 navigation items + logo space
         
-        # Get current page name
-        current_page = os.path.basename(st.session_state.get('current_page', 'Home.py'))
-          # Navigation buttons
-        with cols[0]:
-            if st.button("Home", use_container_width=True):
-                st.switch_page("Home.py")
-        with cols[1]:
-            if st.button("Vendas", use_container_width=True):
-                st.switch_page("pages/Vendas.py")
-        with cols[2]:
-            if st.button("Imobiliária", use_container_width=True):
-                st.switch_page("pages/Imobiliaria.py")
-        with cols[3]:
-            if st.button("Motivo fora do prazo", use_container_width=True):
-                st.switch_page("pages/Motivo_fora_do_prazo.py")
-        with cols[4]:
-            if st.button("Leads", use_container_width=True):
-                st.switch_page("pages/Leads.py")
-        with cols[5]:
-            if st.button("Leads Ativos", use_container_width=True):
-                st.switch_page("pages/Leads_Ativos.py")
-        with cols[6]:
-            if st.button("Vendas Sienge", use_container_width=True):
-                st.switch_page("pages/Vendas.py")
+        # Define navigation items with their access requirements
+        nav_items = [
+            ("Home", "home", "pages/1_Vendas.py"),
+            ("Vendas", "vendas", "pages/1_Vendas.py"),
+            ("Leads", "leads", "pages/2_Leads.py"),
+            ("Reservas", "reservas", "pages/3_Reservas.py"),
+            ("Motivo Fora do Prazo", "motivo_fora_prazo", "pages/4_Motivo_fora_do_prazo.py")
+        ]
         
-        # Logo in the last column
-        with cols[7]:
-            display_logo()
+        # Calculate number of accessible items
+        accessible_items = [item for item in nav_items if can_access_page(item[1])]
+        num_cols = len(accessible_items) + 1  # +1 for logo
+        
+        if num_cols > 1:
+            cols = st.columns([1] * (num_cols - 1) + [0.5])  # Navigation items + logo space
+            
+            col_idx = 0
+            for item_name, page_key, page_path in nav_items:
+                if can_access_page(page_key):
+                    with cols[col_idx]:
+                        if st.button(item_name, use_container_width=True):
+                            st.switch_page(page_path)
+                    col_idx += 1
+            
+            # Logo in the last column
+            with cols[-1]:
+                display_logo()
         
         st.markdown('</div>', unsafe_allow_html=True)
 

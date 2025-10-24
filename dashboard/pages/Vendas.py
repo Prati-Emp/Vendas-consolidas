@@ -14,10 +14,13 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
 
 # Importar sistema de autenticação avançado
-from advanced_auth import require_auth
+from advanced_auth import require_auth, require_page_access
 
 # Proteger com autenticação
 require_auth()
+
+# Proteger acesso à página específica
+require_page_access("vendas")
 
 # Importar utilitários locais
 from utils.md_conn import (
