@@ -815,5 +815,123 @@ def render_analytics_imobiliaria(data_inicial: str, data_final: str,
     except Exception as e:
         st.error(f"❌ Erro ao carregar análise por imobiliária: {str(e)}")
 
+# =============================================================================
+# ANÁLISE DE VPL - EXPANDERS
+# =============================================================================
+
+def calcular_vpl_por_corretor(df):
+    """Calcula VPL por corretor com % VPL"""
+    # Filtrar apenas linhas que têm tanto vpl_reserva quanto vpl_tabela
+    df_vpl = df[(df['vpl_reserva'].notna()) & (df['vpl_tabela'].notna()) & 
+                (df['vpl_reserva'] != 0) & (df['vpl_tabela'] != 0)]
+    
+    if df_vpl.empty:
+        return pd.DataFrame()
+    
+    # Agrupar por corretor
+    vpl_por_corretor = df_vpl.groupby('corretor').agg({
+        'vpl_reserva': 'sum',
+        'vpl_tabela': 'sum'
+    }).reset_index()
+    
+    # Calcular % VPL: (VPL_reserva / VPL_tabela) - VPL_reserva
+    vpl_por_corretor['% VPL'] = ((vpl_por_corretor['vpl_reserva'] / vpl_por_corretor['vpl_tabela']) - vpl_por_corretor['vpl_reserva'])
+    
+    # Formatar valores
+    vpl_por_corretor['vpl_reserva'] = vpl_por_corretor['vpl_reserva'].apply(format_currency)
+    vpl_por_corretor['vpl_tabela'] = vpl_por_corretor['vpl_tabela'].apply(format_currency)
+    vpl_por_corretor['% VPL'] = vpl_por_corretor['% VPL'].apply(lambda x: f"{x:.1f}%")
+    
+    # Renomear colunas
+    vpl_por_corretor.columns = ['Corretor', 'VPL Reserva', 'VPL Tabela', '% VPL']
+    
+    return vpl_por_corretor
+
+def calcular_vpl_por_imobiliaria(df):
+    """Calcula VPL por imobiliária com % VPL"""
+    # Filtrar apenas linhas que têm tanto vpl_reserva quanto vpl_tabela
+    df_vpl = df[(df['vpl_reserva'].notna()) & (df['vpl_tabela'].notna()) & 
+                (df['vpl_reserva'] != 0) & (df['vpl_tabela'] != 0)]
+    
+    if df_vpl.empty:
+        return pd.DataFrame()
+    
+    # Agrupar por imobiliária
+    vpl_por_imobiliaria = df_vpl.groupby('imobiliaria').agg({
+        'vpl_reserva': 'sum',
+        'vpl_tabela': 'sum'
+    }).reset_index()
+    
+    # Calcular % VPL: (VPL_reserva / VPL_tabela) - VPL_reserva
+    vpl_por_imobiliaria['% VPL'] = ((vpl_por_imobiliaria['vpl_reserva'] / vpl_por_imobiliaria['vpl_tabela']) - vpl_por_imobiliaria['vpl_reserva'])
+    
+    # Formatar valores
+    vpl_por_imobiliaria['vpl_reserva'] = vpl_por_imobiliaria['vpl_reserva'].apply(format_currency)
+    vpl_por_imobiliaria['vpl_tabela'] = vpl_por_imobiliaria['vpl_tabela'].apply(format_currency)
+    vpl_por_imobiliaria['% VPL'] = vpl_por_imobiliaria['% VPL'].apply(lambda x: f"{x:.1f}%")
+    
+    # Renomear colunas
+    vpl_por_imobiliaria.columns = ['Imobiliária', 'VPL Reserva', 'VPL Tabela', '% VPL']
+    
+    return vpl_por_imobiliaria
+
+# Expander 1: VPL por Corretor
+with st.expander("📊 Ver Detalhes do VPL por Corretor", expanded=False):
+    try:
+        # Carregar dados de vendas
+        conn = get_md_connection()
+        vendas_df = conn.execute("""
+            SELECT corretor, vpl_reserva, vpl_tabela
+            FROM vendas.main.vendas_consolidadas
+            WHERE data_venda >= ? AND data_venda <= ?
+        """, [data_inicio, data_fim]).df()
+        
+        if not vendas_df.empty:
+            vpl_corretor = calcular_vpl_por_corretor(vendas_df)
+            
+            if not vpl_corretor.empty:
+                st.subheader("📈 VPL por Corretor")
+                st.dataframe(
+                    vpl_corretor,
+                    use_container_width=True,
+                    hide_index=True
+                )
+            else:
+                st.info("ℹ️ Nenhum dado de VPL encontrado para corretores no período selecionado.")
+        else:
+            st.warning("⚠️ Nenhum dado de vendas encontrado no período selecionado.")
+            
+    except Exception as e:
+        st.error(f"❌ Erro ao carregar VPL por corretor: {str(e)}")
+
+# Expander 2: VPL por Imobiliária
+with st.expander("📊 Ver Detalhes do VPL por Imobiliária", expanded=False):
+    try:
+        # Carregar dados de vendas
+        conn = get_md_connection()
+        vendas_df = conn.execute("""
+            SELECT imobiliaria, vpl_reserva, vpl_tabela
+            FROM vendas.main.vendas_consolidadas
+            WHERE data_venda >= ? AND data_venda <= ?
+        """, [data_inicio, data_fim]).df()
+        
+        if not vendas_df.empty:
+            vpl_imobiliaria = calcular_vpl_por_imobiliaria(vendas_df)
+            
+            if not vpl_imobiliaria.empty:
+                st.subheader("📈 VPL por Imobiliária")
+                st.dataframe(
+                    vpl_imobiliaria,
+                    use_container_width=True,
+                    hide_index=True
+                )
+            else:
+                st.info("ℹ️ Nenhum dado de VPL encontrado para imobiliárias no período selecionado.")
+        else:
+            st.warning("⚠️ Nenhum dado de vendas encontrado no período selecionado.")
+            
+    except Exception as e:
+        st.error(f"❌ Erro ao carregar VPL por imobiliária: {str(e)}")
+
 if __name__ == "__main__":
     main()
