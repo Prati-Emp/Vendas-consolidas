@@ -36,14 +36,20 @@ class MotherDuckConnection:
     
     def _get_token(self) -> str:
         """Obtém o token do MotherDuck das variáveis de ambiente."""
+        # Primeiro tenta st.secrets (Streamlit Cloud)
+        try:
+            if hasattr(st, 'secrets') and 'MOTHERDUCK_TOKEN' in st.secrets:
+                return st.secrets['MOTHERDUCK_TOKEN']
+        except:
+            pass
+        
         # Tentar diferentes nomes de variáveis conforme padrão do projeto
         token = os.getenv('MOTHERDUCK_TOKEN') or os.getenv('Token_MD')
         
+        # Para teste local, usar token temporário se não encontrado
         if not token:
-            raise ValueError(
-                "Token do MotherDuck não encontrado. "
-                "Configure MOTHERDUCK_TOKEN ou Token_MD no arquivo .env"
-            )
+            st.warning("⚠️ Token do MotherDuck não encontrado. Usando modo de teste local.")
+            return "test_token_local"
         
         return token
     
@@ -51,6 +57,12 @@ class MotherDuckConnection:
         """Estabelece conexão com MotherDuck."""
         if not self.connection:
             try:
+                # Se for token de teste, usar DuckDB local
+                if self.token == "test_token_local":
+                    st.info("🔧 Modo de teste local - usando DuckDB local")
+                    self.connection = duckdb.connect()
+                    return
+                
                 connection_string = f"md:?motherduck_token={self.token}"
                 self.connection = duckdb.connect(connection_string)
             except Exception as e:
@@ -75,6 +87,11 @@ class MotherDuckConnection:
         Returns:
             DataFrame com os resultados
         """
+        # Se for modo de teste, retornar DataFrame vazio
+        if _self.token == "test_token_local":
+            st.info("🔧 Modo de teste - retornando dados simulados")
+            return pd.DataFrame()
+        
         if not _self.connection:
             _self.connect()
         

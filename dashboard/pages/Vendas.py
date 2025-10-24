@@ -775,11 +775,11 @@ def render_analytics_corretor(data_inicial: str, data_final: str,
             try:
                 # Carregar dados de vendas
                 conn = get_md_connection()
-                vendas_df = conn.sql("""
+                vendas_df = conn.run_query("""
                     SELECT corretor, vpl_reserva, vpl_tabela
                     FROM vendas.main.vendas_consolidadas
                     WHERE data_venda >= ? AND data_venda <= ?
-                """, [data_inicio, data_fim]).df()
+                """, [data_inicial, data_final])
                 
                 if not vendas_df.empty:
                     vpl_corretor = calcular_vpl_por_corretor(vendas_df)
@@ -804,11 +804,11 @@ def render_analytics_corretor(data_inicial: str, data_final: str,
             try:
                 # Carregar dados de vendas
                 conn = get_md_connection()
-                vendas_df = conn.sql("""
+                vendas_df = conn.run_query("""
                     SELECT imobiliaria, vpl_reserva, vpl_tabela
                     FROM vendas.main.vendas_consolidadas
                     WHERE data_venda >= ? AND data_venda <= ?
-                """, [data_inicio, data_fim]).df()
+                """, [data_inicial, data_final])
                 
                 if not vendas_df.empty:
                     vpl_imobiliaria = calcular_vpl_por_imobiliaria(vendas_df)
