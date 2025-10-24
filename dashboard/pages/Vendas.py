@@ -735,7 +735,7 @@ def render_analytics_corretor(data_inicial: str, data_final: str,
             # Formatar valores
             vpl_por_corretor['vpl_reserva'] = vpl_por_corretor['vpl_reserva'].apply(format_currency)
             vpl_por_corretor['vpl_tabela'] = vpl_por_corretor['vpl_tabela'].apply(format_currency)
-            vpl_por_corretor['% VPL'] = vpl_por_corretor['% VPL'].apply(lambda x: f"{x:.1f}%")
+            vpl_por_corretor['% VPL'] = vpl_por_corretor['% VPL'].apply(lambda x: f"{x:.2f}%")
             
             # Renomear colunas
             vpl_por_corretor.columns = ['Corretor', 'VPL Reserva', 'VPL Tabela', '% VPL']
@@ -763,7 +763,7 @@ def render_analytics_corretor(data_inicial: str, data_final: str,
             # Formatar valores
             vpl_por_imobiliaria['vpl_reserva'] = vpl_por_imobiliaria['vpl_reserva'].apply(format_currency)
             vpl_por_imobiliaria['vpl_tabela'] = vpl_por_imobiliaria['vpl_tabela'].apply(format_currency)
-            vpl_por_imobiliaria['% VPL'] = vpl_por_imobiliaria['% VPL'].apply(lambda x: f"{x:.1f}%")
+            vpl_por_imobiliaria['% VPL'] = vpl_por_imobiliaria['% VPL'].apply(lambda x: f"{x:.2f}%")
             
             # Renomear colunas
             vpl_por_imobiliaria.columns = ['Imobiliária', 'VPL Reserva', 'VPL Tabela', '% VPL']
