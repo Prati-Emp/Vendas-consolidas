@@ -11,6 +11,9 @@ config_*.env
 # Documentação com informações sensíveis
 docs/configuracao-ambiente.md
 
+# Documentação privada do sistema de controle de acesso
+.private/
+
 # Logs
 *.log
 
