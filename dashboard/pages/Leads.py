@@ -11,13 +11,17 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
 
 # Importar sistema de autenticação avançado
-from advanced_auth import require_auth, require_page_access
-
-# Proteger com autenticação
-require_auth()
-
-# Proteger acesso à página específica
-require_page_access("leads")
+try:
+    from advanced_auth import require_auth, require_page_access
+    
+    # Proteger com autenticação
+    require_auth()
+    
+    # Proteger acesso à página específica
+    require_page_access("leads")
+except ImportError as e:
+    st.error(f"Erro ao importar sistema de autenticação: {e}")
+    st.stop()
 
 from utils import display_navigation
 

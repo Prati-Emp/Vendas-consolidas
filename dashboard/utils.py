@@ -6,11 +6,16 @@ from pathlib import Path
 # Adicionar o diretório pai ao path para importar auth
 sys.path.append(str(Path(__file__).parent.parent))
 
-# Importar sistema de autenticação avançado
-from advanced_auth import can_access_page, get_current_user
-
 def display_navigation():
     """Display a horizontal navigation bar at the top of the page with access control"""
+    # Importar sistema de autenticação avançado dentro da função para evitar importação circular
+    try:
+        from advanced_auth import can_access_page, get_current_user
+    except ImportError:
+        # Se não conseguir importar, usar navegação básica sem controle de acesso
+        st.warning("⚠️ Sistema de autenticação não disponível. Usando navegação básica.")
+        return
+    
     # Custom CSS for the navigation bar
     st.markdown("""
         <style>
