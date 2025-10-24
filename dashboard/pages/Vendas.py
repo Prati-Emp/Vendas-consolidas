@@ -732,9 +732,9 @@ def render_analytics_corretor(data_inicial: str, data_final: str,
             # Calcular % VPL: (VPL_reserva / VPL_tabela) - 1
             vpl_por_corretor['% VPL'] = ((vpl_por_corretor['vpl_reserva'] / vpl_por_corretor['vpl_tabela']) - 1)
             
-            # Formatar valores (usar mesma lógica da tabela de corretores)
-            vpl_por_corretor['vpl_reserva'] = vpl_por_corretor['vpl_reserva'].apply(format_currency)
-            vpl_por_corretor['vpl_tabela'] = vpl_por_corretor['vpl_tabela'].apply(format_currency)
+            # Formatar valores (converter para padrão brasileiro)
+            vpl_por_corretor['vpl_reserva'] = vpl_por_corretor['vpl_reserva'].apply(format_currency).str.replace('.', ',')
+            vpl_por_corretor['vpl_tabela'] = vpl_por_corretor['vpl_tabela'].apply(format_currency).str.replace('.', ',')
             vpl_por_corretor['% VPL'] = vpl_por_corretor['% VPL'].apply(lambda x: f"{x * 100:.2f}%")
             
             # Renomear colunas
@@ -760,9 +760,9 @@ def render_analytics_corretor(data_inicial: str, data_final: str,
             # Calcular % VPL: (VPL_reserva / VPL_tabela) - 1
             vpl_por_imobiliaria['% VPL'] = ((vpl_por_imobiliaria['vpl_reserva'] / vpl_por_imobiliaria['vpl_tabela']) - 1)
             
-            # Formatar valores (usar mesma lógica da tabela de corretores)
-            vpl_por_imobiliaria['vpl_reserva'] = vpl_por_imobiliaria['vpl_reserva'].apply(format_currency)
-            vpl_por_imobiliaria['vpl_tabela'] = vpl_por_imobiliaria['vpl_tabela'].apply(format_currency)
+            # Formatar valores (converter para padrão brasileiro)
+            vpl_por_imobiliaria['vpl_reserva'] = vpl_por_imobiliaria['vpl_reserva'].apply(format_currency).str.replace('.', ',')
+            vpl_por_imobiliaria['vpl_tabela'] = vpl_por_imobiliaria['vpl_tabela'].apply(format_currency).str.replace('.', ',')
             vpl_por_imobiliaria['% VPL'] = vpl_por_imobiliaria['% VPL'].apply(lambda x: f"{x * 100:.2f}%")
             
             # Renomear colunas
