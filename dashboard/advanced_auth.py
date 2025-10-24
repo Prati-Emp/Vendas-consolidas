@@ -260,18 +260,11 @@ def get_user_permissions(user_data: Dict) -> List[str]:
 
 def get_user_pages(user_data: Dict) -> List[str]:
     """Retorna páginas que o usuário pode acessar baseado no role"""
-    # Debug: mostrar dados do usuário
-    import streamlit as st
-    st.sidebar.info(f"🔍 Debug - Email: {user_data.get('email')}")
-    st.sidebar.info(f"🔍 Debug - Nome: {user_data.get('name')}")
-    
     # Odair tem acesso total
     if user_data.get('email') == 'odair.santos@grupoprati.com':
-        st.sidebar.success("✅ Odair detectado - Acesso total!")
         return ['vendas', 'leads', 'reservas', 'motivo_fora_prazo']
     
     # Todos os demais usuários veem apenas Vendas
-    st.sidebar.warning("⚠️ Usuário limitado - Apenas Vendas")
     return ['vendas']
 
 def has_permission(permission: str) -> bool:
