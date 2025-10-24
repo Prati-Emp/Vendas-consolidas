@@ -777,7 +777,7 @@ def render_analytics_corretor(data_inicial: str, data_final: str,
                 conn = get_md_connection()
                 vendas_df = conn.run_query("""
                     SELECT corretor, vpl_reserva, vpl_tabela
-                    FROM vendas.main.vendas_consolidadas
+                    FROM informacoes_consolidadas.sienge_vendas_consolidadas
                     WHERE data_venda >= ? AND data_venda <= ?
                 """, [data_inicial, data_final])
                 
@@ -806,7 +806,7 @@ def render_analytics_corretor(data_inicial: str, data_final: str,
                 conn = get_md_connection()
                 vendas_df = conn.run_query("""
                     SELECT imobiliaria, vpl_reserva, vpl_tabela
-                    FROM vendas.main.vendas_consolidadas
+                    FROM informacoes_consolidadas.sienge_vendas_consolidadas
                     WHERE data_venda >= ? AND data_venda <= ?
                 """, [data_inicial, data_final])
                 
