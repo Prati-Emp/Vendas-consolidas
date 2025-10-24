@@ -109,10 +109,12 @@ def verify_password(stored_password: str, provided_password: str) -> bool:
 def check_credentials(email: str, password: str) -> Optional[Dict]:
     """Verifica credenciais do usuário"""
     if email in USERS_DATABASE:
-        user_data = USERS_DATABASE[email]
+        user_data = USERS_DATABASE[email].copy()  # Fazer cópia para não modificar o original
         if user_data["active"] and verify_password(user_data["password"], password):
             # Atualizar último login
             user_data["last_login"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            # Adicionar email aos dados do usuário
+            user_data["email"] = email
             return user_data
     return None
 
