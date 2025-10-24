@@ -729,8 +729,8 @@ def render_analytics_corretor(data_inicial: str, data_final: str,
                 'vpl_tabela': 'sum'
             }).reset_index()
             
-            # Calcular % VPL: (VPL_reserva / VPL_tabela) - VPL_reserva
-            vpl_por_corretor['% VPL'] = ((vpl_por_corretor['vpl_reserva'] / vpl_por_corretor['vpl_tabela']) - vpl_por_corretor['vpl_reserva'])
+            # Calcular % VPL: (VPL_reserva / VPL_tabela) - 1
+            vpl_por_corretor['% VPL'] = ((vpl_por_corretor['vpl_reserva'] / vpl_por_corretor['vpl_tabela']) - 1)
             
             # Formatar valores
             vpl_por_corretor['vpl_reserva'] = vpl_por_corretor['vpl_reserva'].apply(format_currency)
@@ -757,8 +757,8 @@ def render_analytics_corretor(data_inicial: str, data_final: str,
                 'vpl_tabela': 'sum'
             }).reset_index()
             
-            # Calcular % VPL: (VPL_reserva / VPL_tabela) - VPL_reserva
-            vpl_por_imobiliaria['% VPL'] = ((vpl_por_imobiliaria['vpl_reserva'] / vpl_por_imobiliaria['vpl_tabela']) - vpl_por_imobiliaria['vpl_reserva'])
+            # Calcular % VPL: (VPL_reserva / VPL_tabela) - 1
+            vpl_por_imobiliaria['% VPL'] = ((vpl_por_imobiliaria['vpl_reserva'] / vpl_por_imobiliaria['vpl_tabela']) - 1)
             
             # Formatar valores
             vpl_por_imobiliaria['vpl_reserva'] = vpl_por_imobiliaria['vpl_reserva'].apply(format_currency)
