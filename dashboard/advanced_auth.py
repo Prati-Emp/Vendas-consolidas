@@ -258,12 +258,12 @@ def get_user_permissions(user_data: Dict) -> List[str]:
 
 def get_user_pages(user_data: Dict) -> List[str]:
     """Retorna páginas que o usuário pode acessar baseado no role"""
-    page_permissions = {
-        'admin': ['vendas', 'leads', 'reservas', 'motivo_fora_prazo'],
-        'manager': ['vendas', 'leads', 'reservas', 'motivo_fora_prazo'],
-        'analyst': ['vendas', 'leads']  # Analistas só veem vendas e leads
-    }
-    return page_permissions.get(user_data['role'], ['vendas'])
+    # Odair tem acesso total
+    if user_data.get('email') == 'odair.santos@grupoprati.com':
+        return ['vendas', 'leads', 'reservas', 'motivo_fora_prazo']
+    
+    # Todos os demais usuários veem apenas Vendas
+    return ['vendas']
 
 def has_permission(permission: str) -> bool:
     """Verifica se usuário atual tem permissão específica"""

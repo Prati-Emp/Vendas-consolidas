@@ -6,18 +6,14 @@ O sistema implementa **controle de acesso granular** baseado no **role do usuár
 
 ## 👥 **Usuários e Permissões**
 
-### **Admin (Odair Santos)**
+### **Odair Santos (odair.santos@grupoprati.com)**
 - ✅ **Acesso total**: Todas as páginas
 - 📄 **Páginas disponíveis**: Vendas, Leads, Reservas, Motivo Fora do Prazo
 
-### **Manager (Gustavo, Lucas)**
-- ✅ **Acesso completo**: Todas as páginas
-- 📄 **Páginas disponíveis**: Vendas, Leads, Reservas, Motivo Fora do Prazo
-
-### **Analyst (José, Evelyn)**
-- ✅ **Acesso limitado**: Apenas páginas básicas
-- 📄 **Páginas disponíveis**: Vendas, Leads
-- ❌ **Páginas bloqueadas**: Reservas, Motivo Fora do Prazo
+### **Demais Usuários (Gustavo, Lucas, José, Evelyn)**
+- ✅ **Acesso limitado**: Apenas página de Vendas
+- 📄 **Páginas disponíveis**: Vendas
+- ❌ **Páginas bloqueadas**: Leads, Reservas, Motivo Fora do Prazo
 
 ## 🛡️ **Como Funciona**
 
@@ -42,10 +38,10 @@ require_page_access("nome_da_pagina")
 
 | Página | Arquivo | Acesso |
 |--------|---------|--------|
-| **Vendas** | `pages/Vendas.py` | Admin, Manager, Analyst |
-| **Leads** | `pages/Leads.py` | Admin, Manager, Analyst |
-| **Reservas** | `Reservas.py` | Admin, Manager |
-| **Motivo Fora do Prazo** | `pages/Motivo_fora_do_prazo.py` | Admin, Manager |
+| **Vendas** | `pages/Vendas.py` | Odair + Demais usuários |
+| **Leads** | `pages/Leads.py` | Apenas Odair |
+| **Reservas** | `Reservas.py` | Apenas Odair |
+| **Motivo Fora do Prazo** | `pages/Motivo_fora_do_prazo.py` | Apenas Odair |
 
 ## 🔧 **Configuração de Novos Usuários**
 
@@ -96,11 +92,13 @@ for item_name, page_key, page_path in nav_items:
 
 ### **3. Mapeamento de Permissões**
 ```python
-page_permissions = {
-    'admin': ['vendas', 'leads', 'reservas', 'motivo_fora_prazo'],
-    'manager': ['vendas', 'leads', 'reservas', 'motivo_fora_prazo'],
-    'analyst': ['vendas', 'leads']
-}
+def get_user_pages(user_data: Dict) -> List[str]:
+    # Odair tem acesso total
+    if user_data.get('email') == 'odair.santos@grupoprati.com':
+        return ['vendas', 'leads', 'reservas', 'motivo_fora_prazo']
+    
+    # Todos os demais usuários veem apenas Vendas
+    return ['vendas']
 ```
 
 ## ✅ **Benefícios**
