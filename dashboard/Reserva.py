@@ -230,16 +230,26 @@ situacao_selecionada = st.sidebar.selectbox("Situação", ["Todas"] + list(situa
 st.sidebar.markdown("---")
 st.sidebar.subheader("📊 Filtros Conversão")
 
+# Buscar a maior data disponível no conjunto de dados
+max_data_cad = pd.to_datetime('2025-12-31').date()  # Fallback padrão
+try:
+    conn_temp = get_motherduck_connection()
+    max_date_query = conn_temp.sql("SELECT MAX(data_cad) FROM reservas.main.reservas_abril WHERE data_cad IS NOT NULL").df()
+    if not max_date_query.empty and max_date_query.iloc[0, 0] is not None:
+        max_data_cad = pd.to_datetime(max_date_query.iloc[0, 0]).date()
+except Exception as e:
+    st.sidebar.warning(f"⚠️ Não foi possível carregar a data máxima: {e}")
+
 # Filtros específicos para a tabela de conversão
 data_inicial_conversao = st.sidebar.date_input(
     "📅 Data Inicial (Conversão)",
-    value=pd.to_datetime('2024-01-01').date(),
+    value=pd.to_datetime('2025-01-01').date(),
     help="Filtra reservas a partir desta data"
 )
 
 data_final_conversao = st.sidebar.date_input(
     "📅 Data Final (Conversão)",
-    value=pd.to_datetime('2025-12-31').date(),
+    value=max_data_cad,
     help="Filtra reservas até esta data"
 )
 
