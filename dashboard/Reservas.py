@@ -388,6 +388,7 @@ st.table(reservas_por_empreendimento)
 # NOVA TABELA: CONVERSÃO DE RESERVAS EM VENDAS
 # =============================================================================
 
+st.write("🔍 **TESTE: Código sendo executado!**")
 st.subheader("📊 Conversão de Reservas em Vendas")
 
 try:
