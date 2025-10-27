@@ -898,9 +898,16 @@ def render_analytics_imobiliaria(data_inicial: str, data_final: str,
         
         # Tabela detalhada
         st.subheader("📊 Ranking de Imobiliárias")
+        st.write("💡 **Dica:** A primeira coluna (índice) ordena automaticamente pelo Valor Total do maior para o menor.")
         
         # Preparar dados para exibição
         display_data = analytics_data.copy()
+        
+        # Ordenar por Valor Total (maior para menor) e criar índice
+        display_data = display_data.sort_values('total_valor', ascending=False).reset_index(drop=True)
+        display_data['Índice'] = range(1, len(display_data) + 1)
+        
+        # Formatar valores
         display_data['total_valor'] = display_data['total_valor'].apply(format_currency)
         display_data['ticket_medio'] = display_data['ticket_medio'].apply(format_currency)
         display_data['menor_venda'] = display_data['menor_venda'].apply(format_currency)
@@ -909,9 +916,13 @@ def render_analytics_imobiliaria(data_inicial: str, data_final: str,
         display_data['empreendimentos_unicos'] = display_data['empreendimentos_unicos'].apply(format_int)
         display_data['corretores_unicos'] = display_data['corretores_unicos'].apply(format_int)
         
+        # Reordenar colunas para colocar Índice primeiro
+        display_data = display_data[['Índice', 'imobiliaria', 'total_vendas', 'total_valor', 'ticket_medio',
+                                   'menor_venda', 'maior_venda', 'empreendimentos_unicos', 'corretores_unicos']]
+        
         # Renomear colunas
         display_data.columns = [
-            'Imobiliária', 'Total Vendas', 'Valor Total', 'Ticket Médio',
+            'Índice', 'Imobiliária', 'Total Vendas', 'Valor Total', 'Ticket Médio',
             'Menor Venda', 'Maior Venda', 'Empreendimentos Únicos', 'Corretores Únicos'
         ]
         
