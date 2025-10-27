@@ -384,4 +384,85 @@ reservas_por_empreendimento = pd.concat([reservas_por_empreendimento, totais_emp
 
 st.table(reservas_por_empreendimento)
 
+# =============================================================================
+# NOVA TABELA: CONVERSÃO DE RESERVAS EM VENDAS
+# =============================================================================
+
+st.subheader("📊 Conversão de Reservas em Vendas")
+
+try:
+    # Carregar dados de reservas para análise de conversão
+    conn = get_motherduck_connection()
+    
+    # Query para buscar dados de reservas com filtro por data_cad
+    conversao_df = conn.sql("""
+        SELECT 
+            corretor,
+            situacao,
+            data_cad
+        FROM reservas.main.reservas_abril
+        WHERE data_cad IS NOT NULL
+        AND corretor IS NOT NULL
+        AND corretor != ''
+    """).df()
+    
+    if not conversao_df.empty:
+        # Converter data_cad para datetime
+        conversao_df['data_cad'] = pd.to_datetime(conversao_df['data_cad'], errors='coerce')
+        
+        # Filtrar por período se necessário (opcional - pode ser removido se não precisar)
+        # conversao_df = conversao_df[conversao_df['data_cad'] >= '2024-01-01']
+        
+        # Calcular métricas por corretor
+        conversao_por_corretor = []
+        
+        for corretor in conversao_df['corretor'].unique():
+            df_corretor = conversao_df[conversao_df['corretor'] == corretor]
+            
+            # Total de reservas
+            total_reservas = len(df_corretor)
+            
+            # Reservas convertidas (Distrato, Mútuo, Vendida)
+            situacoes_convertidas = ['Distrato', 'Mútuo', 'Vendida']
+            reservas_convertidas = len(df_corretor[df_corretor['situacao'].isin(situacoes_convertidas)])
+            
+            # Calcular taxa de conversão
+            taxa_conversao = (reservas_convertidas / total_reservas * 100) if total_reservas > 0 else 0
+            
+            conversao_por_corretor.append({
+                'Corretor': corretor,
+                'Total Reservas': total_reservas,
+                'Reservas Convertidas': reservas_convertidas,
+                'Taxa Conversão (%)': round(taxa_conversao, 2)
+            })
+        
+        # Converter para DataFrame
+        conversao_df_final = pd.DataFrame(conversao_por_corretor)
+        
+        # Ordenar por taxa de conversão (maior para menor)
+        conversao_df_final = conversao_df_final.sort_values('Taxa Conversão (%)', ascending=False)
+        
+        # Adicionar linha de totais
+        totais_conversao = pd.DataFrame([{
+            'Corretor': 'Total',
+            'Total Reservas': conversao_df_final['Total Reservas'].sum(),
+            'Reservas Convertidas': conversao_df_final['Reservas Convertidas'].sum(),
+            'Taxa Conversão (%)': round(
+                (conversao_df_final['Reservas Convertidas'].sum() / 
+                 conversao_df_final['Total Reservas'].sum() * 100) 
+                if conversao_df_final['Total Reservas'].sum() > 0 else 0, 2
+            )
+        }])
+        
+        conversao_df_final = pd.concat([conversao_df_final, totais_conversao], ignore_index=True)
+        
+        # Exibir tabela
+        st.dataframe(conversao_df_final, use_container_width=True)
+        
+    else:
+        st.warning("⚠️ Nenhum dado de reservas encontrado para análise de conversão.")
+        
+except Exception as e:
+    st.error(f"❌ Erro ao carregar dados de conversão: {str(e)}")
+
 # Página Home simplificada - apenas os quadros principais
