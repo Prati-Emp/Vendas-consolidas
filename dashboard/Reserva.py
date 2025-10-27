@@ -387,6 +387,23 @@ st.table(reservas_por_empreendimento)
 
 st.subheader("📊 Conversão de Reservas em Vendas")
 
+# Filtros específicos para a tabela de conversão
+col1, col2 = st.columns(2)
+
+with col1:
+    data_inicial_conversao = st.date_input(
+        "📅 Data Inicial (Conversão)",
+        value=pd.to_datetime('2024-01-01').date(),
+        help="Filtra reservas a partir desta data"
+    )
+
+with col2:
+    data_final_conversao = st.date_input(
+        "📅 Data Final (Conversão)",
+        value=pd.to_datetime('2025-12-31').date(),
+        help="Filtra reservas até esta data"
+    )
+
 try:
     # Carregar dados de reservas para análise de conversão
     conn = get_motherduck_connection()
@@ -401,7 +418,9 @@ try:
         WHERE data_cad IS NOT NULL
         AND corretor IS NOT NULL
         AND corretor != ''
-    """).df()
+        AND data_cad >= ? 
+        AND data_cad <= ?
+    """, [data_inicial_conversao, data_final_conversao]).df()
     
     if not conversao_df.empty:
         # Converter data_cad para datetime
