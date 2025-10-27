@@ -408,6 +408,10 @@ try:
     # Carregar dados de reservas para análise de conversão
     conn = get_motherduck_connection()
     
+    # Converter datas para string no formato correto
+    data_inicial_str = data_inicial_conversao.strftime('%Y-%m-%d')
+    data_final_str = data_final_conversao.strftime('%Y-%m-%d')
+    
     # Query para buscar dados de reservas com filtro por data_cad
     conversao_df = conn.sql("""
         SELECT 
@@ -418,9 +422,9 @@ try:
         WHERE data_cad IS NOT NULL
         AND corretor IS NOT NULL
         AND corretor != ''
-        AND data_cad >= ? 
-        AND data_cad <= ?
-    """, params=[data_inicial_conversao, data_final_conversao]).df()
+        AND CAST(data_cad AS DATE) >= CAST(? AS DATE)
+        AND CAST(data_cad AS DATE) <= CAST(? AS DATE)
+    """, params=[data_inicial_str, data_final_str]).df()
     
     if not conversao_df.empty:
         # Converter data_cad para datetime
