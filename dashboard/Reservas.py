@@ -406,6 +406,8 @@ try:
         AND corretor != ''
     """).df()
     
+    st.write(f"🔍 Debug: {len(conversao_df)} registros encontrados")
+    
     if not conversao_df.empty:
         # Converter data_cad para datetime
         conversao_df['data_cad'] = pd.to_datetime(conversao_df['data_cad'], errors='coerce')
@@ -456,6 +458,8 @@ try:
         
         conversao_df_final = pd.concat([conversao_df_final, totais_conversao], ignore_index=True)
         
+        st.write(f"📊 {len(conversao_df_final)-1} corretores analisados")
+        
         # Exibir tabela
         st.dataframe(conversao_df_final, use_container_width=True)
         
@@ -464,5 +468,7 @@ try:
         
 except Exception as e:
     st.error(f"❌ Erro ao carregar dados de conversão: {str(e)}")
+    import traceback
+    st.code(traceback.format_exc())
 
 # Página Home simplificada - apenas os quadros principais
