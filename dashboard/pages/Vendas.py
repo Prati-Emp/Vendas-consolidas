@@ -800,6 +800,7 @@ def render_analytics_corretor(data_inicial: str, data_final: str,
                     
                     if not vpl_corretor.empty:
                         st.subheader("📈 VPL por Corretor")
+                        st.write("💡 **Dica:** A primeira coluna (índice) ordena automaticamente pelo VPL Tabela do maior para o menor.")
                         st.dataframe(
                             vpl_corretor,
                             use_container_width=True,
@@ -829,6 +830,7 @@ def render_analytics_corretor(data_inicial: str, data_final: str,
                     
                     if not vpl_imobiliaria.empty:
                         st.subheader("📈 VPL por Imobiliária")
+                        st.write("💡 **Dica:** A primeira coluna (índice) ordena automaticamente pelo VPL Tabela do maior para o menor.")
                         st.dataframe(
                             vpl_imobiliaria,
                             use_container_width=True,
