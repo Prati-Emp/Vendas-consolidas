@@ -732,13 +732,20 @@ def render_analytics_corretor(data_inicial: str, data_final: str,
             # Calcular % VPL: (VPL_reserva / VPL_tabela) - 1
             vpl_por_corretor['% VPL'] = ((vpl_por_corretor['vpl_reserva'] / vpl_por_corretor['vpl_tabela']) - 1)
             
+            # Ordenar por VPL Tabela (maior para menor) e criar índice
+            vpl_por_corretor = vpl_por_corretor.sort_values('vpl_tabela', ascending=False).reset_index(drop=True)
+            vpl_por_corretor['Índice'] = range(1, len(vpl_por_corretor) + 1)
+            
             # Formatar valores (usar mesma lógica da tabela de corretores)
             vpl_por_corretor['vpl_reserva'] = vpl_por_corretor['vpl_reserva'].apply(format_currency)
             vpl_por_corretor['vpl_tabela'] = vpl_por_corretor['vpl_tabela'].apply(format_currency)
             vpl_por_corretor['% VPL'] = vpl_por_corretor['% VPL'].apply(lambda x: f"{x * 100:.2f}")
             
+            # Reordenar colunas para colocar Índice primeiro
+            vpl_por_corretor = vpl_por_corretor[['Índice', 'corretor', 'vpl_reserva', 'vpl_tabela', '% VPL']]
+            
             # Renomear colunas
-            vpl_por_corretor.columns = ['Corretor', 'VPL Reserva', 'VPL Tabela', '% VPL']
+            vpl_por_corretor.columns = ['Índice', 'Corretor', 'VPL Reserva', 'VPL Tabela', '% VPL']
             
             return vpl_por_corretor
 
@@ -760,13 +767,20 @@ def render_analytics_corretor(data_inicial: str, data_final: str,
             # Calcular % VPL: (VPL_reserva / VPL_tabela) - 1
             vpl_por_imobiliaria['% VPL'] = ((vpl_por_imobiliaria['vpl_reserva'] / vpl_por_imobiliaria['vpl_tabela']) - 1)
             
+            # Ordenar por VPL Tabela (maior para menor) e criar índice
+            vpl_por_imobiliaria = vpl_por_imobiliaria.sort_values('vpl_tabela', ascending=False).reset_index(drop=True)
+            vpl_por_imobiliaria['Índice'] = range(1, len(vpl_por_imobiliaria) + 1)
+            
             # Formatar valores (usar mesma lógica da tabela de corretores)
             vpl_por_imobiliaria['vpl_reserva'] = vpl_por_imobiliaria['vpl_reserva'].apply(format_currency)
             vpl_por_imobiliaria['vpl_tabela'] = vpl_por_imobiliaria['vpl_tabela'].apply(format_currency)
             vpl_por_imobiliaria['% VPL'] = vpl_por_imobiliaria['% VPL'].apply(lambda x: f"{x * 100:.2f}")
             
+            # Reordenar colunas para colocar Índice primeiro
+            vpl_por_imobiliaria = vpl_por_imobiliaria[['Índice', 'imobiliaria', 'vpl_reserva', 'vpl_tabela', '% VPL']]
+            
             # Renomear colunas
-            vpl_por_imobiliaria.columns = ['Imobiliária', 'VPL Reserva', 'VPL Tabela', '% VPL']
+            vpl_por_imobiliaria.columns = ['Índice', 'Imobiliária', 'VPL Reserva', 'VPL Tabela', '% VPL']
             
             return vpl_por_imobiliaria
 
