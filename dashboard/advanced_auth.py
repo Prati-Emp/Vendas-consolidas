@@ -260,11 +260,11 @@ def get_user_permissions(user_data: Dict) -> List[str]:
 
 def get_user_pages(user_data: Dict) -> List[str]:
     """Retorna páginas que o usuário pode acessar baseado no role"""
-    # Odair e Gustavo têm acesso total
-    if user_data.get('email') in ['odair.santos@grupoprati.com', 'gustavo.sordi@grupoprati.com']:
+    # Todos os usuários cadastrados têm acesso total
+    if user_data.get('email') in USERS_DATABASE:
         return ['vendas', 'leads', 'reservas', 'motivo_fora_prazo']
     
-    # Todos os demais usuários veem apenas Vendas
+    # Usuários não cadastrados veem apenas Vendas
     return ['vendas']
 
 def has_permission(permission: str) -> bool:

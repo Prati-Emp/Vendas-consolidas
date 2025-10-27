@@ -6,16 +6,14 @@ O sistema implementa **controle de acesso granular** baseado no **role do usuár
 
 ## 👥 **Usuários e Permissões**
 
-### **Administradores (Acesso Total)**
-- **Odair Santos (odair.santos@grupoprati.com)**
-- **Gustavo Sordi (gustavo.sordi@grupoprati.com)**
+### **Todos os Usuários Cadastrados (Acesso Total)**
+- **Odair Santos (odair.santos@grupoprati.com)** - Admin
+- **Gustavo Sordi (gustavo.sordi@grupoprati.com)** - Manager
+- **Lucas Follmann (lucas.follmann@grupoprati.com)** - Manager
+- **José Aquino (jose.aquino@grupoprati.com)** - Analyst
+- **Evelyn Padilha (evelyn.padilha@grupoprati.com)** - Analyst
 - ✅ **Acesso total**: Todas as páginas
 - 📄 **Páginas disponíveis**: Vendas, Leads, Reservas, Motivo Fora do Prazo
-
-### **Usuários Padrão (Lucas, José, Evelyn)**
-- ✅ **Acesso limitado**: Apenas página de Vendas
-- 📄 **Páginas disponíveis**: Vendas
-- ❌ **Páginas bloqueadas**: Leads, Reservas, Motivo Fora do Prazo
 
 ## 🛡️ **Como Funciona**
 
@@ -40,10 +38,10 @@ require_page_access("nome_da_pagina")
 
 | Página | Arquivo | Acesso |
 |--------|---------|--------|
-| **Vendas** | `pages/Vendas.py` | Odair + Demais usuários |
-| **Leads** | `pages/Leads.py` | Apenas Odair |
-| **Reservas** | `Reservas.py` | Apenas Odair |
-| **Motivo Fora do Prazo** | `pages/Motivo_fora_do_prazo.py` | Apenas Odair |
+| **Vendas** | `pages/Vendas.py` | Todos os usuários cadastrados |
+| **Leads** | `pages/Leads.py` | Todos os usuários cadastrados |
+| **Reservas** | `Reservas.py` | Todos os usuários cadastrados |
+| **Motivo Fora do Prazo** | `pages/Motivo_fora_do_prazo.py` | Todos os usuários cadastrados |
 
 ## 🔧 **Configuração de Novos Usuários**
 
@@ -95,11 +93,11 @@ for item_name, page_key, page_path in nav_items:
 ### **3. Mapeamento de Permissões**
 ```python
 def get_user_pages(user_data: Dict) -> List[str]:
-    # Odair e Gustavo têm acesso total
-    if user_data.get('email') in ['odair.santos@grupoprati.com', 'gustavo.sordi@grupoprati.com']:
+    # Todos os usuários cadastrados têm acesso total
+    if user_data.get('email') in USERS_DATABASE:
         return ['vendas', 'leads', 'reservas', 'motivo_fora_prazo']
     
-    # Todos os demais usuários veem apenas Vendas
+    # Usuários não cadastrados veem apenas Vendas
     return ['vendas']
 ```
 
