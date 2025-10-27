@@ -411,9 +411,11 @@ st.info("""
 • **Filtro Próprio:** Esta tabela possui filtros específicos localizados na barra lateral (sidebar) 
   sob a seção "📊 Filtros Conversão"
 
-• **Observação:** Os números apresentados podem sofrer ajustes conforme as vendas forem fechadas, 
-  pois utiliza o campo "data_cad" (data de cadastro) da reserva para análise
+• ⚠️ **Importante:** Os números podem variar conforme o fechamento das vendas, pois a análise considera a data de cadastro (data_cad) da reserva. Uma venda pode ser cadastrada em um período e efetivada posteriormente, mas será contabilizada conforme a data de cadastro.
 """)
+
+# Dica sobre ordenação
+st.info("💡 **Dica:** A primeira coluna (índice) ordena automaticamente pelo número de reservas do maior para o menor.")
 
 try:
     # Carregar dados de reservas para análise de conversão
