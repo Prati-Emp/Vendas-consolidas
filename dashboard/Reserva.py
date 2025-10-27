@@ -415,7 +415,7 @@ st.info("""
 """)
 
 # Dica sobre ordenação
-st.info("💡 **Dica:** A primeira coluna (índice) ordena automaticamente pelo número de reservas do maior para o menor.")
+st.write("💡 **Dica:** A primeira coluna (índice) ordena automaticamente pelo número de reservas do maior para o menor.")
 
 try:
     # Carregar dados de reservas para análise de conversão
