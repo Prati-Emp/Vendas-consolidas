@@ -226,6 +226,23 @@ empreendimento_selecionado = st.sidebar.selectbox("Empreendimento", ["Todos"] + 
 situacoes = sorted(reservas_df[~reservas_df['situacao'].isin(['Vendida', 'Distrato', 'Cancelada'])]['situacao'].unique())
 situacao_selecionada = st.sidebar.selectbox("Situação", ["Todas"] + list(situacoes))
 
+# Separador para filtros de conversão
+st.sidebar.markdown("---")
+st.sidebar.subheader("📊 Filtros Conversão")
+
+# Filtros específicos para a tabela de conversão
+data_inicial_conversao = st.sidebar.date_input(
+    "📅 Data Inicial (Conversão)",
+    value=pd.to_datetime('2024-01-01').date(),
+    help="Filtra reservas a partir desta data"
+)
+
+data_final_conversao = st.sidebar.date_input(
+    "📅 Data Final (Conversão)",
+    value=pd.to_datetime('2025-12-31').date(),
+    help="Filtra reservas até esta data"
+)
+
 # Aplicar filtros
 mask = (reservas_df['data_cad'].dt.date >= data_inicio) & (reservas_df['data_cad'].dt.date <= data_fim)
 if empreendimento_selecionado != "Todos":
@@ -387,23 +404,6 @@ st.table(reservas_por_empreendimento)
 
 st.subheader("📊 Conversão de Reservas em Vendas")
 
-# Filtros específicos para a tabela de conversão
-col1, col2 = st.columns(2)
-
-with col1:
-    data_inicial_conversao = st.date_input(
-        "📅 Data Inicial (Conversão)",
-        value=pd.to_datetime('2024-01-01').date(),
-        help="Filtra reservas a partir desta data"
-    )
-
-with col2:
-    data_final_conversao = st.date_input(
-        "📅 Data Final (Conversão)",
-        value=pd.to_datetime('2025-12-31').date(),
-        help="Filtra reservas até esta data"
-    )
-
 try:
     # Carregar dados de reservas para análise de conversão
     conn = get_motherduck_connection()
@@ -420,7 +420,7 @@ try:
         AND corretor != ''
         AND data_cad >= ? 
         AND data_cad <= ?
-    """, [data_inicial_conversao, data_final_conversao]).df()
+    """, params=[data_inicial_conversao, data_final_conversao]).df()
     
     if not conversao_df.empty:
         # Converter data_cad para datetime
