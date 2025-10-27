@@ -456,8 +456,8 @@ try:
         # Converter para DataFrame
         conversao_df_final = pd.DataFrame(conversao_por_corretor)
         
-        # Ordenar por taxa de conversão (maior para menor)
-        conversao_df_final = conversao_df_final.sort_values('Taxa Conversão (%)', ascending=False)
+        # Ordenar por número de reservas (maior para menor)
+        conversao_df_final = conversao_df_final.sort_values('Total Reservas', ascending=False)
         
         # Adicionar linha de totais
         totais_conversao = pd.DataFrame([{
