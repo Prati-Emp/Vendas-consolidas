@@ -404,6 +404,17 @@ st.table(reservas_por_empreendimento)
 
 st.subheader("📊 Conversão de Reservas em Vendas")
 
+# Caixa de informação sobre filtros e observações
+st.info("""
+📋 **Informações Importantes:**
+
+• **Filtro Próprio:** Esta tabela possui filtros específicos localizados na barra lateral (sidebar) 
+  sob a seção "📊 Filtros Conversão"
+
+• **Observação:** Os números apresentados podem sofrer ajustes conforme as vendas forem fechadas, 
+  pois utiliza o campo "data_cad" (data de cadastro) da reserva para análise
+""")
+
 try:
     # Carregar dados de reservas para análise de conversão
     conn = get_motherduck_connection()
