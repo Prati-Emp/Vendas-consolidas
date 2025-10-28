@@ -629,14 +629,14 @@ st.dataframe(
 # SEÇÃO LEADS ATIVOS (não afetada pelos filtros da página principal)
 # =============================================================================
 st.markdown("---")
-st.markdown("## 📊 Leads Ativos")
+st.markdown("## 📊 Leads")
 
 # Tooltip informativo sobre a seção Leads Ativos
 st.info("ℹ️ **Importante**: Esta seção mostra a foto atual de todos os leads ativos. Os filtros de data da página principal não se aplicam aqui.")
 
 # Tooltip por hover explicando o que é Lead e Lead Ativo
 tooltip_text = (
-    "Lead: Registro de um contato que entrou no funil comercial.\n"
+    "Lead: Contato que iniciou relacionamento comercial e está em uma das situações iniciais: Aguardando Atendimento, Qualificação ou Descoberta.\n"
     "Lead ativo: Lead que segue em acompanhamento (situações diferentes de Descartado, Em Pré-Cadastro, Venda Realizada ou Vencido)."
 )
 tooltip_text_html = tooltip_text.replace("\n", "&#10;")
@@ -644,9 +644,9 @@ tooltip_text_html = tooltip_text.replace("\n", "&#10;")
 st.markdown(
     f"""
     <div style='display:flex; align-items:center; gap:8px;'>
-        <h3 style='margin:0;'>Leads Ativos</h3>
-        <div title="{tooltip_text_html}" style='background-color:#1e1e1e;border:1px solid #404040;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;cursor:help;'>
-            <span style='color:#ffffff;font-size:14px;font-weight:bold;'>i</span>
+        <h3 style='margin:0;'>Leads</h3>
+        <div title="{tooltip_text_html}" style='background-color:#2a2a2a;border:1px solid #555;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;cursor:help;box-shadow:0 2px 4px rgba(0,0,0,0.3);'>
+            <span style='color:#ffffff;font-size:16px;font-weight:bold;'>i</span>
         </div>
     </div>
     """,
@@ -655,7 +655,7 @@ st.markdown(
 
 st.markdown(
     """
-    **Lead:** Registro de um contato que iniciou relacionamento com a equipe comercial.
+    **Lead:** Contato que iniciou relacionamento comercial e está em uma das situações iniciais: *Aguardando Atendimento*, *Qualificação* ou *Descoberta*.
 
     **Lead ativo:** Lead que ainda está em acompanhamento porque sua situação atual é diferente de *Descartado*, *Em Pré-Cadastro*, *Venda Realizada* ou *Vencido*.
     """
