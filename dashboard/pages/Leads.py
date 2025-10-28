@@ -940,10 +940,10 @@ st.dataframe(
 # TEMPO MÉDIO POR SITUAÇÃO
 # =============================================================================
 st.markdown("---")
-st.subheader("⏱️ Tempo por Situação")
+st.subheader("⏱️ Tempo por Situação (Geral)")
 st.write(
-    "📌 **Como interpretar:** A tabela abaixo mostra o tempo médio (convertido de minutos para dias, horas e minutos) "
-    "que cada corretor leva em cada situação do workflow consolidado."
+    "📌 **Como interpretar (Visão Geral):** O quadro abaixo apresenta o tempo médio que os leads permanecem em cada situação do "
+    "workflow consolidado, independentemente do corretor."
 )
 
 tempo_situacao_df = load_tempo_por_situacao_data(
@@ -973,6 +973,29 @@ else:
     if tempo_situacao_df.empty:
         st.info("Nenhum tempo válido disponível após o tratamento dos dados.")
     else:
+        tempo_por_situacao_geral = (
+            tempo_situacao_df.groupby("situacao", dropna=False)["tempo"]
+            .mean()
+            .reset_index()
+        )
+
+        if tempo_por_situacao_geral.empty:
+            st.info("Nenhuma informação geral disponível para exibição.")
+        else:
+            tempo_por_situacao_geral["situacao"] = tempo_por_situacao_geral["situacao"].fillna("—")
+            tempo_por_situacao_geral = tempo_por_situacao_geral.sort_values("tempo", ascending=False)
+            tempo_por_situacao_geral["Tempo médio"] = tempo_por_situacao_geral["tempo"].apply(formatar_tempo_minutos)
+            tempo_por_situacao_geral = tempo_por_situacao_geral.rename(columns={"situacao": "Situação"})
+            tempo_por_situacao_geral = tempo_por_situacao_geral.drop(columns=["tempo"])
+            st.dataframe(tempo_por_situacao_geral, use_container_width=True)
+
+        st.markdown("---")
+        st.subheader("⏱️ Tempo por Situação por Corretor")
+        st.write(
+            "📌 **Como interpretar:** A tabela abaixo mostra o tempo médio (convertido de minutos para dias, horas e minutos) "
+            "que cada corretor leva em cada situação do workflow consolidado."
+        )
+
         tempo_agrupado = (
             tempo_situacao_df.groupby(["corretor_consolidado", "situacao"], dropna=False)["tempo"]
             .mean()
@@ -1003,6 +1026,5 @@ else:
             st.dataframe(tempo_pivot_display, use_container_width=True)
             st.caption(
                 "Os tempos são médias calculadas a partir da coluna `tempo` da tabela "
-                "informacoes_consolidadas.cv_leads_workflow_consolidado." 
-                " Valores exibidos em dias, horas e minutos."
+                "informacoes_consolidadas.cv_leads_workflow_consolidado. Valores exibidos em dias, horas e minutos."
             )
