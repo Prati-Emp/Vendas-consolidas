@@ -634,69 +634,46 @@ filtered_ativos_df["tempo_ativo"] = filtered_ativos_df["dias_ativo"].apply(lambd
 # Calcular total de leads ativos ANTES de usar na tabela
 total_ativos = int(filtered_ativos_df.shape[0])
 
-# Gráfico de barras para funil de leads ativos
+# Gráfico de barras horizontais simples para funil de leads ativos
 fig_barras = go.Figure()
 
-# Adicionar barras para cada etapa
-for i, etapa in enumerate(funil_etapas_ativos):
-    quantidade = etapa_counts_ativos[i]
-    percentual = (quantidade / total_ativos * 100) if total_ativos > 0 else 0
-    
-    # Texto que aparece dentro da barra (quantidade)
-    texto_dentro = f"{quantidade}"
-    
-    # Texto que aparece fora da barra (percentual)
-    texto_fora = f"{percentual:.1f}%"
-    
-    fig_barras.add_trace(go.Bar(
-        x=[etapa],
-        y=[quantidade],
-        text=texto_dentro,
-        textposition='inside',
-        textfont=dict(color='white', size=14, family='Arial Black'),
-        hovertemplate=f'<b>{etapa}</b><br>Quantidade: {quantidade}<br>Percentual: {percentual:.1f}%<extra></extra>',
-        name=etapa,
-        marker=dict(
-            color=['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728'][i % 4],  # Cores diferentes para cada barra
-            line=dict(width=1, color='white')
-        )
-    ))
+# Adicionar barras horizontais para cada etapa
+fig_barras.add_trace(go.Bar(
+    y=funil_etapas_ativos,
+    x=etapa_counts_ativos,
+    orientation='h',
+    marker=dict(
+        color='#4A90E2',  # Azul claro uniforme como na imagem
+        line=dict(width=0)  # Sem bordas
+    ),
+    hovertemplate='<b>%{y}</b><br>Quantidade: %{x}<br>Percentual: %{customdata:.1f}%<extra></extra>',
+    customdata=[(count / total_ativos * 100) if total_ativos > 0 else 0 for count in etapa_counts_ativos]
+))
 
 # Configurar layout do gráfico
 fig_barras.update_layout(
     title="Funil de Leads Ativos",
-    xaxis_title="Etapas",
-    yaxis_title="Quantidade de Leads",
+    xaxis_title="Quantidade de Leads",
+    yaxis_title="Etapas",
     showlegend=False,
-    height=500,
+    height=400,
     plot_bgcolor='rgba(0,0,0,0)',
     paper_bgcolor='rgba(0,0,0,0)',
     font=dict(color='white'),
     xaxis=dict(
         tickfont=dict(size=12),
-        gridcolor='rgba(255,255,255,0.1)'
+        gridcolor='rgba(255,255,255,0.1)',
+        showgrid=True
     ),
     yaxis=dict(
         tickfont=dict(size=12),
-        gridcolor='rgba(255,255,255,0.1)'
-    )
+        gridcolor='rgba(255,255,255,0.1)',
+        showgrid=False,
+        categoryorder='array',
+        categoryarray=funil_etapas_ativos[::-1]  # Inverter ordem para maior no topo
+    ),
+    margin=dict(l=100, r=50, t=50, b=50)
 )
-
-# Adicionar anotações com percentuais fora das barras
-for i, etapa in enumerate(funil_etapas_ativos):
-    quantidade = etapa_counts_ativos[i]
-    percentual = (quantidade / total_ativos * 100) if total_ativos > 0 else 0
-    
-    fig_barras.add_annotation(
-        x=etapa,
-        y=quantidade + max(etapa_counts_ativos) * 0.02,  # Posicionar um pouco acima da barra
-        text=f"{percentual:.1f}%",
-        showarrow=False,
-        font=dict(size=12, color='white', family='Arial'),
-        bgcolor='rgba(0,0,0,0.7)',
-        bordercolor='white',
-        borderwidth=1
-    )
 
 # Exibir gráfico
 st.plotly_chart(fig_barras, use_container_width=True)
