@@ -629,9 +629,6 @@ st.dataframe(
 # SEÇÃO LEADS ATIVOS (não afetada pelos filtros da página principal)
 # =============================================================================
 st.markdown("---")
-# Tooltip informativo sobre a seção Leads Ativos
-st.info("ℹ️ **Importante**: Esta seção mostra a foto atual de todos os leads ativos. Os filtros de data da página principal não se aplicam aqui.")
-
 # Tooltip por hover explicando o que é Lead e Lead Ativo
 tooltip_text = (
     "LEAD: Contato que iniciou relacionamento comercial e está em uma das situações iniciais: Aguardando Atendimento, Qualificação ou Descoberta.\n\n"
