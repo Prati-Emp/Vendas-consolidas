@@ -631,21 +631,11 @@ st.dataframe(
 st.markdown("---")
 # Tooltip por hover explicando o que é Lead e Lead Ativo
 tooltip_text = (
-    "LEAD: Contato que iniciou relacionamento comercial e está em uma das situações iniciais: Aguardando Atendimento, Qualificação ou Descoberta.\n\n"
-    "LEAD ATIVO: Lead que segue em acompanhamento (situações diferentes de Descartado, Em Pré-Cadastro, Venda Realizada ou Vencido)."
+    "Lead: Contato que iniciou relacionamento comercial e está em uma das situações iniciais: Aguardando Atendimento, Qualificação ou Descoberta.\n\n"
+    "Lead ativo: Lead que segue em acompanhamento (situações diferentes de Descartado, Em Pré-Cadastro, Venda Realizada ou Vencido)."
 )
 
-st.markdown(
-    f"""
-    <div style='display:flex; align-items:center; gap:8px;'>
-        <h2 style='margin:0;'>📊 Leads Ativos</h2>
-        <div title="{tooltip_text}" style='background-color:#404040;border:1px solid #666666;border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;cursor:help;'>
-            <span style='color:#ffffff;font-size:11px;font-weight:normal;'>?</span>
-        </div>
-    </div>
-    """,
-    unsafe_allow_html=True
-)
+st.markdown("## 📊 Leads Ativos", help=tooltip_text)
 
 
 # Carregar dados completos para leads ativos (sem filtros de data)
