@@ -643,8 +643,8 @@ st.markdown(
     f"""
     <div style='display:flex; align-items:center; gap:8px;'>
         <h2 style='margin:0;'>📊 Leads Ativos</h2>
-        <div title="{tooltip_text_html}" style='background-color:#2a2a2a;border:1px solid #555;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;cursor:help;box-shadow:0 2px 4px rgba(0,0,0,0.3);'>
-            <span style='color:#ffffff;font-size:16px;font-weight:bold;'>i</span>
+        <div title="{tooltip_text_html}" style='background-color:#ffffff;border:2px solid #007bff;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:help;box-shadow:0 3px 6px rgba(0,123,255,0.3);'>
+            <span style='color:#007bff;font-size:18px;font-weight:bold;'>i</span>
         </div>
     </div>
     """,
