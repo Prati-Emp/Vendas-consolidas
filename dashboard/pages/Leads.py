@@ -523,7 +523,7 @@ st.dataframe(
 # SEÇÃO LEADS ATIVOS (não afetada pelos filtros da página principal)
 # =============================================================================
 st.markdown("---")
-st.markdown("## 📊 Funil de Leads Ativos")
+st.markdown("## 📊 Leads Ativos")
 
 # Tooltip informativo sobre a seção Leads Ativos
 st.info("ℹ️ **Importante**: Esta seção mostra a foto atual de todos os leads ativos. Os filtros de data da página principal não se aplicam aqui.")
