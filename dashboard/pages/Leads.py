@@ -857,6 +857,39 @@ col2.metric(label="Em atendimento", value=etapa_counts_ativos[1], help=tooltip_t
 col3.metric(label="Visita Realizada", value=etapa_counts_ativos[2], help=tooltip_texts_ativos['Visita Realizada'])
 col4.metric(label="Com reserva", value=etapa_counts_ativos[3], help=tooltip_texts_ativos['Com reserva'])
 
+# Distribuição por empreendimento para leads ativos
+st.markdown("### Distribuição de Leads Ativos por Empreendimento")
+if filtered_ativos_df.empty:
+    st.info("Sem leads ativos para exibir por empreendimento.")
+else:
+    distribuicao_empreendimento = filtered_ativos_df.copy()
+    distribuicao_empreendimento['empreendimento_ultimo'] = (
+        distribuicao_empreendimento['empreendimento_ultimo']
+        .fillna('—')
+        .replace('', '—')
+    )
+
+    tabela_empreendimento = distribuicao_empreendimento.groupby('empreendimento_ultimo').agg(
+        total_leads=('idlead', 'count'),
+        leads=('funil_etapa', lambda x: (x == 'Leads').sum()),
+        em_atendimento=('funil_etapa', lambda x: (x == 'Em atendimento').sum()),
+        visita_realizada=('funil_etapa', lambda x: (x == 'Visita realizada').sum()),
+        com_reserva=('funil_etapa', lambda x: (x == 'Com reserva').sum()),
+    ).reset_index()
+
+    tabela_empreendimento = tabela_empreendimento.sort_values('total_leads', ascending=False)
+
+    tabela_empreendimento = tabela_empreendimento.rename(columns={
+        'empreendimento_ultimo': 'Empreendimento',
+        'total_leads': 'Total Leads',
+        'leads': 'Leads',
+        'em_atendimento': 'Em atendimento',
+        'visita_realizada': 'Visita realizada',
+        'com_reserva': 'Com reserva'
+    })
+
+    st.dataframe(tabela_empreendimento, use_container_width=True)
+
 st.markdown("---")
 st.subheader("Leads ativos detalhados")
 # Exibir dados de leads ativos usando data_consolidada
