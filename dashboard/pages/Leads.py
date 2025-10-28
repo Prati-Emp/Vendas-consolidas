@@ -634,8 +634,8 @@ st.info("ℹ️ **Importante**: Esta seção mostra a foto atual de todos os lea
 
 # Tooltip por hover explicando o que é Lead e Lead Ativo
 tooltip_text = (
-    "Lead: Contato que iniciou relacionamento comercial e está em uma das situações iniciais: Aguardando Atendimento, Qualificação ou Descoberta.\n"
-    "Lead ativo: Lead que segue em acompanhamento (situações diferentes de Descartado, Em Pré-Cadastro, Venda Realizada ou Vencido)."
+    "LEAD: Contato que iniciou relacionamento comercial e está em uma das situações iniciais: Aguardando Atendimento, Qualificação ou Descoberta.\n\n"
+    "LEAD ATIVO: Lead que segue em acompanhamento (situações diferentes de Descartado, Em Pré-Cadastro, Venda Realizada ou Vencido)."
 )
 tooltip_text_html = tooltip_text.replace("\n", "&#10;")
 
@@ -643,8 +643,8 @@ st.markdown(
     f"""
     <div style='display:flex; align-items:center; gap:8px;'>
         <h2 style='margin:0;'>📊 Leads Ativos</h2>
-        <div title="{tooltip_text_html}" style='background-color:#ffffff;border:2px solid #007bff;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:help;box-shadow:0 3px 6px rgba(0,123,255,0.3);'>
-            <span style='color:#007bff;font-size:18px;font-weight:bold;'>i</span>
+        <div title="{tooltip_text_html}" style='background-color:#1e1e1e;border:1px solid #404040;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;cursor:help;'>
+            <span style='color:#ffffff;font-size:12px;font-weight:bold;'>?</span>
         </div>
     </div>
     """,
