@@ -637,11 +637,28 @@ total_ativos = int(filtered_ativos_df.shape[0])
 # Gráfico de barras horizontais simples para funil de leads ativos
 fig_barras = go.Figure()
 
+# Preparar dados para texto dentro e fora das barras
+text_inside = []  # Percentuais dentro das barras
+text_outside = []  # Quantidades fora das barras
+
+for i, etapa in enumerate(funil_etapas_ativos):
+    quantidade = etapa_counts_ativos[i]
+    percentual = (quantidade / total_ativos * 100) if total_ativos > 0 else 0
+    
+    # Texto dentro da barra (percentual)
+    text_inside.append(f"{percentual:.1f}%")
+    
+    # Texto fora da barra (quantidade)
+    text_outside.append(f"{quantidade}")
+
 # Adicionar barras horizontais para cada etapa
 fig_barras.add_trace(go.Bar(
     y=funil_etapas_ativos,
     x=etapa_counts_ativos,
     orientation='h',
+    text=text_inside,  # Percentual dentro da barra
+    textposition='inside',
+    textfont=dict(color='white', size=12, family='Arial Black'),
     marker=dict(
         color='#4A90E2',  # Azul claro uniforme como na imagem
         line=dict(width=0)  # Sem bordas
@@ -649,6 +666,20 @@ fig_barras.add_trace(go.Bar(
     hovertemplate='<b>%{y}</b><br>Quantidade: %{x}<br>Percentual: %{customdata:.1f}%<extra></extra>',
     customdata=[(count / total_ativos * 100) if total_ativos > 0 else 0 for count in etapa_counts_ativos]
 ))
+
+# Adicionar anotações com quantidades fora das barras
+for i, etapa in enumerate(funil_etapas_ativos):
+    quantidade = etapa_counts_ativos[i]
+    
+    fig_barras.add_annotation(
+        x=quantidade + max(etapa_counts_ativos) * 0.02,  # Posicionar um pouco à direita da barra
+        y=etapa,
+        text=f"{quantidade}",
+        showarrow=False,
+        font=dict(size=12, color='white', family='Arial'),
+        xref='x',
+        yref='y'
+    )
 
 # Configurar layout do gráfico
 fig_barras.update_layout(
@@ -663,7 +694,8 @@ fig_barras.update_layout(
     xaxis=dict(
         tickfont=dict(size=12),
         gridcolor='rgba(255,255,255,0.1)',
-        showgrid=True
+        showgrid=True,
+        range=[0, max(etapa_counts_ativos) * 1.3]  # Expandir eixo X para acomodar texto externo
     ),
     yaxis=dict(
         tickfont=dict(size=12),
@@ -672,7 +704,7 @@ fig_barras.update_layout(
         categoryorder='array',
         categoryarray=funil_etapas_ativos[::-1]  # Inverter ordem para maior no topo
     ),
-    margin=dict(l=100, r=50, t=50, b=50)
+    margin=dict(l=100, r=100, t=50, b=50)  # Aumentar margem direita para texto externo
 )
 
 # Exibir gráfico
