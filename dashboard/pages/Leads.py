@@ -691,7 +691,7 @@ for i, etapa in enumerate(funil_etapas_ativos):
 
 # Configurar layout do gráfico
 fig_barras.update_layout(
-    title="Funil de Leads Ativos",
+    title="Leads Ativos",
     xaxis_title="Quantidade de Leads",
     yaxis_title="Etapas",
     showlegend=False,
