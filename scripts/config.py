@@ -7,6 +7,10 @@ Versão sem loops infinitos
 import os
 from typing import Dict, Any, Optional
 from dataclasses import dataclass
+from dotenv import load_dotenv
+
+# Carregar variáveis de ambiente
+load_dotenv()
 
 @dataclass
 class APIConfig:
@@ -50,6 +54,19 @@ def get_api_config(api_name: str) -> Optional[APIConfig]:
         return APIConfig(
             name='CV Leads',
             base_url='https://prati.cvcrm.com.br/api/v1/cvdw/leads',
+            headers={
+                'accept': 'application/json',
+                'email': os.environ.get('CVCRM_EMAIL', ''),
+                'token': os.environ.get('CVCRM_TOKEN', '')
+            },
+            rate_limit=60
+        )
+    
+    elif api_name == 'cv_leads_workflow_tempo':
+        # Mesmas credenciais de CV Vendas, endpoint diferente
+        return APIConfig(
+            name='CV Leads Workflow Tempo',
+            base_url='https://prati.cvcrm.com.br/api/v1/cvdw/leads/workflow/tempo',
             headers={
                 'accept': 'application/json',
                 'email': os.environ.get('CVCRM_EMAIL', ''),
@@ -169,6 +186,7 @@ def get_all_rate_limits() -> Dict[str, int]:
         'cv_vendas': 60,
         'cv_repasses': 60,
         'cv_leads': 60,
+        'cv_leads_workflow_tempo': 60,
         'cv_repasses_workflow': 60,
         'cv_vgv_empreendimentos': 60,
         'sienge_vendas_realizadas': 50,
