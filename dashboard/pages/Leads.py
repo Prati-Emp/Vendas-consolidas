@@ -631,17 +631,32 @@ filtered_ativos_df["dias_ativo"] = (now_ts - filtered_ativos_df["data_consolidad
 # Formatar como "X dias" para exibição
 filtered_ativos_df["tempo_ativo"] = filtered_ativos_df["dias_ativo"].apply(lambda d: f"{int(d)} dias" if pd.notna(d) else "-")
 
-# Gráfico de funil para leads ativos
-fig_ativos = go.Figure(go.Funnel(
-    y=funil_etapas_ativos,
-    x=etapa_counts_ativos,
-    textinfo="value+percent initial"
-))
-st.plotly_chart(fig_ativos, use_container_width=True)
+# Calcular total de leads ativos ANTES de usar na tabela
+total_ativos = int(filtered_ativos_df.shape[0])
+
+# Tabela de funil para leads ativos
+funil_data = []
+for i, etapa in enumerate(funil_etapas_ativos):
+    quantidade = etapa_counts_ativos[i]
+    percentual = (quantidade / total_ativos * 100) if total_ativos > 0 else 0
+    funil_data.append({
+        'Etapa': etapa,
+        'Quantidade': quantidade,
+        'Percentual (%)': f"{percentual:.1f}%"
+    })
+
+# Criar DataFrame para a tabela
+funil_df = pd.DataFrame(funil_data)
+
+# Exibir tabela
+st.dataframe(
+    funil_df,
+    use_container_width=True,
+    hide_index=True
+)
 
 st.markdown("---")
 # Cartão de total de leads ativos (todas as situações consideradas ativas)
-total_ativos = int(filtered_ativos_df.shape[0])
 col_total, col1, col2, col3, col4 = st.columns(5)
 
 tooltip_texts_ativos = {
