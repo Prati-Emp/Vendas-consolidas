@@ -747,17 +747,14 @@ fig_barras = go.Figure()
 text_inside = []  # Percentuais dentro das barras
 text_outside = []  # Quantidades fora das barras
 
-# Calcular percentuais em relação ao primeiro item (Leads = 100%)
-leads_base = etapa_counts_ativos[0] if etapa_counts_ativos[0] > 0 else 1
+# Calcular percentuais em relação ao total de leads ativos
+leads_base = total_ativos if total_ativos > 0 else 1
 
 for i, etapa in enumerate(funil_etapas_ativos):
     quantidade = etapa_counts_ativos[i]
     
-    # Percentual calculado em relação ao primeiro item (Leads)
-    if i == 0:  # Primeiro item (Leads) sempre 100%
-        percentual = 100.0
-    else:
-        percentual = (quantidade / leads_base * 100) if leads_base > 0 else 0
+    # Percentual calculado em relação ao total de leads ativos
+    percentual = (quantidade / leads_base * 100) if leads_base > 0 else 0
     
     # Texto dentro da barra (percentual)
     text_inside.append(f"{percentual:.1f}%")
@@ -778,7 +775,7 @@ fig_barras.add_trace(go.Bar(
         line=dict(width=0)  # Sem bordas
     ),
     hovertemplate='<b>%{y}</b><br>Quantidade: %{x}<br>Percentual: %{customdata:.1f}%<extra></extra>',
-    customdata=[100.0 if i == 0 else (count / leads_base * 100) if leads_base > 0 else 0 for i, count in enumerate(etapa_counts_ativos)]
+    customdata=[(count / leads_base * 100) if leads_base > 0 else 0 for count in etapa_counts_ativos]
 ))
 
 # Adicionar anotações com quantidades fora das barras
