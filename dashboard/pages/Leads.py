@@ -634,6 +634,27 @@ st.markdown("## 📊 Leads Ativos")
 # Tooltip informativo sobre a seção Leads Ativos
 st.info("ℹ️ **Importante**: Esta seção mostra a foto atual de todos os leads ativos. Os filtros de data da página principal não se aplicam aqui.")
 
+# Definição clara do que é considerado um lead ativo
+st.write("""
+**📋 Definição de Lead Ativo:**
+Um lead é considerado **ativo** quando sua situação atual NÃO está entre as seguintes:
+- ❌ **Descartado** - Lead foi descartado/desqualificado
+- ❌ **Em Pré-Cadastro** - Lead já está em processo de pré-cadastro
+- ❌ **Venda Realizada** - Lead já resultou em venda
+- ❌ **Vencido** - Lead expirou ou venceu
+
+**✅ Situações que caracterizam um Lead Ativo:**
+- Aguardando Atendimento
+- Qualificação
+- Descoberta
+- Em Atendimento
+- Atendimento Futuro
+- Visita Agendada
+- Visita Realizada
+- Atendimento Pós Visita
+- Com Reserva
+""")
+
 # Carregar dados completos para leads ativos (sem filtros de data)
 def get_leads_ativos_data():
     con = duckdb.connect(f"md:reservas?token={MOTHERDUCK_TOKEN}")
