@@ -75,6 +75,60 @@ def load_data():
 
 leads_df = load_data()
 
+
+@st.cache_data(show_spinner=False)
+def load_tempo_por_situacao_data():
+    """Carrega tempos de workflow consolidados diretamente do MotherDuck."""
+    con = duckdb.connect(f"md:?motherduck_token={MOTHERDUCK_TOKEN}")
+    query = """
+        SELECT 
+            COALESCE(NULLIF(TRIM(corretor_consolidado), ''), '—') AS corretor_consolidado,
+            COALESCE(NULLIF(TRIM(situacao), ''), '—') AS situacao,
+            tempo
+        FROM informacoes_consolidadas.cv_leads_workflow_consolidado
+        WHERE tempo IS NOT NULL
+    """
+    df = con.execute(query).df()
+    con.close()
+    return df
+
+
+def formatar_tempo_minutos(minutos):
+    """Converte minutos em representação legível (dias, horas, minutos)."""
+    if minutos is None or pd.isna(minutos):
+        return "-"
+
+    try:
+        minutos_float = float(minutos)
+    except (TypeError, ValueError):
+        return "-"
+
+    if minutos_float < 1:
+        return "< 1 min"
+
+    minutos_int = int(round(minutos_float))
+    dias = minutos_int // (24 * 60)
+    horas = (minutos_int % (24 * 60)) // 60
+    minutos_restantes = minutos_int % 60
+
+    partes = []
+
+    if dias > 0:
+        partes.append(f"{dias} dia{'s' if dias != 1 else ''}")
+
+    if horas > 0:
+        partes.append(f"{horas} h")
+
+    if dias == 0 and horas == 0 and minutos_restantes > 0:
+        partes.append(f"{minutos_restantes} min")
+    elif minutos_restantes > 0 and (dias > 0 or horas > 0):
+        partes.append(f"{minutos_restantes} min")
+
+    if not partes:
+        partes.append("0 min")
+
+    return " ".join(partes)
+
 if leads_df.empty:
     st.warning("Nenhum dado retornado do Mother Duck.")
     st.stop()
@@ -744,3 +798,65 @@ st.dataframe(
     filtered_ativos_df[display_columns_ativos].sort_values("data_consolidada", ascending=False),
     use_container_width=True
 )
+
+
+# =============================================================================
+# TEMPO MÉDIO POR SITUAÇÃO
+# =============================================================================
+st.markdown("---")
+st.subheader("⏱️ Tempo por Situação")
+st.write(
+    "📌 **Como interpretar:** A tabela abaixo mostra o tempo médio (convertido de minutos para dias, horas e minutos) "
+    "que cada corretor leva em cada situação do workflow consolidado."
+)
+
+tempo_situacao_df = load_tempo_por_situacao_data()
+
+# Aplicar filtro de corretores, mantendo consistência com os filtros da página
+if selected_corretores:
+    tempo_situacao_df = tempo_situacao_df[
+        tempo_situacao_df["corretor_consolidado"].isin(selected_corretores)
+    ]
+
+if tempo_situacao_df.empty:
+    st.info("Nenhuma informação de tempo encontrada para os filtros atuais.")
+else:
+    tempo_situacao_df["tempo"] = pd.to_numeric(tempo_situacao_df["tempo"], errors="coerce")
+    tempo_situacao_df = tempo_situacao_df.dropna(subset=["tempo"])
+
+    if tempo_situacao_df.empty:
+        st.info("Nenhum tempo válido disponível após o tratamento dos dados.")
+    else:
+        tempo_agrupado = (
+            tempo_situacao_df.groupby(["corretor_consolidado", "situacao"], dropna=False)["tempo"]
+            .mean()
+            .reset_index()
+        )
+
+        if tempo_agrupado.empty:
+            st.info("Não há tempos médios calculados para exibir.")
+        else:
+            tempo_pivot = (
+                tempo_agrupado.pivot_table(
+                    index="corretor_consolidado",
+                    columns="situacao",
+                    values="tempo",
+                    aggfunc="mean"
+                )
+            )
+
+            tempo_pivot = tempo_pivot.sort_index()
+            tempo_pivot = tempo_pivot.reindex(
+                sorted(tempo_pivot.columns, key=lambda x: (x is None, str(x).lower())),
+                axis=1
+            )
+
+            tempo_pivot_display = tempo_pivot.applymap(formatar_tempo_minutos).reset_index()
+            tempo_pivot_display = tempo_pivot_display.rename(columns={"corretor_consolidado": "Corretor"})
+
+            st.dataframe(tempo_pivot_display, use_container_width=True)
+            st.caption(
+                "Os tempos são médias calculadas a partir da coluna `tempo` da tabela "
+                "informacoes_consolidadas.cv_leads_workflow_consolidado." 
+                " Valores exibidos em dias, horas e minutos."
+            )
