@@ -653,13 +653,6 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-st.markdown(
-    """
-    **Lead:** Contato que iniciou relacionamento comercial e está em uma das situações iniciais: *Aguardando Atendimento*, *Qualificação* ou *Descoberta*.
-
-    **Lead ativo:** Lead que ainda está em acompanhamento porque sua situação atual é diferente de *Descartado*, *Em Pré-Cadastro*, *Venda Realizada* ou *Vencido*.
-    """
-)
 
 # Carregar dados completos para leads ativos (sem filtros de data)
 def get_leads_ativos_data():
