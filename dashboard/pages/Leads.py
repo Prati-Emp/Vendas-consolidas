@@ -634,26 +634,55 @@ st.markdown("## 📊 Leads Ativos")
 # Tooltip informativo sobre a seção Leads Ativos
 st.info("ℹ️ **Importante**: Esta seção mostra a foto atual de todos os leads ativos. Os filtros de data da página principal não se aplicam aqui.")
 
-# Definição clara do que é considerado um lead ativo
-st.write("""
-**📋 Definição de Lead Ativo:**
-Um lead é considerado **ativo** quando sua situação atual NÃO está entre as seguintes:
-- ❌ **Descartado** - Lead foi descartado/desqualificado
-- ❌ **Em Pré-Cadastro** - Lead já está em processo de pré-cadastro
-- ❌ **Venda Realizada** - Lead já resultou em venda
-- ❌ **Vencido** - Lead expirou ou venceu
+# Título da seção com tooltip informativo
+col_titulo, col_tooltip = st.columns([1, 0.1])
+with col_titulo:
+    st.markdown("### Leads Ativos")
+with col_tooltip:
+    st.markdown("""
+    <div style="display: flex; align-items: center; justify-content: center; height: 100%;">
+        <div style="
+            background-color: #1e1e1e; 
+            border: 1px solid #404040; 
+            border-radius: 50%; 
+            width: 24px; 
+            height: 24px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center;
+            cursor: pointer;
+        " title="Clique para ver a definição de Lead Ativo">
+            <span style="color: white; font-size: 14px; font-weight: bold;">i</span>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
-**✅ Situações que caracterizam um Lead Ativo:**
-- Aguardando Atendimento
-- Qualificação
-- Descoberta
-- Em Atendimento
-- Atendimento Futuro
-- Visita Agendada
-- Visita Realizada
-- Atendimento Pós Visita
-- Com Reserva
-""")
+# Tooltip expandível com definição detalhada
+with st.expander("📋 **Definição de Lead Ativo**", expanded=False):
+    st.markdown("""
+    **O que é considerado um Lead Ativo:**
+    
+    Um lead é considerado **ativo** quando sua situação atual NÃO está entre as seguintes:
+    
+    **❌ Situações que NÃO são consideradas leads ativos:**
+    - **Descartado** - Lead foi descartado/desqualificado
+    - **Em Pré-Cadastro** - Lead já está em processo de pré-cadastro  
+    - **Venda Realizada** - Lead já resultou em venda
+    - **Vencido** - Lead expirou ou venceu
+    
+    **✅ Situações que caracterizam um Lead Ativo:**
+    - Aguardando Atendimento
+    - Qualificação
+    - Descoberta
+    - Em Atendimento
+    - Atendimento Futuro
+    - Visita Agendada
+    - Visita Realizada
+    - Atendimento Pós Visita
+    - Com Reserva
+    
+    **💡 Dica:** Os percentuais no gráfico são calculados em relação ao total de leads ativos (todas as situações acima), não apenas em relação à etapa "Leads".
+    """)
 
 # Carregar dados completos para leads ativos (sem filtros de data)
 def get_leads_ativos_data():
