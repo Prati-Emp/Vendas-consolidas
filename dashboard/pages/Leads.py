@@ -77,18 +77,54 @@ leads_df = load_data()
 
 
 @st.cache_data(show_spinner=False)
-def load_tempo_por_situacao_data():
-    """Carrega tempos de workflow consolidados diretamente do MotherDuck."""
+def load_tempo_por_situacao_data(
+    data_inicio_str: str,
+    data_fim_str: str,
+    imobiliarias_filter: tuple,
+    corretores_filter: tuple,
+    empreendimento_filter: str,
+):
+    """Carrega tempos de workflow consolidados do MotherDuck aplicando os filtros principais."""
     con = duckdb.connect(f"md:?motherduck_token={MOTHERDUCK_TOKEN}")
-    query = """
+
+    filtros_sql = [
+        "tempo IS NOT NULL",
+        "Data_cad IS NOT NULL",
+        "CAST(Data_cad AS DATE) >= CAST(? AS DATE)",
+        "CAST(Data_cad AS DATE) <= CAST(? AS DATE)"
+    ]
+
+    params = [data_inicio_str, data_fim_str]
+
+    if corretores_filter:
+        placeholders = ",".join(["?" for _ in corretores_filter])
+        filtros_sql.append("COALESCE(NULLIF(TRIM(corretor_consolidado), ''), '—') IN (" + placeholders + ")")
+        params.extend(corretores_filter)
+
+    if imobiliarias_filter:
+        placeholders = ",".join(["?" for _ in imobiliarias_filter])
+        filtros_sql.append("COALESCE(NULLIF(TRIM(imobiliaria), ''), '—') IN (" + placeholders + ")")
+        params.extend(imobiliarias_filter)
+
+    if empreendimento_filter and empreendimento_filter != "Todos":
+        filtros_sql.append("COALESCE(NULLIF(TRIM(empreendimento_primeiro), ''), '—') = ?")
+        params.append(empreendimento_filter)
+
+    where_clause = " AND ".join(filtros_sql)
+
+    query = f"""
         SELECT 
             COALESCE(NULLIF(TRIM(corretor_consolidado), ''), '—') AS corretor_consolidado,
             COALESCE(NULLIF(TRIM(situacao), ''), '—') AS situacao,
-            tempo
+            tempo,
+            CAST(Data_cad AS DATE) AS data_cad,
+            COALESCE(NULLIF(TRIM(imobiliaria), ''), '—') AS imobiliaria,
+            COALESCE(NULLIF(TRIM(empreendimento_primeiro), ''), '—') AS empreendimento_primeiro
         FROM informacoes_consolidadas.cv_leads_workflow_consolidado
-        WHERE tempo IS NOT NULL
+        WHERE {where_clause}
     """
-    df = con.execute(query).df()
+
+    df = con.execute(query, params).df()
     con.close()
     return df
 
@@ -162,35 +198,44 @@ st.sidebar.header("Filtros")
 data_inicio = st.sidebar.date_input("Data Inicial", value=datetime(2022, 4, 13).date())
 data_fim = st.sidebar.date_input("Data Final", value=datetime.now().date())
 
+# Base de dados apenas com filtro de datas para reaproveitar nas opções adicionais
+leads_periodo_base = leads_df[
+    (leads_df['data_consolidada'].dt.date >= data_inicio) &
+    (leads_df['data_consolidada'].dt.date <= data_fim)
+]
+
 # Empreendimento filter
 empreendimentos = sorted(leads_df['empreendimento_ultimo'].dropna().unique())
 selected_empreendimento = st.sidebar.selectbox("Empreendimento de Interesse", ["Todos"] + list(empreendimentos))
 
 # Mídia filter (baseado em midia_consolidada)
 if 'midia_consolidada' in leads_df.columns:
-    # Primeiro aplicar filtros de data para obter mídias disponíveis no período
-    leads_periodo = leads_df[
-        (leads_df['data_consolidada'].dt.date >= data_inicio) &
-        (leads_df['data_consolidada'].dt.date <= data_fim)
-    ]
-    midias = sorted(leads_periodo.get('midia_consolidada', pd.Series(dtype=str)).dropna().unique())
+    midias = sorted(leads_periodo_base.get('midia_consolidada', pd.Series(dtype=str)).dropna().unique())
 else:
     midias = []
 selected_midias = st.sidebar.multiselect("Mídia", midias, default=[], help="Baseada na última movimentação de mídia registrada")
 
 # Corretor filter (opcional, múltipla escolha) - apenas corretores com leads no período
 if 'corretor_consolidado' in leads_df.columns:
-    # Primeiro aplicar filtros de data para obter corretores disponíveis no período
-    leads_periodo = leads_df[
-        (leads_df['data_consolidada'].dt.date >= data_inicio) &
-        (leads_df['data_consolidada'].dt.date <= data_fim)
-    ]
-    corretores = sorted(leads_periodo.get('corretor_consolidado', pd.Series(dtype=str)).dropna().unique())
+    corretores = sorted(leads_periodo_base.get('corretor_consolidado', pd.Series(dtype=str)).dropna().unique())
     
     # Corretores já foram removidos dos dados, então não precisamos filtrar aqui
 else:
     corretores = []
 selected_corretores = st.sidebar.multiselect("Corretor", corretores, default=[], help="Consolida corretor + corretor_ultimo")
+
+# Imobiliária filter (opcional, múltipla escolha)
+if 'imobiliaria' in leads_df.columns:
+    imobiliarias_series = leads_periodo_base.get('imobiliaria', pd.Series(dtype=str)).fillna('—').replace('', '—')
+    imobiliarias = sorted(imobiliarias_series.unique().tolist())
+else:
+    imobiliarias = []
+selected_imobiliarias = st.sidebar.multiselect(
+    "Imobiliária",
+    imobiliarias,
+    default=[],
+    help="Baseada na última movimentação registrada"
+)
 
 # =============================================================================
 # FILTROS PARA LEADS NOVO (NOVO FUNIL)
@@ -231,6 +276,10 @@ if 'midia_consolidada' in filtered_df.columns and len(selected_midias) > 0:
 # Aplicar filtro de corretor, quando houver seleção
 if 'corretor_consolidado' in filtered_df.columns and len(selected_corretores) > 0:
     filtered_df = filtered_df[filtered_df['corretor_consolidado'].isin(selected_corretores)]
+
+# Aplicar filtro de imobiliária, quando houver seleção
+if 'imobiliaria' in filtered_df.columns and len(selected_imobiliarias) > 0:
+    filtered_df = filtered_df[filtered_df['imobiliaria'].isin(selected_imobiliarias)]
 
 # Mapeamento do funil baseado na tabela "de" (situação atual) -> "para" (etapa), com especial para "descartado" usando anterior
 mapa_funil = {
@@ -357,6 +406,9 @@ if selected_midias:
 
 if selected_corretores:
     filtered_df_novo = filtered_df_novo[filtered_df_novo['corretor_consolidado'].isin(selected_corretores)]
+
+if selected_imobiliarias:
+    filtered_df_novo = filtered_df_novo[filtered_df_novo['imobiliaria'].isin(selected_imobiliarias)]
 
 # Funil baseado nas novas colunas de status
 def render_novo_funil_status():
@@ -810,9 +862,19 @@ st.write(
     "que cada corretor leva em cada situação do workflow consolidado."
 )
 
-tempo_situacao_df = load_tempo_por_situacao_data()
+tempo_situacao_df = load_tempo_por_situacao_data(
+    data_inicio.strftime("%Y-%m-%d"),
+    data_fim.strftime("%Y-%m-%d"),
+    tuple(sorted(selected_imobiliarias)),
+    tuple(sorted(selected_corretores)),
+    selected_empreendimento,
+)
 
-# Aplicar filtro de corretores, mantendo consistência com os filtros da página
+if selected_imobiliarias:
+    tempo_situacao_df = tempo_situacao_df[
+        tempo_situacao_df["imobiliaria"].isin(selected_imobiliarias)
+    ]
+
 if selected_corretores:
     tempo_situacao_df = tempo_situacao_df[
         tempo_situacao_df["corretor_consolidado"].isin(selected_corretores)
