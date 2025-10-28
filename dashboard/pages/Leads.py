@@ -87,6 +87,36 @@ def load_tempo_por_situacao_data(
     """Carrega tempos de workflow consolidados do MotherDuck aplicando os filtros principais."""
     con = duckdb.connect(f"md:?motherduck_token={MOTHERDUCK_TOKEN}")
 
+    # Lista de corretores a serem removidos (mesma lista da seção principal)
+    corretores_removidos = [
+        "ODAIR DIAS DOS SANTOS",
+        "Sabrina M. da Silva dos Santos",
+        "Alex Anderson Fritzen da Silva",
+        "DAIANA PINHEIRO FÜHR",
+        "GRAZIELE GODOI",
+        "ROSANGELA CRISTINA BEVILAQUA",
+        "Alan Rafael Giombelli",
+        "Marcos Roberto ferla",
+        "JULIANO RAFAEL SIMON",
+        "HYORRANA LOPES",
+        "Sabrina maria da silva dos santos",
+        "VANESSA CARDOSO NAZARIN",
+        "Antony Eduardo Bianchini Gouvea",
+        "Tayná Sturm",
+        "Rayssa Nielsen",
+        "Italo Carlos Fernandes Peres",
+        "Michel Vasconcelos",
+        "Jose Carlos da Silva",
+        "SUELLEN SALOME GUIMARÃES MORO",
+        "Angela Maria Rocha Cenedese",
+        "Henrique Martins Speck",
+        "Layane Oliveira de Souza",
+        "RODRIGO WRASSE",
+        "NOELI KREIBICH",
+        "Josibel Alessandra PAlmeira",
+        "Tamiris Teixeira de Andrade Ludvig"
+    ]
+
     filtros_sql = [
         "tempo IS NOT NULL",
         "Data_cad IS NOT NULL",
@@ -95,6 +125,12 @@ def load_tempo_por_situacao_data(
     ]
 
     params = [data_inicio_str, data_fim_str]
+
+    # Adicionar filtro para remover corretores específicos
+    if corretores_removidos:
+        placeholders_removidos = ",".join(["?" for _ in corretores_removidos])
+        filtros_sql.append(f"COALESCE(NULLIF(TRIM(corretor_consolidado), ''), '—') NOT IN ({placeholders_removidos})")
+        params.extend(corretores_removidos)
 
     if corretores_filter:
         placeholders = ",".join(["?" for _ in corretores_filter])
