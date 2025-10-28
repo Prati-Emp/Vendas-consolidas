@@ -954,6 +954,20 @@ tempo_situacao_df = load_tempo_por_situacao_data(
     selected_empreendimento,
 )
 
+# Remover situações que não devem compor a análise
+situacoes_excluidas = {
+    "descartadao",  # grafia solicitada
+    "descartado",   # grafia comum
+    "vencido",
+    "venda realizada",
+    "em pré cadastro",
+    "em pre cadastro"
+}
+
+tempo_situacao_df = tempo_situacao_df[
+    ~tempo_situacao_df["situacao"].fillna("").str.lower().str.strip().isin(situacoes_excluidas)
+]
+
 if selected_imobiliarias:
     tempo_situacao_df = tempo_situacao_df[
         tempo_situacao_df["imobiliaria"].isin(selected_imobiliarias)
