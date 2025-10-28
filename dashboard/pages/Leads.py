@@ -185,7 +185,21 @@ corretores_removidos = [
     "JULIANO RAFAEL SIMON",
     "HYORRANA LOPES",
     "Sabrina maria da silva dos santos",
-    "VANESSA CARDOSO NAZARIN"
+    "VANESSA CARDOSO NAZARIN",
+    "Antony Eduardo Bianchini Gouvea",
+    "Tayná Sturm",
+    "Rayssa Nielsen",
+    "Italo Carlos Fernandes Peres",
+    "Michel Vasconcelos",
+    "Jose Carlos da Silva",
+    "SUELLEN SALOME GUIMARÃES MORO",
+    "Angela Maria Rocha Cenedese",
+    "Henrique Martins Speck",
+    "Layane Oliveira de Souza",
+    "RODRIGO WRASSE",
+    "NOELI KREIBICH",
+    "Josibel Alessandra PAlmeira",
+    "Tamiris Teixeira de Andrade Ludvig"
 ]
 
 # Remover leads desses corretores do conjunto de dados
