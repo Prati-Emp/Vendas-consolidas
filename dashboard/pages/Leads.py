@@ -712,10 +712,6 @@ def get_leads_ativos_data():
 st.sidebar.markdown("---")
 st.sidebar.markdown("### Filtros - Leads Ativos")
 
-# Imobiliaria filter para leads ativos
-imobiliarias_ativos = sorted(leads_df['imobiliaria'].dropna().unique())
-selected_imobiliaria_ativos = st.sidebar.selectbox("Imobiliária (Leads Ativos)", ["Todas"] + list(imobiliarias_ativos))
-
 # Empreendimento filter para leads ativos
 empreendimentos_ativos = sorted(leads_df['empreendimento_ultimo'].dropna().unique())
 selected_empreendimento_ativos = st.sidebar.selectbox("Empreendimento (Leads Ativos)", ["Todos"] + list(empreendimentos_ativos))
@@ -725,9 +721,6 @@ leads_ativos_df = get_leads_ativos_data()
 
 # Aplicar filtros específicos para leads ativos
 filtered_ativos_df = leads_ativos_df.copy()
-
-if selected_imobiliaria_ativos != "Todas":
-    filtered_ativos_df = filtered_ativos_df[filtered_ativos_df['imobiliaria'] == selected_imobiliaria_ativos]
 
 if selected_empreendimento_ativos != "Todos":
     filtered_ativos_df = filtered_ativos_df[filtered_ativos_df['empreendimento_ultimo'] == selected_empreendimento_ativos]
