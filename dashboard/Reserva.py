@@ -720,10 +720,27 @@ col_meta[3].metric("Potencial de Vendas", format_currency(potencial_vendas_valor
 col_meta[4].metric("Cobertura da Meta", f"{cobertura_percent:.1f}%")
 
 st.caption(f"Meta referente a {mes_referencia_label} de {datetime.now().year}.")
+st.markdown(f"**Cobertura da meta:** {cobertura_percent:.1f}%")
 
-barra_cobertura = min(max(cobertura_percent / 100, 0), 1)
-st.progress(barra_cobertura)
-st.caption(f"Cobertura da meta: {cobertura_percent:.1f}%")
+escala_max = 150
+indicador_percentual = max(0.0, min(cobertura_percent, escala_max))
+indicador_posicao = indicador_percentual / escala_max * 100
+
+barra_escala_html = f"""
+<div style='margin-top:0.25rem;position:relative;height:18px;border-radius:12px;background:linear-gradient(to right,#1E90FF 0%,#1E90FF 46.67%,#f1c40f 46.67%,#f1c40f 66.67%,#27ae60 66.67%,#27ae60 100%);'>
+  <div style='position:absolute;top:-6px;left:{indicador_posicao}%;transform:translateX(-50%);'>
+    <div style='width:14px;height:14px;border-radius:50%;background:#ffffff;border:3px solid {status_color};box-shadow:0 0 6px rgba(0,0,0,0.3);'></div>
+  </div>
+</div>
+<div style='display:flex;justify-content:space-between;font-size:0.8rem;color:#aeb6bf;margin-top:4px;'>
+  <span>0%</span>
+  <span>70%</span>
+  <span>100%</span>
+  <span>150%</span>
+</div>
+"""
+
+st.markdown(barra_escala_html, unsafe_allow_html=True)
 
 st.markdown(
     f"""
