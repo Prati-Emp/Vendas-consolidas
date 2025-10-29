@@ -54,9 +54,23 @@ def format_currency(value):
 def format_compact_currency(value):
     """Format currency value to Brazilian Real compact format"""
     try:
-        return f"R$ {value:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
-    except:
+        numeric_value = float(value)
+    except (TypeError, ValueError):
         return f"R$ {value}"
+
+    abs_value = abs(numeric_value)
+
+    if abs_value >= 1_000_000_000:
+        formatted = f"{abs_value / 1_000_000_000:.1f}Bi"
+    elif abs_value >= 1_000_000:
+        formatted = f"{abs_value / 1_000_000:.1f}Mi"
+    elif abs_value >= 1_000:
+        formatted = f"{abs_value / 1_000:.1f}Mil"
+    else:
+        formatted = f"{abs_value:.0f}"
+
+    sign = "-" if numeric_value < 0 else ""
+    return f"{sign}R$ {formatted}"
 
 # Situações consideradas como conversão de reserva em venda
 CONVERSAO_SITUACOES = {situacao.lower() for situacao in ["Distrato", "Mútuo", "Vendida"]}
