@@ -742,20 +742,20 @@ barra_escala_html = f"""
   </div>
   <div style='position:relative; border-radius:14px; overflow:hidden; height:54px; box-shadow:0 0 8px rgba(0,0,0,0.15);'>
     <div style='display:flex; height:100%;'>
-      <div style='flex:70; background:#1E90FF; color:#ffffff; display:flex; flex-direction:column; align-items:center; justify-content:center; font-weight:600; font-size:0.9rem;'>
+      <div style='flex:70; background:#1E90FF; color:#ffffff; display:flex; flex-direction:column; align-items:center; justify-content:center; font-weight:600; font-size:0.9rem; opacity:{1 if cobertura_percent >= 0 else 0.25};'>
         Frio
         <span style="font-weight:400;font-size:0.75rem;">&lt; 70%</span>
       </div>
-      <div style='flex:30; background:#f1c40f; color:#0b0b0b; display:flex; flex-direction:column; align-items:center; justify-content:center; font-weight:700; font-size:0.9rem;'>
+      <div style='flex:30; background:#f1c40f; color:#0b0b0b; display:flex; flex-direction:column; align-items:center; justify-content:center; font-weight:700; font-size:0.9rem; opacity:{1 if cobertura_percent >= 70 else 0.3};'>
         Morno
         <span style="font-weight:500;font-size:0.75rem;">70% – 100%</span>
       </div>
-      <div style='flex:50; background:#27ae60; color:#ffffff; display:flex; flex-direction:column; align-items:center; justify-content:center; font-weight:600; font-size:0.9rem;'>
+      <div style='flex:50; background:#27ae60; color:#ffffff; display:flex; flex-direction:column; align-items:center; justify-content:center; font-weight:600; font-size:0.9rem; opacity:{1 if cobertura_percent >= 100 else 0.3};'>
         Quente
         <span style="font-weight:400;font-size:0.75rem;">&gt; 100%</span>
       </div>
     </div>
-    <div style='position:absolute; top:0; bottom:0; left:0; width:{min(max(cobertura_percent/escala_max,0),1)*100}%; background:linear-gradient(to right, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.12) 100%); mix-blend-mode:screen;'></div>
+    <div style='position:absolute; top:0; bottom:0; left:0; width:{min(max(cobertura_percent/escala_max,0),1)*100}%; background:rgba(255,255,255,0.08); mix-blend-mode:screen;'></div>
     <div style='position:absolute; top:0; bottom:0; left:{indicador_posicao}%; transform:translateX(-50%); width:5px; background:#ffffff; box-shadow:0 0 6px rgba(0,0,0,0.45); border-radius:999px;'></div>
   </div>
 </div>
