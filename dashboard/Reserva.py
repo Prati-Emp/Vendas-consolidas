@@ -740,19 +740,20 @@ barra_escala_html = f"""
     <div style='font-size:0.7rem;font-weight:700;color:{status_color};margin-bottom:6px;background:rgba(15,15,15,0.85);padding:2px 10px;border-radius:999px;'>{cobertura_percent:.1f}%</div>
     <div style='width:0;height:0;border-left:12px solid transparent;border-right:12px solid transparent;border-bottom:16px solid {status_color};'></div>
   </div>
-  <div style='display:flex; overflow:hidden; border-radius:14px; height:52px; box-shadow:0 0 8px rgba(0,0,0,0.15); position:relative;'>
+  <div style='display:flex; overflow:hidden; border-radius:14px; height:52px; box-shadow:0 0 8px rgba(0,0,0,0.15); position:relative; background:#f0f3f6;'>
+    <div style='position:absolute; top:0; bottom:0; left:0; width:{min(max(cobertura_percent/escala_max,0),1)*100}%; background:linear-gradient(to right,#1E90FF 0%,#1E90FF 46.67%,#f1c40f 46.67%,#f1c40f 66.67%,#27ae60 66.67%,#27ae60 100%);'></div>
     <div style='position:absolute; top:0; bottom:0; left:{indicador_posicao}%; transform:translateX(-50%); width:4px; background:#ffffff; box-shadow:0 0 6px rgba(0,0,0,0.35);'></div>
-    <div style='flex:70; background:#1E90FF; display:flex; flex-direction:column; align-items:center; justify-content:center; color:#ffffff; font-weight:600; font-size:0.9rem;'>
-      Frio
-      <span style="font-weight:400;font-size:0.75rem;">&lt; 70%</span>
+    <div style='flex:70; background:transparent; display:flex; flex-direction:column; align-items:center; justify-content:center; color:#ffffff; font-weight:600; font-size:0.9rem; position:relative;'>
+      <span style='position:relative; z-index:1;'>Frio</span>
+      <span style="font-weight:400;font-size:0.75rem; position:relative; z-index:1;">&lt; 70%</span>
     </div>
-    <div style='flex:30; background:#f1c40f; display:flex; flex-direction:column; align-items:center; justify-content:center; color:#0b0b0b; font-weight:700; font-size:0.9rem;'>
-      Morno
-      <span style="font-weight:500;font-size:0.75rem;">70% – 100%</span>
+    <div style='flex:30; background:transparent; display:flex; flex-direction:column; align-items:center; justify-content:center; color:#0b0b0b; font-weight:700; font-size:0.9rem; position:relative;'>
+      <span style='position:relative; z-index:1;'>Morno</span>
+      <span style="font-weight:500;font-size:0.75rem; position:relative; z-index:1;">70% – 100%</span>
     </div>
-    <div style='flex:50; background:#27ae60; display:flex; flex-direction:column; align-items:center; justify-content:center; color:#ffffff; font-weight:600; font-size:0.9rem;'>
-      Quente
-      <span style="font-weight:400;font-size:0.75rem;">&gt; 100%</span>
+    <div style='flex:50; background:transparent; display:flex; flex-direction:column; align-items:center; justify-content:center; color:#ffffff; font-weight:600; font-size:0.9rem; position:relative;'>
+      <span style='position:relative; z-index:1;'>Quente</span>
+      <span style="font-weight:400;font-size:0.75rem; position:relative; z-index:1;">&gt; 100%</span>
     </div>
   </div>
 </div>
