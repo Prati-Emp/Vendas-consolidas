@@ -676,6 +676,38 @@ if coluna_meta_atual:
     except Exception as e:
         st.warning(f"⚠️ Não foi possível carregar as metas de vendas: {e}")
 
+# Vendas realizadas do mês atual (base sienge)
+inicio_mes_atual = pd.Timestamp(datetime.now().year, datetime.now().month, 1)
+inicio_proximo_mes = inicio_mes_atual + pd.DateOffset(months=1)
+inicio_mes_str = inicio_mes_atual.strftime('%Y-%m-%d')
+proximo_mes_str = inicio_proximo_mes.strftime('%Y-%m-%d')
+
+vendas_realizadas_valor = 0.0
+try:
+    conn_vendas = get_motherduck_connection()
+    vendas_sql = """
+        SELECT COALESCE(SUM(value), 0) AS total_vendas
+        FROM informacoes_consolidadas.sienge_vendas_consolidadas
+        WHERE value IS NOT NULL
+          AND contractDate >= CAST(? AS DATE)
+          AND contractDate < CAST(? AS DATE)
+    """
+    vendas_params = [inicio_mes_str, proximo_mes_str]
+    if empreendimento_selecionado != "Todos":
+        vendas_sql += " AND UPPER(TRIM(COALESCE(nome_empreendimento, ''))) = ?"
+        vendas_params.append(empreendimento_selecionado.strip().upper())
+
+    vendas_mes_df = conn_vendas.sql(vendas_sql, params=vendas_params).df()
+    if not vendas_mes_df.empty and pd.notna(vendas_mes_df.loc[0, 'total_vendas']):
+        vendas_realizadas_valor = float(vendas_mes_df.loc[0, 'total_vendas'])
+except Exception as e:
+    st.warning(f"⚠️ Não foi possível carregar as vendas realizadas do mês: {e}")
+    vendas_realizadas_valor = 0.0
+
+# Diferença restante para atingir a meta
+falta_para_meta_valor = max(meta_total - vendas_realizadas_valor, 0.0) if meta_total > 0 else 0.0
+excedente_meta_valor = max(vendas_realizadas_valor - meta_total, 0.0) if meta_total > 0 else 0.0
+
 # Potencial de vendas usando valor total das reservas ativas e taxa de conversão
 potencial_vendas_valor = valor_total_reservas * taxa_conversao_geral
 
@@ -719,7 +751,20 @@ col_meta[2].metric("Taxa de Conversão Geral", f"{taxa_conversao_geral * 100:.1f
 col_meta[3].metric("Potencial de Vendas", format_currency(potencial_vendas_valor))
 col_meta[4].metric("Cobertura da Meta", f"{cobertura_percent:.1f}%")
 
+col_vendas = st.columns(2)
+col_vendas[0].metric("Vendas Realizadas (mês)", format_currency(vendas_realizadas_valor) if vendas_realizadas_valor > 0 else "R$ 0")
+if meta_total > 0:
+    if falta_para_meta_valor > 0:
+        col_vendas[1].metric("Falta para Meta", format_currency(falta_para_meta_valor))
+    else:
+        col_vendas[1].metric("Falta para Meta", "Meta atingida")
+else:
+    col_vendas[1].metric("Falta para Meta", "—")
+
 st.caption(f"Meta referente a {mes_referencia_label} de {datetime.now().year}.")
+if excedente_meta_valor > 0:
+    st.caption(f"Meta já superada em {format_currency(excedente_meta_valor)} no mês.")
+
 st.markdown(f"**Cobertura da meta:** {cobertura_percent:.1f}%")
 
 status_badge_html = f"""
