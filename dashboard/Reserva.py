@@ -51,6 +51,25 @@ def format_currency(value):
     except:
         return f"R$ {value}"
 
+# Situações consideradas como conversão de reserva em venda
+CONVERSAO_SITUACOES = {situacao.lower() for situacao in ["Distrato", "Mútuo", "Vendida"]}
+
+# Mapeamento de meses (2025) para as colunas da tabela de metas
+MESES_COLUNAS_2025 = {
+    1: "jan/25",
+    2: "fev/25",
+    3: "mar/25",
+    4: "abr/25",
+    5: "mai/25",
+    6: "jun/25",
+    7: "jul/25",
+    8: "ago/25",
+    9: "set/25",
+    10: "out/25",
+    11: "nov/25",
+    12: "dez/25",
+}
+
 # Sistema de autenticação removido por questões de segurança
 # Para implementar autenticação segura, use:
 # - Azure Active Directory
@@ -474,6 +493,12 @@ st.info("""
 # Dica sobre ordenação
 st.write("💡 **Dica:** A primeira coluna (índice) ordena automaticamente pelo número de reservas do maior para o menor.")
 
+# Variáveis auxiliares para o termômetro de vendas
+conversao_df_base = pd.DataFrame()
+taxa_conversao_geral = 0.0
+total_reservas_conversao = 0
+reservas_convertidas_total = 0
+
 try:
     # Carregar dados de reservas para análise de conversão
     conn = get_motherduck_connection()
@@ -496,33 +521,53 @@ try:
         AND CAST(data_cad AS DATE) >= CAST(? AS DATE)
         AND CAST(data_cad AS DATE) <= CAST(? AS DATE)
     """, params=[data_inicial_str, data_final_str]).df()
+    conn.close()
     
     if not conversao_df.empty:
+        # Normalizar campos textuais
+        conversao_df['situacao'] = conversao_df['situacao'].astype(str).str.strip()
+        conversao_df['empreendimento'] = conversao_df['empreendimento'].astype(str).str.strip()
+
         # Remover situação "Mútuo" do conjunto da tabela de conversão
-        conversao_df = conversao_df[conversao_df['situacao'].astype(str).str.strip().str.upper() != 'MÚTUO']
+        conversao_df = conversao_df[conversao_df['situacao'].str.upper() != 'MÚTUO']
 
         # Aplicar filtros gerais (exceto data, que já é dedicada)
         if empreendimento_selecionado != "Todos":
-            conversao_df = conversao_df[conversao_df['empreendimento'] == empreendimento_selecionado]
+            empreendimento_normalizado = empreendimento_selecionado.strip().upper()
+            conversao_df = conversao_df[
+                conversao_df['empreendimento'].str.upper() == empreendimento_normalizado
+            ]
 
         if conversao_df.empty:
             st.warning("⚠️ Nenhum dado de reservas encontrado com os filtros selecionados.")
         else:
             # Converter data_cad para datetime
             conversao_df['data_cad'] = pd.to_datetime(conversao_df['data_cad'], errors='coerce')
+            conversao_df['situacao_normalizada'] = conversao_df['situacao'].str.lower()
+
+            # Guardar dataframe filtrado para o termômetro
+            conversao_df_base = conversao_df.copy()
+
+            # Métricas gerais de conversão
+            total_reservas_conversao = len(conversao_df_base)
+            reservas_convertidas_total = (
+                conversao_df_base['situacao_normalizada'].isin(CONVERSAO_SITUACOES)
+            ).sum()
+            taxa_conversao_geral = (
+                reservas_convertidas_total / total_reservas_conversao
+            ) if total_reservas_conversao > 0 else 0.0
             
             # Calcular métricas por corretor
             conversao_por_corretor = []
             
-            for corretor in conversao_df['corretor'].unique():
-                df_corretor = conversao_df[conversao_df['corretor'] == corretor]
+            for corretor in conversao_df_base['corretor'].unique():
+                df_corretor = conversao_df_base[conversao_df_base['corretor'] == corretor]
                 
                 # Total de reservas
                 total_reservas = len(df_corretor)
                 
                 # Reservas convertidas (Distrato, Mútuo, Vendida)
-                situacoes_convertidas = ['Distrato', 'Mútuo', 'Vendida']
-                reservas_convertidas = len(df_corretor[df_corretor['situacao'].isin(situacoes_convertidas)])
+                reservas_convertidas = df_corretor['situacao_normalizada'].isin(CONVERSAO_SITUACOES).sum()
                 
                 # Calcular taxa de conversão
                 taxa_conversao = (reservas_convertidas / total_reservas * 100) if total_reservas > 0 else 0
@@ -565,5 +610,122 @@ try:
         
 except Exception as e:
     st.error(f"❌ Erro ao carregar dados de conversão: {str(e)}")
+
+# =============================================================================
+# INDICADOR: TERMÔMETRO DE VENDAS
+# =============================================================================
+
+st.divider()
+st.subheader("🌡️ Termômetro de Vendas")
+
+# Cálculo das reservas atuais (mesma lógica do indicador principal)
+reservas_atuais_total = len(df_sem_canceladas_vendidas)
+
+# Calcular metas do período selecionado
+meta_total = 0.0
+colunas_meta = []
+periodos_mensais = pd.period_range(start=pd.to_datetime(data_inicio), end=pd.to_datetime(data_fim), freq='M')
+
+for periodo in periodos_mensais:
+    coluna = MESES_COLUNAS_2025.get(periodo.month)
+    if coluna and periodo.year == 2025 and coluna not in colunas_meta:
+        colunas_meta.append(coluna)
+
+metas_df = pd.DataFrame()
+if colunas_meta:
+    try:
+        conn_meta = get_motherduck_connection()
+        metas_df = conn_meta.sql("""
+            SELECT 
+                "Empreendiemento" AS nome_empreendimento,
+                "Codigo empreendimento" AS codigo_empreendimento,
+                "jan/25",
+                "fev/25",
+                "mar/25",
+                "abr/25",
+                "mai/25",
+                "jun/25",
+                "jul/25",
+                "ago/25",
+                "set/25",
+                "out/25",
+                "nov/25",
+                "dez/25"
+            FROM informacoes_consolidadas.meta_vendas_2025
+        """).df()
+        conn_meta.close()
+
+        if not metas_df.empty:
+            metas_df['nome_empreendimento'] = metas_df['nome_empreendimento'].astype(str).str.strip()
+            if empreendimento_selecionado != "Todos":
+                empreendimento_meta = empreendimento_selecionado.strip().upper()
+                metas_df = metas_df[metas_df['nome_empreendimento'].str.upper() == empreendimento_meta]
+
+            if not metas_df.empty:
+                metas_valores = metas_df[colunas_meta].apply(pd.to_numeric, errors='coerce').fillna(0)
+                meta_total = float(metas_valores.values.sum())
+    except Exception as e:
+        st.warning(f"⚠️ Não foi possível carregar as metas de vendas: {e}")
+
+# Potencial de vendas com base nas reservas atuais e taxa de conversão geral
+potencial_vendas = reservas_atuais_total * taxa_conversao_geral
+
+if meta_total > 0:
+    cobertura_percent = (potencial_vendas / meta_total) * 100
+else:
+    cobertura_percent = 0.0
+
+cobertura_percent = float(cobertura_percent)
+
+if meta_total <= 0:
+    status = "Sem meta cadastrada"
+    interpretacao = "Não encontramos metas para o período selecionado."
+    acao = "Atualize os dados de metas ou ajuste o intervalo de datas."
+    status_color = "#95a5a6"
+else:
+    if cobertura_percent < 70:
+        status = "Frio"
+        interpretacao = "Pipeline insuficiente para meta."
+        acao = "Intensificar prospecção e aumentar o volume de reservas."
+        status_color = "#1E90FF"
+    elif cobertura_percent <= 100:
+        status = "Morno"
+        interpretacao = "Em linha, mas ainda vulnerável."
+        acao = "Focar em qualificação e follow-ups." 
+        status_color = "#f1c40f"
+    else:
+        status = "Quente"
+        interpretacao = "Carteira suficiente para atingir a meta."
+        acao = "Manter ritmo e reforçar o fechamento."
+        status_color = "#27ae60"
+
+status_text_color = "#0b0b0b"
+if status in {"Frio", "Quente"}:
+    status_text_color = "#ffffff"
+
+col_meta = st.columns(5)
+col_meta[0].metric("Meta de Vendas", f"{int(round(meta_total))}" if meta_total > 0 else "—")
+col_meta[1].metric("Reservas Atuais", f"{reservas_atuais_total}")
+col_meta[2].metric("Taxa de Conversão Geral", f"{taxa_conversao_geral * 100:.1f}%")
+col_meta[3].metric("Potencial de Vendas", f"{potencial_vendas:.1f}")
+col_meta[4].metric("Cobertura da Meta", f"{cobertura_percent:.1f}%")
+
+barra_cobertura = min(max(cobertura_percent / 100, 0), 1)
+st.progress(barra_cobertura)
+st.caption(f"Cobertura da meta: {cobertura_percent:.1f}%")
+
+st.markdown(
+    f"""
+    <div style="background-color:{status_color};padding:1rem;border-radius:0.5rem;color:{status_text_color};font-weight:600;">
+        Status: {status}
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
+st.markdown(
+    f"**Interpretação:** {interpretacao}<br>**Ação Recomendada:** {acao}",
+    unsafe_allow_html=True
+)
 
 # Página Home simplificada - apenas os quadros principais
