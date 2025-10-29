@@ -493,8 +493,6 @@ try:
         # Aplicar filtros gerais (exceto data, que já é dedicada)
         if empreendimento_selecionado != "Todos":
             conversao_df = conversao_df[conversao_df['empreendimento'] == empreendimento_selecionado]
-        if situacao_selecionada != "Todas":
-            conversao_df = conversao_df[conversao_df['situacao'] == situacao_selecionada]
 
         if conversao_df.empty:
             st.warning("⚠️ Nenhum dado de reservas encontrado com os filtros selecionados.")
