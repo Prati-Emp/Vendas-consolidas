@@ -664,6 +664,8 @@ valor_total_reservas = float(df_sem_canceladas_vendidas.get('valor_contrato', pd
 meta_total = 0.0
 coluna_meta_atual = MESES_COLUNAS_2025.get(datetime.now().month)
 mes_referencia_label = MESES_NOME_PT.get(datetime.now().month, "mês atual")
+mes_referencia_display = f"{mes_referencia_label} de {datetime.now().year}"
+mes_referencia_curto = f"{mes_referencia_label.capitalize()}" if mes_referencia_label else "Mês atual"
 
 metas_df = pd.DataFrame()
 if coluna_meta_atual:
@@ -770,7 +772,7 @@ if status in {"Frio", "Quente"}:
     status_text_color = "#ffffff"
 
 col_meta = st.columns(5)
-col_meta[0].metric("Meta de Vendas", format_compact_currency(meta_total) if meta_total > 0 else "—")
+col_meta[0].metric(f"Meta de Vendas ({mes_referencia_curto})", format_compact_currency(meta_total) if meta_total > 0 else "—")
 col_meta[1].metric("Taxa de Conversão Geral", f"{taxa_conversao_geral * 100:.1f}%")
 col_meta[2].metric("Reservas Atuais", f"{reservas_atuais_total}")
 col_meta[3].metric("Potencial de Vendas", format_compact_currency(potencial_vendas_valor))
@@ -825,7 +827,7 @@ st.markdown(
 st.markdown("<div style='height:36px;'></div>", unsafe_allow_html=True)
 
 col_vendas = st.columns(3)
-col_vendas[0].metric("Vendas Realizadas (mês)", format_compact_currency(vendas_realizadas_valor) if vendas_realizadas_valor > 0 else "R$ 0")
+col_vendas[0].metric(f"Vendas Realizadas ({mes_referencia_curto})", format_compact_currency(vendas_realizadas_valor) if vendas_realizadas_valor > 0 else "R$ 0")
 
 if meta_total > 0:
     if atingimento_percent >= 100:
@@ -856,5 +858,7 @@ if meta_total > 0:
         col_vendas[2].metric("Falta para Meta", "Meta atingida")
 else:
     col_vendas[2].metric("Falta para Meta", "—")
+
+st.caption(f"Meta referente a {mes_referencia_display}.")
 
 # Página Home simplificada - apenas os quadros principais
