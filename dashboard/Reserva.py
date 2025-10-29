@@ -70,6 +70,21 @@ MESES_COLUNAS_2025 = {
     12: "dez/25",
 }
 
+MESES_NOME_PT = {
+    1: "janeiro",
+    2: "fevereiro",
+    3: "março",
+    4: "abril",
+    5: "maio",
+    6: "junho",
+    7: "julho",
+    8: "agosto",
+    9: "setembro",
+    10: "outubro",
+    11: "novembro",
+    12: "dezembro",
+}
+
 # Sistema de autenticação removido por questões de segurança
 # Para implementar autenticação segura, use:
 # - Azure Active Directory
@@ -624,6 +639,7 @@ valor_total_reservas = float(df_sem_canceladas_vendidas.get('valor_contrato', pd
 # Calcular metas do mês atual
 meta_total = 0.0
 coluna_meta_atual = MESES_COLUNAS_2025.get(datetime.now().month)
+mes_referencia_label = MESES_NOME_PT.get(datetime.now().month, "mês atual")
 
 metas_df = pd.DataFrame()
 if coluna_meta_atual:
@@ -678,7 +694,7 @@ if meta_total <= 0:
 else:
     if cobertura_percent < 70:
         status = "Frio"
-        interpretacao = "Pipeline insuficiente para meta."
+        interpretacao = "Reservas insuficientes para atingir a meta."
         acao = "Intensificar prospecção e aumentar o volume de reservas."
         status_color = "#1E90FF"
     elif cobertura_percent <= 100:
@@ -702,6 +718,8 @@ col_meta[1].metric("Reservas Atuais", f"{reservas_atuais_total}")
 col_meta[2].metric("Taxa de Conversão Geral", f"{taxa_conversao_geral * 100:.1f}%")
 col_meta[3].metric("Potencial de Vendas", format_currency(potencial_vendas_valor))
 col_meta[4].metric("Cobertura da Meta", f"{cobertura_percent:.1f}%")
+
+st.caption(f"Meta referente a {mes_referencia_label} de {datetime.now().year}.")
 
 barra_cobertura = min(max(cobertura_percent / 100, 0), 1)
 st.progress(barra_cobertura)
