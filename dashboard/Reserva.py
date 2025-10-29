@@ -619,19 +619,14 @@ st.subheader("🌡️ Termômetro de Vendas")
 
 # Cálculo das reservas atuais (mesma lógica do indicador principal)
 reservas_atuais_total = len(df_sem_canceladas_vendidas)
+valor_total_reservas = float(df_sem_canceladas_vendidas.get('valor_contrato', pd.Series(dtype=float)).fillna(0).sum())
 
-# Calcular metas do período selecionado
+# Calcular metas do mês atual
 meta_total = 0.0
-colunas_meta = []
-periodos_mensais = pd.period_range(start=pd.to_datetime(data_inicio), end=pd.to_datetime(data_fim), freq='M')
-
-for periodo in periodos_mensais:
-    coluna = MESES_COLUNAS_2025.get(periodo.month)
-    if coluna and periodo.year == 2025 and coluna not in colunas_meta:
-        colunas_meta.append(coluna)
+coluna_meta_atual = MESES_COLUNAS_2025.get(datetime.now().month)
 
 metas_df = pd.DataFrame()
-if colunas_meta:
+if coluna_meta_atual:
     try:
         conn_meta = get_motherduck_connection()
         metas_df = conn_meta.sql("""
@@ -659,17 +654,17 @@ if colunas_meta:
                 empreendimento_meta = empreendimento_selecionado.strip().upper()
                 metas_df = metas_df[metas_df['nome_empreendimento'].str.upper() == empreendimento_meta]
 
-            if not metas_df.empty:
-                metas_valores = metas_df[colunas_meta].apply(pd.to_numeric, errors='coerce').fillna(0)
-                meta_total = float(metas_valores.values.sum())
+            if not metas_df.empty and coluna_meta_atual in metas_df.columns:
+                metas_valores = metas_df[coluna_meta_atual].apply(pd.to_numeric, errors='coerce').fillna(0)
+                meta_total = float(metas_valores.sum())
     except Exception as e:
         st.warning(f"⚠️ Não foi possível carregar as metas de vendas: {e}")
 
-# Potencial de vendas com base nas reservas atuais e taxa de conversão geral
-potencial_vendas = reservas_atuais_total * taxa_conversao_geral
+# Potencial de vendas usando valor total das reservas atuais
+potencial_vendas_valor = valor_total_reservas
 
 if meta_total > 0:
-    cobertura_percent = (potencial_vendas / meta_total) * 100
+    cobertura_percent = (potencial_vendas_valor / meta_total) * 100
 else:
     cobertura_percent = 0.0
 
@@ -677,8 +672,8 @@ cobertura_percent = float(cobertura_percent)
 
 if meta_total <= 0:
     status = "Sem meta cadastrada"
-    interpretacao = "Não encontramos metas para o período selecionado."
-    acao = "Atualize os dados de metas ou ajuste o intervalo de datas."
+    interpretacao = "Não encontramos metas para o mês atual."
+    acao = "Atualize os dados de metas ou verifique o cadastro do mês corrente."
     status_color = "#95a5a6"
 else:
     if cobertura_percent < 70:
@@ -702,10 +697,10 @@ if status in {"Frio", "Quente"}:
     status_text_color = "#ffffff"
 
 col_meta = st.columns(5)
-col_meta[0].metric("Meta de Vendas", f"{int(round(meta_total))}" if meta_total > 0 else "—")
+col_meta[0].metric("Meta de Vendas", format_currency(meta_total) if meta_total > 0 else "—")
 col_meta[1].metric("Reservas Atuais", f"{reservas_atuais_total}")
 col_meta[2].metric("Taxa de Conversão Geral", f"{taxa_conversao_geral * 100:.1f}%")
-col_meta[3].metric("Potencial de Vendas", f"{potencial_vendas:.1f}")
+col_meta[3].metric("Potencial de Vendas", format_currency(potencial_vendas_valor))
 col_meta[4].metric("Cobertura da Meta", f"{cobertura_percent:.1f}%")
 
 barra_cobertura = min(max(cobertura_percent / 100, 0), 1)
