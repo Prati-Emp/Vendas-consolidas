@@ -768,8 +768,8 @@ if status in {"Frio", "Quente"}:
 
 col_meta = st.columns(5)
 col_meta[0].metric("Meta de Vendas", format_compact_currency(meta_total) if meta_total > 0 else "—")
-col_meta[1].metric("Reservas Atuais", f"{reservas_atuais_total}")
-col_meta[2].metric("Taxa de Conversão Geral", f"{taxa_conversao_geral * 100:.1f}%")
+col_meta[1].metric("Taxa de Conversão Geral", f"{taxa_conversao_geral * 100:.1f}%")
+col_meta[2].metric("Reservas Atuais", f"{reservas_atuais_total}")
 col_meta[3].metric("Potencial de Vendas", format_compact_currency(potencial_vendas_valor))
 col_meta[4].metric("Cobertura da Meta", f"{cobertura_percent:.1f}%")
 
