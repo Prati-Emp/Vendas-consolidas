@@ -722,34 +722,42 @@ col_meta[4].metric("Cobertura da Meta", f"{cobertura_percent:.1f}%")
 st.caption(f"Meta referente a {mes_referencia_label} de {datetime.now().year}.")
 st.markdown(f"**Cobertura da meta:** {cobertura_percent:.1f}%")
 
+status_badge_html = f"""
+<div style="margin-top:0.5rem;">
+  <span style="display:inline-block;padding:0.45rem 1rem;border-radius:999px;background:{status_color};color:{status_text_color};font-weight:600;">Status: {status}</span>
+</div>
+"""
+
+st.markdown(status_badge_html, unsafe_allow_html=True)
+
 escala_max = 150
 indicador_percentual = max(0.0, min(cobertura_percent, escala_max))
 indicador_posicao = indicador_percentual / escala_max * 100
 
 barra_escala_html = f"""
-<div style='margin-top:0.25rem;position:relative;height:18px;border-radius:12px;background:linear-gradient(to right,#1E90FF 0%,#1E90FF 46.67%,#f1c40f 46.67%,#f1c40f 66.67%,#27ae60 66.67%,#27ae60 100%);'>
-  <div style='position:absolute;top:-6px;left:{indicador_posicao}%;transform:translateX(-50%);'>
-    <div style='width:14px;height:14px;border-radius:50%;background:#ffffff;border:3px solid {status_color};box-shadow:0 0 6px rgba(0,0,0,0.3);'></div>
+<div style='margin-top:0.75rem; position:relative;'>
+  <div style='display:flex; overflow:hidden; border-radius:14px; height:52px; box-shadow:0 0 8px rgba(0,0,0,0.15);'>
+    <div style='flex:70; background:#1E90FF; display:flex; flex-direction:column; align-items:center; justify-content:center; color:#ffffff; font-weight:600; font-size:0.9rem;'>
+      Frio
+      <span style="font-weight:400;font-size:0.75rem;">&lt; 70%</span>
+    </div>
+    <div style='flex:30; background:#f1c40f; display:flex; flex-direction:column; align-items:center; justify-content:center; color:#0b0b0b; font-weight:700; font-size:0.9rem;'>
+      Morno
+      <span style="font-weight:500;font-size:0.75rem;">70% – 100%</span>
+    </div>
+    <div style='flex:50; background:#27ae60; display:flex; flex-direction:column; align-items:center; justify-content:center; color:#ffffff; font-weight:600; font-size:0.9rem;'>
+      Quente
+      <span style="font-weight:400;font-size:0.75rem;">&gt; 100%</span>
+    </div>
   </div>
-</div>
-<div style='display:flex;justify-content:space-between;font-size:0.8rem;color:#aeb6bf;margin-top:4px;'>
-  <span>0%</span>
-  <span>70%</span>
-  <span>100%</span>
-  <span>150%</span>
+  <div style='position:absolute; top:-18px; left:{indicador_posicao}%; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center;'>
+    <div style='width:0;height:0;border-left:10px solid transparent;border-right:10px solid transparent;border-bottom:12px solid {status_color};'></div>
+    <div style='width:14px;height:14px;border-radius:50%;background:{status_color};border:3px solid #ffffff;box-shadow:0 0 6px rgba(0,0,0,0.3);'></div>
+  </div>
 </div>
 """
 
 st.markdown(barra_escala_html, unsafe_allow_html=True)
-
-st.markdown(
-    f"""
-    <div style="background-color:{status_color};padding:1rem;border-radius:0.5rem;color:{status_text_color};font-weight:600;">
-        Status: {status}
-    </div>
-    """,
-    unsafe_allow_html=True
-)
 
 st.markdown(
     f"**Interpretação:** {interpretacao}<br>**Ação Recomendada:** {acao}",
