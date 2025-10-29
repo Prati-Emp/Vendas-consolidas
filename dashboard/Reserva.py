@@ -707,6 +707,7 @@ except Exception as e:
 # Diferença restante para atingir a meta
 falta_para_meta_valor = max(meta_total - vendas_realizadas_valor, 0.0) if meta_total > 0 else 0.0
 excedente_meta_valor = max(vendas_realizadas_valor - meta_total, 0.0) if meta_total > 0 else 0.0
+atingimento_percent = (vendas_realizadas_valor / meta_total * 100) if meta_total > 0 else 0.0
 
 # Potencial de vendas usando valor total das reservas ativas e taxa de conversão
 potencial_vendas_valor = valor_total_reservas * taxa_conversao_geral
@@ -751,15 +752,38 @@ col_meta[2].metric("Taxa de Conversão Geral", f"{taxa_conversao_geral * 100:.1f
 col_meta[3].metric("Potencial de Vendas", format_currency(potencial_vendas_valor))
 col_meta[4].metric("Cobertura da Meta", f"{cobertura_percent:.1f}%")
 
-col_vendas = st.columns(2)
+col_vendas = st.columns(3)
 col_vendas[0].metric("Vendas Realizadas (mês)", format_currency(vendas_realizadas_valor) if vendas_realizadas_valor > 0 else "R$ 0")
+
+if meta_total > 0:
+    if atingimento_percent >= 100:
+        atingimento_valor_display = f"↗ {atingimento_percent:.1f}%"
+        atingimento_delta_display = "Meta batida"
+        atingimento_delta_color = "normal"
+    else:
+        atingimento_valor_display = f"↘ {atingimento_percent:.1f}%"
+        atingimento_delta_display = "Meta não batida"
+        atingimento_delta_color = "inverse"
+else:
+    atingimento_valor_display = f"{atingimento_percent:.1f}%"
+    atingimento_delta_display = "Sem meta"
+    atingimento_delta_color = "off"
+
+col_vendas[1].metric(
+    "Atingimento da Meta",
+    atingimento_valor_display,
+    delta=atingimento_delta_display,
+    delta_color=atingimento_delta_color,
+    help="Percentual atingido da meta com base nas vendas realizadas do mês"
+)
+
 if meta_total > 0:
     if falta_para_meta_valor > 0:
-        col_vendas[1].metric("Falta para Meta", format_currency(falta_para_meta_valor))
+        col_vendas[2].metric("Falta para Meta", format_currency(falta_para_meta_valor))
     else:
-        col_vendas[1].metric("Falta para Meta", "Meta atingida")
+        col_vendas[2].metric("Falta para Meta", "Meta atingida")
 else:
-    col_vendas[1].metric("Falta para Meta", "—")
+    col_vendas[2].metric("Falta para Meta", "—")
 
 st.caption(f"Meta referente a {mes_referencia_label} de {datetime.now().year}.")
 if excedente_meta_valor > 0:
