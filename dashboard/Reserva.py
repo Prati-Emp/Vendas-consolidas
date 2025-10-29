@@ -819,7 +819,7 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-st.markdown("<div style='height:24px;'></div>", unsafe_allow_html=True)
+st.markdown("<div style='height:36px;'></div>", unsafe_allow_html=True)
 
 col_vendas = st.columns(3)
 col_vendas[0].metric("Vendas Realizadas (mês)", format_compact_currency(vendas_realizadas_valor) if vendas_realizadas_valor > 0 else "R$ 0")
