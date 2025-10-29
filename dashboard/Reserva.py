@@ -75,6 +75,9 @@ def format_compact_currency(value):
 # Situações consideradas como conversão de reserva em venda
 CONVERSAO_SITUACOES = {situacao.lower() for situacao in ["Distrato", "Mútuo", "Vendida"]}
 
+# Situações removidas do painel de reservas
+SITUACOES_RESERVAS_EXCLUIDAS = {situacao.upper() for situacao in ["Mútuo", "Vencida"]}
+
 # Mapeamento de meses (2025) para as colunas da tabela de metas
 MESES_COLUNAS_2025 = {
     1: "jan/25",
@@ -317,7 +320,7 @@ mask = (
 ) & (
     reservas_df['data_cad'].dt.date <= data_fim
 ) & (
-    reservas_df['situacao'].str.strip().str.upper() != 'MÚTUO'
+    ~reservas_df['situacao'].str.strip().str.upper().isin(SITUACOES_RESERVAS_EXCLUIDAS)
 )
 if empreendimento_selecionado != "Todos":
     mask = mask & (reservas_df['empreendimento'] == empreendimento_selecionado)
@@ -564,7 +567,7 @@ try:
         conversao_df['empreendimento'] = conversao_df['empreendimento'].astype(str).str.strip()
 
         # Remover situação "Mútuo" do conjunto da tabela de conversão
-        conversao_df = conversao_df[conversao_df['situacao'].str.upper() != 'MÚTUO']
+        conversao_df = conversao_df[~conversao_df['situacao'].str.strip().str.upper().isin(SITUACOES_RESERVAS_EXCLUIDAS)]
 
         # Aplicar filtros gerais (exceto data, que já é dedicada)
         if empreendimento_selecionado != "Todos":
