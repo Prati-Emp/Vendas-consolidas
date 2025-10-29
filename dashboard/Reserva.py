@@ -51,6 +51,13 @@ def format_currency(value):
     except:
         return f"R$ {value}"
 
+def format_compact_currency(value):
+    """Format currency value to Brazilian Real compact format"""
+    try:
+        return f"R$ {value:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    except:
+        return f"R$ {value}"
+
 # Situações consideradas como conversão de reserva em venda
 CONVERSAO_SITUACOES = {situacao.lower() for situacao in ["Distrato", "Mútuo", "Vendida"]}
 
@@ -746,14 +753,14 @@ if status in {"Frio", "Quente"}:
     status_text_color = "#ffffff"
 
 col_meta = st.columns(5)
-col_meta[0].metric("Meta de Vendas", format_currency(meta_total) if meta_total > 0 else "—")
+col_meta[0].metric("Meta de Vendas", format_compact_currency(meta_total) if meta_total > 0 else "—")
 col_meta[1].metric("Reservas Atuais", f"{reservas_atuais_total}")
 col_meta[2].metric("Taxa de Conversão Geral", f"{taxa_conversao_geral * 100:.1f}%")
-col_meta[3].metric("Potencial de Vendas", format_currency(potencial_vendas_valor))
+col_meta[3].metric("Potencial de Vendas", format_compact_currency(potencial_vendas_valor))
 col_meta[4].metric("Cobertura da Meta", f"{cobertura_percent:.1f}%")
 
 col_vendas = st.columns(3)
-col_vendas[0].metric("Vendas Realizadas (mês)", format_currency(vendas_realizadas_valor) if vendas_realizadas_valor > 0 else "R$ 0")
+col_vendas[0].metric("Vendas Realizadas (mês)", format_compact_currency(vendas_realizadas_valor) if vendas_realizadas_valor > 0 else "R$ 0")
 
 if meta_total > 0:
     if atingimento_percent >= 100:
@@ -779,7 +786,7 @@ col_vendas[1].metric(
 
 if meta_total > 0:
     if falta_para_meta_valor > 0:
-        col_vendas[2].metric("Falta para Meta", format_currency(falta_para_meta_valor))
+        col_vendas[2].metric("Falta para Meta", format_compact_currency(falta_para_meta_valor))
     else:
         col_vendas[2].metric("Falta para Meta", "Meta atingida")
 else:
