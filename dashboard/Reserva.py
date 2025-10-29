@@ -773,6 +773,12 @@ col_meta[2].metric("Reservas Atuais", f"{reservas_atuais_total}")
 col_meta[3].metric("Potencial de Vendas", format_compact_currency(potencial_vendas_valor))
 col_meta[4].metric("Cobertura da Meta", f"{cobertura_percent:.1f}%")
 
+status_badge_html = f"""
+<div style="margin-top:0.5rem;">
+  <span style="display:inline-block;padding:0.45rem 1rem;border-radius:999px;background:{status_color};color:{status_text_color};font-weight:600;">Status: {status}</span>
+</div>
+"""
+
 st.markdown(status_badge_html, unsafe_allow_html=True)
 
 escala_max = 150
