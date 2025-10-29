@@ -461,6 +461,8 @@ st.info("""
   sob a seção "📊 Filtros Conversão"
 
 • ⚠️ **Importante:** Os números podem variar conforme o fechamento das vendas, pois a análise considera a data de cadastro (data_cad) da reserva. Uma venda pode ser cadastrada em um período e efetivada posteriormente, mas será contabilizada conforme a data de cadastro.
+
+• 📌 **Total de Reservas:** A coluna contabiliza todas as situações registradas, incluindo reservas canceladas.
 """)
 
 # Dica sobre ordenação
