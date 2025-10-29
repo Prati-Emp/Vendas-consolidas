@@ -730,6 +730,15 @@ falta_para_meta_valor = max(meta_total - vendas_realizadas_valor, 0.0) if meta_t
 excedente_meta_valor = max(vendas_realizadas_valor - meta_total, 0.0) if meta_total > 0 else 0.0
 atingimento_percent = (vendas_realizadas_valor / meta_total * 100) if meta_total > 0 else 0.0
 
+if meta_total > 0:
+    falta_para_meta_display = format_compact_currency(falta_para_meta_valor) if falta_para_meta_valor > 0 else "Meta atingida"
+    status_meta_resumo = "Meta batida" if atingimento_percent >= 100 else "Meta não batida"
+else:
+    falta_para_meta_display = "—"
+    status_meta_resumo = "Sem meta"
+
+vendas_realizadas_display = format_compact_currency(vendas_realizadas_valor)
+
 # Potencial de vendas usando valor total das reservas ativas e taxa de conversão
 potencial_vendas_valor = valor_total_reservas * taxa_conversao_geral
 
@@ -766,59 +775,11 @@ status_text_color = "#0b0b0b"
 if status in {"Frio", "Quente"}:
     status_text_color = "#ffffff"
 
-col_meta = st.columns(5)
-col_meta[0].metric("Meta de Vendas", format_compact_currency(meta_total) if meta_total > 0 else "—")
-col_meta[1].metric("Reservas Atuais", f"{reservas_atuais_total}")
-col_meta[2].metric("Taxa de Conversão Geral", f"{taxa_conversao_geral * 100:.1f}%")
-col_meta[3].metric("Potencial de Vendas", format_compact_currency(potencial_vendas_valor))
-col_meta[4].metric("Cobertura da Meta", f"{cobertura_percent:.1f}%")
-
-col_vendas = st.columns(3)
-col_vendas[0].metric("Vendas Realizadas (mês)", format_compact_currency(vendas_realizadas_valor) if vendas_realizadas_valor > 0 else "R$ 0")
-
-if meta_total > 0:
-    if atingimento_percent >= 100:
-        atingimento_valor_display = f"↗ {atingimento_percent:.1f}%"
-        atingimento_delta_display = "Meta batida"
-        atingimento_delta_color = "normal"
-    else:
-        atingimento_valor_display = f"↘ {atingimento_percent:.1f}%"
-        atingimento_delta_display = "Meta não batida"
-        atingimento_delta_color = "inverse"
-else:
-    atingimento_valor_display = f"{atingimento_percent:.1f}%"
-    atingimento_delta_display = "Sem meta"
-    atingimento_delta_color = "off"
-
-col_vendas[1].metric(
-    "Atingimento da Meta",
-    atingimento_valor_display,
-    delta=atingimento_delta_display,
-    delta_color=atingimento_delta_color,
-    help="Percentual atingido da meta com base nas vendas realizadas do mês"
-)
-
-if meta_total > 0:
-    if falta_para_meta_valor > 0:
-        col_vendas[2].metric("Falta para Meta", format_compact_currency(falta_para_meta_valor))
-    else:
-        col_vendas[2].metric("Falta para Meta", "Meta atingida")
-else:
-    col_vendas[2].metric("Falta para Meta", "—")
-
-st.caption(f"Meta referente a {mes_referencia_label} de {datetime.now().year}.")
-if excedente_meta_valor > 0:
-    st.caption(f"Meta já superada em {format_currency(excedente_meta_valor)} no mês.")
-
-st.markdown(f"**Cobertura da meta:** {cobertura_percent:.1f}%")
-
 status_badge_html = f"""
 <div style="margin-top:0.5rem;">
   <span style="display:inline-block;padding:0.45rem 1rem;border-radius:999px;background:{status_color};color:{status_text_color};font-weight:600;">Status: {status}</span>
 </div>
 """
-
-st.markdown(status_badge_html, unsafe_allow_html=True)
 
 escala_max = 150
 indicador_percentual = max(0.0, min(cobertura_percent, escala_max))
@@ -851,11 +812,44 @@ barra_escala_html = f"""
 </div>
 """
 
-st.markdown(barra_escala_html, unsafe_allow_html=True)
+bloco_planejamento, bloco_resultado = st.columns(2, gap="large")
 
-st.markdown(
-    f"**Interpretação:** {interpretacao}<br>**Ação Recomendada:** {acao}",
-    unsafe_allow_html=True
-)
+with bloco_planejamento:
+    st.markdown("### 🧩 Planejamento e Potencial")
+    plan_row_1 = st.columns(2)
+    plan_row_1[0].metric("Meta de Vendas", format_compact_currency(meta_total) if meta_total > 0 else "—")
+    plan_row_1[1].metric("Taxa de Conversão Geral", f"{taxa_conversao_geral * 100:.1f}%")
 
-# Página Home simplificada - apenas os quadros principais
+    plan_row_2 = st.columns(2)
+    plan_row_2[0].metric("Reservas Atuais", f"{reservas_atuais_total}")
+    plan_row_2[1].metric("Potencial de Vendas", format_compact_currency(potencial_vendas_valor))
+
+    plan_row_3 = st.columns(1)
+    plan_row_3[0].metric("Cobertura da Meta", f"{cobertura_percent:.1f}%")
+
+    st.caption(f"Meta referente a {mes_referencia_label} de {datetime.now().year}.")
+    if excedente_meta_valor > 0:
+        st.caption(f"Meta já superada em {format_compact_currency(excedente_meta_valor)} no mês.")
+
+    st.markdown(status_badge_html, unsafe_allow_html=True)
+    st.markdown(barra_escala_html, unsafe_allow_html=True)
+    st.markdown(
+        f"**Interpretação:** {interpretacao}<br>**Ação Recomendada:** {acao}",
+        unsafe_allow_html=True
+    )
+
+with bloco_resultado:
+    st.markdown("### 🧩 Resultado e Diagnóstico")
+    result_row_1 = st.columns(2)
+    result_row_1[0].metric("Vendas Realizadas (mês)", vendas_realizadas_display)
+    result_row_1[1].metric(
+        "Atingimento da Meta",
+        atingimento_valor_display,
+        delta=atingimento_delta_display,
+        delta_color=atingimento_delta_color,
+        help="Percentual atingido da meta com base nas vendas realizadas do mês"
+    )
+
+    result_row_2 = st.columns(2)
+    result_row_2[0].metric("Falta para Meta", falta_para_meta_display)
+    result_row_2[1].metric("Status da Meta", status_meta_resumo)
