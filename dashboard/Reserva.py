@@ -257,7 +257,13 @@ data_final_conversao = st.sidebar.date_input(
 )
 
 # Aplicar filtros
-mask = (reservas_df['data_cad'].dt.date >= data_inicio) & (reservas_df['data_cad'].dt.date <= data_fim)
+mask = (
+    reservas_df['data_cad'].dt.date >= data_inicio
+) & (
+    reservas_df['data_cad'].dt.date <= data_fim
+) & (
+    reservas_df['situacao'].str.strip().str.upper() != 'MÚTUO'
+)
 if empreendimento_selecionado != "Todos":
     mask = mask & (reservas_df['empreendimento'] == empreendimento_selecionado)
 if situacao_selecionada != "Todas":
@@ -492,6 +498,9 @@ try:
     """, params=[data_inicial_str, data_final_str]).df()
     
     if not conversao_df.empty:
+        # Remover situação "Mútuo" do conjunto da tabela de conversão
+        conversao_df = conversao_df[conversao_df['situacao'].astype(str).str.strip().str.upper() != 'MÚTUO']
+
         # Aplicar filtros gerais (exceto data, que já é dedicada)
         if empreendimento_selecionado != "Todos":
             conversao_df = conversao_df[conversao_df['empreendimento'] == empreendimento_selecionado]
