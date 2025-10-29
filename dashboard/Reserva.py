@@ -854,4 +854,18 @@ if meta_total > 0:
 else:
     col_vendas[2].metric("Falta para Meta", "—")
 
+labels_html = """
+<style>
+.metric-caption {text-align:center; font-size:0.78rem; color:#c7c7c7; margin-top:0.35rem;}
+</style>
+"""
+
+labels_html += "<div style='display:flex; justify-content:space-between; gap:1.5rem;'>"
+labels_html += "<div style='flex:1;text-align:center;'><div class='metric-caption'>Vendas Realizadas (mês)</div></div>"
+labels_html += "<div style='flex:1;text-align:center;'><div class='metric-caption'>Atingimento da Meta</div></div>"
+labels_html += "<div style='flex:1;text-align:center;'><div class='metric-caption'>Falta para Meta</div></div>"
+labels_html += "</div>"
+
+st.markdown(labels_html, unsafe_allow_html=True)
+
 # Página Home simplificada - apenas os quadros principais
