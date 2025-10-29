@@ -763,7 +763,7 @@ else:
         status = "Quente"
         interpretacao = "Carteira suficiente para atingir a meta."
         acao = "Manter ritmo e reforçar o fechamento."
-        status_color = "#27ae60"
+        status_color = "#FF5722"
 
 status_text_color = "#0b0b0b"
 if status in {"Frio", "Quente"}:
@@ -804,7 +804,7 @@ barra_escala_html = f"""
         Morno
         <span style="font-weight:500;font-size:0.75rem;">70% – 100%</span>
       </div>
-      <div style='flex:50; background:#27ae60; color:#ffffff; display:flex; flex-direction:column; align-items:center; justify-content:center; font-weight:600; font-size:0.9rem; opacity:{1 if cobertura_percent >= 100 else 0.3};'>
+      <div style='flex:50; background:#FF5722; color:#ffffff; display:flex; flex-direction:column; align-items:center; justify-content:center; font-weight:600; font-size:0.9rem; opacity:{1 if cobertura_percent >= 100 else 0.3};'>
         Quente
         <span style="font-weight:400;font-size:0.75rem;">&gt; 100%</span>
       </div>
