@@ -274,18 +274,8 @@ else:
     corretores = []
 selected_corretores = st.sidebar.multiselect("Corretor", corretores, default=[], help="Consolida corretor + corretor_ultimo")
 
-# Imobiliária filter (opcional, múltipla escolha)
-if 'imobiliaria' in leads_df.columns:
-    imobiliarias_series = leads_periodo_base.get('imobiliaria', pd.Series(dtype=str)).fillna('—').replace('', '—')
-    imobiliarias = sorted(imobiliarias_series.unique().tolist())
-else:
-    imobiliarias = []
-selected_imobiliarias = st.sidebar.multiselect(
-    "Imobiliária",
-    imobiliarias,
-    default=[],
-    help="Baseada na última movimentação registrada"
-)
+# Imobiliária filter removido (mantido para compatibilidade)
+selected_imobiliarias = []
 
 # =============================================================================
 # FILTROS PARA LEADS NOVO (NOVO FUNIL)
