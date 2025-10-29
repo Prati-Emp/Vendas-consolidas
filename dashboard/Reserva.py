@@ -735,13 +735,13 @@ indicador_percentual = max(0.0, min(cobertura_percent, escala_max))
 indicador_posicao = indicador_percentual / escala_max * 100
 
 barra_escala_html = f"""
-<div style='margin-top:0.75rem; position:relative; padding-top:26px;'>
+<div style='margin-top:0.75rem; position:relative; padding-top:34px;'>
   <div style='position:absolute; top:0; left:{indicador_posicao}%; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center;'>
-    <div style='font-size:0.7rem;font-weight:600;color:{status_color};margin-bottom:4px;'>{cobertura_percent:.1f}%</div>
-    <div style='width:0;height:0;border-left:10px solid transparent;border-right:10px solid transparent;border-bottom:12px solid {status_color};'></div>
-    <div style='width:14px;height:14px;border-radius:50%;background:{status_color};border:3px solid #ffffff;box-shadow:0 0 6px rgba(0,0,0,0.3);'></div>
+    <div style='font-size:0.7rem;font-weight:700;color:{status_color};margin-bottom:6px;background:rgba(15,15,15,0.85);padding:2px 10px;border-radius:999px;'>{cobertura_percent:.1f}%</div>
+    <div style='width:0;height:0;border-left:12px solid transparent;border-right:12px solid transparent;border-bottom:16px solid {status_color};'></div>
   </div>
-  <div style='display:flex; overflow:hidden; border-radius:14px; height:52px; box-shadow:0 0 8px rgba(0,0,0,0.15);'>
+  <div style='display:flex; overflow:hidden; border-radius:14px; height:52px; box-shadow:0 0 8px rgba(0,0,0,0.15); position:relative;'>
+    <div style='position:absolute; top:0; bottom:0; left:{indicador_posicao}%; transform:translateX(-50%); width:4px; background:#ffffff; box-shadow:0 0 6px rgba(0,0,0,0.35);'></div>
     <div style='flex:70; background:#1E90FF; display:flex; flex-direction:column; align-items:center; justify-content:center; color:#ffffff; font-weight:600; font-size:0.9rem;'>
       Frio
       <span style="font-weight:400;font-size:0.75rem;">&lt; 70%</span>
