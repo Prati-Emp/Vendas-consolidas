@@ -521,7 +521,6 @@ try:
         AND CAST(data_cad AS DATE) >= CAST(? AS DATE)
         AND CAST(data_cad AS DATE) <= CAST(? AS DATE)
     """, params=[data_inicial_str, data_final_str]).df()
-    conn.close()
     
     if not conversao_df.empty:
         # Normalizar campos textuais
@@ -653,7 +652,6 @@ if colunas_meta:
                 "dez/25"
             FROM informacoes_consolidadas.meta_vendas_2025
         """).df()
-        conn_meta.close()
 
         if not metas_df.empty:
             metas_df['nome_empreendimento'] = metas_df['nome_empreendimento'].astype(str).str.strip()
