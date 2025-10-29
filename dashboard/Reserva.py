@@ -660,8 +660,8 @@ if coluna_meta_atual:
     except Exception as e:
         st.warning(f"⚠️ Não foi possível carregar as metas de vendas: {e}")
 
-# Potencial de vendas usando valor total das reservas atuais
-potencial_vendas_valor = valor_total_reservas
+# Potencial de vendas usando valor total das reservas ativas e taxa de conversão
+potencial_vendas_valor = valor_total_reservas * taxa_conversao_geral
 
 if meta_total > 0:
     cobertura_percent = (potencial_vendas_valor / meta_total) * 100
