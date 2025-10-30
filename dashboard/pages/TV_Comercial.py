@@ -156,9 +156,9 @@ RESERVAS_FUNIL_ORDEM = [
     "Reserva (7)",
     "Crédito (CEF) (3)",
     "Negociação (5)",
-    "Análise Diretoria",
-    "Contrato - Elaboração",
-    "Contrato - Assinatura"
+    "Análise Diretoria (6)",
+    "Contrato - Elaboração (2)",
+    "Contrato - Assinatura (5)"
 ]
 
 
@@ -690,46 +690,54 @@ else:
 
 
 st.markdown("---")
-st.markdown("## 🧾 Reservas - Funil por Situação")
+st.markdown("## 🧾 Reservas - Situação Atual")
 
-reservas_funil_df = reservas_ativas_df.copy()
+reservas_status_df = reservas_ativas_df.copy()
 
-if reservas_funil_df.empty:
-    st.info("Sem reservas ativas para exibir no funil.")
+if reservas_status_df.empty:
+    st.info("Sem reservas ativas para exibir no momento.")
 else:
-    reservas_funil_df['situacao'] = reservas_funil_df['situacao'].astype(str).str.strip()
+    reservas_status_df['situacao'] = reservas_status_df['situacao'].astype(str).str.strip()
 
-    funil_quantidades = []
-    for situacao in RESERVAS_FUNIL_ORDEM:
-        funil_quantidades.append(int((reservas_funil_df['situacao'] == situacao).sum()))
+    status_counts = (
+        reservas_status_df['situacao']
+        .value_counts()
+        .reset_index()
+        .rename(columns={'index': 'Situação', 'situacao': 'Quantidade'})
+    )
 
-    funil_reservas = pd.DataFrame({
-        'Situação': RESERVAS_FUNIL_ORDEM,
-        'Quantidade': funil_quantidades
-    })
-
-    funil_reservas = funil_reservas[funil_reservas['Quantidade'] > 0]
-
-    if funil_reservas.empty:
-        st.info("Nenhuma situação ativa para compor o funil no momento.")
+    if status_counts.empty:
+        st.info("Nenhuma situação ativa encontrada no período.")
     else:
-        col_reserva_chart, col_reserva_table = st.columns([1.6, 1])
+        status_counts['ordem'] = status_counts['Situação'].apply(
+            lambda s: RESERVAS_FUNIL_ORDEM.index(s) if s in RESERVAS_FUNIL_ORDEM else len(RESERVAS_FUNIL_ORDEM)
+        )
+        status_counts = status_counts.sort_values(['ordem', 'Situação']).reset_index(drop=True)
 
-        reserva_fig = go.Figure(go.Funnel(
-            y=funil_reservas['Situação'],
-            x=funil_reservas['Quantidade'],
-            textinfo='value+percent initial',
-            marker=dict(color=['#38bdf8', '#3b82f6', '#2563eb', '#7c3aed', '#f59e0b', '#ef4444'])
-        ))
-        reserva_fig = apply_dark_theme(reserva_fig)
+        total_reservas_status = int(status_counts['Quantidade'].sum())
+        status_counts['Percentual'] = status_counts['Quantidade'].apply(
+            lambda v: round(v / total_reservas_status * 100, 1) if total_reservas_status > 0 else 0.0
+        )
 
-        col_reserva_chart.plotly_chart(reserva_fig, use_container_width=True)
+        fig_reserva_status = px.bar(
+            status_counts,
+            x='Quantidade',
+            y='Situação',
+            orientation='h',
+            text='Quantidade',
+            color='Quantidade',
+            color_continuous_scale='Blues',
+            title='Distribuição de Reservas por Situação'
+        )
+        fig_reserva_status = apply_dark_theme(fig_reserva_status, margin_top=60)
+        fig_reserva_status.update_traces(texttemplate='%{text}', textposition='outside')
+        fig_reserva_status.update_layout(coloraxis_showscale=False)
+        st.plotly_chart(fig_reserva_status, use_container_width=True)
 
-        reservas_display = funil_reservas.copy()
+        reservas_display = status_counts[['Situação', 'Quantidade', 'Percentual']].copy()
         reservas_display['Reservas'] = reservas_display['Quantidade'].apply(format_int_value)
-        reservas_display = reservas_display[['Situação', 'Reservas']]
-        total_reservas_display = format_int_value(int(funil_reservas['Quantidade'].sum()))
+        reservas_display['%'] = reservas_display['Percentual'].map(lambda v: f"{v:.1f}%")
+        reservas_display = reservas_display[['Situação', 'Reservas', '%']]
 
-        with col_reserva_table:
-            st.dataframe(reservas_display, use_container_width=True, hide_index=True)
-            st.caption(f"Total de reservas consideradas no funil: {total_reservas_display}")
+        st.dataframe(reservas_display, use_container_width=True, hide_index=True)
+        st.caption(f"Total de reservas ativas consideradas: {format_int_value(total_reservas_status)}")
