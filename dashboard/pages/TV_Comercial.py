@@ -716,30 +716,11 @@ else:
         st.info("Nenhuma situação ativa encontrada no período.")
     else:
         status_counts['SituacaoNormalizada'] = status_counts['Situacao'].apply(normalize_reserva_label)
-        status_counts['ordem'] = status_counts['SituacaoNormalizada'].apply(
+        status_counts['Indice'] = status_counts['SituacaoNormalizada'].apply(
             lambda s: RESERVAS_SITUACAO_ORDEM.index(s)
             if s in RESERVAS_SITUACAO_ORDEM else len(RESERVAS_SITUACAO_ORDEM)
         )
-        # Reordenar preservando nomes originais (com códigos) na sequência desejada
-        desired_labels = []
-        for base_label in RESERVAS_SITUACAO_ORDEM:
-            matches = status_counts.loc[
-                status_counts['SituacaoNormalizada'] == base_label, 'Situacao'
-            ].tolist()
-            desired_labels.extend(matches)
-
-        extras = [
-            label for label in status_counts['Situacao'].tolist()
-            if label not in desired_labels
-        ]
-
-        reindex_order = desired_labels + extras
-        status_counts = (
-            status_counts.set_index('Situacao')
-            .loc[reindex_order]
-            .reset_index()
-            .rename(columns={'index': 'Situacao'})
-        )
+        status_counts = status_counts.sort_values(['Indice', 'Situacao']).reset_index(drop=True)
 
         total_reservas_status = int(status_counts['Quantidade'].sum())
         status_counts['Percentual'] = status_counts['Quantidade'].apply(
@@ -756,9 +737,7 @@ else:
             color_continuous_scale='Blues',
             title='Distribuição de Reservas por Situação'
         )
-        fig_reserva_status.update_layout(
-            yaxis=dict(categoryorder='array', categoryarray=status_counts['Situacao'].tolist())
-        )
+        fig_reserva_status.update_layout(yaxis=dict(categoryorder='array', categoryarray=status_counts['Situacao'].tolist()[::-1]))
         fig_reserva_status = apply_dark_theme(fig_reserva_status, margin_top=60)
         fig_reserva_status.update_traces(texttemplate='%{text}', textposition='outside')
         fig_reserva_status.update_layout(coloraxis_showscale=False)
