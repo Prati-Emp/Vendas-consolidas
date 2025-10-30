@@ -1,6 +1,11 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime, date
+import sys
+from pathlib import Path
+
+# Garantir que os módulos compartilhados possam ser importados quando o app for executado diretamente
+sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 from advanced_auth import require_auth
 from utils import display_navigation
