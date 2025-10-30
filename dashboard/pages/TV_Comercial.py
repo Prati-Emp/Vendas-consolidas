@@ -720,7 +720,7 @@ else:
             lambda s: RESERVAS_SITUACAO_ORDEM.index(s)
             if s in RESERVAS_SITUACAO_ORDEM else len(RESERVAS_SITUACAO_ORDEM)
         )
-        status_counts = status_counts.sort_values(['ordem', 'Situacao']).reset_index(drop=True)
+        status_counts = status_counts.sort_values(['ordem', 'Situacao'], ascending=[True, True]).reset_index(drop=True)
 
         total_reservas_status = int(status_counts['Quantidade'].sum())
         status_counts['Percentual'] = status_counts['Quantidade'].apply(
@@ -737,6 +737,7 @@ else:
             color_continuous_scale='Blues',
             title='Distribuição de Reservas por Situação'
         )
+        fig_reserva_status.update_layout(yaxis=dict(categoryorder='array', categoryarray=status_counts['Situacao'].tolist()))
         fig_reserva_status = apply_dark_theme(fig_reserva_status, margin_top=60)
         fig_reserva_status.update_traces(texttemplate='%{text}', textposition='outside')
         fig_reserva_status.update_layout(coloraxis_showscale=False)
