@@ -77,6 +77,10 @@ CONVERSAO_SITUACOES = {situacao.lower() for situacao in ["Distrato", "Mútuo", "
 
 # Situações removidas do painel de reservas
 SITUACOES_RESERVAS_EXCLUIDAS = {situacao.upper() for situacao in ["Mútuo", "Vencida"]}
+SITUACOES_RESERVAS_EXCLUIDAS_LOWER = {situacao.lower() for situacao in SITUACOES_RESERVAS_EXCLUIDAS}
+
+TERMOMETRO_SITUACOES_INATIVAS = {"cancelada", "vendida", "distrato"}
+TERMOMETRO_DATA_INICIO = datetime(2025, 1, 1).date()
 
 # Mapeamento de meses (2025) para as colunas da tabela de metas
 MESES_COLUNAS_2025 = {
@@ -656,9 +660,38 @@ except Exception as e:
 st.divider()
 st.subheader("🌡️ Termômetro de Vendas")
 
-# Cálculo das reservas atuais (mesma lógica do indicador principal)
-reservas_atuais_total = len(df_sem_canceladas_vendidas)
-valor_total_reservas = float(df_sem_canceladas_vendidas.get('valor_contrato', pd.Series(dtype=float)).fillna(0).sum())
+# Base fixa para o termômetro (independente dos filtros da sidebar)
+data_final_termometro = datetime.now().date()
+reservas_data_cad = pd.to_datetime(reservas_df['data_cad'], errors='coerce')
+
+reservas_termometro_mask = (
+    reservas_data_cad.dt.date >= TERMOMETRO_DATA_INICIO
+) & (
+    reservas_data_cad.dt.date <= data_final_termometro
+) & (
+    ~reservas_df['situacao'].astype(str).str.strip().str.upper().isin(SITUACOES_RESERVAS_EXCLUIDAS)
+)
+reservas_termometro_mask = reservas_termometro_mask.fillna(False)
+
+reservas_termometro_df = reservas_df[reservas_termometro_mask].copy()
+reservas_termometro_df['situacao_normalizada'] = reservas_termometro_df['situacao'].astype(str).str.strip().str.lower()
+reservas_termometro_df['valor_contrato'] = pd.to_numeric(
+    reservas_termometro_df.get('valor_contrato', pd.Series(dtype=float)),
+    errors='coerce'
+).fillna(0.0)
+
+reservas_termometro_ativas = reservas_termometro_df[
+    ~reservas_termometro_df['situacao_normalizada'].isin(TERMOMETRO_SITUACOES_INATIVAS)
+].copy()
+
+reservas_atuais_total = len(reservas_termometro_ativas)
+valor_total_reservas = float(reservas_termometro_ativas['valor_contrato'].sum())
+
+total_reservas_termometro = len(reservas_termometro_df)
+reservas_convertidas_termometro = reservas_termometro_df['situacao_normalizada'].isin(CONVERSAO_SITUACOES).sum()
+taxa_conversao_termometro = (
+    reservas_convertidas_termometro / total_reservas_termometro
+) if total_reservas_termometro > 0 else 0.0
 
 # Calcular metas do mês atual
 meta_total = 0.0
@@ -692,10 +725,6 @@ if coluna_meta_atual:
 
         if not metas_df.empty:
             metas_df['nome_empreendimento'] = metas_df['nome_empreendimento'].astype(str).str.strip()
-            if empreendimento_selecionado != "Todos":
-                empreendimento_meta = empreendimento_selecionado.strip().upper()
-                metas_df = metas_df[metas_df['nome_empreendimento'].str.upper() == empreendimento_meta]
-
             if not metas_df.empty and coluna_meta_atual in metas_df.columns:
                 metas_valores = metas_df[coluna_meta_atual].apply(pd.to_numeric, errors='coerce').fillna(0)
                 meta_total = float(metas_valores.sum())
@@ -719,9 +748,6 @@ try:
           AND contractDate < CAST(? AS DATE)
     """
     vendas_params = [inicio_mes_str, proximo_mes_str]
-    if empreendimento_selecionado != "Todos":
-        vendas_sql += " AND UPPER(TRIM(COALESCE(nome_empreendimento, ''))) = ?"
-        vendas_params.append(empreendimento_selecionado.strip().upper())
 
     vendas_mes_df = conn_vendas.sql(vendas_sql, params=vendas_params).df()
     if not vendas_mes_df.empty and pd.notna(vendas_mes_df.loc[0, 'total_vendas']):
@@ -736,7 +762,7 @@ excedente_meta_valor = max(vendas_realizadas_valor - meta_total, 0.0) if meta_to
 atingimento_percent = (vendas_realizadas_valor / meta_total * 100) if meta_total > 0 else 0.0
 
 # Potencial de vendas usando valor total das reservas ativas e taxa de conversão
-potencial_vendas_valor = valor_total_reservas * taxa_conversao_geral
+potencial_vendas_valor = valor_total_reservas * taxa_conversao_termometro
 
 if meta_total > 0:
     cobertura_percent = (potencial_vendas_valor / meta_total) * 100
@@ -773,7 +799,7 @@ if status in {"Frio", "Quente"}:
 
 col_meta = st.columns(5)
 col_meta[0].metric(f"Meta de Vendas ({mes_referencia_curto})", format_compact_currency(meta_total) if meta_total > 0 else "—")
-col_meta[1].metric("Taxa de Conversão Geral", f"{taxa_conversao_geral * 100:.1f}%")
+col_meta[1].metric("Taxa de Conversão Geral", f"{taxa_conversao_termometro * 100:.1f}%")
 col_meta[2].metric("Reservas Atuais", f"{reservas_atuais_total}")
 col_meta[3].metric("Potencial de Vendas", format_compact_currency(potencial_vendas_valor))
 col_meta[4].metric("Cobertura da Meta", f"{cobertura_percent:.1f}%")
