@@ -152,13 +152,13 @@ LEADS_FUNIL_ETAPAS = [
     "Venda realizada"
 ]
 
-RESERVAS_FUNIL_ORDEM = [
-    "Reserva (7)",
-    "Crédito (CEF) (3)",
-    "Negociação (5)",
-    "Análise Diretoria (6)",
-    "Contrato - Elaboração (2)",
-    "Contrato - Assinatura (5)"
+RESERVAS_SITUACAO_ORDEM = [
+    "Reserva",
+    "Crédito (CEF)",
+    "Negociação",
+    "Análise Diretoria",
+    "Contrato - Elaboração",
+    "Contrato - Assinatura"
 ]
 
 
@@ -189,6 +189,12 @@ def apply_dark_theme(fig: go.Figure, margin_top: int = 60) -> go.Figure:
         margin=dict(t=margin_top, b=40, l=0, r=0)
     )
     return fig
+
+
+def normalize_reserva_label(label: str | None) -> str:
+    if not isinstance(label, str):
+        return ""
+    return label.split(" (")[0].strip()
 
 
 @st.cache_data(ttl=300)
@@ -702,15 +708,16 @@ else:
     status_counts = (
         reservas_status_df['situacao']
         .value_counts()
-        .reset_index()
-        .rename(columns={'index': 'Situação', 'situacao': 'Quantidade'})
+        .reset_index(name='Quantidade')
+        .rename(columns={'index': 'Situação'})
     )
 
     if status_counts.empty:
         st.info("Nenhuma situação ativa encontrada no período.")
     else:
         status_counts['ordem'] = status_counts['Situação'].apply(
-            lambda s: RESERVAS_FUNIL_ORDEM.index(s) if s in RESERVAS_FUNIL_ORDEM else len(RESERVAS_FUNIL_ORDEM)
+            lambda s: RESERVAS_SITUACAO_ORDEM.index(normalize_reserva_label(s))
+            if normalize_reserva_label(s) in RESERVAS_SITUACAO_ORDEM else len(RESERVAS_SITUACAO_ORDEM)
         )
         status_counts = status_counts.sort_values(['ordem', 'Situação']).reset_index(drop=True)
 
