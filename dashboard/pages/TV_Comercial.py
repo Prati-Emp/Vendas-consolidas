@@ -610,7 +610,7 @@ else:
                 y=LEADS_FUNIL_ETAPAS,
                 x=etapa_counts,
                 textinfo="value+percent initial",
-                marker=dict(colors=['#60a5fa', '#3b82f6', '#2563eb', '#7c3aed', '#f59e0b'])
+                marker=dict(color=['#60a5fa', '#3b82f6', '#2563eb', '#7c3aed', '#f59e0b'])
             ))
             funil_fig = apply_dark_theme(funil_fig)
             st.plotly_chart(funil_fig, use_container_width=True)
@@ -719,7 +719,7 @@ else:
             y=funil_reservas['Situação'],
             x=funil_reservas['Quantidade'],
             textinfo='value+percent initial',
-            marker=dict(colors=['#38bdf8', '#3b82f6', '#2563eb', '#7c3aed', '#f59e0b', '#ef4444'])
+            marker=dict(color=['#38bdf8', '#3b82f6', '#2563eb', '#7c3aed', '#f59e0b', '#ef4444'])
         ))
         reserva_fig = apply_dark_theme(reserva_fig)
 
