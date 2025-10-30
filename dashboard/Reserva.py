@@ -892,16 +892,89 @@ st.caption(
 st.markdown(status_badge_html, unsafe_allow_html=True)
 
 st.markdown("---")
+
 st.markdown(
     """
-    #### ℹ️ Como interpretar o Termômetro
-    - **Foto atual:** Considera todas as reservas cadastradas desde janeiro de 2025 até hoje, independentemente dos filtros da barra lateral.
-    - **Reservas Atuais:** Inclui apenas reservas ativas (excluídas `Cancelada`, `Vendida` e `Distrato`).
-    - **Taxa de Conversão:** Usa a mesma base desde janeiro de 2025 para calcular a eficiência geral.
-    - **Vendas Realizadas:** Sempre olha para as vendas concluídas no mês corrente.
-    - **Metas:** Utilizam os valores cadastrados para o mês atual no arquivo `meta_vendas_2025`.
-    - **Cobertura & Potencial:** Calculados com base no total de reservas ativas e na taxa de conversão geral, projetando o potencial de vendas.
-    """
+    <div class="tooltip-termometro">
+      <div class="tooltip-termometro__icon-wrapper">
+        <span class="tooltip-termometro__icon" aria-label="Informações do termômetro" role="img">ℹ️</span>
+        <div class="tooltip-termometro__content">
+          <ul>
+            <li><strong>Foto atual:</strong> Considera todas as reservas cadastradas desde janeiro de 2025 até hoje, independentemente dos filtros da barra lateral.</li>
+            <li><strong>Reservas Atuais:</strong> Inclui apenas reservas ativas (excluídas <code>Cancelada</code>, <code>Vendida</code> e <code>Distrato</code>).</li>
+            <li><strong>Taxa de Conversão:</strong> Usa a mesma base desde janeiro de 2025 para calcular a eficiência geral.</li>
+            <li><strong>Vendas Realizadas:</strong> Sempre olha para as vendas concluídas no mês corrente.</li>
+            <li><strong>Metas:</strong> Utilizam os valores cadastrados para o mês atual no arquivo <code>meta_vendas_2025</code>.</li>
+            <li><strong>Cobertura &amp; Potencial:</strong> Calculados com base no total de reservas ativas e na taxa de conversão geral, projetando o potencial de vendas.</li>
+          </ul>
+        </div>
+      </div>
+      <span class="tooltip-termometro__title">Como interpretar o Termômetro</span>
+    </div>
+    <style>
+      .tooltip-termometro {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        position: relative;
+        margin-bottom: 0.75rem;
+      }
+      .tooltip-termometro__title {
+        font-size: 1.1rem;
+        font-weight: 600;
+      }
+      .tooltip-termometro__icon-wrapper {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+      }
+      .tooltip-termometro__icon {
+        font-size: 1.4rem;
+        cursor: help;
+        line-height: 1;
+      }
+      .tooltip-termometro__content {
+        visibility: hidden;
+        opacity: 0;
+        position: absolute;
+        top: 120%;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #ffffff;
+        color: #111111;
+        padding: 18px 20px;
+        border-radius: 12px;
+        width: min(440px, 85vw);
+        box-shadow: 0 18px 36px rgba(15, 15, 15, 0.35);
+        transition: opacity 0.18s ease-in-out;
+        font-size: 0.9rem;
+        line-height: 1.5;
+        z-index: 1000;
+      }
+      .tooltip-termometro__content ul {
+        margin: 0;
+        padding-left: 1.1rem;
+      }
+      .tooltip-termometro__content li {
+        margin-bottom: 0.45rem;
+      }
+      .tooltip-termometro__content li:last-child {
+        margin-bottom: 0;
+      }
+      .tooltip-termometro__icon-wrapper:hover .tooltip-termometro__content,
+      .tooltip-termometro__icon-wrapper:focus-within .tooltip-termometro__content {
+        visibility: visible;
+        opacity: 1;
+      }
+      @media (max-width: 768px) {
+        .tooltip-termometro__content {
+          left: 0;
+          transform: translateX(-10%);
+        }
+      }
+    </style>
+    """,
+    unsafe_allow_html=True
 )
 
 # Página Home simplificada - apenas os quadros principais
