@@ -24,6 +24,41 @@ st.session_state['current_page'] = __file__
 st.title("📺 TV Comercial")
 st.caption(f"Atualização realizada em {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
 
+st.markdown(
+    """
+    <style>
+        .stApp {
+            background: radial-gradient(circle at 20% 20%, #1f2937 0%, #0f172a 45%, #060c1a 100%) !important;
+            color: #f8fafc;
+        }
+        .stApp h1, .stApp h2, .stApp h3, .stApp h4, .stApp h5, .stApp h6,
+        .stApp p, .stApp span, .stApp label, .stApp div, .stApp li {
+            color: inherit;
+        }
+        [data-testid="stHeader"] {
+            background-color: transparent;
+        }
+        div[data-testid="stSidebar"] {
+            background: rgba(8, 11, 23, 0.92);
+        }
+        div[data-testid="stSidebar"] * {
+            color: #f8fafc !important;
+        }
+        .nav-container .stButton > button {
+            background: rgba(15, 23, 42, 0.35);
+            border: 1px solid rgba(148, 163, 184, 0.45);
+            color: #f8fafc;
+            backdrop-filter: blur(6px);
+        }
+        .nav-container .stButton > button:hover {
+            background: rgba(59, 130, 246, 0.35);
+            border-color: rgba(59, 130, 246, 0.75);
+        }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
 
 CONVERSAO_SITUACOES = {situacao.lower() for situacao in ["Distrato", "Mútuo", "Vendida"]}
 SITUACOES_RESERVAS_EXCLUIDAS = {situacao.lower() for situacao in ["Mútuo", "Vencida"]}
