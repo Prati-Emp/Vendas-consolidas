@@ -909,7 +909,7 @@ st.markdown(
           </ul>
         </div>
       </div>
-      <span class="tooltip-termometro__title">Como interpretar o Termômetro</span>
+      <span class="tooltip-termometro__title">Informações importantes sobre o Termômetro</span>
     </div>
     <style>
       .tooltip-termometro {
