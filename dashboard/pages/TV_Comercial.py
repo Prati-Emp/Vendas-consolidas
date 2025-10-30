@@ -658,6 +658,8 @@ else:
                 )
                 fig_cancel = apply_dark_theme(fig_cancel, margin_top=40)
                 fig_cancel.update_yaxes(title="", autorange="reversed")
+                fig_cancel.update_traces(texttemplate='%{x}', textposition='outside')
+                fig_cancel.update_layout(coloraxis_showscale=False)
                 st.plotly_chart(fig_cancel, use_container_width=True)
 
             # Por mídia
