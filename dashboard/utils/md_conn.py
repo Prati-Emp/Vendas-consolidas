@@ -38,9 +38,23 @@ class MotherDuckConnection:
         """Obtém o token do MotherDuck das variáveis de ambiente."""
         # Primeiro tenta st.secrets (Streamlit Cloud)
         try:
-            if hasattr(st, 'secrets') and 'MOTHERDUCK_TOKEN' in st.secrets:
-                return st.secrets['MOTHERDUCK_TOKEN']
-        except:
+            secrets = getattr(st, "secrets", None)
+            if secrets:
+                # Verificar chaves diretas
+                for key in ("MOTHERDUCK_TOKEN", "Token_MD", "motherduck_token"):
+                    token = secrets.get(key)
+                    if token:
+                        return token
+
+                # Verificar estrutura em connections
+                connections = secrets.get("connections")
+                if isinstance(connections, dict):
+                    motherduck_conn = connections.get("motherduck") or connections.get("motherduck_token")
+                    if isinstance(motherduck_conn, dict):
+                        token = motherduck_conn.get("token") or motherduck_conn.get("MOTHERDUCK_TOKEN")
+                        if token:
+                            return token
+        except Exception:
             pass
         
         # Tentar diferentes nomes de variáveis conforme padrão do projeto
