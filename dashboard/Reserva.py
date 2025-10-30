@@ -938,8 +938,8 @@ st.markdown(
         opacity: 0;
         position: absolute;
         top: 120%;
-        left: 50%;
-        transform: translateX(-50%);
+        left: 32px;
+        transform: translateX(0);
         background: #ffffff;
         color: #111111;
         padding: 18px 20px;
@@ -950,6 +950,7 @@ st.markdown(
         font-size: 0.9rem;
         line-height: 1.5;
         z-index: 1000;
+        text-align: left;
       }
       .tooltip-termometro__content ul {
         margin: 0;
@@ -969,7 +970,7 @@ st.markdown(
       @media (max-width: 768px) {
         .tooltip-termometro__content {
           left: 0;
-          transform: translateX(-10%);
+          transform: translateX(-5%);
         }
       }
     </style>
