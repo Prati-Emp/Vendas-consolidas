@@ -889,4 +889,19 @@ st.caption(
     f"Valores de Meta, Vendas Realizadas, Atingimento da Meta e Falta para Meta referem-se ao mês atual - {mes_referencia_curto}."
 )
 
+st.markdown(status_badge_html, unsafe_allow_html=True)
+
+st.markdown("---")
+st.markdown(
+    """
+    #### ℹ️ Como interpretar o Termômetro
+    - **Foto atual:** Considera todas as reservas cadastradas desde janeiro de 2025 até hoje, independentemente dos filtros da barra lateral.
+    - **Reservas Atuais:** Inclui apenas reservas ativas (excluídas `Cancelada`, `Vendida` e `Distrato`).
+    - **Taxa de Conversão:** Usa a mesma base desde janeiro de 2025 para calcular a eficiência geral.
+    - **Vendas Realizadas:** Sempre olha para as vendas concluídas no mês corrente.
+    - **Metas:** Utilizam os valores cadastrados para o mês atual no arquivo `meta_vendas_2025`.
+    - **Cobertura & Potencial:** Calculados com base no total de reservas ativas e na taxa de conversão geral, projetando o potencial de vendas.
+    """
+)
+
 # Página Home simplificada - apenas os quadros principais
