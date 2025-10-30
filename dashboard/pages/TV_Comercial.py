@@ -264,7 +264,6 @@ render_kpi(linha_dois[1], f"Vendas Realizadas ({mes_referencia_curto})", format_
 render_kpi(linha_dois[2], "Atingimento da Meta", f"{atingimento_percent:.1f}%", "Vendas / Meta do mês")
 render_kpi(linha_dois[3], "Falta para Meta", format_compact_currency(falta_para_meta_valor) if meta_total > 0 else "—", "Gap remanescente")
 
-
 st.markdown(
     f"<div class='tv-status-badge' style='background:{status_color}; color:{'#ffffff' if status in {'Frio', 'Quente'} else '#0b0b0b'};'>"
     f"<span>Status atual:</span><strong>{status}</strong></div>",
