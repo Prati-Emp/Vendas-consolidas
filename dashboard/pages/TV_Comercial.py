@@ -3,6 +3,8 @@ import pandas as pd
 from datetime import datetime, date
 import sys
 from pathlib import Path
+import plotly.express as px
+import plotly.graph_objects as go
 
 # Garantir que os módulos compartilhados possam ser importados quando o app for executado diretamente
 sys.path.append(str(Path(__file__).resolve().parent.parent))
@@ -10,7 +12,7 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))
 from advanced_auth import require_auth
 from utils import display_navigation
 from utils.md_conn import get_md_connection, get_metas_data
-from utils.formatters import format_compact_currency
+from utils.formatters import format_compact_currency, format_currency
 
 
 st.set_page_config(page_title="TV Comercial", layout="wide")
@@ -96,6 +98,99 @@ MESES_NOME_PT = {
 }
 
 
+LEADS_CORRETORES_REMOVIDOS = {
+    "ODAIR DIAS DOS SANTOS",
+    "SABRINA M. DA SILVA DOS SANTOS",
+    "ALEX ANDERSON FRITZEN DA SILVA",
+    "DAIANA PINHEIRO FÜHR",
+    "GRAZIELE GODOI",
+    "ROSANGELA CRISTINA BEVILAQUA",
+    "ALAN RAFAEL GIOMBELLI",
+    "MARCOS ROBERTO FERLA",
+    "JULIANO RAFAEL SIMON",
+    "HYORRANA LOPES",
+    "SABRINA MARIA DA SILVA DOS SANTOS",
+    "VANESSA CARDOSO NAZARIN",
+    "ANTONY EDUARDO BIANCHINI GOUVEA",
+    "TAYNÁ STURM",
+    "RAYSSA NIELSEN",
+    "ITALO CARLOS FERNANDES PERES",
+    "MICHEL VASCONCELOS",
+    "JOSE CARLOS DA SILVA",
+    "SUELLEN SALOME GUIMARÃES MORO",
+    "ANGELA MARIA ROCHA CENEDESE",
+    "HENRIQUE MARTINS SPECK",
+    "LAYANE OLIVEIRA DE SOUZA",
+    "RODRIGO WRASSE",
+    "NOELI KREIBICH",
+    "JOSIBEL ALESSANDRA PALMEIRA",
+    "TAMIRIS TEIXEIRA DE ANDRADE LUDVIG"
+}
+
+LEADS_FUNIL_MAP = {
+    "aguardando atendimento": "Leads",
+    "qualificação": "Leads",
+    "descoberta": "Leads",
+    "em atendimento": "Em atendimento",
+    "atendimento futuro": "Em atendimento",
+    "visita agendada": "Em atendimento",
+    "visita realizada": "Visita realizada",
+    "atendimento pos visita": "Visita realizada",
+    "atendimento pós visita": "Visita realizada",
+    "pre cadastro": "Com reserva",
+    "pre cadastro pos visita": "Com reserva",
+    "em pré-cadastro": "Com reserva",
+    "com reserva": "Com reserva",
+    "venda realizada": "Venda realizada"
+}
+
+LEADS_FUNIL_ETAPAS = [
+    "Leads",
+    "Em atendimento",
+    "Visita realizada",
+    "Com reserva",
+    "Venda realizada"
+]
+
+RESERVAS_FUNIL_ORDEM = [
+    "Reserva (7)",
+    "Crédito (CEF) (3)",
+    "Negociação (5)",
+    "Análise Diretoria",
+    "Contrato - Elaboração",
+    "Contrato - Assinatura"
+]
+
+
+def format_int_value(value: float | int) -> str:
+    try:
+        return f"{int(round(value)):,}".replace(",", ".")
+    except (TypeError, ValueError):
+        return "0"
+
+
+def map_lead_stage(prev_situacao: str | None, curr_situacao: str | None) -> str:
+    curr_key = str(curr_situacao).strip().lower() if curr_situacao and pd.notna(curr_situacao) else None
+    if curr_key == "descartado":
+        if not prev_situacao or pd.isna(prev_situacao):
+            return "Leads"
+        prev_key = str(prev_situacao).strip().lower()
+        return LEADS_FUNIL_MAP.get(prev_key, "Leads")
+    if curr_key is None:
+        return "Leads"
+    return LEADS_FUNIL_MAP.get(curr_key, "Leads")
+
+
+def apply_dark_theme(fig: go.Figure, margin_top: int = 60) -> go.Figure:
+    fig.update_layout(
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        font_color="#f8fafc",
+        margin=dict(t=margin_top, b=40, l=0, r=0)
+    )
+    return fig
+
+
 @st.cache_data(ttl=300)
 def load_reservas_tv() -> pd.DataFrame:
     conn = get_md_connection()
@@ -108,6 +203,63 @@ def load_reservas_tv() -> pd.DataFrame:
         WHERE data_cad IS NOT NULL
     """
     return conn.run_query(sql)
+
+
+@st.cache_data(ttl=300)
+def load_vendas_house_overview(inicio: str, fim: str) -> pd.DataFrame:
+    conn = get_md_connection()
+    sql = """
+        SELECT
+            CASE
+                WHEN POSITION('PRATI' IN UPPER(COALESCE(NULLIF(TRIM(imobiliaria), ''), '—'))) > 0 THEN 'Venda Interna (Prati)'
+                ELSE 'Venda Externa (Imobiliárias)'
+            END AS origem,
+            COUNT(*) AS quantidade,
+            SUM(value) AS valor_total,
+            AVG(value) AS ticket_medio
+        FROM informacoes_consolidadas.sienge_vendas_consolidadas
+        WHERE value IS NOT NULL
+          AND contractDate >= CAST(? AS DATE)
+          AND contractDate <= CAST(? AS DATE)
+    """
+    return conn.run_query(sql, [inicio, fim])
+
+
+@st.cache_data(ttl=300)
+def load_vpl_geral(inicio: str, fim: str) -> pd.DataFrame:
+    conn = get_md_connection()
+    sql = """
+        SELECT
+            SUM(COALESCE(vpl_reserva, 0)) AS total_vpl_reserva,
+            SUM(COALESCE(vpl_tabela, 0)) AS total_vpl_tabela
+        FROM informacoes_consolidadas.sienge_vendas_consolidadas
+        WHERE contractDate >= CAST(? AS DATE)
+          AND contractDate <= CAST(? AS DATE)
+    """
+    return conn.run_query(sql, [inicio, fim])
+
+
+@st.cache_data(ttl=300)
+def load_leads_tv() -> pd.DataFrame:
+    conn = get_md_connection()
+    sql = """
+        SELECT 
+            Idlead AS idlead,
+            CAST(data_cad AS DATE) AS data_cad,
+            CAST(data_consolidada AS DATE) AS data_consolidada,
+            COALESCE(NULLIF(TRIM(Situacao), ''), '—') AS situacao_nome,
+            COALESCE(NULLIF(TRIM(nome_situacao_anterior_lead), ''), '—') AS nome_situacao_anterior_lead,
+            COALESCE(NULLIF(TRIM(corretor_consolidado), ''), '—') AS corretor_consolidado,
+            COALESCE(NULLIF(TRIM(midia_consolidada), ''), '—') AS midia_consolidada,
+            COALESCE(NULLIF(TRIM(motivo_cancelamento_consolidada), ''), '') AS motivo_cancelamento_consolidada
+        FROM reservas.main.cv_leads
+        WHERE data_consolidada IS NOT NULL
+    """
+    try:
+        return conn.run_query(sql)
+    except Exception:
+        sql_alt = sql.replace("reservas.main.cv_leads", "reservas.cv_leads")
+        return conn.run_query(sql_alt)
 
 
 @st.cache_data(ttl=300)
@@ -318,3 +470,265 @@ st.markdown(
     f"<div style='margin-top:18px; font-size:0.95rem; color:rgba(255,255,255,0.65);'>Base analisada de {TERMOMETRO_DATA_INICIO.strftime('%d/%m/%Y')} até {data_final_analise.strftime('%d/%m/%Y')} · Atualize a página para forçar nova leitura.</div>",
     unsafe_allow_html=True
 )
+
+
+periodo_inicio_str = TERMOMETRO_DATA_INICIO.strftime('%Y-%m-%d')
+periodo_fim_str = data_final_analise.strftime('%Y-%m-%d')
+
+
+st.markdown("---")
+st.markdown("## 🏠 Indicadores de Vendas")
+
+house_raw_df = load_vendas_house_overview(periodo_inicio_str, periodo_fim_str)
+
+if house_raw_df.empty or house_raw_df['valor_total'].fillna(0).sum() == 0:
+    st.info("Sem dados de vendas suficientes para exibir a análise House x Imobiliárias no período selecionado.")
+else:
+    house_df = house_raw_df.fillna({'quantidade': 0, 'valor_total': 0.0, 'ticket_medio': 0.0}).copy()
+    total_valor_house = float(house_df['valor_total'].sum())
+    total_quantidade_house = int(house_df['quantidade'].sum())
+    valor_prati = float(house_df.loc[house_df['origem'] == 'Venda Interna (Prati)', 'valor_total'].sum())
+    taxa_house_percent = (valor_prati / total_valor_house * 100) if total_valor_house > 0 else 0.0
+    ticket_geral = (total_valor_house / total_quantidade_house) if total_quantidade_house > 0 else 0.0
+
+    house_display = house_df.rename(columns={'origem': 'Origem'}).copy()
+    house_display['Quantidade'] = house_display['quantidade'].apply(format_int_value)
+    house_display['Valor Total'] = house_display['valor_total'].apply(format_compact_currency)
+    house_display['Ticket Médio'] = house_display['ticket_medio'].apply(format_compact_currency)
+    house_display = house_display[['Origem', 'Quantidade', 'Valor Total', 'Ticket Médio']]
+
+    col_house_table, col_house_info = st.columns([1.8, 1.2])
+
+    with col_house_table:
+        st.dataframe(house_display, use_container_width=True, hide_index=True)
+
+    with col_house_info:
+        render_kpi(col_house_info, "Taxa House (valor)", f"{taxa_house_percent:.1f}%", "Participação das vendas Prati")
+        render_kpi(col_house_info, "Valor Total", format_compact_currency(total_valor_house), "Período jan/25 até hoje")
+        render_kpi(col_house_info, "Ticket Médio Geral", format_currency(ticket_geral) if ticket_geral > 0 else "—")
+
+        fig_house = px.pie(
+            house_df,
+            values='valor_total',
+            names='origem',
+            hole=0.45,
+            color='origem',
+            color_discrete_map={
+                'Venda Interna (Prati)': '#38bdf8',
+                'Venda Externa (Imobiliárias)': '#6366f1'
+            },
+            title='Participação por origem (valor)'
+        )
+        fig_house = apply_dark_theme(fig_house, margin_top=50)
+        col_house_info.plotly_chart(fig_house, use_container_width=True)
+
+
+st.markdown("---")
+st.markdown("## 💰 VPL Geral")
+
+vpl_df = load_vpl_geral(periodo_inicio_str, periodo_fim_str)
+
+if vpl_df.empty:
+    st.info("Sem dados de VPL disponíveis para o período analisado.")
+else:
+    vpl_row = vpl_df.iloc[0]
+    total_vpl_reserva = float(vpl_row.get('total_vpl_reserva', 0.0) or 0.0)
+    total_vpl_tabela = float(vpl_row.get('total_vpl_tabela', 0.0) or 0.0)
+    vpl_percent = ((total_vpl_reserva / total_vpl_tabela) - 1) * 100 if total_vpl_tabela > 0 else 0.0
+    vpl_gap = total_vpl_reserva - total_vpl_tabela
+
+    vpl_cols = st.columns(4)
+    render_kpi(vpl_cols[0], "VPL Reserva", format_compact_currency(total_vpl_reserva), "Reservas cadastradas")
+    render_kpi(vpl_cols[1], "VPL Tabela", format_compact_currency(total_vpl_tabela), "Tabela oficial")
+    render_kpi(vpl_cols[2], "% vs Tabela", f"{vpl_percent:.1f}%", "Acima/abaixo da tabela")
+    render_kpi(vpl_cols[3], "Gap VPL", format_compact_currency(vpl_gap), "Reserva - Tabela")
+
+
+st.markdown("---")
+st.markdown("## 📈 Leads - Indicadores Essenciais")
+
+leads_base_df = load_leads_tv()
+
+if leads_base_df.empty:
+    st.info("Não foi possível carregar dados de leads para o período analisado.")
+else:
+    leads_tv_df = leads_base_df.copy()
+    leads_tv_df['data_consolidada'] = pd.to_datetime(leads_tv_df['data_consolidada'], errors='coerce')
+    leads_tv_df = leads_tv_df[leads_tv_df['data_consolidada'].notna()]
+    leads_tv_df = leads_tv_df[
+        (leads_tv_df['data_consolidada'].dt.date >= TERMOMETRO_DATA_INICIO) &
+        (leads_tv_df['data_consolidada'].dt.date <= data_final_analise)
+    ].copy()
+
+    if leads_tv_df.empty:
+        st.info("Sem leads no período de análise selecionado.")
+    else:
+        leads_tv_df['corretor_consolidado'] = leads_tv_df['corretor_consolidado'].fillna('—')
+        leads_tv_df = leads_tv_df[~leads_tv_df['corretor_consolidado'].str.upper().isin(LEADS_CORRETORES_REMOVIDOS)]
+
+        leads_tv_df['funil_etapa'] = leads_tv_df.apply(
+            lambda row: map_lead_stage(row['nome_situacao_anterior_lead'], row['situacao_nome']), axis=1
+        )
+
+        funil_initial_counts = {
+            etapa: int((leads_tv_df['funil_etapa'] == etapa).sum())
+            for etapa in LEADS_FUNIL_ETAPAS
+        }
+
+        total_leads_funil = int(len(leads_tv_df))
+
+        if total_leads_funil == 0:
+            st.info("Sem leads ativos no funil para o período considerado.")
+        else:
+            etapa_counts = []
+            for etapa in LEADS_FUNIL_ETAPAS:
+                if etapa == "Leads":
+                    etapa_counts.append(total_leads_funil)
+                elif etapa == "Em atendimento":
+                    etapa_counts.append(
+                        funil_initial_counts.get("Em atendimento", 0)
+                        + funil_initial_counts.get("Visita realizada", 0)
+                        + funil_initial_counts.get("Com reserva", 0)
+                        + funil_initial_counts.get("Venda realizada", 0)
+                    )
+                elif etapa == "Visita realizada":
+                    etapa_counts.append(
+                        funil_initial_counts.get("Visita realizada", 0)
+                        + funil_initial_counts.get("Com reserva", 0)
+                        + funil_initial_counts.get("Venda realizada", 0)
+                    )
+                elif etapa == "Com reserva":
+                    etapa_counts.append(
+                        funil_initial_counts.get("Com reserva", 0)
+                        + funil_initial_counts.get("Venda realizada", 0)
+                    )
+                else:
+                    etapa_counts.append(funil_initial_counts.get(etapa, 0))
+
+            funil_fig = go.Figure(go.Funnel(
+                y=LEADS_FUNIL_ETAPAS,
+                x=etapa_counts,
+                textinfo="value+percent initial",
+                marker=dict(colors=['#60a5fa', '#3b82f6', '#2563eb', '#7c3aed', '#f59e0b'])
+            ))
+            funil_fig = apply_dark_theme(funil_fig)
+            st.plotly_chart(funil_fig, use_container_width=True)
+
+            funil_cols = st.columns(len(LEADS_FUNIL_ETAPAS))
+            for col, etapa, valor in zip(funil_cols, LEADS_FUNIL_ETAPAS, etapa_counts):
+                percentual = (valor / total_leads_funil * 100) if total_leads_funil > 0 else 0.0
+                render_kpi(col, etapa, format_int_value(valor), f"{percentual:.1f}% do total")
+
+            st.caption(
+                f"Base de leads analisada de {TERMOMETRO_DATA_INICIO.strftime('%d/%m/%Y')} até {data_final_analise.strftime('%d/%m/%Y')} · Total: {format_int_value(total_leads_funil)}"
+            )
+
+            # Cancelamentos por motivo
+            st.markdown("### ❌ Cancelamentos por Motivo")
+            cancelamentos_df = leads_tv_df[
+                leads_tv_df['motivo_cancelamento_consolidada'].notna()
+                & (leads_tv_df['motivo_cancelamento_consolidada'].str.strip() != '')
+            ].copy()
+
+            if cancelamentos_df.empty:
+                st.info("Nenhum cancelamento registrado no período.")
+            else:
+                cancelamentos_resumo = (
+                    cancelamentos_df.groupby('motivo_cancelamento_consolidada')['idlead']
+                    .count()
+                    .reset_index(name='Quantidade')
+                    .sort_values('Quantidade', ascending=False)
+                )
+
+                fig_cancel = px.bar(
+                    cancelamentos_resumo.head(10),
+                    x='Quantidade',
+                    y='motivo_cancelamento_consolidada',
+                    orientation='h',
+                    color='Quantidade',
+                    color_continuous_scale='Blues',
+                    title='Top 10 motivos de cancelamento'
+                )
+                fig_cancel = apply_dark_theme(fig_cancel, margin_top=40)
+                fig_cancel.update_yaxes(title="", autorange="reversed")
+                st.plotly_chart(fig_cancel, use_container_width=True)
+
+            # Por mídia
+            st.markdown("### 📣 Distribuição por Mídia")
+            midia_resumo = (
+                leads_tv_df.groupby('midia_consolidada')
+                .agg(
+                    total_leads=('idlead', 'count'),
+                    vendas=('funil_etapa', lambda x: (x == 'Venda realizada').sum())
+                )
+                .reset_index()
+            )
+
+            if midia_resumo.empty:
+                st.info("Sem dados de mídia para exibir.")
+            else:
+                total_leads_midia = midia_resumo['total_leads'].sum()
+                if total_leads_midia > 0:
+                    midia_resumo['percent_leads'] = (midia_resumo['total_leads'] / total_leads_midia * 100).round(1)
+                else:
+                    midia_resumo['percent_leads'] = 0.0
+                midia_resumo['percent_conversao'] = midia_resumo.apply(
+                    lambda row: round((row['vendas'] / row['total_leads'] * 100), 1) if row['total_leads'] > 0 else 0.0, axis=1
+                )
+                midia_resumo = midia_resumo.sort_values(['percent_conversao', 'total_leads'], ascending=[False, False])
+
+                midia_display = midia_resumo.copy()
+                midia_display['Mídia'] = midia_display['midia_consolidada']
+                midia_display['Total Leads'] = midia_display['total_leads'].apply(format_int_value)
+                midia_display['Vendas Realizadas'] = midia_display['vendas'].apply(format_int_value)
+                midia_display['% Leads'] = midia_display['percent_leads'].map(lambda v: f"{v:.1f}%")
+                midia_display['% Conversão'] = midia_display['percent_conversao'].map(lambda v: f"{v:.1f}%")
+                midia_display = midia_display[['Mídia', 'Total Leads', 'Vendas Realizadas', '% Leads', '% Conversão']]
+
+                st.dataframe(midia_display, use_container_width=True, hide_index=True)
+
+
+st.markdown("---")
+st.markdown("## 🧾 Reservas - Funil por Situação")
+
+reservas_funil_df = reservas_ativas_df.copy()
+
+if reservas_funil_df.empty:
+    st.info("Sem reservas ativas para exibir no funil.")
+else:
+    reservas_funil_df['situacao'] = reservas_funil_df['situacao'].astype(str).str.strip()
+
+    funil_quantidades = []
+    for situacao in RESERVAS_FUNIL_ORDEM:
+        funil_quantidades.append(int((reservas_funil_df['situacao'] == situacao).sum()))
+
+    funil_reservas = pd.DataFrame({
+        'Situação': RESERVAS_FUNIL_ORDEM,
+        'Quantidade': funil_quantidades
+    })
+
+    funil_reservas = funil_reservas[funil_reservas['Quantidade'] > 0]
+
+    if funil_reservas.empty:
+        st.info("Nenhuma situação ativa para compor o funil no momento.")
+    else:
+        col_reserva_chart, col_reserva_table = st.columns([1.6, 1])
+
+        reserva_fig = go.Figure(go.Funnel(
+            y=funil_reservas['Situação'],
+            x=funil_reservas['Quantidade'],
+            textinfo='value+percent initial',
+            marker=dict(colors=['#38bdf8', '#3b82f6', '#2563eb', '#7c3aed', '#f59e0b', '#ef4444'])
+        ))
+        reserva_fig = apply_dark_theme(reserva_fig)
+
+        col_reserva_chart.plotly_chart(reserva_fig, use_container_width=True)
+
+        reservas_display = funil_reservas.copy()
+        reservas_display['Reservas'] = reservas_display['Quantidade'].apply(format_int_value)
+        reservas_display = reservas_display[['Situação', 'Reservas']]
+        total_reservas_display = format_int_value(int(funil_reservas['Quantidade'].sum()))
+
+        with col_reserva_table:
+            st.dataframe(reservas_display, use_container_width=True, hide_index=True)
+            st.caption(f"Total de reservas consideradas no funil: {total_reservas_display}")
