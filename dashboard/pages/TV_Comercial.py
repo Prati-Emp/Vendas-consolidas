@@ -706,20 +706,21 @@ else:
     reservas_status_df['situacao'] = reservas_status_df['situacao'].astype(str).str.strip()
 
     status_counts = (
-        reservas_status_df['situacao']
-        .value_counts()
+        reservas_status_df.groupby('situacao', dropna=False)
+        .size()
         .reset_index(name='Quantidade')
-        .rename(columns={'index': 'Situação'})
     )
+    status_counts = status_counts.rename(columns={'situacao': 'Situacao'})
 
     if status_counts.empty:
         st.info("Nenhuma situação ativa encontrada no período.")
     else:
-        status_counts['ordem'] = status_counts['Situação'].apply(
-            lambda s: RESERVAS_SITUACAO_ORDEM.index(normalize_reserva_label(s))
-            if normalize_reserva_label(s) in RESERVAS_SITUACAO_ORDEM else len(RESERVAS_SITUACAO_ORDEM)
+        status_counts['SituacaoNormalizada'] = status_counts['Situacao'].apply(normalize_reserva_label)
+        status_counts['ordem'] = status_counts['SituacaoNormalizada'].apply(
+            lambda s: RESERVAS_SITUACAO_ORDEM.index(s)
+            if s in RESERVAS_SITUACAO_ORDEM else len(RESERVAS_SITUACAO_ORDEM)
         )
-        status_counts = status_counts.sort_values(['ordem', 'Situação']).reset_index(drop=True)
+        status_counts = status_counts.sort_values(['ordem', 'Situacao']).reset_index(drop=True)
 
         total_reservas_status = int(status_counts['Quantidade'].sum())
         status_counts['Percentual'] = status_counts['Quantidade'].apply(
@@ -729,7 +730,7 @@ else:
         fig_reserva_status = px.bar(
             status_counts,
             x='Quantidade',
-            y='Situação',
+            y='Situacao',
             orientation='h',
             text='Quantidade',
             color='Quantidade',
@@ -739,9 +740,11 @@ else:
         fig_reserva_status = apply_dark_theme(fig_reserva_status, margin_top=60)
         fig_reserva_status.update_traces(texttemplate='%{text}', textposition='outside')
         fig_reserva_status.update_layout(coloraxis_showscale=False)
+        fig_reserva_status.update_yaxes(title="Situação")
         st.plotly_chart(fig_reserva_status, use_container_width=True)
 
-        reservas_display = status_counts[['Situação', 'Quantidade', 'Percentual']].copy()
+        reservas_display = status_counts[['Situacao', 'Quantidade', 'Percentual']].copy()
+        reservas_display = reservas_display.rename(columns={'Situacao': 'Situação'})
         reservas_display['Reservas'] = reservas_display['Quantidade'].apply(format_int_value)
         reservas_display['%'] = reservas_display['Percentual'].map(lambda v: f"{v:.1f}%")
         reservas_display = reservas_display[['Situação', 'Reservas', '%']]
