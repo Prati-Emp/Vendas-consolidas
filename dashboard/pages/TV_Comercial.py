@@ -9,7 +9,7 @@ import plotly.graph_objects as go
 # Garantir que os módulos compartilhados possam ser importados quando o app for executado diretamente
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
-from advanced_auth import require_auth
+from advanced_auth import require_auth, get_current_user
 from utils import display_navigation
 from utils.md_conn import get_md_connection, get_metas_data
 from utils.formatters import format_compact_currency, format_currency
@@ -25,6 +25,13 @@ st.session_state['current_page'] = __file__
 
 st.title("📺 TV Comercial")
 st.caption(f"Atualização realizada em {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
+
+# Bloqueio de acesso: somente o usuário Odair pode ver esta página
+current_user = get_current_user() or {}
+email = (current_user.get('email') or "").lower()
+if email not in {"odair.santos@grupoprati.com"}:
+    st.warning("⚠️ Você não tem permissão para acessar a TV Comercial.")
+    st.stop()
 
 st.markdown(
     """
