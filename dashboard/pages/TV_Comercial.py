@@ -221,6 +221,7 @@ def load_vendas_house_overview(inicio: str, fim: str) -> pd.DataFrame:
         WHERE value IS NOT NULL
           AND contractDate >= CAST(? AS DATE)
           AND contractDate <= CAST(? AS DATE)
+        GROUP BY 1
     """
     return conn.run_query(sql, [inicio, fim])
 
