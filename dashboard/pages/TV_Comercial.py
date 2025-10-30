@@ -242,6 +242,8 @@ def load_vpl_geral(inicio: str, fim: str) -> pd.DataFrame:
         FROM informacoes_consolidadas.sienge_vendas_consolidadas
         WHERE contractDate >= CAST(? AS DATE)
           AND contractDate <= CAST(? AS DATE)
+          AND COALESCE(vpl_reserva, 0) <> 0
+          AND COALESCE(vpl_tabela, 0) <> 0
     """
     return conn.run_query(sql, [inicio, fim])
 
