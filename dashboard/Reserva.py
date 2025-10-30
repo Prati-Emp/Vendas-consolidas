@@ -859,6 +859,6 @@ if meta_total > 0:
 else:
     col_vendas[2].metric("Falta para Meta", "—")
 
-st.caption(f"Meta referente a {mes_referencia_display}.")
+st.caption(f"Valores de Meta, Vendas Realizadas, Atingimento da Meta e Falta para Meta referem-se a {mes_referencia_display}.")
 
 # Página Home simplificada - apenas os quadros principais
