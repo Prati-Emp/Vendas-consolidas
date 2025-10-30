@@ -549,7 +549,7 @@ else:
     vpl_cols = st.columns(4)
     render_kpi(vpl_cols[0], "VPL Reserva", format_compact_currency(total_vpl_reserva), "Reservas cadastradas")
     render_kpi(vpl_cols[1], "VPL Tabela", format_compact_currency(total_vpl_tabela), "Tabela oficial")
-    render_kpi(vpl_cols[2], "% VPL", f"{vpl_percent:.1f}%", "VPL Geral")
+    render_kpi(vpl_cols[2], "% VPL", f"{vpl_percent:.2f}%", "VPL Geral")
     render_kpi(vpl_cols[3], "Gap VPL", format_compact_currency(vpl_gap), "Reserva - Tabela")
 
 
