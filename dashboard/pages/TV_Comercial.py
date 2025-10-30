@@ -684,7 +684,7 @@ else:
                 midia_resumo['percent_conversao'] = midia_resumo.apply(
                     lambda row: round((row['vendas'] / row['total_leads'] * 100), 1) if row['total_leads'] > 0 else 0.0, axis=1
                 )
-            midia_resumo = midia_resumo.sort_values('total_leads', ascending=False)
+                midia_resumo = midia_resumo.sort_values('total_leads', ascending=False)
 
                 midia_display = midia_resumo.copy()
                 midia_display['Mídia'] = midia_display['midia_consolidada']
