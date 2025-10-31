@@ -660,7 +660,7 @@ else:
                 for valor in etapa_counts
             ]
             max_valor = max(etapa_counts) if etapa_counts else 0
-            offset_anotacao = max(max_valor * 0.04, 8)
+            offset_anotacao = max(max_valor * 0.02, 4)
             textos_percentual = [f"{percentual:.1f}%" for percentual in percentuais]
 
             fig_leads = go.Figure()
