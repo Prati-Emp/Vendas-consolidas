@@ -546,12 +546,21 @@ st.markdown(
         }
         div[data-testid="stDataFrame"] table {
             font-family: 'Manrope', sans-serif;
-            background: transparent;
+            background: transparent !important;
+            background-color: transparent !important;
             color: rgba(248, 250, 252, 0.95);
             font-size: 1.05rem;
         }
+        div[data-testid="stDataFrame"] table thead,
+        div[data-testid="stDataFrame"] table tbody,
+        div[data-testid="stDataFrame"] table tr,
+        div[data-testid="stDataFrame"] table th,
+        div[data-testid="stDataFrame"] table td {
+            background: transparent !important;
+            background-color: transparent !important;
+        }
         div[data-testid="stDataFrame"] table thead tr th {
-            background: rgba(15, 23, 42, 0.88);
+            background: rgba(15, 23, 42, 0.88) !important;
             color: rgba(248, 250, 252, 0.98);
             font-size: 1.16rem;
             font-weight: 700;
@@ -568,13 +577,13 @@ st.markdown(
             padding: 16px 18px;
         }
         div[data-testid="stDataFrame"] table tbody tr:nth-child(odd) td {
-            background: rgba(255, 255, 255, 0.02);
+            background: rgba(255, 255, 255, 0.02) !important;
         }
         div[data-testid="stDataFrame"] table tbody tr:nth-child(even) td {
-            background: rgba(15, 23, 42, 0.35);
+            background: rgba(15, 23, 42, 0.35) !important;
         }
         div[data-testid="stDataFrame"] table tbody tr:hover td {
-            background: rgba(59, 130, 246, 0.24);
+            background: rgba(59, 130, 246, 0.24) !important;
         }
         div[data-testid="stDataFrame"] table tbody tr td:first-child {
             text-align: left !important;
