@@ -71,6 +71,7 @@ st.markdown(
 
 
 CONVERSAO_SITUACOES = {situacao.lower() for situacao in ["Distrato", "Mútuo", "Vendida"]}
+CONVERSAO_SITUACOES_EXCLUIDAS = {situacao.lower() for situacao in ["Vencida"]}
 SITUACOES_RESERVAS_EXCLUIDAS = {situacao.lower() for situacao in ["Mútuo", "Vencida"]}
 TERMOMETRO_SITUACOES_INATIVAS = {situacao.lower() for situacao in ["Cancelada", "Vendida", "Distrato"]}
 TERMOMETRO_DATA_INICIO = date(2025, 1, 1)
@@ -348,7 +349,7 @@ seis_meses_atras = data_final_analise - relativedelta(months=6)
 reservas_6m_df = reservas_df[
     (reservas_df['data_cad'].dt.date >= seis_meses_atras)
     & (reservas_df['data_cad'].dt.date <= data_final_analise)
-    & (~reservas_df['situacao_normalizada'].isin(SITUACOES_RESERVAS_EXCLUIDAS))
+    & (~reservas_df['situacao_normalizada'].isin(CONVERSAO_SITUACOES_EXCLUIDAS))
 ].copy()
 
 
