@@ -155,8 +155,7 @@ LEADS_FUNIL_ETAPAS = [
     "Leads",
     "Em atendimento",
     "Visita realizada",
-    "Com reserva",
-    "Venda realizada"
+    "Com reserva"
 ]
 
 RESERVAS_SITUACAO_ORDEM = [
@@ -642,57 +641,82 @@ else:
             lambda row: map_lead_stage(row['nome_situacao_anterior_lead'], row['situacao_nome']), axis=1
         )
 
-        funil_initial_counts = {
-            etapa: int((leads_tv_df['funil_etapa'] == etapa).sum())
-            for etapa in LEADS_FUNIL_ETAPAS
-        }
+        situacoes_excluidas = {"descartado", "em pré-cadastro", "venda realizada", "vencido"}
+        leads_tv_df['situacao_normalizada'] = leads_tv_df['situacao_nome'].str.lower().str.strip()
+        leads_ativos_df = leads_tv_df[~leads_tv_df['situacao_normalizada'].isin(situacoes_excluidas)].copy()
 
-        total_leads_funil = int(len(leads_tv_df))
+        total_leads_ativos = int(leads_ativos_df.shape[0])
 
-        if total_leads_funil == 0:
-            st.info("Sem leads ativos no funil para o período considerado.")
+        if total_leads_ativos == 0:
+            st.info("Sem leads ativos no período de análise selecionado.")
         else:
-            etapa_counts = []
-            for etapa in LEADS_FUNIL_ETAPAS:
-                if etapa == "Leads":
-                    etapa_counts.append(total_leads_funil)
-                elif etapa == "Em atendimento":
-                    etapa_counts.append(
-                        funil_initial_counts.get("Em atendimento", 0)
-                        + funil_initial_counts.get("Visita realizada", 0)
-                        + funil_initial_counts.get("Com reserva", 0)
-                        + funil_initial_counts.get("Venda realizada", 0)
-                    )
-                elif etapa == "Visita realizada":
-                    etapa_counts.append(
-                        funil_initial_counts.get("Visita realizada", 0)
-                        + funil_initial_counts.get("Com reserva", 0)
-                        + funil_initial_counts.get("Venda realizada", 0)
-                    )
-                elif etapa == "Com reserva":
-                    etapa_counts.append(
-                        funil_initial_counts.get("Com reserva", 0)
-                        + funil_initial_counts.get("Venda realizada", 0)
-                    )
-                else:
-                    etapa_counts.append(funil_initial_counts.get(etapa, 0))
+            funil_etapas_ativos = LEADS_FUNIL_ETAPAS
+            etapa_counts = [
+                int((leads_ativos_df['funil_etapa'] == etapa).sum())
+                for etapa in funil_etapas_ativos
+            ]
+            percentuais = [
+                (valor / total_leads_ativos * 100) if total_leads_ativos > 0 else 0.0
+                for valor in etapa_counts
+            ]
+            max_valor = max(etapa_counts) if etapa_counts else 0
+            offset_anotacao = max(max_valor * 0.05, 1)
 
-            funil_fig = go.Figure(go.Funnel(
-                y=LEADS_FUNIL_ETAPAS,
+            fig_leads = go.Figure()
+            fig_leads.add_trace(go.Bar(
+                y=funil_etapas_ativos,
                 x=etapa_counts,
-                textinfo="value+percent initial",
-                marker=dict(color=['#60a5fa', '#3b82f6', '#2563eb', '#7c3aed', '#f59e0b'])
+                orientation='h',
+                text=[f"{percentual:.1f}%" for percentual in percentuais],
+                textposition='inside',
+                textfont=dict(color='#f8fafc', size=16, family='Manrope, sans-serif'),
+                marker=dict(
+                    color=['#60a5fa', '#3b82f6', '#2563eb', '#7c3aed'],
+                    line=dict(width=0)
+                ),
+                customdata=percentuais,
+                hovertemplate="<b>%{y}</b><br>Quantidade: %{x:,}<br>Participação: %{customdata:.1f}%<extra></extra>"
             ))
-            funil_fig = apply_dark_theme(funil_fig)
-            st.plotly_chart(funil_fig, use_container_width=True)
 
-            funil_cols = st.columns(len(LEADS_FUNIL_ETAPAS))
-            for col, etapa, valor in zip(funil_cols, LEADS_FUNIL_ETAPAS, etapa_counts):
-                percentual = (valor / total_leads_funil * 100) if total_leads_funil > 0 else 0.0
+            for etapa, valor in zip(funil_etapas_ativos, etapa_counts):
+                fig_leads.add_annotation(
+                    x=valor + offset_anotacao,
+                    y=etapa,
+                    text=format_int_value(valor),
+                    showarrow=False,
+                    font=dict(size=16, color='#f8fafc', family='Manrope, sans-serif'),
+                    xanchor='left'
+                )
+
+            range_max = max_valor + offset_anotacao * 4 if max_valor else 1
+            fig_leads.update_layout(
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(0,0,0,0)",
+                font=dict(color="#f8fafc"),
+                height=420,
+                margin=dict(t=60, b=40, l=180, r=140),
+                showlegend=False,
+                xaxis=dict(
+                    showgrid=False,
+                    zeroline=False,
+                    showticklabels=False,
+                    range=[0, range_max]
+                ),
+                yaxis=dict(
+                    showgrid=False,
+                    categoryorder='array',
+                    categoryarray=list(reversed(funil_etapas_ativos))
+                )
+            )
+            st.plotly_chart(fig_leads, use_container_width=True)
+
+            cards = st.columns(len(funil_etapas_ativos) + 1)
+            render_kpi(cards[0], "Total Leads Ativos", format_int_value(total_leads_ativos), "Base ativa consolidada")
+            for col, etapa, valor, percentual in zip(cards[1:], funil_etapas_ativos, etapa_counts, percentuais):
                 render_kpi(col, etapa, format_int_value(valor), f"{percentual:.1f}% do total")
 
             st.caption(
-                f"Base de leads analisada de {TERMOMETRO_DATA_INICIO.strftime('%d/%m/%Y')} até {data_final_analise.strftime('%d/%m/%Y')} · Total: {format_int_value(total_leads_funil)}"
+                f"Base consolidada considerada de {TERMOMETRO_DATA_INICIO.strftime('%d/%m/%Y')} até {data_final_analise.strftime('%d/%m/%Y')} · Leads ativos: {format_int_value(total_leads_ativos)}"
             )
 
             # Cancelamentos por motivo
