@@ -501,14 +501,15 @@ st.markdown(
 )
 
 
-def render_kpi(coluna, titulo: str, valor: str, subtitulo: str | None = None, tag: str | None = None):
+def render_kpi(coluna, titulo: str, valor: str, subtitulo: str | None = None, tag: str | None = None, valor_color: str | None = None):
     tag_html = f'<span class="tv-kpi-title-tag">{tag}</span>' if tag else '<span class="tv-kpi-title-tag tv-kpi-title-tag--empty">—</span>'
     titulo_html = f"<span class='tv-kpi-title-main'>{titulo}</span>{tag_html}"
+    valor_style = f" style='color:{valor_color};'" if valor_color else ""
     coluna.markdown(
         f"""
         <div class=\"tv-kpi-card\">
             <div class=\"tv-kpi-title\">{titulo_html}</div>
-            <div class=\"tv-kpi-value\">{valor}</div>
+            <div class=\"tv-kpi-value\"{valor_style}>{valor}</div>
             {f'<div class=\"tv-kpi-subtitle\">{subtitulo}</div>' if subtitulo else ''}
         </div>
         """,
@@ -519,10 +520,16 @@ def render_kpi(coluna, titulo: str, valor: str, subtitulo: str | None = None, ta
 linha_um = st.columns(6)
 mes_tag = mes_referencia_curto.upper()
 ano_tag = str(TERMOMETRO_DATA_INICIO.year)
+atingimento_color = None
+falta_color = None
+if meta_total > 0:
+    atingimento_color = "#22c55e" if atingimento_percent >= 100 else "#ef4444"
+    falta_color = "#22c55e" if falta_para_meta_valor == 0 else "#ef4444"
+
 render_kpi(linha_um[0], "Meta de Vendas", format_compact_currency(meta_total) if meta_total > 0 else "—", "Objetivo mensal consolidado", tag=mes_tag)
 render_kpi(linha_um[1], "Vendas Realizadas", format_compact_currency(vendas_realizadas_valor) if vendas_realizadas_valor > 0 else "R$ 0", "Vendas concluídas do mês", tag=mes_tag)
-render_kpi(linha_um[2], "Atingimento da Meta", f"{atingimento_percent:.1f}%", "Vendas / Meta do mês", tag=mes_tag)
-render_kpi(linha_um[3], "Falta para Meta", format_compact_currency(falta_para_meta_valor) if meta_total > 0 else "—", "Gap remanescente", tag=mes_tag)
+render_kpi(linha_um[2], "Atingimento da Meta", f"{atingimento_percent:.1f}%", "Vendas / Meta do mês", tag=mes_tag, valor_color=atingimento_color)
+render_kpi(linha_um[3], "Falta para Meta", format_compact_currency(falta_para_meta_valor) if meta_total > 0 else "—", "Gap remanescente", tag=mes_tag, valor_color=falta_color)
 render_kpi(linha_um[4], "🏠 Taxa House (valor)", f"{taxa_house_percent:.1f}%" if house_data_available else "—", "Participação das vendas internas", tag=ano_tag)
 render_kpi(linha_um[5], "% VPL", f"{vpl_percent:.2f}%" if vpl_data_available else "—", "VPL Geral", tag=ano_tag)
 
