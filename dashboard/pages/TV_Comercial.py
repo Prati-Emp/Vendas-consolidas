@@ -531,7 +531,7 @@ periodo_fim_str = data_final_analise.strftime('%Y-%m-%d')
 
 
 st.markdown("---")
-st.markdown("## 🏠 Indicadores de Vendas")
+st.markdown("## 🏠 Análise Vendas House")
 
 house_raw_df = load_vendas_house_overview(periodo_inicio_str, periodo_fim_str)
 
