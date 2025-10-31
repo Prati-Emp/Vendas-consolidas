@@ -616,7 +616,7 @@ render_kpi(linha_termometro[3], "Cobertura da Meta", f"{cobertura_percent:.1f}%"
 
 
 st.markdown("---")
-st.markdown("## 📈 Leads - Indicadores Essenciais")
+st.markdown("## 📈 Leads Ativos")
 
 leads_base_df = load_leads_tv()
 
