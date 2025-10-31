@@ -582,38 +582,6 @@ render_kpi(linha_um[3], "Falta para Meta", format_compact_currency(falta_para_me
 render_kpi(linha_um[4], "🏠 Taxa House (valor)", f"{taxa_house_percent:.1f}%" if house_data_available else "—", "Meta: 30% vendas internas", tag=ano_tag, valor_color=taxa_house_color, compact=True)
 render_kpi(linha_um[5], "Porcentagem VPL Geral", f"{vpl_percent:.2f}%" if vpl_data_available else "—", "Meta: VPL Positivo", tag=ano_tag, valor_color=vpl_color, compact=True)
 
-linha_conversao = st.columns(2)
-tag_6m = "6 MESES"
-
-valor_conversao_prati = f"{taxa_prati:.1f}%" if total_prati > 0 else "—"
-sub_prati = (
-    f"{format_int_value(convertidas_prati)} de {format_int_value(total_prati)} reservas"
-    if total_prati > 0 else "Sem registros no período"
-)
-
-valor_conversao_outras = f"{taxa_outras:.1f}%" if total_outras > 0 else "—"
-sub_outras = (
-    f"{format_int_value(convertidas_outras)} de {format_int_value(total_outras)} reservas"
-    if total_outras > 0 else "Sem registros no período"
-)
-
-render_kpi(
-    linha_conversao[0],
-    "Conversão Prati",
-    valor_conversao_prati,
-    sub_prati,
-    tag=tag_6m,
-    compact=True
-)
-render_kpi(
-    linha_conversao[1],
-    "Conversão Outras Imobiliárias",
-    valor_conversao_outras,
-    sub_outras,
-    tag=tag_6m,
-    compact=True
-)
-
 # Seção do termômetro
 st.subheader("🌡️ Termômetro de Vendas")
 
@@ -961,3 +929,36 @@ else:
 
         st.dataframe(reservas_display, use_container_width=True, hide_index=True)
         st.caption(f"Total de reservas ativas consideradas: {format_int_value(total_reservas_status)}")
+
+
+linha_conversao = st.columns(2)
+tag_6m = "6 MESES"
+
+valor_conversao_prati = f"{taxa_prati:.1f}%" if total_prati > 0 else "—"
+sub_prati = (
+    f"{format_int_value(convertidas_prati)} de {format_int_value(total_prati)} reservas"
+    if total_prati > 0 else "Sem registros no período"
+)
+
+valor_conversao_outras = f"{taxa_outras:.1f}%" if total_outras > 0 else "—"
+sub_outras = (
+    f"{format_int_value(convertidas_outras)} de {format_int_value(total_outras)} reservas"
+    if total_outras > 0 else "Sem registros no período"
+)
+
+render_kpi(
+    linha_conversao[0],
+    "Conversão Prati",
+    valor_conversao_prati,
+    sub_prati,
+    tag=tag_6m,
+    compact=True
+)
+render_kpi(
+    linha_conversao[1],
+    "Conversão Outras Imobiliárias",
+    valor_conversao_outras,
+    sub_outras,
+    tag=tag_6m,
+    compact=True
+)
