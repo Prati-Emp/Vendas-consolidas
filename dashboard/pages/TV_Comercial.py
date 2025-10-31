@@ -466,12 +466,6 @@ render_kpi(linha_um[1], f"Vendas Realizadas ({mes_referencia_curto})", format_co
 render_kpi(linha_um[2], "Atingimento da Meta", f"{atingimento_percent:.1f}%", "Vendas / Meta do mês")
 render_kpi(linha_um[3], "Falta para Meta", format_compact_currency(falta_para_meta_valor) if meta_total > 0 else "—", "Gap remanescente")
 
-linha_dois = st.columns(4)
-render_kpi(linha_dois[0], "Taxa de Conversão Geral", f"{taxa_conversao_geral * 100:.1f}%", "Reservas que viram vendas")
-render_kpi(linha_dois[1], "Reservas Atuais", f"{reservas_atuais_total}", "Reservas ativas no pipeline")
-render_kpi(linha_dois[2], "Potencial de Vendas", format_compact_currency(potencial_vendas_valor), "Reservas x taxa de conversão")
-render_kpi(linha_dois[3], "Cobertura da Meta", f"{cobertura_percent:.1f}%", "Potencial versus meta")
-
 # Seção do termômetro
 st.subheader("🌡️ Termômetro de Vendas")
 
@@ -524,6 +518,12 @@ st.markdown(
     f"<div style='margin-top:18px; font-size:0.95rem; color:rgba(255,255,255,0.65);'>Base analisada de {TERMOMETRO_DATA_INICIO.strftime('%d/%m/%Y')} até {data_final_analise.strftime('%d/%m/%Y')} · Atualize a página para forçar nova leitura.</div>",
     unsafe_allow_html=True
 )
+
+linha_termometro = st.columns(4)
+render_kpi(linha_termometro[0], "Taxa de Conversão Geral", f"{taxa_conversao_geral * 100:.1f}%", "Reservas que viram vendas")
+render_kpi(linha_termometro[1], "Reservas Atuais", f"{reservas_atuais_total}", "Reservas ativas no pipeline")
+render_kpi(linha_termometro[2], "Potencial de Vendas", format_compact_currency(potencial_vendas_valor), "Reservas x taxa de conversão")
+render_kpi(linha_termometro[3], "Cobertura da Meta", f"{cobertura_percent:.1f}%", "Potencial versus meta")
 
 
 periodo_inicio_str = TERMOMETRO_DATA_INICIO.strftime('%Y-%m-%d')
