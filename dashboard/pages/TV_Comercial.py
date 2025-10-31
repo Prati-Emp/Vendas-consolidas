@@ -796,12 +796,12 @@ else:
                 fig_cancel.update_traces(
                     texttemplate='<b>%{x}</b>',
                     textposition='outside',
-                    marker=dict(line=dict(color='rgba(15, 23, 42, 0.6)', width=1))
+                    marker=dict(line=dict(color='rgba(15, 23, 42, 0.6)', width=1)),
+                    hovertemplate='<b>%{y}</b><br>Cancelamentos: %{x:,}<extra></extra>'
                 )
                 fig_cancel.update_layout(
                     showlegend=False,
-                    bargap=0.27,
-                    hovertemplate='<b>%{y}</b><br>Cancelamentos: %{x:,}<extra></extra>'
+                    bargap=0.27
                 )
                 st.plotly_chart(fig_cancel, use_container_width=True)
 
