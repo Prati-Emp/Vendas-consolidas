@@ -462,15 +462,15 @@ def render_kpi(coluna, titulo: str, valor: str, subtitulo: str | None = None):
 
 linha_um = st.columns(4)
 render_kpi(linha_um[0], f"Meta de Vendas ({mes_referencia_curto})", format_compact_currency(meta_total) if meta_total > 0 else "—", "Objetivo mensal consolidado")
-render_kpi(linha_um[1], "Taxa de Conversão Geral", f"{taxa_conversao_geral * 100:.1f}%", "Reservas que viram vendas")
-render_kpi(linha_um[2], "Reservas Atuais", f"{reservas_atuais_total}", "Reservas ativas no pipeline")
-render_kpi(linha_um[3], "Potencial de Vendas", format_compact_currency(potencial_vendas_valor), "Reservas x taxa de conversão")
+render_kpi(linha_um[1], f"Vendas Realizadas ({mes_referencia_curto})", format_compact_currency(vendas_realizadas_valor) if vendas_realizadas_valor > 0 else "R$ 0", "Vendas concluídas do mês")
+render_kpi(linha_um[2], "Atingimento da Meta", f"{atingimento_percent:.1f}%", "Vendas / Meta do mês")
+render_kpi(linha_um[3], "Falta para Meta", format_compact_currency(falta_para_meta_valor) if meta_total > 0 else "—", "Gap remanescente")
 
 linha_dois = st.columns(4)
-render_kpi(linha_dois[0], "Cobertura da Meta", f"{cobertura_percent:.1f}%", "Potencial versus meta")
-render_kpi(linha_dois[1], f"Vendas Realizadas ({mes_referencia_curto})", format_compact_currency(vendas_realizadas_valor) if vendas_realizadas_valor > 0 else "R$ 0", "Vendas concluídas do mês")
-render_kpi(linha_dois[2], "Atingimento da Meta", f"{atingimento_percent:.1f}%", "Vendas / Meta do mês")
-render_kpi(linha_dois[3], "Falta para Meta", format_compact_currency(falta_para_meta_valor) if meta_total > 0 else "—", "Gap remanescente")
+render_kpi(linha_dois[0], "Taxa de Conversão Geral", f"{taxa_conversao_geral * 100:.1f}%", "Reservas que viram vendas")
+render_kpi(linha_dois[1], "Reservas Atuais", f"{reservas_atuais_total}", "Reservas ativas no pipeline")
+render_kpi(linha_dois[2], "Potencial de Vendas", format_compact_currency(potencial_vendas_valor), "Reservas x taxa de conversão")
+render_kpi(linha_dois[3], "Cobertura da Meta", f"{cobertura_percent:.1f}%", "Potencial versus meta")
 
 # Seção do termômetro
 st.subheader("🌡️ Termômetro de Vendas")
