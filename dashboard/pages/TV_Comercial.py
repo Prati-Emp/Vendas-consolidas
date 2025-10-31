@@ -660,22 +660,26 @@ else:
                 for valor in etapa_counts
             ]
             max_valor = max(etapa_counts) if etapa_counts else 0
-            offset_anotacao = max(max_valor * 0.05, 1)
+            offset_anotacao = max(max_valor * 0.04, 8)
+            textos_percentual = [f"{percentual:.1f}%" for percentual in percentuais]
 
             fig_leads = go.Figure()
             fig_leads.add_trace(go.Bar(
                 y=funil_etapas_ativos,
                 x=etapa_counts,
                 orientation='h',
-                text=[f"{percentual:.1f}%" for percentual in percentuais],
+                text=textos_percentual,
+                texttemplate='<b>%{text}</b>',
                 textposition='inside',
-                textfont=dict(color='#f8fafc', size=16, family='Manrope, sans-serif'),
+                insidetextanchor='middle',
+                textfont=dict(color='#f8fafc', size=18, family='Manrope, sans-serif'),
                 marker=dict(
                     color=['#60a5fa', '#3b82f6', '#2563eb', '#7c3aed'],
                     line=dict(width=0)
                 ),
                 customdata=percentuais,
-                hovertemplate="<b>%{y}</b><br>Quantidade: %{x:,}<br>Participação: %{customdata:.1f}%<extra></extra>"
+                hovertemplate="<b>%{y}</b><br>Quantidade: %{x:,}<br>Participação: %{customdata:.1f}%<extra></extra>",
+                cliponaxis=False
             ))
 
             for etapa, valor in zip(funil_etapas_ativos, etapa_counts):
@@ -684,8 +688,12 @@ else:
                     y=etapa,
                     text=format_int_value(valor),
                     showarrow=False,
-                    font=dict(size=16, color='#f8fafc', family='Manrope, sans-serif'),
-                    xanchor='left'
+                    font=dict(size=17, color='#f8fafc', family='Manrope, sans-serif'),
+                    xanchor='left',
+                    bgcolor='rgba(15,23,42,0.78)',
+                    bordercolor='rgba(148,163,184,0.45)',
+                    borderwidth=1,
+                    borderpad=6
                 )
 
             range_max = max_valor + offset_anotacao * 4 if max_valor else 1
@@ -694,7 +702,7 @@ else:
                 plot_bgcolor="rgba(0,0,0,0)",
                 font=dict(color="#f8fafc"),
                 height=420,
-                margin=dict(t=60, b=40, l=180, r=140),
+                margin=dict(t=60, b=40, l=180, r=160),
                 showlegend=False,
                 xaxis=dict(
                     showgrid=False,
@@ -704,9 +712,11 @@ else:
                 ),
                 yaxis=dict(
                     showgrid=False,
+                    tickfont=dict(size=15, color='rgba(248,250,252,0.86)', family='Manrope, sans-serif'),
                     categoryorder='array',
                     categoryarray=list(reversed(funil_etapas_ativos))
-                )
+                ),
+                hoverlabel=dict(bgcolor='rgba(15,23,42,0.92)', font_size=14, font_family='Manrope, sans-serif')
             )
             st.plotly_chart(fig_leads, use_container_width=True)
 
