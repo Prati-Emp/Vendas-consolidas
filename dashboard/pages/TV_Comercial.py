@@ -808,8 +808,11 @@ else:
 
     status_counts = (
         reservas_status_df.groupby('situacao', dropna=False)
-        .size()
-        .reset_index(name='Quantidade')
+        .agg(
+            Quantidade=('situacao', 'size'),
+            Valor=('valor_contrato', 'sum')
+        )
+        .reset_index()
     )
     status_counts = status_counts.rename(columns={'situacao': 'Situacao'})
 
@@ -827,6 +830,8 @@ else:
         status_counts['Percentual'] = status_counts['Quantidade'].apply(
             lambda v: round(v / total_reservas_status * 100, 1) if total_reservas_status > 0 else 0.0
         )
+        status_counts['Valor'] = status_counts['Valor'].fillna(0.0)
+        status_counts['ValorFormatado'] = status_counts['Valor'].apply(format_compact_currency)
 
         fig_reserva_status = px.bar(
             status_counts,
@@ -834,22 +839,29 @@ else:
             y='Situacao',
             orientation='h',
             text='Quantidade',
+            custom_data=['Valor', 'ValorFormatado'],
             color='Quantidade',
             color_continuous_scale='Blues',
             title='Distribuição de Reservas por Situação'
         )
         fig_reserva_status.update_layout(yaxis=dict(categoryorder='array', categoryarray=status_counts['Situacao'].tolist()[::-1]))
         fig_reserva_status = apply_dark_theme(fig_reserva_status, margin_top=60)
-        fig_reserva_status.update_traces(texttemplate='%{text}', textposition='outside')
+        fig_reserva_status.update_traces(
+            texttemplate='Qtd: %{text}<br>Valor: %{customdata[1]}',
+            textposition='outside',
+            cliponaxis=False,
+            hovertemplate='<b>%{y}</b><br>Quantidade: %{x:,}<br>Valor: %{customdata[1]}<extra></extra>'
+        )
         fig_reserva_status.update_layout(coloraxis_showscale=False)
         fig_reserva_status.update_yaxes(title="Situação")
         st.plotly_chart(fig_reserva_status, use_container_width=True)
 
-        reservas_display = status_counts[['Situacao', 'Quantidade', 'Percentual']].copy()
+        reservas_display = status_counts[['Situacao', 'Quantidade', 'ValorFormatado', 'Percentual']].copy()
         reservas_display = reservas_display.rename(columns={'Situacao': 'Situação'})
         reservas_display['Reservas'] = reservas_display['Quantidade'].apply(format_int_value)
+        reservas_display['Valor'] = reservas_display['ValorFormatado']
         reservas_display['%'] = reservas_display['Percentual'].map(lambda v: f"{v:.1f}%")
-        reservas_display = reservas_display[['Situação', 'Reservas', '%']]
+        reservas_display = reservas_display[['Situação', 'Reservas', 'Valor', '%']]
 
         st.dataframe(reservas_display, use_container_width=True, hide_index=True)
         st.caption(f"Total de reservas ativas consideradas: {format_int_value(total_reservas_status)}")
