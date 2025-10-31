@@ -443,22 +443,27 @@ st.markdown(
             min-height: 170px;
         }
         .tv-kpi-title {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 18px;
+            text-transform: uppercase;
             font-size: 1.0rem;
             font-weight: 600;
-            color: rgba(255, 255, 255, 0.80);
-            margin-bottom: 18px;
             letter-spacing: 0.04em;
-            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.80);
         }
         .tv-kpi-title-tag {
-            display: inline-block;
-            margin-top: 6px;
             padding: 4px 12px;
             border-radius: 999px;
             font-size: 0.75rem;
             letter-spacing: 0.14em;
             background: rgba(15, 23, 42, 0.55);
             color: rgba(255, 255, 255, 0.75);
+        }
+        .tv-kpi-title-tag--empty {
+            visibility: hidden;
         }
         .tv-kpi-value {
             font-size: 2.8rem;
@@ -495,9 +500,8 @@ st.markdown(
 
 
 def render_kpi(coluna, titulo: str, valor: str, subtitulo: str | None = None, tag: str | None = None):
-    titulo_html = titulo
-    if tag:
-        titulo_html = f"{titulo}<br><span class=\"tv-kpi-title-tag\">{tag}</span>"
+    tag_html = f'<span class="tv-kpi-title-tag">{tag}</span>' if tag else '<span class="tv-kpi-title-tag tv-kpi-title-tag--empty">—</span>'
+    titulo_html = f"{titulo}{tag_html}"
     coluna.markdown(
         f"""
         <div class=\"tv-kpi-card\">
