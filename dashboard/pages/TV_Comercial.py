@@ -449,6 +449,8 @@ st.markdown(
             gap: 8px;
             margin-bottom: 18px;
             text-transform: uppercase;
+        }
+        .tv-kpi-title-main {
             font-size: 1.0rem;
             font-weight: 600;
             letter-spacing: 0.04em;
@@ -501,7 +503,7 @@ st.markdown(
 
 def render_kpi(coluna, titulo: str, valor: str, subtitulo: str | None = None, tag: str | None = None):
     tag_html = f'<span class="tv-kpi-title-tag">{tag}</span>' if tag else '<span class="tv-kpi-title-tag tv-kpi-title-tag--empty">—</span>'
-    titulo_html = f"{titulo}{tag_html}"
+    titulo_html = f"<span class='tv-kpi-title-main'>{titulo}</span>{tag_html}"
     coluna.markdown(
         f"""
         <div class=\"tv-kpi-card\">
@@ -516,12 +518,13 @@ def render_kpi(coluna, titulo: str, valor: str, subtitulo: str | None = None, ta
 
 linha_um = st.columns(6)
 mes_tag = mes_referencia_curto.upper()
+ano_tag = str(TERMOMETRO_DATA_INICIO.year)
 render_kpi(linha_um[0], "Meta de Vendas", format_compact_currency(meta_total) if meta_total > 0 else "—", "Objetivo mensal consolidado", tag=mes_tag)
 render_kpi(linha_um[1], "Vendas Realizadas", format_compact_currency(vendas_realizadas_valor) if vendas_realizadas_valor > 0 else "R$ 0", "Vendas concluídas do mês", tag=mes_tag)
-render_kpi(linha_um[2], "Atingimento da Meta", f"{atingimento_percent:.1f}%", "Vendas / Meta do mês")
-render_kpi(linha_um[3], "Falta para Meta", format_compact_currency(falta_para_meta_valor) if meta_total > 0 else "—", "Gap remanescente")
-render_kpi(linha_um[4], "🏠 Taxa House (valor)", f"{taxa_house_percent:.1f}%" if house_data_available else "—", "Participação das vendas internas")
-render_kpi(linha_um[5], "% VPL", f"{vpl_percent:.2f}%" if vpl_data_available else "—", "VPL Geral")
+render_kpi(linha_um[2], "Atingimento da Meta", f"{atingimento_percent:.1f}%", "Vendas / Meta do mês", tag=mes_tag)
+render_kpi(linha_um[3], "Falta para Meta", format_compact_currency(falta_para_meta_valor) if meta_total > 0 else "—", "Gap remanescente", tag=mes_tag)
+render_kpi(linha_um[4], "🏠 Taxa House (valor)", f"{taxa_house_percent:.1f}%" if house_data_available else "—", "Participação das vendas internas", tag=ano_tag)
+render_kpi(linha_um[5], "% VPL", f"{vpl_percent:.2f}%" if vpl_data_available else "—", "VPL Geral", tag=ano_tag)
 
 # Seção do termômetro
 st.subheader("🌡️ Termômetro de Vendas")
