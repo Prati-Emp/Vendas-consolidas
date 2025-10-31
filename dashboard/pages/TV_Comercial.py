@@ -834,6 +834,12 @@ else:
         status_counts['ValorFormatado'] = status_counts['Valor'].apply(format_compact_currency)
         status_counts['QuantidadeFormatada'] = status_counts['Quantidade'].apply(format_int_value)
 
+        paleta_reservas = ['#0f172a', '#1e3a8a', '#2563eb', '#3b82f6', '#60a5fa', '#7c3aed', '#a855f7']
+        color_map = {
+            situacao: paleta_reservas[i % len(paleta_reservas)]
+            for i, situacao in enumerate(status_counts['Situacao'].tolist())
+        }
+
         fig_reserva_status = px.bar(
             status_counts,
             x='Quantidade',
@@ -841,21 +847,30 @@ else:
             orientation='h',
             text='ValorFormatado',
             custom_data=['QuantidadeFormatada', 'ValorFormatado'],
-            color='Quantidade',
-            color_continuous_scale='Blues',
+            color='Situacao',
+            color_discrete_map=color_map,
             title='Distribuição de Reservas por Situação'
         )
-        fig_reserva_status.update_layout(yaxis=dict(categoryorder='array', categoryarray=status_counts['Situacao'].tolist()[::-1]))
         fig_reserva_status = apply_dark_theme(fig_reserva_status, margin_top=60)
+        fig_reserva_status.update_layout(
+            showlegend=False,
+            yaxis=dict(
+                categoryorder='array',
+                categoryarray=status_counts['Situacao'].tolist()[::-1],
+                title='',
+                tickfont=dict(size=15, color='rgba(248,250,252,0.88)', family='Manrope, sans-serif')
+            ),
+            xaxis=dict(showticklabels=False, showgrid=False, zeroline=False),
+            bargap=0.25
+        )
         max_quantidade = status_counts['Quantidade'].max() if not status_counts.empty else 0
         offset_anotacao = max(max_quantidade * 0.02, 0.4)
         fig_reserva_status.update_traces(
-            texttemplate='%{text}',
+            texttemplate='<b>%{text}</b>',
             textposition='inside',
             insidetextanchor='middle',
-            textfont=dict(color='#f8fafc', size=16, family='Manrope, sans-serif'),
-            cliponaxis=False,
-            hovertemplate='<b>%{y}</b><br>Quantidade: %{x:,}<br>Valor: %{text}<extra></extra>'
+            textfont=dict(color='#f8fafc', size=18, family='Manrope, sans-serif'),
+            hovertemplate='<b>%{y}</b><br>Quantidade: %{customdata[0]}<br>Valor: %{text}<extra></extra>'
         )
         for _, linha in status_counts.iterrows():
             fig_reserva_status.add_annotation(
@@ -865,13 +880,11 @@ else:
                 showarrow=False,
                 font=dict(size=16, color='#f8fafc', family='Manrope, sans-serif'),
                 xanchor='left',
-                bgcolor='rgba(15,23,42,0.78)',
-                bordercolor='rgba(148, 163, 184, 0.45)',
+                bgcolor='rgba(15,23,42,0.82)',
+                bordercolor='rgba(148, 163, 184, 0.55)',
                 borderwidth=1,
                 borderpad=6
             )
-        fig_reserva_status.update_layout(coloraxis_showscale=False)
-        fig_reserva_status.update_yaxes(title="Situação")
         st.plotly_chart(fig_reserva_status, use_container_width=True)
 
         reservas_display = status_counts[['Situacao', 'Quantidade', 'ValorFormatado', 'Percentual']].copy()
