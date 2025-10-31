@@ -405,8 +405,6 @@ valor_prati = 0.0
 quantidade_prati = 0
 taxa_house_percent = 0.0
 ticket_prati = 0.0
-valor_externo = 0.0
-taxa_externa_percent = 0.0
 
 if not house_raw_df.empty and house_raw_df['valor_total'].fillna(0).sum() > 0:
     house_df = house_raw_df.fillna({'quantidade': 0, 'valor_total': 0.0, 'ticket_medio': 0.0}).copy()
@@ -415,8 +413,6 @@ if not house_raw_df.empty and house_raw_df['valor_total'].fillna(0).sum() > 0:
     quantidade_prati = int(house_df.loc[house_df['origem'] == 'Venda Interna (Prati)', 'quantidade'].sum())
     taxa_house_percent = (valor_prati / total_valor_house * 100) if total_valor_house > 0 else 0.0
     ticket_prati = (valor_prati / quantidade_prati) if quantidade_prati > 0 else 0.0
-    valor_externo = max(total_valor_house - valor_prati, 0.0)
-    taxa_externa_percent = 100 - taxa_house_percent if total_valor_house > 0 else 0.0
     house_data_available = True
 
 
@@ -425,14 +421,12 @@ vpl_data_available = False
 total_vpl_reserva = 0.0
 total_vpl_tabela = 0.0
 vpl_percent = 0.0
-vpl_gap = 0.0
 
 if not vpl_df.empty:
     vpl_row = vpl_df.iloc[0]
     total_vpl_reserva = float(vpl_row.get('total_vpl_reserva', 0.0) or 0.0)
     total_vpl_tabela = float(vpl_row.get('total_vpl_tabela', 0.0) or 0.0)
     vpl_percent = ((total_vpl_reserva / total_vpl_tabela) - 1) * 100 if total_vpl_tabela > 0 else 0.0
-    vpl_gap = total_vpl_reserva - total_vpl_tabela
     vpl_data_available = True
 
 
@@ -569,77 +563,6 @@ render_kpi(linha_termometro[0], "Taxa de Conversão Geral", f"{taxa_conversao_ge
 render_kpi(linha_termometro[1], "Reservas Atuais", f"{reservas_atuais_total}", "Reservas ativas no pipeline")
 render_kpi(linha_termometro[2], "Potencial de Vendas", format_compact_currency(potencial_vendas_valor), "Reservas x taxa de conversão")
 render_kpi(linha_termometro[3], "Cobertura da Meta", f"{cobertura_percent:.1f}%", "Potencial versus meta")
-
-
-st.markdown("---")
-st.markdown(
-    f"""
-    <div style='display:flex; flex-direction:column; gap:6px; margin-bottom:14px;'>
-        <h2 style='margin:0; font-size:2.1rem;'>🏠 Performance Vendas House</h2>
-        <span style='font-size:1rem; color:rgba(248,250,252,0.65);'>Atualizado automaticamente — dados até {data_final_analise.strftime('%d/%m/%Y')}</span>
-    </div>
-    """,
-    unsafe_allow_html=True
-)
-
-house_raw_df = load_vendas_house_overview(periodo_inicio_str, periodo_fim_str)
-
-if not house_data_available:
-    st.info("Sem dados de vendas suficientes para exibir a análise House x Imobiliárias no período selecionado.")
-else:
-    house_kpi_cols = st.columns(2)
-    render_kpi(house_kpi_cols[0], "💰 Valor Prati", format_compact_currency(valor_prati) if valor_prati > 0 else "R$ 0", "Vendas internas jan/25 até hoje")
-    render_kpi(house_kpi_cols[1], "🎟️ Ticket Médio Prati", format_currency(ticket_prati) if ticket_prati > 0 else "—")
-
-    fig_house = go.Figure()
-    fig_house.add_trace(go.Bar(
-        y=[""],
-        x=[valor_prati],
-        name="Vendas Internas (Prati)",
-        orientation='h',
-        marker_color='#38bdf8',
-        hovertemplate="Vendas Internas (Prati): R$ %{x:,.0f}<extra></extra>",
-        text=[f"{taxa_house_percent:.1f}%"],
-        textposition='inside',
-        insidetextanchor='middle',
-        textfont=dict(color='#ffffff', size=16)
-    ))
-    fig_house.add_trace(go.Bar(
-        y=[""],
-        x=[valor_externo],
-        name="Vendas Externas (Imobiliárias)",
-        orientation='h',
-        marker_color='#6366f1',
-        hovertemplate="Vendas Externas (Imobiliárias): R$ %{x:,.0f}<extra></extra>",
-        text=[f"{taxa_externa_percent:.1f}%"],
-        textposition='inside',
-        insidetextanchor='middle',
-        textfont=dict(color='#0b0b0b', size=16)
-    ))
-
-    fig_house.update_layout(
-        barmode='stack',
-        title=dict(text='Participação das Vendas — Internas vs Externas', x=0.5, xanchor='center'),
-        xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-        yaxis=dict(showgrid=False, showticklabels=False),
-        legend=dict(orientation='h', yanchor='bottom', y=1.12, xanchor='center', x=0.5, font=dict(size=12)),
-        bargap=0.15
-    )
-    fig_house.update_traces(marker_line_width=0)
-    fig_house = apply_dark_theme(fig_house, margin_top=80)
-    st.plotly_chart(fig_house, use_container_width=True)
-
-
-st.markdown("---")
-st.markdown("## 💰 VPL Geral")
-
-if not vpl_data_available:
-    st.info("Sem dados de VPL disponíveis para o período analisado.")
-else:
-    vpl_cols = st.columns(3)
-    render_kpi(vpl_cols[0], "VPL Reserva", format_compact_currency(total_vpl_reserva), "Reservas cadastradas")
-    render_kpi(vpl_cols[1], "VPL Tabela", format_compact_currency(total_vpl_tabela), "Tabela oficial")
-    render_kpi(vpl_cols[2], "Gap VPL", format_compact_currency(vpl_gap), "Reserva - Tabela")
 
 
 st.markdown("---")
