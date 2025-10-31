@@ -886,7 +886,41 @@ else:
                 f"Base consolidada considerada de {TERMOMETRO_DATA_INICIO.strftime('%d/%m/%Y')} até {data_final_analise.strftime('%d/%m/%Y')} · Leads ativos: {format_int_value(total_leads_ativos)}"
             )
 
-            # Cancelamentos por motivo
+            # Por mídia
+            st.markdown("### 📣 Distribuição por Mídia")
+            midia_resumo = (
+                leads_tv_df.groupby('midia_consolidada')
+                .agg(
+                    total_leads=('idlead', 'count'),
+                    vendas=('funil_etapa', lambda x: (x == 'Venda realizada').sum())
+                )
+                .reset_index()
+            )
+
+            if midia_resumo.empty:
+                st.info("Sem dados de mídia para exibir.")
+            else:
+                total_leads_midia = midia_resumo['total_leads'].sum()
+                if total_leads_midia > 0:
+                    midia_resumo['percent_leads'] = (midia_resumo['total_leads'] / total_leads_midia * 100).round(1)
+                else:
+                    midia_resumo['percent_leads'] = 0.0
+                midia_resumo['percent_conversao'] = midia_resumo.apply(
+                    lambda row: round((row['vendas'] / row['total_leads'] * 100), 1) if row['total_leads'] > 0 else 0.0, axis=1
+                )
+                midia_resumo = midia_resumo.sort_values('total_leads', ascending=False)
+
+                midia_display = midia_resumo.copy()
+                midia_display['Mídia'] = midia_display['midia_consolidada']
+                midia_display['Total Leads'] = midia_display['total_leads'].apply(format_int_value)
+                midia_display['Vendas Realizadas'] = midia_display['vendas'].apply(format_int_value)
+                midia_display['% Leads'] = midia_display['percent_leads'].map(lambda v: f"{v:.1f}%")
+                midia_display['% Conversão'] = midia_display['percent_conversao'].map(lambda v: f"{v:.1f}%")
+                midia_display = midia_display[['Mídia', 'Total Leads', 'Vendas Realizadas', '% Leads', '% Conversão']]
+
+                st.dataframe(midia_display, use_container_width=True, hide_index=True)
+
+            st.markdown("---")
             st.markdown("### ❌ Cancelamentos por Motivo")
             cancelamentos_df = leads_tv_df[
                 leads_tv_df['motivo_cancelamento_consolidada'].notna()
@@ -943,38 +977,4 @@ else:
                     height=520
                 )
                 st.plotly_chart(fig_cancel, use_container_width=True)
-
-            # Por mídia
-            st.markdown("### 📣 Distribuição por Mídia")
-            midia_resumo = (
-                leads_tv_df.groupby('midia_consolidada')
-                .agg(
-                    total_leads=('idlead', 'count'),
-                    vendas=('funil_etapa', lambda x: (x == 'Venda realizada').sum())
-                )
-                .reset_index()
-            )
-
-            if midia_resumo.empty:
-                st.info("Sem dados de mídia para exibir.")
-            else:
-                total_leads_midia = midia_resumo['total_leads'].sum()
-                if total_leads_midia > 0:
-                    midia_resumo['percent_leads'] = (midia_resumo['total_leads'] / total_leads_midia * 100).round(1)
-                else:
-                    midia_resumo['percent_leads'] = 0.0
-                midia_resumo['percent_conversao'] = midia_resumo.apply(
-                    lambda row: round((row['vendas'] / row['total_leads'] * 100), 1) if row['total_leads'] > 0 else 0.0, axis=1
-                )
-                midia_resumo = midia_resumo.sort_values('total_leads', ascending=False)
-
-                midia_display = midia_resumo.copy()
-                midia_display['Mídia'] = midia_display['midia_consolidada']
-                midia_display['Total Leads'] = midia_display['total_leads'].apply(format_int_value)
-                midia_display['Vendas Realizadas'] = midia_display['vendas'].apply(format_int_value)
-                midia_display['% Leads'] = midia_display['percent_leads'].map(lambda v: f"{v:.1f}%")
-                midia_display['% Conversão'] = midia_display['percent_conversao'].map(lambda v: f"{v:.1f}%")
-                midia_display = midia_display[['Mídia', 'Total Leads', 'Vendas Realizadas', '% Leads', '% Conversão']]
-
-                st.dataframe(midia_display, use_container_width=True, hide_index=True)
 
