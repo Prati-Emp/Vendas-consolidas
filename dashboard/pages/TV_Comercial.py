@@ -533,61 +533,62 @@ st.markdown(
             color: rgba(255, 255, 255, 0.78);
             margin-bottom: 6px;
         }
-        div[data-testid="stDataFrame"] {
-            background: transparent;
-        }
-        div[data-testid="stDataFrame"] > div[data-testid="StyledDataFrame"] {
+        .tv-midia-table {
+            width: 100%;
+            margin: 20px 0 14px;
             border-radius: 22px;
-            overflow: hidden;
-            border: 1px solid rgba(94, 106, 142, 0.35);
+            background: linear-gradient(158deg, rgba(12, 23, 45, 0.96), rgba(6, 12, 26, 0.98));
+            border: 1px solid rgba(88, 112, 164, 0.32);
             box-shadow: 0 22px 48px rgba(2, 10, 25, 0.38);
-            background: linear-gradient(155deg, rgba(12, 21, 40, 0.95), rgba(5, 11, 24, 0.98));
-            backdrop-filter: blur(6px);
+            overflow: hidden;
         }
-        div[data-testid="stDataFrame"] table {
+        .tv-midia-table table {
+            width: 100%;
+            border-collapse: collapse;
             font-family: 'Manrope', sans-serif;
-            background: transparent;
             color: rgba(236, 241, 250, 0.94);
-            font-size: 1.07rem;
+            font-size: 1.05rem;
             letter-spacing: 0.015em;
         }
-        div[data-testid="stDataFrame"] table thead tr th {
-            background: rgba(24, 34, 54, 0.92) !important;
-            color: rgba(243, 244, 255, 0.96);
-            font-size: 1.16rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            padding: 16px 22px;
-            border-bottom: 1px solid rgba(148, 163, 184, 0.32);
+        .tv-midia-table thead tr {
+            background: rgba(24, 34, 54, 0.94);
         }
-        div[data-testid="stDataFrame"] table tbody tr td {
+        .tv-midia-table thead th {
+            padding: 18px 22px;
+            text-transform: uppercase;
+            font-weight: 700;
+            font-size: 1.14rem;
+            letter-spacing: 0.08em;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.32);
+            text-align: right;
+        }
+        .tv-midia-table thead th:first-child {
+            text-align: left;
+        }
+        .tv-midia-table tbody td {
+            padding: 18px 22px;
             border-bottom: 1px solid rgba(71, 85, 105, 0.24);
-            font-size: 1.05rem;
+            text-align: right;
             font-weight: 500;
             color: rgba(236, 241, 250, 0.88);
-            padding: 18px 22px;
             transition: background 0.22s ease, color 0.22s ease;
         }
-        div[data-testid="stDataFrame"] table tbody tr:nth-child(odd) td {
-            background: rgba(18, 26, 45, 0.78) !important;
-        }
-        div[data-testid="stDataFrame"] table tbody tr:nth-child(even) td {
-            background: rgba(11, 19, 33, 0.82) !important;
-        }
-        div[data-testid="stDataFrame"] table tbody tr:hover td {
-            background: rgba(59, 130, 246, 0.24) !important;
-            color: rgba(248, 250, 252, 0.95) !important;
-        }
-        div[data-testid="stDataFrame"] table tbody tr td:first-child {
-            text-align: left !important;
+        .tv-midia-table tbody td:first-child {
+            text-align: left;
             font-weight: 600;
         }
-        div[data-testid="stDataFrame"] table tbody tr td:not(:first-child) {
-            text-align: right;
+        .tv-midia-table tbody tr:nth-child(odd) td {
+            background: rgba(18, 26, 45, 0.78);
         }
-        div[data-testid="stDataFrame"] table thead tr th:not(:first-child) {
-            text-align: right;
+        .tv-midia-table tbody tr:nth-child(even) td {
+            background: rgba(11, 19, 33, 0.82);
+        }
+        .tv-midia-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+        .tv-midia-table tbody tr:hover td {
+            background: rgba(59, 130, 246, 0.24);
+            color: rgba(248, 250, 252, 0.95);
         }
     </style>
     """,
@@ -610,6 +611,28 @@ def render_kpi(coluna, titulo: str, valor: str, subtitulo: str | None = None, ta
         """,
         unsafe_allow_html=True
     )
+
+
+def render_midia_table_html(dataframe: pd.DataFrame):
+    if dataframe.empty:
+        return
+
+    header_cells = ''.join(f"<th>{col}</th>" for col in dataframe.columns)
+    body_rows = []
+    for _, row in dataframe.iterrows():
+        cells = ''.join(f"<td>{row[col]}</td>" for col in dataframe.columns)
+        body_rows.append(f"<tr>{cells}</tr>")
+
+    table_html = f"""
+        <div class="tv-midia-table">
+            <table>
+                <thead><tr>{header_cells}</tr></thead>
+                <tbody>{''.join(body_rows)}</tbody>
+            </table>
+        </div>
+    """
+
+    st.markdown(table_html, unsafe_allow_html=True)
 
 
 linha_um = st.columns(6)
@@ -974,7 +997,7 @@ else:
                 midia_display['% Conversão'] = midia_display['percent_conversao'].map(lambda v: f"{v:.1f}%")
                 midia_display = midia_display[['Mídia', 'Total Leads', 'Vendas Realizadas', '% Leads', '% Conversão']]
 
-                st.dataframe(midia_display, use_container_width=True, hide_index=True)
+                render_midia_table_html(midia_display)
 
             st.markdown("---")
             st.markdown("### ❌ Cancelamentos por Motivo")
