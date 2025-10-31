@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 import plotly.express as px
 import plotly.graph_objects as go
+from dateutil.relativedelta import relativedelta
 
 # Garantir que os módulos compartilhados possam ser importados quando o app for executado diretamente
 sys.path.append(str(Path(__file__).resolve().parent.parent))
@@ -210,7 +211,8 @@ def load_reservas_tv() -> pd.DataFrame:
         SELECT
             data_cad::DATE AS data_cad,
             situacao,
-            valor_contrato
+            valor_contrato,
+            COALESCE(NULLIF(TRIM(imobiliaria), ''), '—') AS imobiliaria
         FROM reservas.main.reservas_abril
         WHERE data_cad IS NOT NULL
     """
@@ -312,6 +314,8 @@ reservas_df['valor_contrato'] = pd.to_numeric(
     reservas_df.get('valor_contrato', pd.Series(dtype=float)),
     errors='coerce'
 ).fillna(0.0)
+reservas_df['imobiliaria'] = reservas_df.get('imobiliaria', pd.Series(index=reservas_df.index, dtype=str)).fillna('—').astype(str).str.strip()
+reservas_df['imobiliaria_normalizada'] = reservas_df['imobiliaria'].str.upper()
 
 
 data_final_analise = datetime.now().date()
@@ -338,6 +342,29 @@ reservas_convertidas_total = reservas_base_df['situacao_normalizada'].isin(CONVE
 taxa_conversao_geral = (
     reservas_convertidas_total / total_reservas_periodo
 ) if total_reservas_periodo > 0 else 0.0
+
+
+seis_meses_atras = data_final_analise - relativedelta(months=6)
+reservas_6m_df = reservas_df[
+    (reservas_df['data_cad'].dt.date >= seis_meses_atras)
+    & (reservas_df['data_cad'].dt.date <= data_final_analise)
+    & (~reservas_df['situacao_normalizada'].isin(SITUACOES_RESERVAS_EXCLUIDAS))
+].copy()
+
+
+def calcular_conversao(df: pd.DataFrame) -> tuple[int, int, float]:
+    total = len(df)
+    convertidas = df['situacao_normalizada'].isin(CONVERSAO_SITUACOES).sum()
+    taxa = (convertidas / total * 100) if total > 0 else 0.0
+    return total, convertidas, taxa
+
+
+mask_prati = reservas_6m_df['imobiliaria_normalizada'].str.contains('PRATI', na=False)
+reservas_prati_6m = reservas_6m_df[mask_prati]
+reservas_outras_6m = reservas_6m_df[~mask_prati]
+
+total_prati, convertidas_prati, taxa_prati = calcular_conversao(reservas_prati_6m)
+total_outras, convertidas_outras, taxa_outras = calcular_conversao(reservas_outras_6m)
 
 potencial_vendas_valor = valor_total_reservas * taxa_conversao_geral
 
@@ -554,6 +581,38 @@ render_kpi(linha_um[2], "Atingimento da Meta", f"{atingimento_percent:.1f}%", "V
 render_kpi(linha_um[3], "Falta para Meta", format_compact_currency(falta_para_meta_valor) if meta_total > 0 else "—", "Gap remanescente", tag=mes_tag, valor_color=falta_color, compact=True)
 render_kpi(linha_um[4], "🏠 Taxa House (valor)", f"{taxa_house_percent:.1f}%" if house_data_available else "—", "Meta: 30% vendas internas", tag=ano_tag, valor_color=taxa_house_color, compact=True)
 render_kpi(linha_um[5], "Porcentagem VPL Geral", f"{vpl_percent:.2f}%" if vpl_data_available else "—", "Meta: VPL Positivo", tag=ano_tag, valor_color=vpl_color, compact=True)
+
+linha_conversao = st.columns(2)
+tag_6m = "6 MESES"
+
+valor_conversao_prati = f"{taxa_prati:.1f}%" if total_prati > 0 else "—"
+sub_prati = (
+    f"{format_int_value(convertidas_prati)} de {format_int_value(total_prati)} reservas"
+    if total_prati > 0 else "Sem registros no período"
+)
+
+valor_conversao_outras = f"{taxa_outras:.1f}%" if total_outras > 0 else "—"
+sub_outras = (
+    f"{format_int_value(convertidas_outras)} de {format_int_value(total_outras)} reservas"
+    if total_outras > 0 else "Sem registros no período"
+)
+
+render_kpi(
+    linha_conversao[0],
+    "Conversão Prati",
+    valor_conversao_prati,
+    sub_prati,
+    tag=tag_6m,
+    compact=True
+)
+render_kpi(
+    linha_conversao[1],
+    "Conversão Outras Imobiliárias",
+    valor_conversao_outras,
+    sub_outras,
+    tag=tag_6m,
+    compact=True
+)
 
 # Seção do termômetro
 st.subheader("🌡️ Termômetro de Vendas")
