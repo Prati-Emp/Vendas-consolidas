@@ -485,6 +485,41 @@ st.markdown(f"<div class='tv-status-context'><strong>Interpretação:</strong> {
 st.markdown(f"<div class='tv-status-context'><strong>Ação sugerida:</strong> {acao}</div>", unsafe_allow_html=True)
 
 
+escala_max = 150
+indicador_percentual = max(0.0, min(cobertura_percent, escala_max))
+indicador_posicao = indicador_percentual / escala_max * 100
+largura_preenchida = min(max(cobertura_percent / escala_max, 0.0), 1.0) * 100
+
+barra_escala_html = f"""
+<div style='margin-top:1.25rem; position:relative; padding-top:42px;'>
+  <div style='position:absolute; top:0; left:{indicador_posicao}%; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center;'>
+    <div style='font-size:0.9rem;font-weight:700;color:{status_color};margin-bottom:8px;background:rgba(11,11,11,0.85);padding:4px 14px;border-radius:999px;'>{cobertura_percent:.1f}%</div>
+    <div style='width:0;height:0;border-left:14px solid transparent;border-right:14px solid transparent;border-bottom:18px solid {status_color};'></div>
+  </div>
+  <div style='position:relative; border-radius:16px; overflow:hidden; height:68px; box-shadow:0 0 18px rgba(0,0,0,0.35);'>
+    <div style='display:flex; height:100%; font-size:1.05rem;'>
+      <div style='flex:70; background:#1E90FF; color:#ffffff; display:flex; flex-direction:column; align-items:center; justify-content:center; font-weight:600; opacity:{1 if cobertura_percent >= 0 else 0.25};'>
+        Frio
+        <span style="font-weight:400;font-size:0.85rem;opacity:0.85;">&lt; 70%</span>
+      </div>
+      <div style='flex:30; background:#f1c40f; color:#0b0b0b; display:flex; flex-direction:column; align-items:center; justify-content:center; font-weight:700; opacity:{1 if cobertura_percent >= 70 else 0.3};'>
+        Morno
+        <span style="font-weight:500;font-size:0.85rem;opacity:0.85;">70% – 100%</span>
+      </div>
+      <div style='flex:50; background:#FF5722; color:#ffffff; display:flex; flex-direction:column; align-items:center; justify-content:center; font-weight:600; opacity:{1 if cobertura_percent >= 100 else 0.3};'>
+        Quente
+        <span style="font-weight:400;font-size:0.85rem;opacity:0.85;">&gt; 100%</span>
+      </div>
+    </div>
+    <div style='position:absolute; top:0; bottom:0; left:0; width:{largura_preenchida}%; background:rgba(255,255,255,0.15); mix-blend-mode:screen;'></div>
+    <div style='position:absolute; top:0; bottom:0; left:{indicador_posicao}%; transform:translateX(-50%); width:7px; background:#ffffff; box-shadow:0 0 10px rgba(0,0,0,0.55); border-radius:999px;'></div>
+  </div>
+</div>
+"""
+
+st.markdown(barra_escala_html, unsafe_allow_html=True)
+
+
 st.markdown(
     f"<div style='margin-top:18px; font-size:0.95rem; color:rgba(255,255,255,0.65);'>Base analisada de {TERMOMETRO_DATA_INICIO.strftime('%d/%m/%Y')} até {data_final_analise.strftime('%d/%m/%Y')} · Atualize a página para forçar nova leitura.</div>",
     unsafe_allow_html=True
