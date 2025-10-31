@@ -644,6 +644,135 @@ render_kpi(linha_termometro[3], "Cobertura da Meta", f"{cobertura_percent:.1f}%"
 
 
 st.markdown("---")
+st.markdown("## 🧾 Reservas - Situação Atual")
+
+reservas_status_df = reservas_ativas_df.copy()
+
+if reservas_status_df.empty:
+    st.info("Sem reservas ativas para exibir no momento.")
+else:
+    reservas_status_df['situacao'] = reservas_status_df['situacao'].astype(str).str.strip()
+
+    status_counts = (
+        reservas_status_df.groupby('situacao', dropna=False)
+        .agg(
+            Quantidade=('situacao', 'size'),
+            Valor=('valor_contrato', 'sum')
+        )
+        .reset_index()
+    )
+    status_counts = status_counts.rename(columns={'situacao': 'Situacao'})
+
+    if status_counts.empty:
+        st.info("Nenhuma situação ativa encontrada no período.")
+    else:
+        status_counts['SituacaoNormalizada'] = status_counts['Situacao'].apply(normalize_reserva_label)
+        status_counts['Indice'] = status_counts['SituacaoNormalizada'].apply(
+            lambda s: RESERVAS_SITUACAO_ORDEM.index(s)
+            if s in RESERVAS_SITUACAO_ORDEM else len(RESERVAS_SITUACAO_ORDEM)
+        )
+        status_counts = status_counts.sort_values(['Indice', 'Situacao']).reset_index(drop=True)
+
+        total_reservas_status = int(status_counts['Quantidade'].sum())
+        status_counts['Percentual'] = status_counts['Quantidade'].apply(
+            lambda v: round(v / total_reservas_status * 100, 1) if total_reservas_status > 0 else 0.0
+        )
+        status_counts['Valor'] = status_counts['Valor'].fillna(0.0)
+        status_counts['ValorFormatado'] = status_counts['Valor'].apply(format_compact_currency)
+        status_counts['QuantidadeFormatada'] = status_counts['Quantidade'].apply(format_int_value)
+
+        paleta_reservas = ['#16295f', '#1e3a8a', '#2563eb', '#3b82f6', '#60a5fa', '#7c3aed', '#a855f7']
+        color_map = {
+            situacao: paleta_reservas[i % len(paleta_reservas)]
+            for i, situacao in enumerate(status_counts['Situacao'].tolist())
+        }
+
+        fig_reserva_status = px.bar(
+            status_counts,
+            x='Quantidade',
+            y='Situacao',
+            orientation='h',
+            text='ValorFormatado',
+            custom_data=['QuantidadeFormatada', 'ValorFormatado'],
+            color='Situacao',
+            color_discrete_map=color_map,
+            title='Distribuição de Reservas por Situação'
+        )
+        fig_reserva_status = apply_dark_theme(fig_reserva_status, margin_top=60)
+        fig_reserva_status.update_layout(
+            showlegend=False,
+            title=dict(
+                text='Distribuição de Reservas por Situação',
+                x=0,
+                xanchor='left',
+                font=dict(size=20, color='#f8fafc', family='Manrope, sans-serif')
+            ),
+            yaxis=dict(
+                categoryorder='array',
+                categoryarray=status_counts['Situacao'].tolist()[::-1],
+                title='',
+                tickfont=dict(size=15, color='rgba(248,250,252,0.88)', family='Manrope, sans-serif')
+            ),
+            xaxis=dict(showticklabels=False, showgrid=False, zeroline=False),
+            bargap=0.25
+        )
+        max_quantidade = status_counts['Quantidade'].max() if not status_counts.empty else 0
+        offset_anotacao = max(max_quantidade * 0.02, 0.4)
+        fig_reserva_status.update_traces(
+            texttemplate='<b>%{text}</b>',
+            textposition='inside',
+            insidetextanchor='middle',
+            textfont=dict(color='#f8fafc', size=18, family='Manrope, sans-serif'),
+            hovertemplate='<b>%{y}</b><br>Quantidade: %{customdata[0]}<br>Valor: %{text}<extra></extra>'
+        )
+        for _, linha in status_counts.iterrows():
+            fig_reserva_status.add_annotation(
+                x=float(linha['Quantidade']) + offset_anotacao,
+                y=linha['Situacao'],
+                text=linha['QuantidadeFormatada'],
+                showarrow=False,
+                font=dict(size=16, color='#f8fafc', family='Manrope, sans-serif'),
+                xanchor='left',
+                bgcolor='rgba(15,23,42,0.82)',
+                bordercolor='rgba(148, 163, 184, 0.55)',
+                borderwidth=1,
+                borderpad=6
+            )
+        st.plotly_chart(fig_reserva_status, use_container_width=True)
+
+        linha_conversao = st.columns(2)
+        tag_6m = "6 MESES"
+
+        valor_conversao_prati = f"{taxa_prati:.1f}%" if total_prati > 0 else "—"
+        sub_prati = (
+            f"{format_int_value(convertidas_prati)} de {format_int_value(total_prati)} reservas"
+            if total_prati > 0 else "Sem registros no período"
+        )
+
+        valor_conversao_outras = f"{taxa_outras:.1f}%" if total_outras > 0 else "—"
+        sub_outras = (
+            f"{format_int_value(convertidas_outras)} de {format_int_value(total_outras)} reservas"
+            if total_outras > 0 else "Sem registros no período"
+        )
+
+        render_kpi(
+            linha_conversao[0],
+            "Conversão Prati",
+            valor_conversao_prati,
+            sub_prati,
+            tag=tag_6m,
+            compact=True
+        )
+        render_kpi(
+            linha_conversao[1],
+            "Conversão Outras Imobiliárias",
+            valor_conversao_outras,
+            sub_outras,
+            tag=tag_6m,
+            compact=True
+        )
+
+st.markdown("---")
 st.markdown("## 📈 Leads Ativos")
 
 leads_base_df = load_leads_tv()
@@ -848,134 +977,4 @@ else:
                 midia_display = midia_display[['Mídia', 'Total Leads', 'Vendas Realizadas', '% Leads', '% Conversão']]
 
                 st.dataframe(midia_display, use_container_width=True, hide_index=True)
-
-
-st.markdown("---")
-st.markdown("## 🧾 Reservas - Situação Atual")
-
-reservas_status_df = reservas_ativas_df.copy()
-
-if reservas_status_df.empty:
-    st.info("Sem reservas ativas para exibir no momento.")
-else:
-    reservas_status_df['situacao'] = reservas_status_df['situacao'].astype(str).str.strip()
-
-    status_counts = (
-        reservas_status_df.groupby('situacao', dropna=False)
-        .agg(
-            Quantidade=('situacao', 'size'),
-            Valor=('valor_contrato', 'sum')
-        )
-        .reset_index()
-    )
-    status_counts = status_counts.rename(columns={'situacao': 'Situacao'})
-
-    if status_counts.empty:
-        st.info("Nenhuma situação ativa encontrada no período.")
-    else:
-        status_counts['SituacaoNormalizada'] = status_counts['Situacao'].apply(normalize_reserva_label)
-        status_counts['Indice'] = status_counts['SituacaoNormalizada'].apply(
-            lambda s: RESERVAS_SITUACAO_ORDEM.index(s)
-            if s in RESERVAS_SITUACAO_ORDEM else len(RESERVAS_SITUACAO_ORDEM)
-        )
-        status_counts = status_counts.sort_values(['Indice', 'Situacao']).reset_index(drop=True)
-
-        total_reservas_status = int(status_counts['Quantidade'].sum())
-        status_counts['Percentual'] = status_counts['Quantidade'].apply(
-            lambda v: round(v / total_reservas_status * 100, 1) if total_reservas_status > 0 else 0.0
-        )
-        status_counts['Valor'] = status_counts['Valor'].fillna(0.0)
-        status_counts['ValorFormatado'] = status_counts['Valor'].apply(format_compact_currency)
-        status_counts['QuantidadeFormatada'] = status_counts['Quantidade'].apply(format_int_value)
-
-        paleta_reservas = ['#16295f', '#1e3a8a', '#2563eb', '#3b82f6', '#60a5fa', '#7c3aed', '#a855f7']
-        color_map = {
-            situacao: paleta_reservas[i % len(paleta_reservas)]
-            for i, situacao in enumerate(status_counts['Situacao'].tolist())
-        }
-
-        fig_reserva_status = px.bar(
-            status_counts,
-            x='Quantidade',
-            y='Situacao',
-            orientation='h',
-            text='ValorFormatado',
-            custom_data=['QuantidadeFormatada', 'ValorFormatado'],
-            color='Situacao',
-            color_discrete_map=color_map,
-            title='Distribuição de Reservas por Situação'
-        )
-        fig_reserva_status = apply_dark_theme(fig_reserva_status, margin_top=60)
-        fig_reserva_status.update_layout(
-            showlegend=False,
-            title=dict(
-                text='Distribuição de Reservas por Situação',
-                x=0,
-                xanchor='left',
-                font=dict(size=20, color='#f8fafc', family='Manrope, sans-serif')
-            ),
-            yaxis=dict(
-                categoryorder='array',
-                categoryarray=status_counts['Situacao'].tolist()[::-1],
-                title='',
-                tickfont=dict(size=15, color='rgba(248,250,252,0.88)', family='Manrope, sans-serif')
-            ),
-            xaxis=dict(showticklabels=False, showgrid=False, zeroline=False),
-            bargap=0.25
-        )
-        max_quantidade = status_counts['Quantidade'].max() if not status_counts.empty else 0
-        offset_anotacao = max(max_quantidade * 0.02, 0.4)
-        fig_reserva_status.update_traces(
-            texttemplate='<b>%{text}</b>',
-            textposition='inside',
-            insidetextanchor='middle',
-            textfont=dict(color='#f8fafc', size=18, family='Manrope, sans-serif'),
-            hovertemplate='<b>%{y}</b><br>Quantidade: %{customdata[0]}<br>Valor: %{text}<extra></extra>'
-        )
-        for _, linha in status_counts.iterrows():
-            fig_reserva_status.add_annotation(
-                x=float(linha['Quantidade']) + offset_anotacao,
-                y=linha['Situacao'],
-                text=linha['QuantidadeFormatada'],
-                showarrow=False,
-                font=dict(size=16, color='#f8fafc', family='Manrope, sans-serif'),
-                xanchor='left',
-                bgcolor='rgba(15,23,42,0.82)',
-                bordercolor='rgba(148, 163, 184, 0.55)',
-                borderwidth=1,
-                borderpad=6
-            )
-        st.plotly_chart(fig_reserva_status, use_container_width=True)
-
-        linha_conversao = st.columns(2)
-        tag_6m = "6 MESES"
-
-        valor_conversao_prati = f"{taxa_prati:.1f}%" if total_prati > 0 else "—"
-        sub_prati = (
-            f"{format_int_value(convertidas_prati)} de {format_int_value(total_prati)} reservas"
-            if total_prati > 0 else "Sem registros no período"
-        )
-
-        valor_conversao_outras = f"{taxa_outras:.1f}%" if total_outras > 0 else "—"
-        sub_outras = (
-            f"{format_int_value(convertidas_outras)} de {format_int_value(total_outras)} reservas"
-            if total_outras > 0 else "Sem registros no período"
-        )
-
-        render_kpi(
-            linha_conversao[0],
-            "Conversão Prati",
-            valor_conversao_prati,
-            sub_prati,
-            tag=tag_6m,
-            compact=True
-        )
-        render_kpi(
-            linha_conversao[1],
-            "Conversão Outras Imobiliárias",
-            valor_conversao_outras,
-            sub_outras,
-            tag=tag_6m,
-            compact=True
-        )
 
