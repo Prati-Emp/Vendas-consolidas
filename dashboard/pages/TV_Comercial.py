@@ -962,3 +962,44 @@ else:
 
         st.dataframe(reservas_display, use_container_width=True, hide_index=True)
         st.caption(f"Total de reservas ativas consideradas: {format_int_value(total_reservas_status)}")
+
+        st.markdown(
+            """
+            <style>
+            /* Ajustes para a tabela de reservas */
+            div[data-testid="stDataFrame"] table {
+                background: rgba(15, 23, 42, 0.85) !important;
+                border-radius: 16px !important;
+                overflow: hidden !important;
+            }
+            div[data-testid="stDataFrame"] table thead tr th {
+                background: rgba(30, 41, 59, 0.92) !important;
+                color: rgba(241, 245, 249, 0.92) !important;
+                font-size: 1.05rem !important;
+                font-weight: 600 !important;
+                padding: 18px 12px !important;
+            }
+            div[data-testid="stDataFrame"] table tbody tr td {
+                color: rgba(241, 245, 249, 0.88) !important;
+                font-size: 1.0rem !important;
+                padding: 16px 12px !important;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+            }
+            div[data-testid="stDataFrame"] table tbody tr:nth-child(even) td {
+                background: rgba(30, 41, 59, 0.35) !important;
+            }
+            div[data-testid="stDataFrame"] table tbody tr:hover td {
+                background: rgba(59, 130, 246, 0.15) !important;
+            }
+            div[data-testid="stDataFrame"] table thead th:first-child,
+            div[data-testid="stDataFrame"] table tbody td:first-child {
+                padding-left: 24px !important;
+            }
+            div[data-testid="stDataFrame"] table thead th:last-child,
+            div[data-testid="stDataFrame"] table tbody td:last-child {
+                padding-right: 24px !important;
+            }
+            </style>
+            """,
+            unsafe_allow_html=True
+        )
