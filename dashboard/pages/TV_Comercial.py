@@ -943,7 +943,7 @@ else:
             )
 
             # Por mídia
-            st.markdown("### 📣 Distribuição por Mídia")
+            st.markdown("### 📣 Por Mídia")
             midia_resumo = (
                 leads_tv_df.groupby('midia_consolidada')
                 .agg(
