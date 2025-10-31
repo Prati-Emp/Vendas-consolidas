@@ -834,7 +834,7 @@ else:
         status_counts['ValorFormatado'] = status_counts['Valor'].apply(format_compact_currency)
         status_counts['QuantidadeFormatada'] = status_counts['Quantidade'].apply(format_int_value)
 
-        paleta_reservas = ['#0f172a', '#1e3a8a', '#2563eb', '#3b82f6', '#60a5fa', '#7c3aed', '#a855f7']
+        paleta_reservas = ['#16295f', '#1e3a8a', '#2563eb', '#3b82f6', '#60a5fa', '#7c3aed', '#a855f7']
         color_map = {
             situacao: paleta_reservas[i % len(paleta_reservas)]
             for i, situacao in enumerate(status_counts['Situacao'].tolist())
