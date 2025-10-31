@@ -393,6 +393,49 @@ mes_referencia = MESES_NOME_PT.get(datetime.now().month, "mês atual")
 mes_referencia_curto = mes_referencia.capitalize() if mes_referencia else "Mês atual"
 
 
+periodo_inicio_str = TERMOMETRO_DATA_INICIO.strftime('%Y-%m-%d')
+periodo_fim_str = data_final_analise.strftime('%Y-%m-%d')
+
+
+house_raw_df = load_vendas_house_overview(periodo_inicio_str, periodo_fim_str)
+house_data_available = False
+house_df = pd.DataFrame()
+total_valor_house = 0.0
+valor_prati = 0.0
+quantidade_prati = 0
+taxa_house_percent = 0.0
+ticket_prati = 0.0
+valor_externo = 0.0
+taxa_externa_percent = 0.0
+
+if not house_raw_df.empty and house_raw_df['valor_total'].fillna(0).sum() > 0:
+    house_df = house_raw_df.fillna({'quantidade': 0, 'valor_total': 0.0, 'ticket_medio': 0.0}).copy()
+    total_valor_house = float(house_df['valor_total'].sum())
+    valor_prati = float(house_df.loc[house_df['origem'] == 'Venda Interna (Prati)', 'valor_total'].sum())
+    quantidade_prati = int(house_df.loc[house_df['origem'] == 'Venda Interna (Prati)', 'quantidade'].sum())
+    taxa_house_percent = (valor_prati / total_valor_house * 100) if total_valor_house > 0 else 0.0
+    ticket_prati = (valor_prati / quantidade_prati) if quantidade_prati > 0 else 0.0
+    valor_externo = max(total_valor_house - valor_prati, 0.0)
+    taxa_externa_percent = 100 - taxa_house_percent if total_valor_house > 0 else 0.0
+    house_data_available = True
+
+
+vpl_df = load_vpl_geral(periodo_inicio_str, periodo_fim_str)
+vpl_data_available = False
+total_vpl_reserva = 0.0
+total_vpl_tabela = 0.0
+vpl_percent = 0.0
+vpl_gap = 0.0
+
+if not vpl_df.empty:
+    vpl_row = vpl_df.iloc[0]
+    total_vpl_reserva = float(vpl_row.get('total_vpl_reserva', 0.0) or 0.0)
+    total_vpl_tabela = float(vpl_row.get('total_vpl_tabela', 0.0) or 0.0)
+    vpl_percent = ((total_vpl_reserva / total_vpl_tabela) - 1) * 100 if total_vpl_tabela > 0 else 0.0
+    vpl_gap = total_vpl_reserva - total_vpl_tabela
+    vpl_data_available = True
+
+
 st.markdown(
     """
     <style>
@@ -460,11 +503,13 @@ def render_kpi(coluna, titulo: str, valor: str, subtitulo: str | None = None):
     )
 
 
-linha_um = st.columns(4)
+linha_um = st.columns(6)
 render_kpi(linha_um[0], f"Meta de Vendas ({mes_referencia_curto})", format_compact_currency(meta_total) if meta_total > 0 else "—", "Objetivo mensal consolidado")
 render_kpi(linha_um[1], f"Vendas Realizadas ({mes_referencia_curto})", format_compact_currency(vendas_realizadas_valor) if vendas_realizadas_valor > 0 else "R$ 0", "Vendas concluídas do mês")
 render_kpi(linha_um[2], "Atingimento da Meta", f"{atingimento_percent:.1f}%", "Vendas / Meta do mês")
 render_kpi(linha_um[3], "Falta para Meta", format_compact_currency(falta_para_meta_valor) if meta_total > 0 else "—", "Gap remanescente")
+render_kpi(linha_um[4], "🏠 Taxa House (valor)", f"{taxa_house_percent:.1f}%" if house_data_available else "—", "Participação das vendas internas")
+render_kpi(linha_um[5], "% VPL", f"{vpl_percent:.2f}%" if vpl_data_available else "—", "VPL Geral")
 
 # Seção do termômetro
 st.subheader("🌡️ Termômetro de Vendas")
@@ -526,10 +571,6 @@ render_kpi(linha_termometro[2], "Potencial de Vendas", format_compact_currency(p
 render_kpi(linha_termometro[3], "Cobertura da Meta", f"{cobertura_percent:.1f}%", "Potencial versus meta")
 
 
-periodo_inicio_str = TERMOMETRO_DATA_INICIO.strftime('%Y-%m-%d')
-periodo_fim_str = data_final_analise.strftime('%Y-%m-%d')
-
-
 st.markdown("---")
 st.markdown(
     f"""
@@ -543,22 +584,12 @@ st.markdown(
 
 house_raw_df = load_vendas_house_overview(periodo_inicio_str, periodo_fim_str)
 
-if house_raw_df.empty or house_raw_df['valor_total'].fillna(0).sum() == 0:
+if not house_data_available:
     st.info("Sem dados de vendas suficientes para exibir a análise House x Imobiliárias no período selecionado.")
 else:
-    house_df = house_raw_df.fillna({'quantidade': 0, 'valor_total': 0.0, 'ticket_medio': 0.0}).copy()
-    total_valor_house = float(house_df['valor_total'].sum())
-    valor_prati = float(house_df.loc[house_df['origem'] == 'Venda Interna (Prati)', 'valor_total'].sum())
-    quantidade_prati = int(house_df.loc[house_df['origem'] == 'Venda Interna (Prati)', 'quantidade'].sum())
-    taxa_house_percent = (valor_prati / total_valor_house * 100) if total_valor_house > 0 else 0.0
-    ticket_prati = (valor_prati / quantidade_prati) if quantidade_prati > 0 else 0.0
-    valor_externo = max(total_valor_house - valor_prati, 0.0)
-    taxa_externa_percent = 100 - taxa_house_percent if total_valor_house > 0 else 0.0
-
-    house_kpi_cols = st.columns(3)
+    house_kpi_cols = st.columns(2)
     render_kpi(house_kpi_cols[0], "💰 Valor Prati", format_compact_currency(valor_prati) if valor_prati > 0 else "R$ 0", "Vendas internas jan/25 até hoje")
-    render_kpi(house_kpi_cols[1], "🏠 Taxa House (valor)", f"{taxa_house_percent:.1f}%", "Participação das vendas internas")
-    render_kpi(house_kpi_cols[2], "🎟️ Ticket Médio Prati", format_currency(ticket_prati) if ticket_prati > 0 else "—")
+    render_kpi(house_kpi_cols[1], "🎟️ Ticket Médio Prati", format_currency(ticket_prati) if ticket_prati > 0 else "—")
 
     fig_house = go.Figure()
     fig_house.add_trace(go.Bar(
@@ -602,22 +633,13 @@ else:
 st.markdown("---")
 st.markdown("## 💰 VPL Geral")
 
-vpl_df = load_vpl_geral(periodo_inicio_str, periodo_fim_str)
-
-if vpl_df.empty:
+if not vpl_data_available:
     st.info("Sem dados de VPL disponíveis para o período analisado.")
 else:
-    vpl_row = vpl_df.iloc[0]
-    total_vpl_reserva = float(vpl_row.get('total_vpl_reserva', 0.0) or 0.0)
-    total_vpl_tabela = float(vpl_row.get('total_vpl_tabela', 0.0) or 0.0)
-    vpl_percent = ((total_vpl_reserva / total_vpl_tabela) - 1) * 100 if total_vpl_tabela > 0 else 0.0
-    vpl_gap = total_vpl_reserva - total_vpl_tabela
-
-    vpl_cols = st.columns(4)
+    vpl_cols = st.columns(3)
     render_kpi(vpl_cols[0], "VPL Reserva", format_compact_currency(total_vpl_reserva), "Reservas cadastradas")
     render_kpi(vpl_cols[1], "VPL Tabela", format_compact_currency(total_vpl_tabela), "Tabela oficial")
-    render_kpi(vpl_cols[2], "% VPL", f"{vpl_percent:.2f}%", "VPL Geral")
-    render_kpi(vpl_cols[3], "Gap VPL", format_compact_currency(vpl_gap), "Reserva - Tabela")
+    render_kpi(vpl_cols[2], "Gap VPL", format_compact_currency(vpl_gap), "Reserva - Tabela")
 
 
 st.markdown("---")
