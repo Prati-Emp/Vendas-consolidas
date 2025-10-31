@@ -441,13 +441,17 @@ st.markdown(
             margin-bottom: 16px;
             box-shadow: 0 12px 24px rgba(0, 0, 0, 0.25);
             min-height: 170px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
         }
         .tv-kpi-title {
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 6px;
-            margin-bottom: 8px;
+            gap: 8px;
+            margin-bottom: 18px;
             text-transform: uppercase;
         }
         .tv-kpi-title-main {
@@ -471,12 +475,19 @@ st.markdown(
             font-size: 2.8rem;
             font-weight: 700;
             color: #ffffff;
-            margin-bottom: 10px;
+            margin-bottom: 12px;
         }
         .tv-kpi-subtitle {
             font-size: 0.95rem;
             color: rgba(255, 255, 255, 0.68);
             font-weight: 500;
+        }
+        .tv-kpi-card--compact .tv-kpi-title {
+            gap: 6px;
+            margin-bottom: 8px;
+        }
+        .tv-kpi-card--compact .tv-kpi-value {
+            margin-bottom: 10px;
         }
         .tv-status-badge {
             display: inline-flex;
@@ -501,13 +512,14 @@ st.markdown(
 )
 
 
-def render_kpi(coluna, titulo: str, valor: str, subtitulo: str | None = None, tag: str | None = None, valor_color: str | None = None):
+def render_kpi(coluna, titulo: str, valor: str, subtitulo: str | None = None, tag: str | None = None, valor_color: str | None = None, compact: bool = False):
     tag_html = f'<span class="tv-kpi-title-tag">{tag}</span>' if tag else '<span class="tv-kpi-title-tag tv-kpi-title-tag--empty">—</span>'
     titulo_html = f"<span class='tv-kpi-title-main'>{titulo}</span>{tag_html}"
     valor_style = f" style='color:{valor_color};'" if valor_color else ""
+    card_class = "tv-kpi-card tv-kpi-card--compact" if compact else "tv-kpi-card"
     coluna.markdown(
         f"""
-        <div class=\"tv-kpi-card\">
+        <div class=\"{card_class}\">
             <div class=\"tv-kpi-title\">{titulo_html}</div>
             <div class=\"tv-kpi-value\"{valor_style}>{valor}</div>
             {f'<div class=\"tv-kpi-subtitle\">{subtitulo}</div>' if subtitulo else ''}
@@ -537,12 +549,12 @@ if vpl_data_available:
     elif vpl_percent < 0:
         vpl_color = "#ef4444"
 
-render_kpi(linha_um[0], "Meta de Vendas", format_compact_currency(meta_total) if meta_total > 0 else "—", "Objetivo mensal consolidado", tag=mes_tag)
-render_kpi(linha_um[1], "Vendas Realizadas", format_compact_currency(vendas_realizadas_valor) if vendas_realizadas_valor > 0 else "R$ 0", "Vendas concluídas do mês", tag=mes_tag)
-render_kpi(linha_um[2], "Atingimento da Meta", f"{atingimento_percent:.1f}%", "Vendas / Meta do mês", tag=mes_tag, valor_color=atingimento_color)
-render_kpi(linha_um[3], "Falta para Meta", format_compact_currency(falta_para_meta_valor) if meta_total > 0 else "—", "Gap remanescente", tag=mes_tag, valor_color=falta_color)
-render_kpi(linha_um[4], "🏠 Taxa House (valor)", f"{taxa_house_percent:.1f}%" if house_data_available else "—", "Meta: 30% vendas internas", tag=ano_tag, valor_color=taxa_house_color)
-render_kpi(linha_um[5], "Porcentagem VPL Geral", f"{vpl_percent:.2f}%" if vpl_data_available else "—", "Meta: VPL Positivo", tag=ano_tag, valor_color=vpl_color)
+render_kpi(linha_um[0], "Meta de Vendas", format_compact_currency(meta_total) if meta_total > 0 else "—", "Objetivo mensal consolidado", tag=mes_tag, compact=True)
+render_kpi(linha_um[1], "Vendas Realizadas", format_compact_currency(vendas_realizadas_valor) if vendas_realizadas_valor > 0 else "R$ 0", "Vendas concluídas do mês", tag=mes_tag, compact=True)
+render_kpi(linha_um[2], "Atingimento da Meta", f"{atingimento_percent:.1f}%", "Vendas / Meta do mês", tag=mes_tag, valor_color=atingimento_color, compact=True)
+render_kpi(linha_um[3], "Falta para Meta", format_compact_currency(falta_para_meta_valor) if meta_total > 0 else "—", "Gap remanescente", tag=mes_tag, valor_color=falta_color, compact=True)
+render_kpi(linha_um[4], "🏠 Taxa House (valor)", f"{taxa_house_percent:.1f}%" if house_data_available else "—", "Meta: 30% vendas internas", tag=ano_tag, valor_color=taxa_house_color, compact=True)
+render_kpi(linha_um[5], "Porcentagem VPL Geral", f"{vpl_percent:.2f}%" if vpl_data_available else "—", "Meta: VPL Positivo", tag=ano_tag, valor_color=vpl_color, compact=True)
 
 # Seção do termômetro
 st.subheader("🌡️ Termômetro de Vendas")
