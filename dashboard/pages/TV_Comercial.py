@@ -774,19 +774,35 @@ else:
                     .sort_values('Quantidade', ascending=False)
                 )
 
+                cancelamentos_top10 = cancelamentos_resumo.head(10)
+                cores_cancelamentos = ['#12325b', '#1e3a8a', '#2563eb', '#3b82f6', '#60a5fa', '#7c3aed', '#a855f7', '#d946ef', '#f97316', '#facc15']
+                color_map_cancelamentos = {
+                    motivo: cores_cancelamentos[i % len(cores_cancelamentos)]
+                    for i, motivo in enumerate(cancelamentos_top10['motivo_cancelamento_consolidada'])
+                }
+
                 fig_cancel = px.bar(
-                    cancelamentos_resumo.head(10),
+                    cancelamentos_top10,
                     x='Quantidade',
                     y='motivo_cancelamento_consolidada',
                     orientation='h',
-                    color='Quantidade',
-                    color_continuous_scale='Blues',
+                    color='motivo_cancelamento_consolidada',
+                    color_discrete_map=color_map_cancelamentos,
                     title='Top 10 motivos de cancelamento'
                 )
                 fig_cancel = apply_dark_theme(fig_cancel, margin_top=40)
-                fig_cancel.update_yaxes(title="", autorange="reversed")
-                fig_cancel.update_traces(texttemplate='%{x}', textposition='outside')
-                fig_cancel.update_layout(coloraxis_showscale=False)
+                fig_cancel.update_yaxes(title="", autorange="reversed", tickfont=dict(size=14))
+                fig_cancel.update_xaxes(title="Quantidade", showgrid=False, zeroline=False, tickfont=dict(size=12))
+                fig_cancel.update_traces(
+                    texttemplate='<b>%{x}</b>',
+                    textposition='outside',
+                    marker=dict(line=dict(color='rgba(15, 23, 42, 0.6)', width=1))
+                )
+                fig_cancel.update_layout(
+                    showlegend=False,
+                    bargap=0.27,
+                    hovertemplate='<b>%{y}</b><br>Cancelamentos: %{x:,}<extra></extra>'
+                )
                 st.plotly_chart(fig_cancel, use_container_width=True)
 
             # Por mídia
