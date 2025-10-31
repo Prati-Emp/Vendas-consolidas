@@ -791,8 +791,17 @@ else:
                     title='<span style="font-size:1.05rem; color:#cbd5f5;">Top 10 motivos que explicam cancelamentos</span>'
                 )
                 fig_cancel = apply_dark_theme(fig_cancel, margin_top=40)
-                fig_cancel.update_yaxes(title="", autorange="reversed", tickfont=dict(size=16))
-                fig_cancel.update_xaxes(title="Quantidade", showgrid=False, zeroline=False, tickfont=dict(size=14))
+                fig_cancel.update_yaxes(
+                    title="",
+                    autorange="reversed",
+                    tickfont=dict(size=16, color='rgba(248,250,252,0.92)', family='Manrope, sans-serif')
+                )
+                fig_cancel.update_xaxes(
+                    title="Quantidade",
+                    showgrid=False,
+                    zeroline=False,
+                    tickfont=dict(size=14, color='rgba(248,250,252,0.85)', family='Manrope, sans-serif')
+                )
                 fig_cancel.update_traces(
                     texttemplate='<b>%{x}</b>',
                     textposition='outside',
