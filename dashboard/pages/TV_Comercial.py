@@ -531,7 +531,15 @@ periodo_fim_str = data_final_analise.strftime('%Y-%m-%d')
 
 
 st.markdown("---")
-st.markdown("## 🏠 Análise Vendas House")
+st.markdown(
+    f"""
+    <div style='display:flex; flex-direction:column; gap:6px; margin-bottom:14px;'>
+        <h2 style='margin:0; font-size:2.1rem;'>🏠 Performance Vendas House</h2>
+        <span style='font-size:1rem; color:rgba(248,250,252,0.65);'>Atualizado automaticamente — dados até {data_final_analise.strftime('%d/%m/%Y')}</span>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
 
 house_raw_df = load_vendas_house_overview(periodo_inicio_str, periodo_fim_str)
 
@@ -544,25 +552,50 @@ else:
     quantidade_prati = int(house_df.loc[house_df['origem'] == 'Venda Interna (Prati)', 'quantidade'].sum())
     taxa_house_percent = (valor_prati / total_valor_house * 100) if total_valor_house > 0 else 0.0
     ticket_prati = (valor_prati / quantidade_prati) if quantidade_prati > 0 else 0.0
+    valor_externo = max(total_valor_house - valor_prati, 0.0)
+    taxa_externa_percent = 100 - taxa_house_percent if total_valor_house > 0 else 0.0
 
     house_kpi_cols = st.columns(3)
-    render_kpi(house_kpi_cols[0], "Taxa House (valor)", f"{taxa_house_percent:.1f}%", "Participação das vendas Prati")
-    render_kpi(house_kpi_cols[1], "Valor Prati", format_compact_currency(valor_prati) if valor_prati > 0 else "R$ 0", "Vendas internas jan/25 até hoje")
-    render_kpi(house_kpi_cols[2], "Ticket Médio Prati", format_currency(ticket_prati) if ticket_prati > 0 else "—")
+    render_kpi(house_kpi_cols[0], "💰 Valor Prati", format_compact_currency(valor_prati) if valor_prati > 0 else "R$ 0", "Vendas internas jan/25 até hoje")
+    render_kpi(house_kpi_cols[1], "🏠 Taxa House (valor)", f"{taxa_house_percent:.1f}%", "Participação das vendas internas")
+    render_kpi(house_kpi_cols[2], "🎟️ Ticket Médio Prati", format_currency(ticket_prati) if ticket_prati > 0 else "—")
 
-    fig_house = px.pie(
-        house_df,
-        values='valor_total',
-        names='origem',
-        hole=0.45,
-        color='origem',
-        color_discrete_map={
-            'Venda Interna (Prati)': '#38bdf8',
-            'Venda Externa (Imobiliárias)': '#6366f1'
-        },
-        title='Participação por origem (valor)'
+    fig_house = go.Figure()
+    fig_house.add_trace(go.Bar(
+        y=[""],
+        x=[valor_prati],
+        name="Vendas Internas (Prati)",
+        orientation='h',
+        marker_color='#38bdf8',
+        hovertemplate="Vendas Internas (Prati): R$ %{x:,.0f}<extra></extra>",
+        text=[f"{taxa_house_percent:.1f}%"],
+        textposition='inside',
+        insidetextanchor='middle',
+        textfont=dict(color='#ffffff', size=16)
+    ))
+    fig_house.add_trace(go.Bar(
+        y=[""],
+        x=[valor_externo],
+        name="Vendas Externas (Imobiliárias)",
+        orientation='h',
+        marker_color='#6366f1',
+        hovertemplate="Vendas Externas (Imobiliárias): R$ %{x:,.0f}<extra></extra>",
+        text=[f"{taxa_externa_percent:.1f}%"],
+        textposition='inside',
+        insidetextanchor='middle',
+        textfont=dict(color='#0b0b0b', size=16)
+    ))
+
+    fig_house.update_layout(
+        barmode='stack',
+        title=dict(text='Participação das Vendas — Internas vs Externas', x=0.5, xanchor='center'),
+        xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+        yaxis=dict(showgrid=False, showticklabels=False),
+        legend=dict(orientation='h', yanchor='bottom', y=1.12, xanchor='center', x=0.5, font=dict(size=12)),
+        bargap=0.15
     )
-    fig_house = apply_dark_theme(fig_house, margin_top=50)
+    fig_house.update_traces(marker_line_width=0)
+    fig_house = apply_dark_theme(fig_house, margin_top=80)
     st.plotly_chart(fig_house, use_container_width=True)
 
 
