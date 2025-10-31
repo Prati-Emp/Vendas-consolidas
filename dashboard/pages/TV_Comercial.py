@@ -446,8 +446,8 @@ st.markdown(
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 8px;
-            margin-bottom: 18px;
+            gap: 6px;
+            margin-bottom: 12px;
             text-transform: uppercase;
         }
         .tv-kpi-title-main {
