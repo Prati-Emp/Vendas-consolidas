@@ -540,15 +540,15 @@ if house_raw_df.empty or house_raw_df['valor_total'].fillna(0).sum() == 0:
 else:
     house_df = house_raw_df.fillna({'quantidade': 0, 'valor_total': 0.0, 'ticket_medio': 0.0}).copy()
     total_valor_house = float(house_df['valor_total'].sum())
-    total_quantidade_house = int(house_df['quantidade'].sum())
     valor_prati = float(house_df.loc[house_df['origem'] == 'Venda Interna (Prati)', 'valor_total'].sum())
+    quantidade_prati = int(house_df.loc[house_df['origem'] == 'Venda Interna (Prati)', 'quantidade'].sum())
     taxa_house_percent = (valor_prati / total_valor_house * 100) if total_valor_house > 0 else 0.0
-    ticket_geral = (total_valor_house / total_quantidade_house) if total_quantidade_house > 0 else 0.0
+    ticket_prati = (valor_prati / quantidade_prati) if quantidade_prati > 0 else 0.0
 
     house_kpi_cols = st.columns(3)
     render_kpi(house_kpi_cols[0], "Taxa House (valor)", f"{taxa_house_percent:.1f}%", "Participação das vendas Prati")
-    render_kpi(house_kpi_cols[1], "Valor Total", format_compact_currency(total_valor_house), "Período jan/25 até hoje")
-    render_kpi(house_kpi_cols[2], "Ticket Médio Geral", format_currency(ticket_geral) if ticket_geral > 0 else "—")
+    render_kpi(house_kpi_cols[1], "Valor Prati", format_compact_currency(valor_prati) if valor_prati > 0 else "R$ 0", "Vendas internas jan/25 até hoje")
+    render_kpi(house_kpi_cols[2], "Ticket Médio Prati", format_currency(ticket_prati) if ticket_prati > 0 else "—")
 
     fig_house = px.pie(
         house_df,
