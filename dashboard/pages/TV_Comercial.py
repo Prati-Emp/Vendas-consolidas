@@ -545,36 +545,25 @@ else:
     taxa_house_percent = (valor_prati / total_valor_house * 100) if total_valor_house > 0 else 0.0
     ticket_geral = (total_valor_house / total_quantidade_house) if total_quantidade_house > 0 else 0.0
 
-    house_display = house_df.rename(columns={'origem': 'Origem'}).copy()
-    house_display['Quantidade'] = house_display['quantidade'].apply(format_int_value)
-    house_display['Valor Total'] = house_display['valor_total'].apply(format_compact_currency)
-    house_display['Ticket Médio'] = house_display['ticket_medio'].apply(format_compact_currency)
-    house_display = house_display[['Origem', 'Quantidade', 'Valor Total', 'Ticket Médio']]
+    house_kpi_cols = st.columns(3)
+    render_kpi(house_kpi_cols[0], "Taxa House (valor)", f"{taxa_house_percent:.1f}%", "Participação das vendas Prati")
+    render_kpi(house_kpi_cols[1], "Valor Total", format_compact_currency(total_valor_house), "Período jan/25 até hoje")
+    render_kpi(house_kpi_cols[2], "Ticket Médio Geral", format_currency(ticket_geral) if ticket_geral > 0 else "—")
 
-    col_house_table, col_house_info = st.columns([1.8, 1.2])
-
-    with col_house_table:
-        st.dataframe(house_display, use_container_width=True, hide_index=True)
-
-    with col_house_info:
-        render_kpi(col_house_info, "Taxa House (valor)", f"{taxa_house_percent:.1f}%", "Participação das vendas Prati")
-        render_kpi(col_house_info, "Valor Total", format_compact_currency(total_valor_house), "Período jan/25 até hoje")
-        render_kpi(col_house_info, "Ticket Médio Geral", format_currency(ticket_geral) if ticket_geral > 0 else "—")
-
-        fig_house = px.pie(
-            house_df,
-            values='valor_total',
-            names='origem',
-            hole=0.45,
-            color='origem',
-            color_discrete_map={
-                'Venda Interna (Prati)': '#38bdf8',
-                'Venda Externa (Imobiliárias)': '#6366f1'
-            },
-            title='Participação por origem (valor)'
-        )
-        fig_house = apply_dark_theme(fig_house, margin_top=50)
-        col_house_info.plotly_chart(fig_house, use_container_width=True)
+    fig_house = px.pie(
+        house_df,
+        values='valor_total',
+        names='origem',
+        hole=0.45,
+        color='origem',
+        color_discrete_map={
+            'Venda Interna (Prati)': '#38bdf8',
+            'Venda Externa (Imobiliárias)': '#6366f1'
+        },
+        title='Participação por origem (valor)'
+    )
+    fig_house = apply_dark_theme(fig_house, margin_top=50)
+    st.plotly_chart(fig_house, use_container_width=True)
 
 
 st.markdown("---")
