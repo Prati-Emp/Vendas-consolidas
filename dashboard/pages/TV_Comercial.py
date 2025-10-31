@@ -446,8 +446,8 @@ st.markdown(
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 4px;
-            margin-bottom: 6px;
+            gap: 6px;
+            margin-bottom: 8px;
             text-transform: uppercase;
         }
         .tv-kpi-title-main {
@@ -472,11 +472,6 @@ st.markdown(
             font-weight: 700;
             color: #ffffff;
             margin-bottom: 10px;
-        }
-        .tv-kpi-tag-wrapper {
-            display: flex;
-            justify-content: center;
-            margin-bottom: 12px;
         }
         .tv-kpi-subtitle {
             font-size: 0.95rem;
@@ -508,14 +503,13 @@ st.markdown(
 
 def render_kpi(coluna, titulo: str, valor: str, subtitulo: str | None = None, tag: str | None = None, valor_color: str | None = None):
     tag_html = f'<span class="tv-kpi-title-tag">{tag}</span>' if tag else '<span class="tv-kpi-title-tag tv-kpi-title-tag--empty">—</span>'
-    titulo_html = f"<span class='tv-kpi-title-main'>{titulo}</span>"
+    titulo_html = f"<span class='tv-kpi-title-main'>{titulo}</span>{tag_html}"
     valor_style = f" style='color:{valor_color};'" if valor_color else ""
     coluna.markdown(
         f"""
         <div class=\"tv-kpi-card\">
             <div class=\"tv-kpi-title\">{titulo_html}</div>
             <div class=\"tv-kpi-value\"{valor_style}>{valor}</div>
-            <div class=\"tv-kpi-tag-wrapper\">{tag_html}</div>
             {f'<div class=\"tv-kpi-subtitle\">{subtitulo}</div>' if subtitulo else ''}
         </div>
         """,
