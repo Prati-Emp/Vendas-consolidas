@@ -774,7 +774,7 @@ else:
                     .sort_values('Quantidade', ascending=False)
                 )
 
-                cancelamentos_top10 = cancelamentos_resumo.head(10)
+                cancelamentos_top10 = cancelamentos_resumo.head(10).sort_values('Quantidade', ascending=True)
                 cores_cancelamentos = ['#12325b', '#1e3a8a', '#2563eb', '#3b82f6', '#60a5fa', '#7c3aed', '#a855f7', '#d946ef', '#f97316', '#facc15']
                 color_map_cancelamentos = {
                     motivo: cores_cancelamentos[i % len(cores_cancelamentos)]
@@ -788,7 +788,7 @@ else:
                     orientation='h',
                     color='motivo_cancelamento_consolidada',
                     color_discrete_map=color_map_cancelamentos,
-                    title='Top 10 motivos de cancelamento'
+                    title='<span style="font-size:1.05rem; color:#cbd5f5;">Top 10 motivos que explicam cancelamentos</span>'
                 )
                 fig_cancel = apply_dark_theme(fig_cancel, margin_top=40)
                 fig_cancel.update_yaxes(title="", autorange="reversed", tickfont=dict(size=14))
