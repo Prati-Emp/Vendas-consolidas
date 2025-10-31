@@ -443,12 +443,24 @@ st.markdown(
             min-height: 170px;
         }
         .tv-kpi-title {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 18px;
+            text-transform: uppercase;
+        }
+        .tv-kpi-title-main {
             font-size: 1.0rem;
             font-weight: 600;
-            color: rgba(255, 255, 255, 0.80);
-            margin-bottom: 18px;
+            color: rgba(255, 255, 255, 0.82);
             letter-spacing: 0.04em;
-            text-transform: uppercase;
+        }
+        .tv-kpi-title-tag {
+            font-size: 0.78rem;
+            font-weight: 600;
+            letter-spacing: 0.16em;
+            color: rgba(255, 255, 255, 0.55);
         }
         .tv-kpi-value {
             font-size: 2.8rem;
@@ -484,11 +496,14 @@ st.markdown(
 )
 
 
-def render_kpi(coluna, titulo: str, valor: str, subtitulo: str | None = None):
+def render_kpi(coluna, titulo: str, valor: str, subtitulo: str | None = None, tag: str | None = None):
     coluna.markdown(
         f"""
         <div class=\"tv-kpi-card\">
-            <div class=\"tv-kpi-title\">{titulo}</div>
+            <div class=\"tv-kpi-title\">
+                <span class=\"tv-kpi-title-main\">{titulo}</span>
+                {f'<span class=\"tv-kpi-title-tag\">{tag}</span>' if tag else ''}
+            </div>
             <div class=\"tv-kpi-value\">{valor}</div>
             {f'<div class=\"tv-kpi-subtitle\">{subtitulo}</div>' if subtitulo else ''}
         </div>
@@ -498,8 +513,9 @@ def render_kpi(coluna, titulo: str, valor: str, subtitulo: str | None = None):
 
 
 linha_um = st.columns(6)
-render_kpi(linha_um[0], f"Meta de Vendas ({mes_referencia_curto})", format_compact_currency(meta_total) if meta_total > 0 else "—", "Objetivo mensal consolidado")
-render_kpi(linha_um[1], f"Vendas Realizadas ({mes_referencia_curto})", format_compact_currency(vendas_realizadas_valor) if vendas_realizadas_valor > 0 else "R$ 0", "Vendas concluídas do mês")
+mes_tag = mes_referencia_curto.upper()
+render_kpi(linha_um[0], "Meta de Vendas", format_compact_currency(meta_total) if meta_total > 0 else "—", "Objetivo mensal consolidado", tag=mes_tag)
+render_kpi(linha_um[1], "Vendas Realizadas", format_compact_currency(vendas_realizadas_valor) if vendas_realizadas_valor > 0 else "R$ 0", "Vendas concluídas do mês", tag=mes_tag)
 render_kpi(linha_um[2], "Atingimento da Meta", f"{atingimento_percent:.1f}%", "Vendas / Meta do mês")
 render_kpi(linha_um[3], "Falta para Meta", format_compact_currency(falta_para_meta_valor) if meta_total > 0 else "—", "Gap remanescente")
 render_kpi(linha_um[4], "🏠 Taxa House (valor)", f"{taxa_house_percent:.1f}%" if house_data_available else "—", "Participação das vendas internas")
