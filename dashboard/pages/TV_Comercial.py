@@ -788,14 +788,13 @@ else:
                     orientation='h',
                     color='motivo_cancelamento_consolidada',
                     color_discrete_map=color_map_cancelamentos,
-                    text='motivo_cancelamento_consolidada',
                     title='<span style="font-size:1.05rem; color:#cbd5f5;">Top 10 motivos que explicam cancelamentos</span>'
                 )
                 fig_cancel = apply_dark_theme(fig_cancel, margin_top=40)
-                fig_cancel.update_yaxes(title="", autorange="reversed", showticklabels=False)
-                fig_cancel.update_xaxes(title="Quantidade", showgrid=False, zeroline=False, tickfont=dict(size=12))
+                fig_cancel.update_yaxes(title="", autorange="reversed", tickfont=dict(size=16))
+                fig_cancel.update_xaxes(title="Quantidade", showgrid=False, zeroline=False, tickfont=dict(size=14))
                 fig_cancel.update_traces(
-                    texttemplate='<span style="font-size:1.0rem; font-weight:600; color:#f8fafc;">%{text}</span><br><b>%{x}</b>',
+                    texttemplate='<b>%{x}</b>',
                     textposition='outside',
                     marker=dict(line=dict(color='rgba(15, 23, 42, 0.6)', width=1)),
                     hovertemplate='<b>%{y}</b><br>Cancelamentos: %{x:,}<extra></extra>'
