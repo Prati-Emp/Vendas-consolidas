@@ -920,6 +920,38 @@ else:
             )
         st.plotly_chart(fig_reserva_status, use_container_width=True)
 
+        linha_conversao = st.columns(2)
+        tag_6m = "6 MESES"
+
+        valor_conversao_prati = f"{taxa_prati:.1f}%" if total_prati > 0 else "—"
+        sub_prati = (
+            f"{format_int_value(convertidas_prati)} de {format_int_value(total_prati)} reservas"
+            if total_prati > 0 else "Sem registros no período"
+        )
+
+        valor_conversao_outras = f"{taxa_outras:.1f}%" if total_outras > 0 else "—"
+        sub_outras = (
+            f"{format_int_value(convertidas_outras)} de {format_int_value(total_outras)} reservas"
+            if total_outras > 0 else "Sem registros no período"
+        )
+
+        render_kpi(
+            linha_conversao[0],
+            "Conversão Prati",
+            valor_conversao_prati,
+            sub_prati,
+            tag=tag_6m,
+            compact=True
+        )
+        render_kpi(
+            linha_conversao[1],
+            "Conversão Outras Imobiliárias",
+            valor_conversao_outras,
+            sub_outras,
+            tag=tag_6m,
+            compact=True
+        )
+
         reservas_display = status_counts[['Situacao', 'Quantidade', 'ValorFormatado', 'Percentual']].copy()
         reservas_display = reservas_display.rename(columns={'Situacao': 'Situação'})
         reservas_display['Reservas'] = reservas_display['Quantidade'].apply(format_int_value)
@@ -929,36 +961,3 @@ else:
 
         st.dataframe(reservas_display, use_container_width=True, hide_index=True)
         st.caption(f"Total de reservas ativas consideradas: {format_int_value(total_reservas_status)}")
-
-
-linha_conversao = st.columns(2)
-tag_6m = "6 MESES"
-
-valor_conversao_prati = f"{taxa_prati:.1f}%" if total_prati > 0 else "—"
-sub_prati = (
-    f"{format_int_value(convertidas_prati)} de {format_int_value(total_prati)} reservas"
-    if total_prati > 0 else "Sem registros no período"
-)
-
-valor_conversao_outras = f"{taxa_outras:.1f}%" if total_outras > 0 else "—"
-sub_outras = (
-    f"{format_int_value(convertidas_outras)} de {format_int_value(total_outras)} reservas"
-    if total_outras > 0 else "Sem registros no período"
-)
-
-render_kpi(
-    linha_conversao[0],
-    "Conversão Prati",
-    valor_conversao_prati,
-    sub_prati,
-    tag=tag_6m,
-    compact=True
-)
-render_kpi(
-    linha_conversao[1],
-    "Conversão Outras Imobiliárias",
-    valor_conversao_outras,
-    sub_outras,
-    tag=tag_6m,
-    compact=True
-)
