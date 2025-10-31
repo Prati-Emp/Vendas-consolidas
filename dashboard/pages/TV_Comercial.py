@@ -854,6 +854,12 @@ else:
         fig_reserva_status = apply_dark_theme(fig_reserva_status, margin_top=60)
         fig_reserva_status.update_layout(
             showlegend=False,
+            title=dict(
+                text='Distribuição de Reservas por Situação',
+                x=0,
+                xanchor='left',
+                font=dict(size=20, color='#f8fafc', family='Manrope, sans-serif')
+            ),
             yaxis=dict(
                 categoryorder='array',
                 categoryarray=status_counts['Situacao'].tolist()[::-1],
