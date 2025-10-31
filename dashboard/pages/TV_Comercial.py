@@ -537,46 +537,54 @@ st.markdown(
             background: transparent;
         }
         div[data-testid="stDataFrame"] > div[data-testid="StyledDataFrame"] {
-            border-radius: 16px;
+            border-radius: 18px;
             overflow: hidden;
-            border: 1px solid rgba(148, 163, 184, 0.22);
-            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
+            border: 1px solid rgba(148, 163, 184, 0.18);
+            box-shadow: 0 18px 38px rgba(0, 0, 0, 0.30);
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.96), rgba(30, 41, 59, 0.78));
+            backdrop-filter: blur(4px);
         }
         div[data-testid="stDataFrame"] table {
             font-family: 'Manrope', sans-serif;
-            background: rgba(15, 23, 42, 0.85);
-            color: rgba(248, 250, 252, 0.94);
-            font-size: 1.02rem;
+            background: transparent;
+            color: rgba(248, 250, 252, 0.95);
+            font-size: 1.05rem;
         }
         div[data-testid="stDataFrame"] table thead tr th {
-            background: rgba(15, 23, 42, 0.95);
-            color: rgba(248, 250, 252, 0.96);
-            font-size: 1.12rem;
+            background: rgba(15, 23, 42, 0.88);
+            color: rgba(248, 250, 252, 0.98);
+            font-size: 1.16rem;
             font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 0.05em;
+            letter-spacing: 0.06em;
+            padding: 16px 18px;
             border-bottom: 1px solid rgba(148, 163, 184, 0.35);
         }
         div[data-testid="stDataFrame"] table tbody tr td {
-            border-bottom: 1px solid rgba(148, 163, 184, 0.18);
-            font-size: 1.02rem;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+            font-size: 1.05rem;
             font-weight: 500;
             color: rgba(248, 250, 252, 0.92);
+            padding: 16px 18px;
         }
         div[data-testid="stDataFrame"] table tbody tr:nth-child(odd) td {
-            background: rgba(30, 41, 59, 0.65);
+            background: rgba(255, 255, 255, 0.02);
         }
         div[data-testid="stDataFrame"] table tbody tr:nth-child(even) td {
-            background: rgba(15, 23, 42, 0.72);
+            background: rgba(15, 23, 42, 0.35);
         }
         div[data-testid="stDataFrame"] table tbody tr:hover td {
-            background: rgba(59, 130, 246, 0.28);
+            background: rgba(59, 130, 246, 0.24);
         }
         div[data-testid="stDataFrame"] table tbody tr td:first-child {
             text-align: left !important;
+            font-weight: 600;
         }
         div[data-testid="stDataFrame"] table tbody tr td:not(:first-child) {
-            text-align: center;
+            text-align: right;
+        }
+        div[data-testid="stDataFrame"] table thead tr th:not(:first-child) {
+            text-align: right;
         }
     </style>
     """,
