@@ -526,12 +526,23 @@ if meta_total > 0:
     atingimento_color = "#22c55e" if atingimento_percent >= 100 else "#ef4444"
     falta_color = "#22c55e" if falta_para_meta_valor == 0 else "#ef4444"
 
+taxa_house_color = None
+if house_data_available:
+    taxa_house_color = "#22c55e" if taxa_house_percent >= 30 else "#ef4444"
+
+vpl_color = None
+if vpl_data_available:
+    if vpl_percent > 0:
+        vpl_color = "#22c55e"
+    elif vpl_percent < 0:
+        vpl_color = "#ef4444"
+
 render_kpi(linha_um[0], "Meta de Vendas", format_compact_currency(meta_total) if meta_total > 0 else "—", "Objetivo mensal consolidado", tag=mes_tag)
 render_kpi(linha_um[1], "Vendas Realizadas", format_compact_currency(vendas_realizadas_valor) if vendas_realizadas_valor > 0 else "R$ 0", "Vendas concluídas do mês", tag=mes_tag)
 render_kpi(linha_um[2], "Atingimento da Meta", f"{atingimento_percent:.1f}%", "Vendas / Meta do mês", tag=mes_tag, valor_color=atingimento_color)
 render_kpi(linha_um[3], "Falta para Meta", format_compact_currency(falta_para_meta_valor) if meta_total > 0 else "—", "Gap remanescente", tag=mes_tag, valor_color=falta_color)
-render_kpi(linha_um[4], "🏠 Taxa House (valor)", f"{taxa_house_percent:.1f}%" if house_data_available else "—", "Participação das vendas internas", tag=ano_tag)
-render_kpi(linha_um[5], "% VPL", f"{vpl_percent:.2f}%" if vpl_data_available else "—", "VPL Geral", tag=ano_tag)
+render_kpi(linha_um[4], "🏠 Taxa House (valor)", f"{taxa_house_percent:.1f}%" if house_data_available else "—", "Participação das vendas internas", tag=ano_tag, valor_color=taxa_house_color)
+render_kpi(linha_um[5], "% VPL", f"{vpl_percent:.2f}%" if vpl_data_available else "—", "VPL Geral", tag=ano_tag, valor_color=vpl_color)
 
 # Seção do termômetro
 st.subheader("🌡️ Termômetro de Vendas")
