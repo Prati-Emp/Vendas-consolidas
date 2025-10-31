@@ -985,11 +985,14 @@ else:
                 padding: 16px 12px !important;
                 border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
             }
+            div[data-testid="stDataFrame"] table tbody tr:nth-child(odd) td {
+                background: rgba(17, 24, 39, 0.42) !important;
+            }
             div[data-testid="stDataFrame"] table tbody tr:nth-child(even) td {
-                background: rgba(30, 41, 59, 0.35) !important;
+                background: rgba(30, 41, 59, 0.42) !important;
             }
             div[data-testid="stDataFrame"] table tbody tr:hover td {
-                background: rgba(59, 130, 246, 0.15) !important;
+                background: rgba(59, 130, 246, 0.22) !important;
             }
             div[data-testid="stDataFrame"] table thead th:first-child,
             div[data-testid="stDataFrame"] table tbody td:first-child {
