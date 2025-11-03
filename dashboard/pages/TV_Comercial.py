@@ -105,21 +105,15 @@ carousel_timer = components.html(
         // Atualizar display a cada segundo
         const displayInterval = setInterval(updateDisplay, 1000);
         
-        // Após intervalo, forçar rerun via query parameter (preserva sessão melhor)
+        // Após intervalo, forçar reload com query parameter (preserva sessão)
         setTimeout(function() {{
             clearInterval(displayInterval);
-            // Usar query parameter para triggerar rerun sem perder sessão
+            // Adicionar query parameter e fazer reload
             const url = new URL(window.location.href);
             url.searchParams.set('_carousel_advance', Date.now());
-            // Usar replace para não adicionar ao histórico
-            window.location.replace(url.toString());
+            // Usar href para navegação (preserva sessão do Streamlit melhor que replace)
+            window.location.href = url.toString();
         }}, {CAROUSEL_INTERVAL * 1000});
-        
-        // Retornar valor inicial imediatamente
-        window.parent.postMessage({{
-            type: 'streamlit:setComponentValue',
-            value: timerValue
-        }}, '*');
     </script>
     <div style="display:none;"></div>
     """,
