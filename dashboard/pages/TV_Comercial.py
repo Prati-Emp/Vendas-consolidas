@@ -32,7 +32,9 @@ if email not in {"odair.santos@grupoprati.com"}:
     st.warning("⚠️ Você não tem permissão para acessar a TV Comercial.")
     st.stop()
 
-# Configurações do carrossel
+# ============================================================================
+# CONFIGURAÇÕES DO CARROSSEL - SEM JAVASCRIPT, SEM RELOAD, APENAS PYTHON
+# ============================================================================
 CAROUSEL_SECTIONS = 5  # Número de seções/blocos
 CAROUSEL_INTERVAL = 5  # Segundos por seção
 
@@ -42,14 +44,6 @@ if 'carousel_index' not in st.session_state:
 if 'carousel_last_update' not in st.session_state:
     st.session_state.carousel_last_update = time.time()
 
-# Verificar query parameter para detectar avanço via JavaScript
-query_params = st.query_params
-if '_carousel_advance' in query_params:
-    # Detectado avanço via JavaScript - avança seção
-    st.session_state.carousel_index = (st.session_state.carousel_index + 1) % CAROUSEL_SECTIONS
-    st.session_state.carousel_last_update = time.time()
-    st.query_params.clear()
-
 # Verificar se precisa avançar (baseado em tempo decorrido)
 current_time = time.time()
 elapsed = current_time - st.session_state.carousel_last_update
@@ -58,63 +52,16 @@ elapsed = current_time - st.session_state.carousel_last_update
 if elapsed >= CAROUSEL_INTERVAL:
     st.session_state.carousel_index = (st.session_state.carousel_index + 1) % CAROUSEL_SECTIONS
     st.session_state.carousel_last_update = current_time
-
-# Verificar se há avanço pendente e fazer rerun
-if 'carousel_pending_advance' in st.session_state:
-    del st.session_state.carousel_pending_advance
+    # Forçar rerun apenas quando necessário para avançar (preserva sessão)
     st.rerun()
 
+# Título e informações sempre visíveis
 st.title("📺 TV Comercial")
-st.caption(f"Atualização realizada em {datetime.now().strftime('%d/%m/%Y %H:%M:%S')} · Seção {st.session_state.carousel_index + 1}/{CAROUSEL_SECTIONS}")
-
-# Injetar JavaScript diretamente na página usando st.markdown (mais confiável)
 tempo_restante = max(0, CAROUSEL_INTERVAL - int(elapsed))
-interval_ms = CAROUSEL_INTERVAL * 1000
+st.caption(f"Atualização realizada em {datetime.now().strftime('%d/%m/%Y %H:%M:%S')} · Seção {st.session_state.carousel_index + 1}/{CAROUSEL_SECTIONS} · Próxima em {tempo_restante}s")
 
-# Script JavaScript que será injetado diretamente na página principal
-st.markdown(
-    f"""
-    <div id="carousel-countdown" style="position: fixed; bottom: 10px; right: 10px; background: rgba(0,0,0,0.7); color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; z-index: 9999;">
-        Próxima seção em: <strong>{tempo_restante}s</strong>
-    </div>
-    <script>
-        (function() {{
-            let countdown = {tempo_restante};
-            const displayElem = document.getElementById('carousel-countdown');
-            
-            // Atualizar contador visual a cada segundo
-            const interval = setInterval(function() {{
-                countdown--;
-                if (displayElem) {{
-                    displayElem.innerHTML = 'Próxima seção em: <strong>' + countdown + 's</strong>';
-                }}
-                if (countdown <= 0) {{
-                    clearInterval(interval);
-                    // Adicionar query parameter e recarregar página
-                    const url = new URL(window.location.href);
-                    url.searchParams.set('_carousel_advance', Date.now().toString());
-                    window.location.href = url.toString();
-                }}
-            }}, 1000);
-        }})();
-    </script>
-    """,
-    unsafe_allow_html=True
-)
-
-# Se o componente retornou um valor diferente, significa que passou o tempo
-# Nota: components.html não retorna valor diretamente, então vamos usar outra abordagem
-# Vamos usar verificação de tempo + placeholder que força rerun periódico
-
-# Placeholder que será atualizado periodicamente
-placeholder = st.empty()
-
-# Verificar tempo decorrido e fazer rerun se necessário
-if elapsed >= CAROUSEL_INTERVAL - 0.5:  # Pequena margem para garantir
-    # Próximo rerun deve avançar a seção
-    if 'carousel_pending_advance' not in st.session_state:
-        st.session_state.carousel_pending_advance = True
-        st.rerun()
+# Placeholder principal que será atualizado com o conteúdo do bloco atual
+carousel_placeholder = st.empty()
 
 st.markdown(
     """
@@ -756,44 +703,135 @@ def render_midia_table_html(dataframe: pd.DataFrame):
     st.markdown(table_html, unsafe_allow_html=True)
 
 
-# Container para cada seção do carrossel
-section_containers = [st.container() for _ in range(CAROUSEL_SECTIONS)]
+# ============================================================================
+# FUNÇÕES DE RENDERIZAÇÃO DOS BLOCOS DO CARROSSEL
+# ============================================================================
 
-# Bloco 0: KPIs Superiores
-with section_containers[0]:
-    if st.session_state.carousel_index == 0:
-        st.markdown('<div class="tv-carousel-section">', unsafe_allow_html=True)
-        linha_um = st.columns(6)
-        mes_tag = mes_referencia_curto.upper()
-        ano_tag = str(TERMOMETRO_DATA_INICIO.year)
-        atingimento_color = None
-        falta_color = None
-        if meta_total > 0:
-            atingimento_color = "#22c55e" if atingimento_percent >= 100 else "#ef4444"
-            falta_color = "#22c55e" if falta_para_meta_valor == 0 else "#ef4444"
+def render_bloco_0():
+    """Bloco 0: KPIs Superiores"""
+    st.markdown('<div class="tv-carousel-section">', unsafe_allow_html=True)
+    linha_um = st.columns(6)
+    mes_tag = mes_referencia_curto.upper()
+    ano_tag = str(TERMOMETRO_DATA_INICIO.year)
+    atingimento_color = None
+    falta_color = None
+    if meta_total > 0:
+        atingimento_color = "#22c55e" if atingimento_percent >= 100 else "#ef4444"
+        falta_color = "#22c55e" if falta_para_meta_valor == 0 else "#ef4444"
 
-        taxa_house_color = None
-        if house_data_available:
-            taxa_house_color = "#22c55e" if taxa_house_percent >= 30 else "#ef4444"
+    taxa_house_color = None
+    if house_data_available:
+        taxa_house_color = "#22c55e" if taxa_house_percent >= 30 else "#ef4444"
 
-        vpl_color = None
-        if vpl_data_available:
-            if vpl_percent > 0:
-                vpl_color = "#22c55e"
-            elif vpl_percent < 0:
-                vpl_color = "#ef4444"
+    vpl_color = None
+    if vpl_data_available:
+        if vpl_percent > 0:
+            vpl_color = "#22c55e"
+        elif vpl_percent < 0:
+            vpl_color = "#ef4444"
 
-        render_kpi(linha_um[0], "Meta de Vendas", format_compact_currency(meta_total) if meta_total > 0 else "—", "Objetivo mensal consolidado", tag=mes_tag, compact=True)
-        render_kpi(linha_um[1], "Vendas Realizadas", format_compact_currency(vendas_realizadas_valor) if vendas_realizadas_valor > 0 else "R$ 0", "Vendas concluídas do mês", tag=mes_tag, compact=True)
-        render_kpi(linha_um[2], "Atingimento da Meta", f"{atingimento_percent:.1f}%", "Vendas / Meta do mês", tag=mes_tag, valor_color=atingimento_color, compact=True)
-        render_kpi(linha_um[3], "Falta para Meta", format_compact_currency(falta_para_meta_valor) if meta_total > 0 else "—", "Gap remanescente", tag=mes_tag, valor_color=falta_color, compact=True)
-        render_kpi(linha_um[4], "🏠 Taxa House (valor)", f"{taxa_house_percent:.1f}%" if house_data_available else "—", "Meta: 30% vendas internas", tag=ano_tag, valor_color=taxa_house_color, compact=True)
-        render_kpi(linha_um[5], "Porcentagem VPL Geral", f"{vpl_percent:.2f}%" if vpl_data_available else "—", "Meta: VPL Positivo", tag=ano_tag, valor_color=vpl_color, compact=True)
-        st.markdown('</div>', unsafe_allow_html=True)
+    render_kpi(linha_um[0], "Meta de Vendas", format_compact_currency(meta_total) if meta_total > 0 else "—", "Objetivo mensal consolidado", tag=mes_tag, compact=True)
+    render_kpi(linha_um[1], "Vendas Realizadas", format_compact_currency(vendas_realizadas_valor) if vendas_realizadas_valor > 0 else "R$ 0", "Vendas concluídas do mês", tag=mes_tag, compact=True)
+    render_kpi(linha_um[2], "Atingimento da Meta", f"{atingimento_percent:.1f}%", "Vendas / Meta do mês", tag=mes_tag, valor_color=atingimento_color, compact=True)
+    render_kpi(linha_um[3], "Falta para Meta", format_compact_currency(falta_para_meta_valor) if meta_total > 0 else "—", "Gap remanescente", tag=mes_tag, valor_color=falta_color, compact=True)
+    render_kpi(linha_um[4], "🏠 Taxa House (valor)", f"{taxa_house_percent:.1f}%" if house_data_available else "—", "Meta: 30% vendas internas", tag=ano_tag, valor_color=taxa_house_color, compact=True)
+    render_kpi(linha_um[5], "Porcentagem VPL Geral", f"{vpl_percent:.2f}%" if vpl_data_available else "—", "Meta: VPL Positivo", tag=ano_tag, valor_color=vpl_color, compact=True)
+    st.markdown('</div>', unsafe_allow_html=True)
 
-# Bloco 1: Termômetro de Vendas
-with section_containers[1]:
-    if st.session_state.carousel_index == 1:
+def render_bloco_1():
+    """Bloco 1: Termômetro de Vendas"""
+    st.markdown('<div class="tv-carousel-section">', unsafe_allow_html=True)
+    st.subheader("🌡️ Termômetro de Vendas")
+
+    st.markdown(
+        f"<div class='tv-status-badge' style='background:{status_color}; color:{'#ffffff' if status in {'Frio', 'Quente'} else '#0b0b0b'};'>"
+        f"<span>Status atual:</span><strong>{status}</strong></div>",
+        unsafe_allow_html=True
+    )
+
+    st.markdown(f"<div class='tv-status-context'><strong>Interpretação:</strong> {interpretacao}</div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='tv-status-context'><strong>Ação sugerida:</strong> {acao}</div>", unsafe_allow_html=True)
+
+    escala_max = 150
+    indicador_percentual = max(0.0, min(cobertura_percent, escala_max))
+    indicador_posicao = indicador_percentual / escala_max * 100
+    largura_preenchida = min(max(cobertura_percent / escala_max, 0.0), 1.0) * 100
+
+    barra_escala_html = f"""
+    <div style='margin-top:1.25rem; position:relative; padding-top:42px;'>
+      <div style='position:absolute; top:0; left:{indicador_posicao}%; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center;'>
+        <div style='font-size:0.9rem;font-weight:700;color:{status_color};margin-bottom:8px;background:rgba(11,11,11,0.85);padding:4px 14px;border-radius:999px;'>{cobertura_percent:.1f}%</div>
+        <div style='width:0;height:0;border-left:14px solid transparent;border-right:14px solid transparent;border-bottom:18px solid {status_color};'></div>
+      </div>
+      <div style='position:relative; border-radius:16px; overflow:hidden; height:68px; box-shadow:0 0 18px rgba(0,0,0,0.35);'>
+        <div style='display:flex; height:100%; font-size:1.05rem;'>
+          <div style='flex:70; background:#1E90FF; color:#ffffff; display:flex; flex-direction:column; align-items:center; justify-content:center; font-weight:600; opacity:{1 if cobertura_percent >= 0 else 0.25};'>
+            Frio
+            <span style="font-weight:400;font-size:0.85rem;opacity:0.85;">&lt; 70%</span>
+          </div>
+          <div style='flex:30; background:#f1c40f; color:#0b0b0b; display:flex; flex-direction:column; align-items:center; justify-content:center; font-weight:700; opacity:{1 if cobertura_percent >= 70 else 0.3};'>
+            Morno
+            <span style="font-weight:500;font-size:0.85rem;opacity:0.85;">70% – 100%</span>
+          </div>
+          <div style='flex:50; background:#FF5722; color:#ffffff; display:flex; flex-direction:column; align-items:center; justify-content:center; font-weight:600; opacity:{1 if cobertura_percent >= 100 else 0.3};'>
+            Quente
+            <span style="font-weight:400;font-size:0.85rem;opacity:0.85;">&gt; 100%</span>
+          </div>
+        </div>
+        <div style='position:absolute; top:0; bottom:0; left:0; width:{largura_preenchida}%; background:rgba(255,255,255,0.15); mix-blend-mode:screen;'></div>
+        <div style='position:absolute; top:0; bottom:0; left:{indicador_posicao}%; transform:translateX(-50%); width:7px; background:#ffffff; box-shadow:0 0 10px rgba(0,0,0,0.55); border-radius:999px;'></div>
+      </div>
+    </div>
+    """
+
+    st.markdown(barra_escala_html, unsafe_allow_html=True)
+
+    st.markdown(
+        f"<div style='margin-top:18px; font-size:0.95rem; color:rgba(255,255,255,0.65);'>Base analisada de {TERMOMETRO_DATA_INICIO.strftime('%d/%m/%Y')} até {data_final_analise.strftime('%d/%m/%Y')} · Atualize a página para forçar nova leitura.</div>",
+        unsafe_allow_html=True
+    )
+
+    linha_termometro = st.columns(4)
+    render_kpi(linha_termometro[0], "Taxa de Conversão Geral", f"{taxa_conversao_geral * 100:.1f}%", "Reservas que viram vendas")
+    render_kpi(linha_termometro[1], "Reservas Atuais", f"{reservas_atuais_total}", "Reservas ativas no pipeline")
+    render_kpi(linha_termometro[2], "Potencial de Vendas", format_compact_currency(potencial_vendas_valor), "Reservas x taxa de conversão")
+    render_kpi(linha_termometro[3], "Cobertura da Meta", f"{cobertura_percent:.1f}%", "Potencial versus meta")
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# ============================================================================
+# LÓGICA DE RENDERIZAÇÃO DO CARROSSEL - SEM JAVASCRIPT, APENAS PYTHON
+# ============================================================================
+
+# Dicionário mapeando índice para função de renderização
+RENDER_FUNCTIONS = {
+    0: render_bloco_0,
+    1: render_bloco_1,
+    # Os outros blocos serão adicionados após extrair do código antigo
+}
+
+# Renderizar o bloco atual dentro do placeholder baseado no índice
+with carousel_placeholder.container():
+    current_index = st.session_state.carousel_index
+    
+    if current_index == 0:
+        render_bloco_0()
+    elif current_index == 1:
+        render_bloco_1()
+    elif current_index == 2:
+        # Bloco 2 será implementado abaixo (extrair do código antigo)
+        st.info(f"Bloco {current_index} - Em desenvolvimento")
+    elif current_index == 3:
+        # Bloco 3 será implementado abaixo (extrair do código antigo)
+        st.info(f"Bloco {current_index} - Em desenvolvimento")
+    elif current_index == 4:
+        # Bloco 4 será implementado abaixo (extrair do código antigo)
+        st.info(f"Bloco {current_index} - Em desenvolvimento")
+
+# Código antigo dos blocos (será removido após migração completa)
+# TODO: Extrair blocos 2, 3, 4 para funções e remover código abaixo
+# ============================================================================
+
+# Bloco 1: Termômetro de Vendas (CÓDIGO ANTIGO - SERÁ REMOVIDO)
         st.markdown('<div class="tv-carousel-section">', unsafe_allow_html=True)
         st.subheader("🌡️ Termômetro de Vendas")
 
