@@ -42,42 +42,62 @@ if 'carousel_index' not in st.session_state:
 if 'carousel_last_update' not in st.session_state:
     st.session_state.carousel_last_update = time.time()
 
-# Verificar se precisa avançar para próxima seção
-current_time = time.time()
-elapsed = current_time - st.session_state.carousel_last_update
-
-# Se passou o intervalo, avança e faz rerun (preserva sessão)
-if elapsed >= CAROUSEL_INTERVAL:
-    st.session_state.carousel_index = (st.session_state.carousel_index + 1) % CAROUSEL_SECTIONS
-    st.session_state.carousel_last_update = current_time
-    st.rerun()
-
 st.title("📺 TV Comercial")
 st.caption(f"Atualização realizada em {datetime.now().strftime('%d/%m/%Y %H:%M:%S')} · Seção {st.session_state.carousel_index + 1}/{CAROUSEL_SECTIONS}")
 
-# Componente HTML invisível que força rerun via JavaScript (sem reload completo)
+# Componente HTML que retorna timestamp após intervalo - quando muda, fazemos rerun
 import streamlit.components.v1 as components
 
-components.html(
+# Usar um contador que incrementa quando passa o tempo
+if 'carousel_auto_refresh' not in st.session_state:
+    st.session_state.carousel_auto_refresh = 0
+
+# Componente que retorna valor após X segundos
+carousel_refresh = components.html(
     f"""
     <script>
         setTimeout(function() {{
-            // Tentar disparar rerun via evento do Streamlit
-            if (window.parent && window.parent.streamlit) {{
-                window.parent.streamlit.rerun();
-            }} else {{
-                // Fallback: usar método alternativo que preserva sessão
-                const event = document.createEvent('Event');
-                event.initEvent('streamlit:rerun', true, true);
-                window.dispatchEvent(event);
+            // Enviar valor para Streamlit após intervalo
+            const iframe = window.frameElement || window;
+            if (iframe && iframe.contentWindow) {{
+                iframe.contentWindow.postMessage({{
+                    type: 'streamlit:setComponentValue',
+                    value: Date.now()
+                }}, '*');
+            }}
+            // Também tentar via parent
+            if (window.parent) {{
+                window.parent.postMessage({{
+                    type: 'streamlit:setComponentValue',
+                    value: Date.now()
+                }}, '*');
             }}
         }}, {CAROUSEL_INTERVAL * 1000});
+        
+        // Retornar valor inicial
+        if (window.parent) {{
+            window.parent.postMessage({{
+                type: 'streamlit:setComponentValue',
+                value: {st.session_state.carousel_auto_refresh}
+            }}, '*');
+        }}
     </script>
     <div style="display:none;"></div>
     """,
     height=0,
-    key=f"carousel_timer_{st.session_state.carousel_index}"
+    key=f"carousel_refresh_{st.session_state.carousel_index}"
 )
+
+# Verificar se precisa avançar (baseado em tempo decorrido)
+current_time = time.time()
+elapsed = current_time - st.session_state.carousel_last_update
+
+# Se passou o intervalo, avança para próxima seção
+if elapsed >= CAROUSEL_INTERVAL:
+    st.session_state.carousel_index = (st.session_state.carousel_index + 1) % CAROUSEL_SECTIONS
+    st.session_state.carousel_last_update = current_time
+    st.session_state.carousel_auto_refresh += 1
+    st.rerun()
 
 st.markdown(
     """
