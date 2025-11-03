@@ -54,13 +54,18 @@ if elapsed >= CAROUSEL_INTERVAL:
     st.session_state.carousel_last_update = current_time
     # Forçar rerun para mostrar nova seção (preserva sessão)
     st.rerun()
-elif elapsed >= CAROUSEL_INTERVAL - 0.1:  # Pequena margem para garantir avanço
-    # Forçar rerun próximo ao intervalo para garantir transição
-    st.rerun()
+else:
+    # Forçar rerun periódico para atualizar contador e garantir transição
+    # Usar um intervalo menor para garantir que o rerun acontece antes do intervalo completo
+    if elapsed >= CAROUSEL_INTERVAL * 0.8:  # Rerun quando está próximo do intervalo
+        st.rerun()
 
 # Título e informações sempre visíveis
 st.title("📺 TV Comercial")
-tempo_restante = max(0, CAROUSEL_INTERVAL - int(elapsed))
+tempo_restante = max(0, int(CAROUSEL_INTERVAL - elapsed))
+# Forçar rerun se estiver muito próximo do intervalo para garantir transição suave
+if tempo_restante <= 1:
+    st.rerun()
 st.caption(f"Atualização realizada em {datetime.now().strftime('%d/%m/%Y %H:%M:%S')} · Seção {st.session_state.carousel_index + 1}/{CAROUSEL_SECTIONS} · Próxima em {tempo_restante}s")
 
 # Placeholder principal que será atualizado com o conteúdo do bloco atual
