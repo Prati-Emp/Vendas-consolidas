@@ -52,7 +52,10 @@ elapsed = current_time - st.session_state.carousel_last_update
 if elapsed >= CAROUSEL_INTERVAL:
     st.session_state.carousel_index = (st.session_state.carousel_index + 1) % CAROUSEL_SECTIONS
     st.session_state.carousel_last_update = current_time
-    # Forçar rerun apenas quando necessário para avançar (preserva sessão)
+    # Forçar rerun para mostrar nova seção (preserva sessão)
+    st.rerun()
+elif elapsed >= CAROUSEL_INTERVAL - 0.1:  # Pequena margem para garantir avanço
+    # Forçar rerun próximo ao intervalo para garantir transição
     st.rerun()
 
 # Título e informações sempre visíveis
@@ -818,14 +821,361 @@ with carousel_placeholder.container():
     elif current_index == 1:
         render_bloco_1()
     elif current_index == 2:
-        # Bloco 2 será implementado abaixo (extrair do código antigo)
-        st.info(f"Bloco {current_index} - Em desenvolvimento")
+        # Bloco 2: Reservas - Situação Atual
+        st.markdown('<div class="tv-carousel-section">', unsafe_allow_html=True)
+        st.markdown("## 🧾 Reservas - Situação Atual")
+
+        reservas_status_df = reservas_ativas_df.copy()
+
+        if reservas_status_df.empty:
+            st.info("Sem reservas ativas para exibir no momento.")
+        else:
+            reservas_status_df['situacao'] = reservas_status_df['situacao'].astype(str).str.strip()
+
+            status_counts = (
+                reservas_status_df.groupby('situacao', dropna=False)
+                .agg(
+                    Quantidade=('situacao', 'size'),
+                    Valor=('valor_contrato', 'sum')
+                )
+                .reset_index()
+            )
+            status_counts = status_counts.rename(columns={'situacao': 'Situacao'})
+
+            if status_counts.empty:
+                st.info("Nenhuma situação ativa encontrada no período.")
+            else:
+                status_counts['SituacaoNormalizada'] = status_counts['Situacao'].apply(normalize_reserva_label)
+                status_counts['Indice'] = status_counts['Situacao'].apply(
+                    lambda s: RESERVAS_SITUACAO_INDICES.get(str(s).strip(), 999)
+                )
+                status_counts = status_counts.sort_values(['Indice', 'Situacao']).reset_index(drop=True)
+
+                total_reservas_status = int(status_counts['Quantidade'].sum())
+                status_counts['Percentual'] = status_counts['Quantidade'].apply(
+                    lambda v: round(v / total_reservas_status * 100, 1) if total_reservas_status > 0 else 0.0
+                )
+                status_counts['Valor'] = status_counts['Valor'].fillna(0.0)
+                status_counts['ValorFormatado'] = status_counts['Valor'].apply(format_compact_currency)
+                status_counts['QuantidadeFormatada'] = status_counts['Quantidade'].apply(format_int_value)
+
+                paleta_reservas = ['#16295f', '#1e3a8a', '#2563eb', '#3b82f6', '#60a5fa', '#7c3aed', '#a855f7']
+                color_map = {
+                    situacao: paleta_reservas[i % len(paleta_reservas)]
+                    for i, situacao in enumerate(status_counts['Situacao'].tolist())
+                }
+
+                fig_reserva_status = px.bar(
+                    status_counts,
+                    x='Quantidade',
+                    y='Situacao',
+                    orientation='h',
+                    text='ValorFormatado',
+                    custom_data=['QuantidadeFormatada', 'ValorFormatado'],
+                    color='Situacao',
+                    color_discrete_map=color_map,
+                    title='Distribuição de Reservas por Situação'
+                )
+                fig_reserva_status = apply_dark_theme(fig_reserva_status, margin_top=60)
+                fig_reserva_status.update_layout(
+                    showlegend=False,
+                    title=dict(
+                        text='Distribuição de Reservas por Situação',
+                        x=0,
+                        xanchor='left',
+                        font=dict(size=20, color='#f8fafc', family='Manrope, sans-serif')
+                    ),
+                    yaxis=dict(
+                        categoryorder='array',
+                        categoryarray=status_counts['Situacao'].tolist()[::-1],
+                        title='',
+                        tickfont=dict(size=15, color='rgba(248,250,252,0.88)', family='Manrope, sans-serif')
+                    ),
+                    xaxis=dict(showticklabels=False, showgrid=False, zeroline=False),
+                    bargap=0.25
+                )
+                max_quantidade = status_counts['Quantidade'].max() if not status_counts.empty else 0
+                offset_anotacao = max(max_quantidade * 0.02, 0.4)
+                fig_reserva_status.update_traces(
+                    texttemplate='<b>%{text}</b>',
+                    textposition='inside',
+                    insidetextanchor='middle',
+                    textfont=dict(color='#f8fafc', size=18, family='Manrope, sans-serif'),
+                    hovertemplate='<b>%{y}</b><br>Quantidade: %{customdata[0]}<br>Valor: %{text}<extra></extra>'
+                )
+                for _, linha in status_counts.iterrows():
+                    fig_reserva_status.add_annotation(
+                        x=float(linha['Quantidade']) + offset_anotacao,
+                        y=linha['Situacao'],
+                        text=linha['QuantidadeFormatada'],
+                        showarrow=False,
+                        font=dict(size=16, color='#f8fafc', family='Manrope, sans-serif'),
+                        xanchor='left',
+                        bgcolor='rgba(15,23,42,0.82)',
+                        bordercolor='rgba(148, 163, 184, 0.55)',
+                        borderwidth=1,
+                        borderpad=6
+                    )
+                st.plotly_chart(fig_reserva_status, use_container_width=True)
+
+                linha_conversao = st.columns(2)
+                tag_6m = "6 MESES"
+
+                valor_conversao_prati = f"{taxa_prati:.1f}%" if total_prati > 0 else "—"
+                sub_prati = (
+                    f"{format_int_value(convertidas_prati)} de {format_int_value(total_prati)} reservas"
+                    if total_prati > 0 else "Sem registros no período"
+                )
+
+                valor_conversao_outras = f"{taxa_outras:.1f}%" if total_outras > 0 else "—"
+                sub_outras = (
+                    f"{format_int_value(convertidas_outras)} de {format_int_value(total_outras)} reservas"
+                    if total_outras > 0 else "Sem registros no período"
+                )
+
+                render_kpi(
+                    linha_conversao[0],
+                    "Conversão Prati",
+                    valor_conversao_prati,
+                    sub_prati,
+                    tag=tag_6m,
+                    compact=True
+                )
+                render_kpi(
+                    linha_conversao[1],
+                    "Conversão Outras Imobiliárias",
+                    valor_conversao_outras,
+                    sub_outras,
+                    tag=tag_6m,
+                    compact=True
+                )
+        st.markdown('</div>', unsafe_allow_html=True)
     elif current_index == 3:
-        # Bloco 3 será implementado abaixo (extrair do código antigo)
-        st.info(f"Bloco {current_index} - Em desenvolvimento")
+        # Bloco 3: Leads Ativos
+        st.markdown('<div class="tv-carousel-section">', unsafe_allow_html=True)
+        st.markdown("## 📈 Leads Ativos")
+
+        leads_base_df = load_leads_tv()
+
+        if leads_base_df.empty:
+            st.info("Não foi possível carregar dados de leads para o período analisado.")
+        else:
+            leads_tv_df = leads_base_df.copy()
+            leads_tv_df['data_consolidada'] = pd.to_datetime(leads_tv_df['data_consolidada'], errors='coerce')
+            leads_tv_df = leads_tv_df[leads_tv_df['data_consolidada'].notna()]
+            leads_tv_df = leads_tv_df[
+                (leads_tv_df['data_consolidada'].dt.date >= TERMOMETRO_DATA_INICIO) &
+                (leads_tv_df['data_consolidada'].dt.date <= data_final_analise)
+            ].copy()
+
+            if leads_tv_df.empty:
+                st.info("Sem leads no período de análise selecionado.")
+            else:
+                leads_tv_df['corretor_consolidado'] = leads_tv_df['corretor_consolidado'].fillna('—')
+                leads_tv_df = leads_tv_df[~leads_tv_df['corretor_consolidado'].str.upper().isin(LEADS_CORRETORES_REMOVIDOS)]
+
+                leads_tv_df['funil_etapa'] = leads_tv_df.apply(
+                    lambda row: map_lead_stage(row['nome_situacao_anterior_lead'], row['situacao_nome']), axis=1
+                )
+
+                situacoes_excluidas = {"descartado", "em pré-cadastro", "venda realizada", "vencido"}
+                leads_tv_df['situacao_normalizada'] = leads_tv_df['situacao_nome'].str.lower().str.strip()
+                leads_ativos_df = leads_tv_df[~leads_tv_df['situacao_normalizada'].isin(situacoes_excluidas)].copy()
+
+                total_leads_ativos = int(leads_ativos_df.shape[0])
+
+                if total_leads_ativos == 0:
+                    st.info("Sem leads ativos no período de análise selecionado.")
+                else:
+                    funil_etapas_ativos = LEADS_FUNIL_ETAPAS
+                    etapa_counts = [
+                        int((leads_ativos_df['funil_etapa'] == etapa).sum())
+                        for etapa in funil_etapas_ativos
+                    ]
+                    percentuais = [
+                        (valor / total_leads_ativos * 100) if total_leads_ativos > 0 else 0.0
+                        for valor in etapa_counts
+                    ]
+                    max_valor = max(etapa_counts) if etapa_counts else 0
+                    offset_anotacao = max(max_valor * 0.02, 4)
+                    textos_percentual = [f"{percentual:.1f}%" for percentual in percentuais]
+
+                    fig_leads = go.Figure()
+                    fig_leads.add_trace(go.Bar(
+                        y=funil_etapas_ativos,
+                        x=etapa_counts,
+                        orientation='h',
+                        text=textos_percentual,
+                        texttemplate='<b>%{text}</b>',
+                        textposition='inside',
+                        insidetextanchor='middle',
+                        textfont=dict(color='#f8fafc', size=18, family='Manrope, sans-serif'),
+                        marker=dict(
+                            color=['#60a5fa', '#3b82f6', '#2563eb', '#7c3aed'],
+                            line=dict(width=0)
+                        ),
+                        customdata=percentuais,
+                        hovertemplate="<b>%{y}</b><br>Quantidade: %{x:,}<br>Participação: %{customdata:.1f}%<extra></extra>",
+                        cliponaxis=False
+                    ))
+
+                    for etapa, valor in zip(funil_etapas_ativos, etapa_counts):
+                        fig_leads.add_annotation(
+                            x=valor + offset_anotacao,
+                            y=etapa,
+                            text=format_int_value(valor),
+                            showarrow=False,
+                            font=dict(size=17, color='#f8fafc', family='Manrope, sans-serif'),
+                            xanchor='left',
+                            bgcolor='rgba(15,23,42,0.78)',
+                            bordercolor='rgba(148,163,184,0.45)',
+                            borderwidth=1,
+                            borderpad=6
+                        )
+
+                    range_max = max_valor + offset_anotacao * 4 if max_valor else 1
+                    fig_leads.update_layout(
+                        paper_bgcolor="rgba(0,0,0,0)",
+                        plot_bgcolor="rgba(0,0,0,0)",
+                        font=dict(color="#f8fafc"),
+                        height=420,
+                        margin=dict(t=60, b=40, l=180, r=160),
+                        showlegend=False,
+                        xaxis=dict(
+                            showgrid=False,
+                            zeroline=False,
+                            showticklabels=False,
+                            range=[0, range_max]
+                        ),
+                        yaxis=dict(
+                            showgrid=False,
+                            tickfont=dict(size=15, color='rgba(248,250,252,0.86)', family='Manrope, sans-serif'),
+                            categoryorder='array',
+                            categoryarray=list(reversed(funil_etapas_ativos))
+                        ),
+                        hoverlabel=dict(bgcolor='rgba(15,23,42,0.92)', font_size=14, font_family='Manrope, sans-serif')
+                    )
+                    st.plotly_chart(fig_leads, use_container_width=True)
+
+                    cards = st.columns(len(funil_etapas_ativos) + 1)
+                    render_kpi(cards[0], "Total Leads Ativos", format_int_value(total_leads_ativos), "Base ativa consolidada")
+                    for col, etapa, valor, percentual in zip(cards[1:], funil_etapas_ativos, etapa_counts, percentuais):
+                        render_kpi(col, etapa, format_int_value(valor), f"{percentual:.1f}% do total")
+
+                    st.caption(
+                        f"Base consolidada considerada de {TERMOMETRO_DATA_INICIO.strftime('%d/%m/%Y')} até {data_final_analise.strftime('%d/%m/%Y')} · Leads ativos: {format_int_value(total_leads_ativos)}"
+                    )
+
+                    # Por mídia
+                    st.markdown("### 📣 Distribuição por Mídia")
+                    midia_resumo = (
+                        leads_tv_df.groupby('midia_consolidada')
+                        .agg(
+                            total_leads=('idlead', 'count'),
+                            vendas=('funil_etapa', lambda x: (x == 'Venda realizada').sum())
+                        )
+                        .reset_index()
+                    )
+
+                    if midia_resumo.empty:
+                        st.info("Sem dados de mídia para exibir.")
+                    else:
+                        total_leads_midia = midia_resumo['total_leads'].sum()
+                        if total_leads_midia > 0:
+                            midia_resumo['percent_leads'] = (midia_resumo['total_leads'] / total_leads_midia * 100).round(1)
+                        else:
+                            midia_resumo['percent_leads'] = 0.0
+                        midia_resumo['percent_conversao'] = midia_resumo.apply(
+                            lambda row: round((row['vendas'] / row['total_leads'] * 100), 1) if row['total_leads'] > 0 else 0.0, axis=1
+                        )
+                        midia_resumo = midia_resumo.sort_values('total_leads', ascending=False)
+
+                        midia_display = midia_resumo.copy()
+                        midia_display['Mídia'] = midia_display['midia_consolidada']
+                        midia_display['Total Leads'] = midia_display['total_leads'].apply(format_int_value)
+                        midia_display['Vendas Realizadas'] = midia_display['vendas'].apply(format_int_value)
+                        midia_display['% Leads'] = midia_display['percent_leads'].map(lambda v: f"{v:.1f}%")
+                        midia_display['% Conversão'] = midia_display['percent_conversao'].map(lambda v: f"{v:.1f}%")
+                        midia_display = midia_display[['Mídia', 'Total Leads', 'Vendas Realizadas', '% Leads', '% Conversão']]
+
+                        render_midia_table_html(midia_display)
+        st.markdown('</div>', unsafe_allow_html=True)
     elif current_index == 4:
-        # Bloco 4 será implementado abaixo (extrair do código antigo)
-        st.info(f"Bloco {current_index} - Em desenvolvimento")
+        # Bloco 4: Cancelamentos por Motivo
+        st.markdown('<div class="tv-carousel-section">', unsafe_allow_html=True)
+        st.markdown("## ❌ Cancelamentos por Motivo")
+        
+        # Carregar leads para cancelamentos
+        leads_base_df = load_leads_tv()
+        if leads_base_df.empty:
+            st.info("Não foi possível carregar dados de leads para análise de cancelamentos.")
+        else:
+            leads_tv_df = leads_base_df.copy()
+            leads_tv_df['data_consolidada'] = pd.to_datetime(leads_tv_df['data_consolidada'], errors='coerce')
+            leads_tv_df = leads_tv_df[leads_tv_df['data_consolidada'].notna()]
+            leads_tv_df = leads_tv_df[
+                (leads_tv_df['data_consolidada'].dt.date >= TERMOMETRO_DATA_INICIO) &
+                (leads_tv_df['data_consolidada'].dt.date <= data_final_analise)
+            ].copy()
+            leads_tv_df['corretor_consolidado'] = leads_tv_df['corretor_consolidado'].fillna('—')
+            leads_tv_df = leads_tv_df[~leads_tv_df['corretor_consolidado'].str.upper().isin(LEADS_CORRETORES_REMOVIDOS)]
+
+            cancelamentos_df = leads_tv_df[
+                leads_tv_df['motivo_cancelamento_consolidada'].notna()
+                & (leads_tv_df['motivo_cancelamento_consolidada'].str.strip() != '')
+            ].copy()
+
+            if cancelamentos_df.empty:
+                st.info("Nenhum cancelamento registrado no período.")
+            else:
+                cancelamentos_resumo = (
+                    cancelamentos_df.groupby('motivo_cancelamento_consolidada')['idlead']
+                    .count()
+                    .reset_index(name='Quantidade')
+                    .sort_values('Quantidade', ascending=False)
+                )
+
+                cancelamentos_top10 = cancelamentos_resumo.head(10).sort_values('Quantidade', ascending=True)
+                cores_cancelamentos = ['#12325b', '#1e3a8a', '#2563eb', '#3b82f6', '#60a5fa', '#7c3aed', '#a855f7', '#d946ef', '#f97316', '#facc15']
+                color_map_cancelamentos = {
+                    motivo: cores_cancelamentos[i % len(cores_cancelamentos)]
+                    for i, motivo in enumerate(cancelamentos_top10['motivo_cancelamento_consolidada'])
+                }
+
+                fig_cancel = px.bar(
+                    cancelamentos_top10,
+                    x='Quantidade',
+                    y='motivo_cancelamento_consolidada',
+                    orientation='h',
+                    color='motivo_cancelamento_consolidada',
+                    color_discrete_map=color_map_cancelamentos,
+                    title='<span style="font-size:1.05rem; color:#cbd5f5;">Top 10 motivos que explicam cancelamentos</span>'
+                )
+                fig_cancel = apply_dark_theme(fig_cancel, margin_top=40)
+                fig_cancel.update_yaxes(
+                    title="",
+                    autorange="reversed",
+                    tickfont=dict(size=16, color='rgba(248,250,252,0.92)', family='Manrope, sans-serif')
+                )
+                fig_cancel.update_xaxes(
+                    title="Quantidade",
+                    showgrid=False,
+                    zeroline=False,
+                    tickfont=dict(size=14, color='rgba(248,250,252,0.85)', family='Manrope, sans-serif')
+                )
+                fig_cancel.update_traces(
+                    texttemplate='<b>%{x}</b>',
+                    textposition='outside',
+                    marker=dict(line=dict(color='rgba(15, 23, 42, 0.6)', width=1)),
+                    hovertemplate='<b>%{y}</b><br>Cancelamentos: %{x:,}<extra></extra>'
+                )
+                fig_cancel.update_layout(
+                    showlegend=False,
+                    bargap=0.27,
+                    height=520
+                )
+                st.plotly_chart(fig_cancel, use_container_width=True)
+        st.markdown('</div>', unsafe_allow_html=True)
 
 # Código antigo dos blocos (será removido após migração completa)
 # TODO: Extrair blocos 2, 3, 4 para funções e remover código abaixo
