@@ -32,24 +32,32 @@ if email not in {"odair.santos@grupoprati.com"}:
     st.warning("⚠️ Você não tem permissão para acessar a TV Comercial.")
     st.stop()
 
+# Configurações do carrossel
+CAROUSEL_SECTIONS = 5  # Número de seções/blocos
+CAROUSEL_INTERVAL = 5  # Segundos por seção
+
 # Inicializar estado do carrossel
 if 'carousel_index' not in st.session_state:
     st.session_state.carousel_index = 0
 if 'carousel_last_update' not in st.session_state:
     st.session_state.carousel_last_update = time.time()
-
-# Configurações do carrossel
-CAROUSEL_SECTIONS = 5  # Número de seções/blocos
-CAROUSEL_INTERVAL = 5  # Segundos por seção
+if 'carousel_initialized' not in st.session_state:
+    st.session_state.carousel_initialized = True
 
 # Verificar se precisa avançar para próxima seção
 current_time = time.time()
-elapsed = current_time - st.session_state.carousel_last_update
 
-if elapsed >= CAROUSEL_INTERVAL:
-    st.session_state.carousel_index = (st.session_state.carousel_index + 1) % CAROUSEL_SECTIONS
+# Na primeira carga, inicializa o timestamp
+if 'carousel_last_update' in st.session_state:
+    elapsed = current_time - st.session_state.carousel_last_update
+    
+    # Se passou o intervalo, avança para próxima seção
+    if elapsed >= CAROUSEL_INTERVAL:
+        st.session_state.carousel_index = (st.session_state.carousel_index + 1) % CAROUSEL_SECTIONS
+        st.session_state.carousel_last_update = current_time
+else:
+    # Primeira vez - inicializa com tempo atual
     st.session_state.carousel_last_update = current_time
-    st.rerun()
 
 st.title("📺 TV Comercial")
 st.caption(f"Atualização realizada em {datetime.now().strftime('%d/%m/%Y %H:%M:%S')} · Seção {st.session_state.carousel_index + 1}/{CAROUSEL_SECTIONS}")
@@ -1156,13 +1164,15 @@ with section_containers[4]:
                 st.plotly_chart(fig_cancel, use_container_width=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
-# Adicionar script JavaScript para auto-refresh
+# Adicionar script JavaScript no início da página para forçar reload automático
 st.markdown(
     f"""
     <script>
-        setTimeout(function(){{
-            window.location.reload();
-        }}, {CAROUSEL_INTERVAL * 1000});
+        (function() {{
+            setTimeout(function() {{
+                window.location.reload(true);
+            }}, {CAROUSEL_INTERVAL * 1000});
+        }})();
     </script>
     """,
     unsafe_allow_html=True
