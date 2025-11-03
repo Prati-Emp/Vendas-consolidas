@@ -109,10 +109,16 @@ carousel_timer = components.html(
         setTimeout(function() {{
             clearInterval(displayInterval);
             // Adicionar query parameter e fazer reload
-            const url = new URL(window.location.href);
+            // Como estamos em iframe, usar window.parent para acessar a página principal
+            const currentUrl = window.parent.location.href || window.location.href;
+            const url = new URL(currentUrl);
             url.searchParams.set('_carousel_advance', Date.now());
-            // Usar href para navegação (preserva sessão do Streamlit melhor que replace)
-            window.location.href = url.toString();
+            // Usar parent.location para recarregar a página principal
+            if (window.parent && window.parent.location) {{
+                window.parent.location.href = url.toString();
+            }} else {{
+                window.location.href = url.toString();
+            }}
         }}, {CAROUSEL_INTERVAL * 1000});
     </script>
     <div style="display:none;"></div>
