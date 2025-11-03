@@ -67,84 +67,40 @@ if 'carousel_pending_advance' in st.session_state:
 st.title("📺 TV Comercial")
 st.caption(f"Atualização realizada em {datetime.now().strftime('%d/%m/%Y %H:%M:%S')} · Seção {st.session_state.carousel_index + 1}/{CAROUSEL_SECTIONS}")
 
-# Componente HTML que retorna valor após intervalo - Streamlit detecta mudança e faz rerun
-import streamlit.components.v1 as components
-
-# Inicializar contador de refresh se não existir
-if 'carousel_refresh_counter' not in st.session_state:
-    st.session_state.carousel_refresh_counter = 0
-
-# Calcular tempo restante
+# Injetar JavaScript diretamente na página usando st.markdown (mais confiável)
 tempo_restante = max(0, CAROUSEL_INTERVAL - int(elapsed))
-
-# Preparar valores para o JavaScript
 interval_ms = CAROUSEL_INTERVAL * 1000
-refresh_counter = st.session_state.carousel_refresh_counter
 
-# Construir HTML do componente de forma segura
-html_content = f"""
-<script>
-(function() {{
-    let countdown = {tempo_restante};
-    
-    // Atualizar contador visual
-    function updateDisplay() {{
-        const elem = document.getElementById('carousel-countdown');
-        if (elem) {{
-            elem.innerHTML = 'Próxima seção em: <strong>' + countdown + 's</strong>';
-        }}
-        if (countdown > 0) {{
-            countdown--;
-        }}
-    }}
-    
-    // Criar display de contador
-    const display = document.createElement('div');
-    display.id = 'carousel-countdown';
-    display.style.cssText = 'position: fixed; bottom: 10px; right: 10px; background: rgba(0,0,0,0.7); color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; z-index: 9999;';
-    display.innerHTML = 'Próxima seção em: <strong>' + countdown + 's</strong>';
-    if (document.body) {{
-        document.body.appendChild(display);
-    }} else {{
-        document.addEventListener('DOMContentLoaded', function() {{
-            document.body.appendChild(display);
-        }});
-    }}
-    
-    // Atualizar display a cada segundo
-    const displayInterval = setInterval(updateDisplay, 1000);
-    
-    // Após intervalo, forçar reload com query parameter (preserva sessão)
-    setTimeout(function() {{
-        clearInterval(displayInterval);
-        try {{
-            // Adicionar query parameter e fazer reload
-            const currentUrl = (window.parent && window.parent.location) ? window.parent.location.href : window.location.href;
-            const url = new URL(currentUrl);
-            url.searchParams.set('_carousel_advance', Date.now().toString());
-            // Usar parent.location para recarregar a página principal
-            if (window.parent && window.parent.location) {{
-                window.parent.location.href = url.toString();
-            }} else {{
-                window.location.href = url.toString();
-            }}
-        }} catch (e) {{
-            // Fallback: reload simples
-            window.location.reload();
-        }}
-    }}, {interval_ms});
-}})();
-</script>
-<div style="display:none;"></div>
-"""
-
-# Componente que retorna valor incrementado após intervalo
-# Nota: components.html não aceita key como parâmetro nomeado na versão atual
-try:
-    carousel_timer = components.html(html_content, height=0)
-except TypeError:
-    # Fallback: tentar sem height
-    carousel_timer = components.html(html_content)
+# Script JavaScript que será injetado diretamente na página principal
+st.markdown(
+    f"""
+    <div id="carousel-countdown" style="position: fixed; bottom: 10px; right: 10px; background: rgba(0,0,0,0.7); color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; z-index: 9999;">
+        Próxima seção em: <strong>{tempo_restante}s</strong>
+    </div>
+    <script>
+        (function() {{
+            let countdown = {tempo_restante};
+            const displayElem = document.getElementById('carousel-countdown');
+            
+            // Atualizar contador visual a cada segundo
+            const interval = setInterval(function() {{
+                countdown--;
+                if (displayElem) {{
+                    displayElem.innerHTML = 'Próxima seção em: <strong>' + countdown + 's</strong>';
+                }}
+                if (countdown <= 0) {{
+                    clearInterval(interval);
+                    // Adicionar query parameter e recarregar página
+                    const url = new URL(window.location.href);
+                    url.searchParams.set('_carousel_advance', Date.now().toString());
+                    window.location.href = url.toString();
+                }}
+            }}, 1000);
+        }})();
+    </script>
+    """,
+    unsafe_allow_html=True
+)
 
 # Se o componente retornou um valor diferente, significa que passou o tempo
 # Nota: components.html não retorna valor diretamente, então vamos usar outra abordagem
