@@ -1184,5 +1184,5 @@ if tempo_restante_segundos > 0:
 
 st.session_state.carousel_index = (st.session_state.carousel_index + 1) % CAROUSEL_SECTIONS
 st.session_state.carousel_last_update = time.time()
-st.experimental_rerun()
+st.rerun()
 
