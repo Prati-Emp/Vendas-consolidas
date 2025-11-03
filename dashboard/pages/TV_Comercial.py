@@ -139,12 +139,12 @@ html_content = f"""
 """
 
 # Componente que retorna valor incrementado após intervalo
-carousel_timer_key = f"carousel_timer_{st.session_state.carousel_index}"
-carousel_timer = components.html(
-    html_content,
-    height=0,
-    key=carousel_timer_key
-)
+# Nota: components.html não aceita key como parâmetro nomeado na versão atual
+try:
+    carousel_timer = components.html(html_content, height=0)
+except TypeError:
+    # Fallback: tentar sem height
+    carousel_timer = components.html(html_content)
 
 # Se o componente retornou um valor diferente, significa que passou o tempo
 # Nota: components.html não retorna valor diretamente, então vamos usar outra abordagem
