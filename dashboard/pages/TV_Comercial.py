@@ -42,61 +42,104 @@ if 'carousel_index' not in st.session_state:
 if 'carousel_last_update' not in st.session_state:
     st.session_state.carousel_last_update = time.time()
 
-# Verificar query parameter para detectar avanço manual via JavaScript
+# Verificar query parameter para detectar avanço via JavaScript
 query_params = st.query_params
 if '_carousel_advance' in query_params:
     # Detectado avanço via JavaScript - avança seção
     st.session_state.carousel_index = (st.session_state.carousel_index + 1) % CAROUSEL_SECTIONS
     st.session_state.carousel_last_update = time.time()
     st.query_params.clear()
-    st.rerun()
 
 # Verificar se precisa avançar (baseado em tempo decorrido)
 current_time = time.time()
 elapsed = current_time - st.session_state.carousel_last_update
 
-# Se passou o intervalo, avança para próxima seção e faz rerun
+# Se passou o intervalo, avança para próxima seção
 if elapsed >= CAROUSEL_INTERVAL:
     st.session_state.carousel_index = (st.session_state.carousel_index + 1) % CAROUSEL_SECTIONS
     st.session_state.carousel_last_update = current_time
+
+# Verificar se há avanço pendente e fazer rerun
+if 'carousel_pending_advance' in st.session_state:
+    del st.session_state.carousel_pending_advance
     st.rerun()
 
 st.title("📺 TV Comercial")
 st.caption(f"Atualização realizada em {datetime.now().strftime('%d/%m/%Y %H:%M:%S')} · Seção {st.session_state.carousel_index + 1}/{CAROUSEL_SECTIONS}")
 
-# Container vazio que força rerun periódico
-placeholder = st.empty()
-
-# Script JavaScript simples que mostra contador regressivo e instrui usuário
+# Componente HTML que retorna valor após intervalo - Streamlit detecta mudança e faz rerun
 import streamlit.components.v1 as components
 
+# Inicializar contador de refresh se não existir
+if 'carousel_refresh_counter' not in st.session_state:
+    st.session_state.carousel_refresh_counter = 0
+
+# Calcular tempo restante
 tempo_restante = max(0, CAROUSEL_INTERVAL - int(elapsed))
-components.html(
+
+# Componente que retorna valor incrementado após intervalo
+carousel_timer = components.html(
     f"""
-    <div style="position: fixed; bottom: 10px; right: 10px; background: rgba(0,0,0,0.7); color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; z-index: 9999;">
-        Próxima seção em: <strong>{tempo_restante}s</strong> | 
-        <a href="javascript:window.location.reload()" style="color: #4CAF50; text-decoration: underline;">Rerun agora</a>
-    </div>
     <script>
+        let timerValue = {st.session_state.carousel_refresh_counter};
         let countdown = {tempo_restante};
-        const interval = setInterval(function() {{
-            countdown--;
-            const elem = document.querySelector('div[style*="position: fixed"]');
-            if (elem && countdown >= 0) {{
-                elem.innerHTML = `Próxima seção em: <strong>${{countdown}}s</strong> | <a href="javascript:window.location.reload()" style="color: #4CAF50; text-decoration: underline;">Rerun agora</a>`;
+        
+        // Atualizar contador visual
+        function updateDisplay() {{
+            const elem = document.getElementById('carousel-countdown');
+            if (elem) {{
+                elem.innerHTML = `Próxima seção em: <strong>${{countdown}}s</strong>`;
             }}
-            if (countdown <= 0) {{
-                clearInterval(interval);
-                // Forçar rerun preservando sessão via query param
-                const url = new URL(window.location.href);
-                url.searchParams.set('_carousel_advance', Date.now());
-                window.location.href = url.toString();
+            if (countdown > 0) {{
+                countdown--;
             }}
-        }}, 1000);
+        }}
+        
+        // Criar display de contador
+        const display = document.createElement('div');
+        display.id = 'carousel-countdown';
+        display.style.cssText = 'position: fixed; bottom: 10px; right: 10px; background: rgba(0,0,0,0.7); color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; z-index: 9999;';
+        display.innerHTML = `Próxima seção em: <strong>${{countdown}}s</strong>`;
+        document.body.appendChild(display);
+        
+        // Atualizar display a cada segundo
+        const displayInterval = setInterval(updateDisplay, 1000);
+        
+        // Após intervalo, forçar rerun via query parameter (preserva sessão melhor)
+        setTimeout(function() {{
+            clearInterval(displayInterval);
+            // Usar query parameter para triggerar rerun sem perder sessão
+            const url = new URL(window.location.href);
+            url.searchParams.set('_carousel_advance', Date.now());
+            // Usar replace para não adicionar ao histórico
+            window.location.replace(url.toString());
+        }}, {CAROUSEL_INTERVAL * 1000});
+        
+        // Retornar valor inicial imediatamente
+        window.parent.postMessage({{
+            type: 'streamlit:setComponentValue',
+            value: timerValue
+        }}, '*');
     </script>
+    <div style="display:none;"></div>
     """,
-    height=0
+    height=0,
+    key=f"carousel_timer_{st.session_state.carousel_index}"
 )
+
+# Se o componente retornou um valor diferente, significa que passou o tempo
+# Nota: components.html não retorna valor diretamente, então vamos usar outra abordagem
+# Vamos usar verificação de tempo + placeholder que força rerun periódico
+
+# Placeholder que será atualizado periodicamente
+placeholder = st.empty()
+
+# Verificar tempo decorrido e fazer rerun se necessário
+if elapsed >= CAROUSEL_INTERVAL - 0.5:  # Pequena margem para garantir
+    # Próximo rerun deve avançar a seção
+    if 'carousel_pending_advance' not in st.session_state:
+        st.session_state.carousel_pending_advance = True
+        st.rerun()
 
 st.markdown(
     """
