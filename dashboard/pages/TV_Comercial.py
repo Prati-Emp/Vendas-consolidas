@@ -21,7 +21,7 @@ st.set_page_config(page_title="TV Comercial", layout="wide")
 
 
 require_auth()
-display_navigation()
+# display_navigation()  # Removido conforme solicitado - não mostrar barra de navegação
 st.session_state['current_page'] = __file__
 
 
@@ -54,19 +54,20 @@ if elapsed >= CAROUSEL_INTERVAL:
     st.session_state.carousel_last_update = current_time
     # Forçar rerun para mostrar nova seção (preserva sessão)
     st.rerun()
-else:
-    # Forçar rerun periódico para atualizar contador e garantir transição
-    # Usar um intervalo menor para garantir que o rerun acontece antes do intervalo completo
-    if elapsed >= CAROUSEL_INTERVAL * 0.8:  # Rerun quando está próximo do intervalo
-        st.rerun()
 
 # Título e informações sempre visíveis
 st.title("📺 TV Comercial")
 tempo_restante = max(0, int(CAROUSEL_INTERVAL - elapsed))
-# Forçar rerun se estiver muito próximo do intervalo para garantir transição suave
-if tempo_restante <= 1:
-    st.rerun()
 st.caption(f"Atualização realizada em {datetime.now().strftime('%d/%m/%Y %H:%M:%S')} · Seção {st.session_state.carousel_index + 1}/{CAROUSEL_SECTIONS} · Próxima em {tempo_restante}s")
+
+# Forçar rerun periódico para atualizar contador e garantir transição automática
+# Rerun mais frequente quando está próximo do intervalo
+if tempo_restante <= 2:
+    # Quando falta 2s ou menos, rerun a cada segundo para garantir transição
+    st.rerun()
+elif tempo_restante <= CAROUSEL_INTERVAL * 0.5:
+    # Quando está na metade do intervalo, rerun periodicamente
+    st.rerun()
 
 # Placeholder principal que será atualizado com o conteúdo do bloco atual
 carousel_placeholder = st.empty()
