@@ -42,57 +42,41 @@ if 'carousel_index' not in st.session_state:
 if 'carousel_last_update' not in st.session_state:
     st.session_state.carousel_last_update = time.time()
 
-# Verificar query parameter para detectar rerun do carrossel
-query_params = st.query_params
-if '_carousel_tick' in query_params:
-    # Detectou rerun do carrossel - avança para próxima seção
-    st.session_state.carousel_index = (st.session_state.carousel_index + 1) % CAROUSEL_SECTIONS
-    st.session_state.carousel_last_update = time.time()
-    # Limpar query parameter
-    st.query_params.clear()
-
-# Verificar se precisa avançar para próxima seção (fallback baseado em tempo)
+# Verificar se precisa avançar para próxima seção
 current_time = time.time()
 elapsed = current_time - st.session_state.carousel_last_update
 
-# Se passou muito tempo (mais de intervalo), avança (caso JavaScript não funcione)
-if elapsed >= CAROUSEL_INTERVAL * 2:
+# Se passou o intervalo, avança e faz rerun (preserva sessão)
+if elapsed >= CAROUSEL_INTERVAL:
     st.session_state.carousel_index = (st.session_state.carousel_index + 1) % CAROUSEL_SECTIONS
     st.session_state.carousel_last_update = current_time
+    st.rerun()
 
 st.title("📺 TV Comercial")
 st.caption(f"Atualização realizada em {datetime.now().strftime('%d/%m/%Y %H:%M:%S')} · Seção {st.session_state.carousel_index + 1}/{CAROUSEL_SECTIONS}")
 
-# Usar query parameter para forçar rerun sem perder sessão
+# Componente HTML invisível que força rerun via JavaScript (sem reload completo)
 import streamlit.components.v1 as components
 
-# Adicionar query parameter único para forçar rerun
-if 'carousel_tick' not in st.session_state:
-    st.session_state.carousel_tick = 0
-
-# Componente HTML que atualiza a página sem reload completo
 components.html(
     f"""
     <script>
         setTimeout(function() {{
-            // Usar window.parent.postMessage para comunicar com Streamlit
-            // Isso preserva a sessão
-            window.parent.postMessage({{
-                type: 'streamlit:setComponentValue',
-                value: {{ tick: Date.now() }}
-            }}, '*');
-            
-            // Fallback: rerun suave via query parameter
-            const url = new URL(window.location.href);
-            url.searchParams.set('_carousel_tick', Date.now());
-            window.history.pushState({{}}, '', url);
-            window.location.reload();
+            // Tentar disparar rerun via evento do Streamlit
+            if (window.parent && window.parent.streamlit) {{
+                window.parent.streamlit.rerun();
+            }} else {{
+                // Fallback: usar método alternativo que preserva sessão
+                const event = document.createEvent('Event');
+                event.initEvent('streamlit:rerun', true, true);
+                window.dispatchEvent(event);
+            }}
         }}, {CAROUSEL_INTERVAL * 1000});
     </script>
     <div style="display:none;"></div>
     """,
     height=0,
-    key=f"carousel_auto_refresh_{st.session_state.carousel_index}"
+    key=f"carousel_timer_{st.session_state.carousel_index}"
 )
 
 st.markdown(
