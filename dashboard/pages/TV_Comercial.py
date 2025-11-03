@@ -334,6 +334,7 @@ def load_reservas_tv() -> pd.DataFrame:
     sql = """
         SELECT
             data_cad::DATE AS data_cad,
+            data_venda::DATE AS data_venda,
             situacao,
             valor_contrato,
             COALESCE(NULLIF(TRIM(imobiliaria), ''), '—') AS imobiliaria
@@ -432,6 +433,7 @@ if reservas_df.empty:
 
 
 reservas_df['data_cad'] = pd.to_datetime(reservas_df['data_cad'], errors='coerce')
+reservas_df['data_venda'] = pd.to_datetime(reservas_df.get('data_venda'), errors='coerce')
 reservas_df['situacao'] = reservas_df['situacao'].astype(str).str.strip()
 reservas_df['situacao_normalizada'] = reservas_df['situacao'].str.lower()
 reservas_df['valor_contrato'] = pd.to_numeric(
@@ -483,12 +485,45 @@ def calcular_conversao(df: pd.DataFrame) -> tuple[int, int, float]:
     return total, convertidas, taxa
 
 
+def calcular_tempo_medio_conversao(df: pd.DataFrame) -> tuple[float | None, int]:
+    if df.empty or 'data_venda' not in df.columns:
+        return None, 0
+
+    mask_convertidas = (
+        df['situacao_normalizada'].isin(CONVERSAO_SITUACOES)
+        & df['data_venda'].notna()
+        & df['data_cad'].notna()
+    )
+
+    convertidas_df = df.loc[mask_convertidas].copy()
+
+    if convertidas_df.empty:
+        return None, 0
+
+    convertidas_df['dias_para_conversao'] = (
+        convertidas_df['data_venda'] - convertidas_df['data_cad']
+    ).dt.days
+
+    convertidas_df = convertidas_df[convertidas_df['dias_para_conversao'] >= 0]
+
+    if convertidas_df.empty:
+        return None, 0
+
+    tempo_medio = float(convertidas_df['dias_para_conversao'].mean())
+    quantidade_base = int(convertidas_df.shape[0])
+
+    return tempo_medio, quantidade_base
+
+
 mask_prati = reservas_6m_df['imobiliaria_normalizada'].str.contains('PRATI', na=False)
 reservas_prati_6m = reservas_6m_df[mask_prati]
 reservas_outras_6m = reservas_6m_df[~mask_prati]
 
 total_prati, convertidas_prati, taxa_prati = calcular_conversao(reservas_prati_6m)
 total_outras, convertidas_outras, taxa_outras = calcular_conversao(reservas_outras_6m)
+
+tempo_medio_prati_dias, tempo_medio_prati_base = calcular_tempo_medio_conversao(reservas_prati_6m)
+tempo_medio_outras_dias, tempo_medio_outras_base = calcular_tempo_medio_conversao(reservas_outras_6m)
 
 potencial_vendas_valor = valor_total_reservas * taxa_conversao_geral
 
@@ -999,6 +1034,38 @@ with carousel_placeholder.container():
                     "Conversão Outras Imobiliárias",
                     valor_conversao_outras,
                     sub_outras,
+                    tag=tag_6m,
+                    compact=True
+                )
+
+                linha_tempo_conversao = st.columns(2)
+
+                tempo_prati_display = f"{tempo_medio_prati_dias:.1f} dias" if tempo_medio_prati_dias is not None else "—"
+                sub_tempo_prati = (
+                    f"Base: {format_int_value(tempo_medio_prati_base)} conversões"
+                    if tempo_medio_prati_base > 0 else "Sem conversões com data de venda"
+                )
+
+                tempo_outras_display = f"{tempo_medio_outras_dias:.1f} dias" if tempo_medio_outras_dias is not None else "—"
+                sub_tempo_outras = (
+                    f"Base: {format_int_value(tempo_medio_outras_base)} conversões"
+                    if tempo_medio_outras_base > 0 else "Sem conversões com data de venda"
+                )
+
+                render_kpi(
+                    linha_tempo_conversao[0],
+                    "Tempo Médio Conversão Prati",
+                    tempo_prati_display,
+                    sub_tempo_prati,
+                    tag=tag_6m,
+                    compact=True
+                )
+
+                render_kpi(
+                    linha_tempo_conversao[1],
+                    "Tempo Médio Conversão Outras",
+                    tempo_outras_display,
+                    sub_tempo_outras,
                     tag=tag_6m,
                     compact=True
                 )
