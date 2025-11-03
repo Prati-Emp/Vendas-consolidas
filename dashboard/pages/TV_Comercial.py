@@ -96,6 +96,22 @@ st.markdown(
         .tv-carousel-section {
             animation: fadeIn 0.8s ease-in-out;
         }
+        .tv-carousel-section--reservas {
+            padding-top: 4px;
+        }
+        .tv-carousel-section--reservas .tv-kpi-card {
+            min-height: 150px;
+            padding: 22px 20px;
+        }
+        .tv-carousel-section--reservas .tv-kpi-title-main {
+            font-size: 0.95rem;
+        }
+        .tv-carousel-section--reservas .tv-kpi-value {
+            font-size: 2.3rem;
+        }
+        .tv-carousel-section--reservas .tv-kpi-subtitle {
+            font-size: 0.9rem;
+        }
         @keyframes fadeIn {
             from {
                 opacity: 0;
@@ -819,7 +835,7 @@ with carousel_placeholder.container():
         render_bloco_1()
     elif current_index == 2:
         # Bloco 2: Reservas - Situação Atual
-        st.markdown('<div class="tv-carousel-section">', unsafe_allow_html=True)
+        st.markdown('<div class="tv-carousel-section tv-carousel-section--reservas">', unsafe_allow_html=True)
         st.markdown("## 🧾 Reservas - Situação Atual")
 
         reservas_status_df = reservas_ativas_df.copy()
@@ -875,6 +891,7 @@ with carousel_placeholder.container():
                 )
                 fig_reserva_status = apply_dark_theme(fig_reserva_status, margin_top=60)
                 fig_reserva_status.update_layout(
+                    height=420,
                     showlegend=False,
                     title=dict(
                         text='Distribuição de Reservas por Situação',
