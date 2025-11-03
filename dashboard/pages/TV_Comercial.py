@@ -58,20 +58,19 @@ else:
 st.title("📺 TV Comercial")
 st.caption(f"Atualização realizada em {datetime.now().strftime('%d/%m/%Y %H:%M:%S')} · Seção {st.session_state.carousel_index + 1}/{CAROUSEL_SECTIONS}")
 
-# Inserir script de auto-refresh logo após o título
-st.markdown(
+# Inserir script de auto-refresh usando components.v1.html (mais confiável)
+import streamlit.components.v1 as components
+
+components.html(
     f"""
     <script>
-        (function() {{
-            if (typeof window.carouselTimer === 'undefined') {{
-                window.carouselTimer = setTimeout(function() {{
-                    window.location.reload(true);
-                }}, {CAROUSEL_INTERVAL * 1000});
-            }}
-        }})();
+        setTimeout(function() {{
+            window.parent.location.reload(true);
+        }}, {CAROUSEL_INTERVAL * 1000});
     </script>
+    <div style="display:none;"></div>
     """,
-    unsafe_allow_html=True
+    height=0
 )
 
 st.markdown(
@@ -1176,23 +1175,4 @@ with section_containers[4]:
                 st.plotly_chart(fig_cancel, use_container_width=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
-# Script adicional no final para garantir execução (backup)
-st.markdown(
-    f"""
-    <script>
-        if (document.readyState === 'loading') {{
-            document.addEventListener('DOMContentLoaded', function() {{
-                setTimeout(function() {{
-                    window.location.reload(true);
-                }}, {CAROUSEL_INTERVAL * 1000});
-            }});
-        }} else {{
-            setTimeout(function() {{
-                window.location.reload(true);
-            }}, {CAROUSEL_INTERVAL * 1000});
-        }}
-    </script>
-    """,
-    unsafe_allow_html=True
-)
 
