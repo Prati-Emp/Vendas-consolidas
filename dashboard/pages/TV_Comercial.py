@@ -77,49 +77,65 @@ if 'carousel_refresh_counter' not in st.session_state:
 # Calcular tempo restante
 tempo_restante = max(0, CAROUSEL_INTERVAL - int(elapsed))
 
+# Preparar valores para o JavaScript
+interval_ms = CAROUSEL_INTERVAL * 1000
+refresh_counter = st.session_state.carousel_refresh_counter
+
 # Componente que retorna valor incrementado após intervalo
 carousel_timer = components.html(
-    f"""
+    """
     <script>
-        let timerValue = {st.session_state.carousel_refresh_counter};
-        let countdown = {tempo_restante};
-        
-        // Atualizar contador visual
-        function updateDisplay() {{
-            const elem = document.getElementById('carousel-countdown');
-            if (elem) {{
-                elem.innerHTML = `Próxima seção em: <strong>${{countdown}}s</strong>`;
-            }}
-            if (countdown > 0) {{
-                countdown--;
-            }}
-        }}
-        
-        // Criar display de contador
-        const display = document.createElement('div');
-        display.id = 'carousel-countdown';
-        display.style.cssText = 'position: fixed; bottom: 10px; right: 10px; background: rgba(0,0,0,0.7); color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; z-index: 9999;';
-        display.innerHTML = `Próxima seção em: <strong>${{countdown}}s</strong>`;
-        document.body.appendChild(display);
-        
-        // Atualizar display a cada segundo
-        const displayInterval = setInterval(updateDisplay, 1000);
-        
-        // Após intervalo, forçar reload com query parameter (preserva sessão)
-        setTimeout(function() {{
-            clearInterval(displayInterval);
-            // Adicionar query parameter e fazer reload
-            // Como estamos em iframe, usar window.parent para acessar a página principal
-            const currentUrl = window.parent.location.href || window.location.href;
-            const url = new URL(currentUrl);
-            url.searchParams.set('_carousel_advance', Date.now());
-            // Usar parent.location para recarregar a página principal
-            if (window.parent && window.parent.location) {{
-                window.parent.location.href = url.toString();
-            }} else {{
-                window.location.href = url.toString();
-            }}
-        }}, {CAROUSEL_INTERVAL * 1000});
+        (function() {
+            let timerValue = """ + str(refresh_counter) + """;
+            let countdown = """ + str(tempo_restante) + """;
+            
+            // Atualizar contador visual
+            function updateDisplay() {
+                const elem = document.getElementById('carousel-countdown');
+                if (elem) {
+                    elem.innerHTML = 'Próxima seção em: <strong>' + countdown + 's</strong>';
+                }
+                if (countdown > 0) {
+                    countdown--;
+                }
+            }
+            
+            // Criar display de contador
+            const display = document.createElement('div');
+            display.id = 'carousel-countdown';
+            display.style.cssText = 'position: fixed; bottom: 10px; right: 10px; background: rgba(0,0,0,0.7); color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; z-index: 9999;';
+            display.innerHTML = 'Próxima seção em: <strong>' + countdown + 's</strong>';
+            if (document.body) {
+                document.body.appendChild(display);
+            } else {
+                document.addEventListener('DOMContentLoaded', function() {
+                    document.body.appendChild(display);
+                });
+            }
+            
+            // Atualizar display a cada segundo
+            const displayInterval = setInterval(updateDisplay, 1000);
+            
+            // Após intervalo, forçar reload com query parameter (preserva sessão)
+            setTimeout(function() {
+                clearInterval(displayInterval);
+                try {
+                    // Adicionar query parameter e fazer reload
+                    const currentUrl = (window.parent && window.parent.location) ? window.parent.location.href : window.location.href;
+                    const url = new URL(currentUrl);
+                    url.searchParams.set('_carousel_advance', Date.now().toString());
+                    // Usar parent.location para recarregar a página principal
+                    if (window.parent && window.parent.location) {
+                        window.parent.location.href = url.toString();
+                    } else {
+                        window.location.href = url.toString();
+                    }
+                } catch (e) {
+                    // Fallback: reload simples
+                    window.location.reload();
+                }
+            }, """ + str(interval_ms) + """);
+        })();
     </script>
     <div style="display:none;"></div>
     """,
