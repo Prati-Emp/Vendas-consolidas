@@ -893,8 +893,9 @@ with carousel_placeholder.container():
         st.markdown('</div>', unsafe_allow_html=True)
 
 
-# Bloco 2: Reservas - Situação Atual
-with section_containers[2]:
+# Bloco 2: Reservas - Situação Atual (CÓDIGO ANTIGO - SERÁ EXTRAÍDO PARA FUNÇÃO)
+# with section_containers[2]:
+if False:  # Desabilitado temporariamente até migração completa
     if st.session_state.carousel_index == 2:
         st.markdown('<div class="tv-carousel-section">', unsafe_allow_html=True)
         st.markdown("## 🧾 Reservas - Situação Atual")
@@ -1026,8 +1027,9 @@ with section_containers[2]:
                 )
             st.markdown('</div>', unsafe_allow_html=True)
 
-# Bloco 3: Leads Ativos
-with section_containers[3]:
+# Bloco 3: Leads Ativos (CÓDIGO ANTIGO - SERÁ EXTRAÍDO PARA FUNÇÃO)
+# with section_containers[3]:
+if False:  # Desabilitado temporariamente até migração completa
     if st.session_state.carousel_index == 3:
         st.markdown('<div class="tv-carousel-section">', unsafe_allow_html=True)
         st.markdown("## 📈 Leads Ativos")
@@ -1178,8 +1180,9 @@ with section_containers[3]:
                         render_midia_table_html(midia_display)
         st.markdown('</div>', unsafe_allow_html=True)
 
-# Bloco 4: Cancelamentos por Motivo
-with section_containers[4]:
+# Bloco 4: Cancelamentos por Motivo (CÓDIGO ANTIGO - SERÁ EXTRAÍDO PARA FUNÇÃO)
+# with section_containers[4]:
+if False:  # Desabilitado temporariamente até migração completa
     if st.session_state.carousel_index == 4:
         st.markdown('<div class="tv-carousel-section">', unsafe_allow_html=True)
         st.markdown("## ❌ Cancelamentos por Motivo")
