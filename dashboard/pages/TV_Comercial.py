@@ -42,62 +42,61 @@ if 'carousel_index' not in st.session_state:
 if 'carousel_last_update' not in st.session_state:
     st.session_state.carousel_last_update = time.time()
 
-st.title("📺 TV Comercial")
-st.caption(f"Atualização realizada em {datetime.now().strftime('%d/%m/%Y %H:%M:%S')} · Seção {st.session_state.carousel_index + 1}/{CAROUSEL_SECTIONS}")
-
-# Componente HTML que retorna timestamp após intervalo - quando muda, fazemos rerun
-import streamlit.components.v1 as components
-
-# Usar um contador que incrementa quando passa o tempo
-if 'carousel_auto_refresh' not in st.session_state:
-    st.session_state.carousel_auto_refresh = 0
-
-# Componente que retorna valor após X segundos
-carousel_refresh = components.html(
-    f"""
-    <script>
-        setTimeout(function() {{
-            // Enviar valor para Streamlit após intervalo
-            const iframe = window.frameElement || window;
-            if (iframe && iframe.contentWindow) {{
-                iframe.contentWindow.postMessage({{
-                    type: 'streamlit:setComponentValue',
-                    value: Date.now()
-                }}, '*');
-            }}
-            // Também tentar via parent
-            if (window.parent) {{
-                window.parent.postMessage({{
-                    type: 'streamlit:setComponentValue',
-                    value: Date.now()
-                }}, '*');
-            }}
-        }}, {CAROUSEL_INTERVAL * 1000});
-        
-        // Retornar valor inicial
-        if (window.parent) {{
-            window.parent.postMessage({{
-                type: 'streamlit:setComponentValue',
-                value: {st.session_state.carousel_auto_refresh}
-            }}, '*');
-        }}
-    </script>
-    <div style="display:none;"></div>
-    """,
-    height=0,
-    key=f"carousel_refresh_{st.session_state.carousel_index}"
-)
+# Verificar query parameter para detectar avanço manual via JavaScript
+query_params = st.query_params
+if '_carousel_advance' in query_params:
+    # Detectado avanço via JavaScript - avança seção
+    st.session_state.carousel_index = (st.session_state.carousel_index + 1) % CAROUSEL_SECTIONS
+    st.session_state.carousel_last_update = time.time()
+    st.query_params.clear()
+    st.rerun()
 
 # Verificar se precisa avançar (baseado em tempo decorrido)
 current_time = time.time()
 elapsed = current_time - st.session_state.carousel_last_update
 
-# Se passou o intervalo, avança para próxima seção
+# Se passou o intervalo, avança para próxima seção e faz rerun
 if elapsed >= CAROUSEL_INTERVAL:
     st.session_state.carousel_index = (st.session_state.carousel_index + 1) % CAROUSEL_SECTIONS
     st.session_state.carousel_last_update = current_time
-    st.session_state.carousel_auto_refresh += 1
     st.rerun()
+
+st.title("📺 TV Comercial")
+st.caption(f"Atualização realizada em {datetime.now().strftime('%d/%m/%Y %H:%M:%S')} · Seção {st.session_state.carousel_index + 1}/{CAROUSEL_SECTIONS}")
+
+# Container vazio que força rerun periódico
+placeholder = st.empty()
+
+# Script JavaScript simples que mostra contador regressivo e instrui usuário
+import streamlit.components.v1 as components
+
+tempo_restante = max(0, CAROUSEL_INTERVAL - int(elapsed))
+components.html(
+    f"""
+    <div style="position: fixed; bottom: 10px; right: 10px; background: rgba(0,0,0,0.7); color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; z-index: 9999;">
+        Próxima seção em: <strong>{tempo_restante}s</strong> | 
+        <a href="javascript:window.location.reload()" style="color: #4CAF50; text-decoration: underline;">Rerun agora</a>
+    </div>
+    <script>
+        let countdown = {tempo_restante};
+        const interval = setInterval(function() {{
+            countdown--;
+            const elem = document.querySelector('div[style*="position: fixed"]');
+            if (elem && countdown >= 0) {{
+                elem.innerHTML = `Próxima seção em: <strong>${{countdown}}s</strong> | <a href="javascript:window.location.reload()" style="color: #4CAF50; text-decoration: underline;">Rerun agora</a>`;
+            }}
+            if (countdown <= 0) {{
+                clearInterval(interval);
+                // Forçar rerun preservando sessão via query param
+                const url = new URL(window.location.href);
+                url.searchParams.set('_carousel_advance', Date.now());
+                window.location.href = url.toString();
+            }}
+        }}, 1000);
+    </script>
+    """,
+    height=0
+)
 
 st.markdown(
     """
