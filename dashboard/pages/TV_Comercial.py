@@ -41,23 +41,19 @@ if 'carousel_index' not in st.session_state:
     st.session_state.carousel_index = 0
 if 'carousel_last_update' not in st.session_state:
     st.session_state.carousel_last_update = time.time()
-if 'carousel_initialized' not in st.session_state:
-    st.session_state.carousel_initialized = True
 
 # Verificar se precisa avançar para próxima seção
 current_time = time.time()
+elapsed = current_time - st.session_state.carousel_last_update
 
-# Na primeira carga, inicializa o timestamp
-if 'carousel_last_update' in st.session_state:
-    elapsed = current_time - st.session_state.carousel_last_update
-    
-    # Se passou o intervalo, avança para próxima seção
-    if elapsed >= CAROUSEL_INTERVAL:
-        st.session_state.carousel_index = (st.session_state.carousel_index + 1) % CAROUSEL_SECTIONS
-        st.session_state.carousel_last_update = current_time
-else:
-    # Primeira vez - inicializa com tempo atual
+# Se passou o intervalo, avança para próxima seção
+if elapsed >= CAROUSEL_INTERVAL:
+    st.session_state.carousel_index = (st.session_state.carousel_index + 1) % CAROUSEL_SECTIONS
     st.session_state.carousel_last_update = current_time
+else:
+    # Ainda não passou o intervalo - atualiza timestamp apenas na primeira carga da seção
+    # Isso garante que cada seção tenha 5 segundos completos
+    pass
 
 st.title("📺 TV Comercial")
 st.caption(f"Atualização realizada em {datetime.now().strftime('%d/%m/%Y %H:%M:%S')} · Seção {st.session_state.carousel_index + 1}/{CAROUSEL_SECTIONS}")
