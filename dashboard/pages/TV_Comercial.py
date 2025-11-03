@@ -58,6 +58,22 @@ else:
 st.title("📺 TV Comercial")
 st.caption(f"Atualização realizada em {datetime.now().strftime('%d/%m/%Y %H:%M:%S')} · Seção {st.session_state.carousel_index + 1}/{CAROUSEL_SECTIONS}")
 
+# Inserir script de auto-refresh logo após o título
+st.markdown(
+    f"""
+    <script>
+        (function() {{
+            if (typeof window.carouselTimer === 'undefined') {{
+                window.carouselTimer = setTimeout(function() {{
+                    window.location.reload(true);
+                }}, {CAROUSEL_INTERVAL * 1000});
+            }}
+        }})();
+    </script>
+    """,
+    unsafe_allow_html=True
+)
+
 st.markdown(
     """
     <style>
@@ -1160,15 +1176,21 @@ with section_containers[4]:
                 st.plotly_chart(fig_cancel, use_container_width=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
-# Adicionar script JavaScript no início da página para forçar reload automático
+# Script adicional no final para garantir execução (backup)
 st.markdown(
     f"""
     <script>
-        (function() {{
+        if (document.readyState === 'loading') {{
+            document.addEventListener('DOMContentLoaded', function() {{
+                setTimeout(function() {{
+                    window.location.reload(true);
+                }}, {CAROUSEL_INTERVAL * 1000});
+            }});
+        }} else {{
             setTimeout(function() {{
                 window.location.reload(true);
             }}, {CAROUSEL_INTERVAL * 1000});
-        }})();
+        }}
     </script>
     """,
     unsafe_allow_html=True
