@@ -56,9 +56,22 @@ if elapsed >= CAROUSEL_INTERVAL:
     st.experimental_rerun()
 
 # Título e informações sempre visíveis
-st.title("📺 TV Comercial")
+st.markdown(
+    """
+    <div class="tv-header">
+        <span class="tv-header-icon">📺</span>
+        <span class="tv-header-text">TV Comercial</span>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
 tempo_restante = max(0, int(CAROUSEL_INTERVAL - elapsed))
-st.caption(f"Atualização realizada em {datetime.now().strftime('%d/%m/%Y %H:%M:%S')} · Seção {st.session_state.carousel_index + 1}/{CAROUSEL_SECTIONS} · Próxima em {tempo_restante}s")
+st.markdown(
+    f"""
+    <div class="tv-timestamp">Atualização realizada em {datetime.now().strftime('%d/%m/%Y %H:%M:%S')} · Seção {st.session_state.carousel_index + 1}/{CAROUSEL_SECTIONS} · Próxima em {tempo_restante}s</div>
+    """,
+    unsafe_allow_html=True
+)
 
 # Placeholder principal que será atualizado com o conteúdo do bloco atual
 carousel_placeholder = st.empty()
@@ -73,6 +86,32 @@ st.markdown(
         .stApp h1, .stApp h2, .stApp h3, .stApp h4, .stApp h5, .stApp h6,
         .stApp p, .stApp span, .stApp label, .stApp div, .stApp li {
             color: inherit;
+        }
+        .block-container {
+            padding-top: 0 !important;
+            padding-bottom: 0.75rem !important;
+        }
+        .tv-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.28rem;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+            margin: 0;
+        }
+        .tv-header-icon {
+            font-size: 1.2rem;
+            line-height: 1;
+        }
+        .tv-header-text {
+            font-size: 1.08rem;
+            font-weight: 600;
+        }
+        .tv-timestamp {
+            font-size: 0.82rem;
+            color: rgba(226, 232, 240, 0.75);
+            margin: 0.05rem 0 0.35rem;
         }
         [data-testid="stHeader"] {
             background-color: transparent;
@@ -891,7 +930,7 @@ with carousel_placeholder.container():
                 )
                 fig_reserva_status = apply_dark_theme(fig_reserva_status, margin_top=60)
                 fig_reserva_status.update_layout(
-                    height=420,
+                    height=380,
                     showlegend=False,
                     title=dict(
                         text='Distribuição de Reservas por Situação',
