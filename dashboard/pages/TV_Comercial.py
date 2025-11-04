@@ -53,7 +53,7 @@ if elapsed >= CAROUSEL_INTERVAL:
     st.session_state.carousel_index = (st.session_state.carousel_index + 1) % CAROUSEL_SECTIONS
     st.session_state.carousel_last_update = current_time
     # Forçar rerun para mostrar nova seção (preserva sessão)
-    st.experimental_rerun()
+    st.rerun()
 
 # Título e informações removidos para liberar espaço na apresentação
 
@@ -803,6 +803,47 @@ def render_kpi(coluna, titulo: str, valor: str, subtitulo: str | None = None, ta
     )
 
 
+def render_velocimetro_metas(meta_valor: float, vendas_valor: float, atingimento_percent: float):
+    """Renderiza um velocímetro com os 3 KPIs principais de metas"""
+    cor_principal = '#22c55e' if atingimento_percent >= 100 else '#ef4444'
+    
+    fig = go.Figure(go.Indicator(
+        mode = "gauge+number+delta",
+        value = atingimento_percent,
+        domain = {'x': [0, 1], 'y': [0, 1]},
+        title = {'text': "Atingimento da Meta", 'font': {'size': 22, 'color': '#f8fafc', 'family': 'Manrope, sans-serif'}},
+        delta = {'reference': 100, 'position': "top", 'font': {'size': 14, 'color': '#f8fafc'}},
+        number = {'font': {'size': 48, 'color': cor_principal, 'family': 'Manrope, sans-serif'}},
+        gauge = {
+            'axis': {'range': [None, 150], 'tickwidth': 2, 'tickcolor': '#f8fafc', 'tickfont': {'size': 12, 'color': '#f8fafc'}},
+            'bar': {'color': cor_principal},
+            'bgcolor': "rgba(15, 23, 42, 0.3)",
+            'borderwidth': 2,
+            'bordercolor': "rgba(148, 163, 184, 0.5)",
+            'steps': [
+                {'range': [0, 70], 'color': '#1E90FF'},
+                {'range': [70, 100], 'color': '#f1c40f'},
+                {'range': [100, 150], 'color': '#FF5722'}
+            ],
+            'threshold': {
+                'line': {'color': "rgba(255, 255, 255, 0.8)", 'width': 4},
+                'thickness': 0.8,
+                'value': 100
+            }
+        }
+    ))
+    
+    fig.update_layout(
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        font=dict(color="#f8fafc", family='Manrope, sans-serif'),
+        height=350,
+        margin=dict(t=60, b=40, l=40, r=40)
+    )
+    
+    return fig
+
+
 def render_midia_table_html(dataframe: pd.DataFrame):
     if dataframe.empty:
         return
@@ -830,15 +871,80 @@ def render_midia_table_html(dataframe: pd.DataFrame):
 # ============================================================================
 
 def render_bloco_0():
-    """Bloco 0: KPIs Superiores"""
+    """Bloco 0: Velocímetro de Metas + Termômetro de Vendas"""
     st.markdown('<div class="tv-carousel-section">', unsafe_allow_html=True)
-    linha_um = st.columns(6)
+    
+    # Layout em duas colunas: Velocímetro à esquerda, Termômetro à direita
+    col_velocimetro, col_termometro = st.columns(2, gap="large")
+    
+    with col_velocimetro:
+        st.markdown("### 🎯 Velocímetro de Metas")
+        fig_velocimetro = render_velocimetro_metas(meta_total, vendas_realizadas_valor, atingimento_percent)
+        st.plotly_chart(fig_velocimetro, use_container_width=True)
+        
+        # Cards informativos abaixo do velocímetro
+        linha_info = st.columns(2)
+        mes_tag = mes_referencia_curto.upper()
+        render_kpi(linha_info[0], "Meta de Vendas", format_compact_currency(meta_total) if meta_total > 0 else "—", "Objetivo mensal", tag=mes_tag, compact=True)
+        render_kpi(linha_info[1], "Vendas Realizadas", format_compact_currency(vendas_realizadas_valor) if vendas_realizadas_valor > 0 else "R$ 0", "Vendas do mês", tag=mes_tag, compact=True)
+    
+    with col_termometro:
+        st.markdown("### 🌡️ Termômetro de Vendas")
+        
+        # Removido: bloco de status/interpretação/ação
+        
+        escala_max = 150
+        indicador_percentual = max(0.0, min(cobertura_percent, escala_max))
+        indicador_posicao = indicador_percentual / escala_max * 100
+        largura_preenchida = min(max(cobertura_percent / escala_max, 0.0), 1.0) * 100
+
+        barra_escala_html = f"""
+        <div style='margin-top:0.5rem; position:relative; padding-top:42px;'>
+          <div style='position:absolute; top:0; left:{indicador_posicao}%; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center;'>
+            <div style='font-size:0.9rem;font-weight:700;color:{status_color};margin-bottom:8px;background:rgba(11,11,11,0.85);padding:4px 14px;border-radius:999px;'>{cobertura_percent:.1f}%</div>
+            <div style='width:0;height:0;border-left:14px solid transparent;border-right:14px solid transparent;border-bottom:18px solid {status_color};'></div>
+          </div>
+          <div style='position:relative; border-radius:16px; overflow:hidden; height:68px; box-shadow:0 0 18px rgba(0,0,0,0.35);'>
+            <div style='display:flex; height:100%; font-size:1.05rem;'>
+              <div style='flex:70; background:#1E90FF; color:#ffffff; display:flex; flex-direction:column; align-items:center; justify-content:center; font-weight:600; opacity:{1 if cobertura_percent >= 0 else 0.25};'>
+                Frio
+                <span style="font-weight:400;font-size:0.85rem;opacity:0.85;">&lt; 70%</span>
+              </div>
+              <div style='flex:30; background:#f1c40f; color:#0b0b0b; display:flex; flex-direction:column; align-items:center; justify-content:center; font-weight:700; opacity:{1 if cobertura_percent >= 70 else 0.3};'>
+                Morno
+                <span style="font-weight:500;font-size:0.85rem;opacity:0.85;">70% – 100%</span>
+              </div>
+              <div style='flex:50; background:#FF5722; color:#ffffff; display:flex; flex-direction:column; align-items:center; justify-content:center; font-weight:600; opacity:{1 if cobertura_percent >= 100 else 0.3};'>
+                Quente
+                <span style="font-weight:400;font-size:0.85rem;opacity:0.85;">&gt; 100%</span>
+              </div>
+            </div>
+            <div style='position:absolute; top:0; bottom:0; left:0; width:{largura_preenchida}%; background:rgba(255,255,255,0.15); mix-blend-mode:screen;'></div>
+            <div style='position:absolute; top:0; bottom:0; left:{indicador_posicao}%; transform:translateX(-50%); width:7px; background:#ffffff; box-shadow:0 0 10px rgba(0,0,0,0.55); border-radius:999px;'></div>
+          </div>
+        </div>
+        """
+
+        st.markdown(barra_escala_html, unsafe_allow_html=True)
+
+        st.markdown(
+            f"<div style='margin-top:12px; font-size:0.85rem; color:rgba(255,255,255,0.65);'>Base analisada de {TERMOMETRO_DATA_INICIO.strftime('%d/%m/%Y')} até {data_final_analise.strftime('%d/%m/%Y')}</div>",
+            unsafe_allow_html=True
+        )
+    
+    st.markdown('</div>', unsafe_allow_html=True)
+
+def render_bloco_1():
+    """Bloco 1: KPIs Adicionais (cards movidos)"""
+    st.markdown('<div class="tv-carousel-section">', unsafe_allow_html=True)
+    st.markdown("## 📊 Indicadores Adicionais")
+    
+    linha_um = st.columns(3)
     mes_tag = mes_referencia_curto.upper()
     ano_tag = str(TERMOMETRO_DATA_INICIO.year)
-    atingimento_color = None
+    
     falta_color = None
     if meta_total > 0:
-        atingimento_color = "#22c55e" if atingimento_percent >= 100 else "#ef4444"
         falta_color = "#22c55e" if falta_para_meta_valor == 0 else "#ef4444"
 
     taxa_house_color = None
@@ -852,72 +958,18 @@ def render_bloco_0():
         elif vpl_percent < 0:
             vpl_color = "#ef4444"
 
-    render_kpi(linha_um[0], "Meta de Vendas", format_compact_currency(meta_total) if meta_total > 0 else "—", "Objetivo mensal consolidado", tag=mes_tag, compact=True)
-    render_kpi(linha_um[1], "Vendas Realizadas", format_compact_currency(vendas_realizadas_valor) if vendas_realizadas_valor > 0 else "R$ 0", "Vendas concluídas do mês", tag=mes_tag, compact=True)
-    render_kpi(linha_um[2], "Atingimento da Meta", f"{atingimento_percent:.1f}%", "Vendas / Meta do mês", tag=mes_tag, valor_color=atingimento_color, compact=True)
-    render_kpi(linha_um[3], "Falta para Meta", format_compact_currency(falta_para_meta_valor) if meta_total > 0 else "—", "Gap remanescente", tag=mes_tag, valor_color=falta_color, compact=True)
-    render_kpi(linha_um[4], "🏠 Taxa House (valor)", f"{taxa_house_percent:.1f}%" if house_data_available else "—", "Meta: 30% vendas internas", tag=ano_tag, valor_color=taxa_house_color, compact=True)
-    render_kpi(linha_um[5], "Porcentagem VPL Geral", f"{vpl_percent:.2f}%" if vpl_data_available else "—", "Meta: VPL Positivo", tag=ano_tag, valor_color=vpl_color, compact=True)
-    st.markdown('</div>', unsafe_allow_html=True)
-
-def render_bloco_1():
-    """Bloco 1: Termômetro de Vendas"""
-    st.markdown('<div class="tv-carousel-section">', unsafe_allow_html=True)
-    st.subheader("🌡️ Termômetro de Vendas")
-
-    st.markdown(
-        f"<div class='tv-status-badge' style='background:{status_color}; color:{'#ffffff' if status in {'Frio', 'Quente'} else '#0b0b0b'};'>"
-        f"<span>Status atual:</span><strong>{status}</strong></div>",
-        unsafe_allow_html=True
-    )
-
-    st.markdown(f"<div class='tv-status-context'><strong>Interpretação:</strong> {interpretacao}</div>", unsafe_allow_html=True)
-    st.markdown(f"<div class='tv-status-context'><strong>Ação sugerida:</strong> {acao}</div>", unsafe_allow_html=True)
-
-    escala_max = 150
-    indicador_percentual = max(0.0, min(cobertura_percent, escala_max))
-    indicador_posicao = indicador_percentual / escala_max * 100
-    largura_preenchida = min(max(cobertura_percent / escala_max, 0.0), 1.0) * 100
-
-    barra_escala_html = f"""
-    <div style='margin-top:1.25rem; position:relative; padding-top:42px;'>
-      <div style='position:absolute; top:0; left:{indicador_posicao}%; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center;'>
-        <div style='font-size:0.9rem;font-weight:700;color:{status_color};margin-bottom:8px;background:rgba(11,11,11,0.85);padding:4px 14px;border-radius:999px;'>{cobertura_percent:.1f}%</div>
-        <div style='width:0;height:0;border-left:14px solid transparent;border-right:14px solid transparent;border-bottom:18px solid {status_color};'></div>
-      </div>
-      <div style='position:relative; border-radius:16px; overflow:hidden; height:68px; box-shadow:0 0 18px rgba(0,0,0,0.35);'>
-        <div style='display:flex; height:100%; font-size:1.05rem;'>
-          <div style='flex:70; background:#1E90FF; color:#ffffff; display:flex; flex-direction:column; align-items:center; justify-content:center; font-weight:600; opacity:{1 if cobertura_percent >= 0 else 0.25};'>
-            Frio
-            <span style="font-weight:400;font-size:0.85rem;opacity:0.85;">&lt; 70%</span>
-          </div>
-          <div style='flex:30; background:#f1c40f; color:#0b0b0b; display:flex; flex-direction:column; align-items:center; justify-content:center; font-weight:700; opacity:{1 if cobertura_percent >= 70 else 0.3};'>
-            Morno
-            <span style="font-weight:500;font-size:0.85rem;opacity:0.85;">70% – 100%</span>
-          </div>
-          <div style='flex:50; background:#FF5722; color:#ffffff; display:flex; flex-direction:column; align-items:center; justify-content:center; font-weight:600; opacity:{1 if cobertura_percent >= 100 else 0.3};'>
-            Quente
-            <span style="font-weight:400;font-size:0.85rem;opacity:0.85;">&gt; 100%</span>
-          </div>
-        </div>
-        <div style='position:absolute; top:0; bottom:0; left:0; width:{largura_preenchida}%; background:rgba(255,255,255,0.15); mix-blend-mode:screen;'></div>
-        <div style='position:absolute; top:0; bottom:0; left:{indicador_posicao}%; transform:translateX(-50%); width:7px; background:#ffffff; box-shadow:0 0 10px rgba(0,0,0,0.55); border-radius:999px;'></div>
-      </div>
-    </div>
-    """
-
-    st.markdown(barra_escala_html, unsafe_allow_html=True)
-
-    st.markdown(
-        f"<div style='margin-top:18px; font-size:0.95rem; color:rgba(255,255,255,0.65);'>Base analisada de {TERMOMETRO_DATA_INICIO.strftime('%d/%m/%Y')} até {data_final_analise.strftime('%d/%m/%Y')} · Atualize a página para forçar nova leitura.</div>",
-        unsafe_allow_html=True
-    )
-
+    render_kpi(linha_um[0], "Falta para Meta", format_compact_currency(falta_para_meta_valor) if meta_total > 0 else "—", "Gap remanescente", tag=mes_tag, valor_color=falta_color, compact=True)
+    render_kpi(linha_um[1], "🏠 Taxa House (valor)", f"{taxa_house_percent:.1f}%" if house_data_available else "—", "Meta: 30% vendas internas", tag=ano_tag, valor_color=taxa_house_color, compact=True)
+    render_kpi(linha_um[2], "Porcentagem VPL Geral", f"{vpl_percent:.2f}%" if vpl_data_available else "—", "Meta: VPL Positivo", tag=ano_tag, valor_color=vpl_color, compact=True)
+    
+    st.markdown("---")
+    
     linha_termometro = st.columns(4)
     render_kpi(linha_termometro[0], "Taxa de Conversão Geral", f"{taxa_conversao_geral * 100:.1f}%", "Reservas que viram vendas")
     render_kpi(linha_termometro[1], "Reservas Atuais", f"{reservas_atuais_total}", "Reservas ativas no pipeline")
     render_kpi(linha_termometro[2], "Potencial de Vendas", format_compact_currency(potencial_vendas_valor), "Reservas x taxa de conversão")
     render_kpi(linha_termometro[3], "Cobertura da Meta", f"{cobertura_percent:.1f}%", "Potencial versus meta")
+    
     st.markdown('</div>', unsafe_allow_html=True)
 
 # ============================================================================
