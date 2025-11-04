@@ -225,6 +225,26 @@ st.markdown(
             display: flex;
             flex-direction: column;
         }
+        .tv-carousel-section-termometro-cards .tv-kpi-card.tv-kpi-card--compact {
+            height: 70px !important;
+            min-height: 70px !important;
+            max-height: 70px !important;
+            padding: 8px 10px !important;
+            margin-bottom: 8px !important;
+        }
+        .tv-carousel-section-termometro-cards .tv-kpi-card.tv-kpi-card--compact .tv-kpi-title-main {
+            font-size: 0.65rem !important;
+        }
+        .tv-carousel-section-termometro-cards .tv-kpi-card.tv-kpi-card--compact .tv-kpi-value {
+            font-size: 1.15rem !important;
+        }
+        .tv-carousel-section-termometro-cards .tv-kpi-card.tv-kpi-card--compact .tv-kpi-subtitle {
+            font-size: 0.62rem !important;
+        }
+        .tv-carousel-section-termometro-cards .tv-kpi-card.tv-kpi-card--compact .tv-kpi-title-tag {
+            font-size: 0.52rem !important;
+            padding: 1px 5px !important;
+        }
         @keyframes fadeIn {
             from {
                 opacity: 0;
@@ -1006,12 +1026,14 @@ def render_bloco_0():
             unsafe_allow_html=True
         )
         
-        # Cards do termômetro abaixo da barra
+        # Cards do termômetro abaixo da barra - com mais espaçamento e tamanhos reduzidos
+        st.markdown('<div class="tv-carousel-section-termometro-cards" style="margin-top: 1.5rem;">', unsafe_allow_html=True)
         linha_termometro = st.columns(4)
         render_kpi(linha_termometro[0], "Taxa de Conversão Geral", f"{taxa_conversao_geral * 100:.1f}%", "Reservas que viram vendas", compact=True)
         render_kpi(linha_termometro[1], "Reservas Atuais", f"{reservas_atuais_total}", "Reservas ativas no pipeline", compact=True)
         render_kpi(linha_termometro[2], "Potencial de Vendas", format_compact_currency(potencial_vendas_valor), "Reservas x taxa de conversão", compact=True)
         render_kpi(linha_termometro[3], "Cobertura da Meta", f"{cobertura_percent:.1f}%", "Potencial versus meta", compact=True)
+        st.markdown('</div>', unsafe_allow_html=True)
     
     st.markdown('</div>', unsafe_allow_html=True)
 
