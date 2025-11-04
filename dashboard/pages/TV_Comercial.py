@@ -1034,17 +1034,7 @@ def render_velocimetro_metas(meta_valor: float, vendas_valor: float, atingimento
         height=200,
         margin=dict(t=5, b=30, l=30, r=30),
         autosize=False,
-        annotations=[
-            dict(
-                text=f"{mes_referencia}",
-                x=0.5,
-                y=-0.12,
-                xref="paper",
-                yref="paper",
-                showarrow=False,
-                font=dict(size=11, color='rgba(248, 250, 252, 0.75)', family='Manrope, sans-serif')
-            )
-        ]
+        annotations=[]
     )
     
     return fig
@@ -1110,6 +1100,11 @@ def render_bloco_0():
         st.markdown("<h3 style='margin: 0 0 0; text-align: center; font-size: 0.9rem;'>🎯 Velocímetro de Vendas</h3>", unsafe_allow_html=True)
         fig_velocimetro = render_velocimetro_metas(meta_total, vendas_realizadas_valor, atingimento_percent, mes_referencia_curto.capitalize())
         st.plotly_chart(fig_velocimetro, use_container_width=True)
+        # Tag do mês formatado como nos cards
+        st.markdown(
+            f"<div style='text-align: center; margin-top: -25px;'><span style='display: inline-block; padding: 4px 12px; border-radius: 999px; background: rgba(15, 23, 42, 0.55); color: rgba(255, 255, 255, 0.75); font-size: 11px; font-family: Manrope, sans-serif; letter-spacing: 0.14em;'>{mes_referencia_curto.upper()}</span></div>",
+            unsafe_allow_html=True
+        )
         
         st.markdown('</div>', unsafe_allow_html=True)
     
