@@ -243,10 +243,23 @@ st.markdown(
             height: 100%;
             display: flex;
             flex-direction: column;
+            justify-content: flex-start;
+        }
+        /* Garantir que os gráficos ocupem o espaço necessário */
+        .tv-bloco-0-coluna > div:first-of-type {
+            flex-shrink: 0;
         }
         .tv-bloco-0-cards-wrapper {
             width: 100%;
             margin-top: 0;
+            flex-shrink: 0;
+        }
+        /* Garantir que os cards comecem na mesma linha horizontal usando flexbox */
+        .tv-bloco-0-layout [data-testid="column"] {
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: stretch;
         }
         .tv-bloco-0-cards-wrapper > div[data-testid="column-container"] {
             gap: 20px !important;
@@ -263,12 +276,12 @@ st.markdown(
             display: flex;
             flex-direction: column;
         }
-        /* Cards dentro do bloco 0 - tamanho e fonte ajustados para TV 50" */
-        .tv-bloco-0-layout .tv-kpi-card.tv-kpi-card--compact {
-            height: 70px !important;
-            min-height: 70px !important;
-            max-height: 70px !important;
-            padding: 8px 10px !important;
+        /* Cards do velocímetro - altura ~180px */
+        .tv-bloco-0-cards-velocimetro .tv-kpi-card.tv-kpi-card--compact {
+            height: 180px !important;
+            min-height: 180px !important;
+            max-height: 180px !important;
+            padding: 12px 14px !important;
             margin-bottom: 0 !important;
             width: 100%;
             box-sizing: border-box;
@@ -277,24 +290,24 @@ st.markdown(
             justify-content: space-between !important;
             align-items: center !important;
         }
-        .tv-bloco-0-layout .tv-kpi-card.tv-kpi-card--compact .tv-kpi-title {
+        .tv-bloco-0-cards-velocimetro .tv-kpi-card.tv-kpi-card--compact .tv-kpi-title {
             width: 100%;
-            margin-bottom: 4px;
+            margin-bottom: 8px;
             text-align: center;
             display: flex;
             align-items: center;
             justify-content: center;
             flex-wrap: wrap;
-            gap: 4px;
+            gap: 6px;
         }
-        .tv-bloco-0-layout .tv-kpi-card.tv-kpi-card--compact .tv-kpi-title-main {
-            font-size: 0.7rem !important; /* ~11.2px */
+        .tv-bloco-0-cards-velocimetro .tv-kpi-card.tv-kpi-card--compact .tv-kpi-title-main {
+            font-size: 0.595rem !important; /* ~9.52px - reduzido 15% de 0.7rem */
             line-height: 1.2;
             font-weight: 600;
         }
-        .tv-bloco-0-layout .tv-kpi-card.tv-kpi-card--compact .tv-kpi-value {
-            font-size: 0.9375rem !important; /* 15px exato */
-            margin-bottom: 4px;
+        .tv-bloco-0-cards-velocimetro .tv-kpi-card.tv-kpi-card--compact .tv-kpi-value {
+            font-size: 0.796875rem !important; /* ~12.75px - reduzido 15% de 0.9375rem */
+            margin-bottom: 8px;
             line-height: 1.3;
             font-weight: 700;
             text-align: center;
@@ -302,13 +315,62 @@ st.markdown(
             overflow: hidden;
             text-overflow: ellipsis;
         }
-        .tv-bloco-0-layout .tv-kpi-card.tv-kpi-card--compact .tv-kpi-subtitle {
-            font-size: 0.65rem !important; /* ~10.4px */
+        .tv-bloco-0-cards-velocimetro .tv-kpi-card.tv-kpi-card--compact .tv-kpi-subtitle {
+            font-size: 0.5525rem !important; /* ~8.84px - reduzido 15% de 0.65rem */
             line-height: 1.2;
             text-align: center;
         }
-        .tv-bloco-0-layout .tv-kpi-card.tv-kpi-card--compact .tv-kpi-title-tag {
-            font-size: 0.55rem !important; /* ~8.8px */
+        .tv-bloco-0-cards-velocimetro .tv-kpi-card.tv-kpi-card--compact .tv-kpi-title-tag {
+            font-size: 0.4675rem !important; /* ~7.48px - reduzido 15% de 0.55rem */
+            padding: 2px 4px !important;
+            margin-left: 4px;
+        }
+        /* Cards do termômetro - altura ~160px */
+        .tv-bloco-0-cards-termometro .tv-kpi-card.tv-kpi-card--compact {
+            height: 160px !important;
+            min-height: 160px !important;
+            max-height: 160px !important;
+            padding: 10px 12px !important;
+            margin-bottom: 0 !important;
+            width: 100%;
+            box-sizing: border-box;
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+        }
+        .tv-bloco-0-cards-termometro .tv-kpi-card.tv-kpi-card--compact .tv-kpi-title {
+            width: 100%;
+            margin-bottom: 6px;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+        .tv-bloco-0-cards-termometro .tv-kpi-card.tv-kpi-card--compact .tv-kpi-title-main {
+            font-size: 0.595rem !important; /* ~9.52px - reduzido 15% */
+            line-height: 1.2;
+            font-weight: 600;
+        }
+        .tv-bloco-0-cards-termometro .tv-kpi-card.tv-kpi-card--compact .tv-kpi-value {
+            font-size: 0.796875rem !important; /* ~12.75px - reduzido 15% */
+            margin-bottom: 6px;
+            line-height: 1.3;
+            font-weight: 700;
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .tv-bloco-0-cards-termometro .tv-kpi-card.tv-kpi-card--compact .tv-kpi-subtitle {
+            font-size: 0.5525rem !important; /* ~8.84px - reduzido 15% */
+            line-height: 1.2;
+            text-align: center;
+        }
+        .tv-bloco-0-cards-termometro .tv-kpi-card.tv-kpi-card--compact .tv-kpi-title-tag {
+            font-size: 0.4675rem !important; /* ~7.48px - reduzido 15% */
             padding: 2px 4px !important;
             margin-left: 4px;
         }
@@ -969,9 +1031,9 @@ def render_velocimetro_metas(meta_valor: float, vendas_valor: float, atingimento
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
         font=dict(color="#f8fafc", family='Manrope, sans-serif'),
-        height=300,
-        margin=dict(t=45, b=45, l=35, r=35),
-        autosize=True,
+        height=500,
+        margin=dict(t=50, b=50, l=40, r=40),
+        autosize=False,
         annotations=[
             dict(
                 text=f"Atingimento do mês atual: {mes_referencia}",
@@ -1052,9 +1114,9 @@ def render_bloco_0():
         # Espaçamento de 20px
         st.markdown('<div style="height: 20px;"></div>', unsafe_allow_html=True)
         
-        # 3 cards abaixo do velocímetro
-        st.markdown('<div class="tv-bloco-0-cards-wrapper">', unsafe_allow_html=True)
-        cards_esq = st.columns(3, gap="small")
+        # 3 cards abaixo do velocímetro (32% cada)
+        st.markdown('<div class="tv-bloco-0-cards-wrapper tv-bloco-0-cards-velocimetro">', unsafe_allow_html=True)
+        cards_esq = st.columns([0.32, 0.32, 0.32], gap="small")
         render_kpi(cards_esq[0], "Falta para Meta", format_compact_currency(falta_para_meta_valor) if meta_total > 0 else "—", "Gap remanescente", tag=mes_tag, valor_color=falta_color, compact=True)
         render_kpi(cards_esq[1], "🏠 Taxa House (valor)", f"{taxa_house_percent:.1f}%" if house_data_available else "—", "Meta: 30% vendas internas", tag=ano_tag, valor_color=taxa_house_color, compact=True)
         render_kpi(cards_esq[2], "Porcentagem VPL Geral", f"{vpl_percent:.2f}%" if vpl_data_available else "—", "Meta: VPL Positivo", tag=ano_tag, valor_color=vpl_color, compact=True)
@@ -1075,7 +1137,7 @@ def render_bloco_0():
         largura_preenchida = min(max(cobertura_percent / escala_max, 0.0), 1.0) * 100
 
         barra_escala_html = f"""
-        <div style='margin-top:4rem; position:relative; padding-top:38px;'>
+        <div style='margin-top:2rem; position:relative; padding-top:38px; height:450px; display:flex; flex-direction:column; justify-content:center;'>
           <div style='position:absolute; top:0; left:{indicador_posicao}%; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center;'>
             <div style='font-size:0.85rem;font-weight:700;color:{status_color};margin-bottom:6px;background:rgba(11,11,11,0.85);padding:3px 12px;border-radius:999px;'>{cobertura_percent:.1f}%</div>
             <div style='width:0;height:0;border-left:12px solid transparent;border-right:12px solid transparent;border-bottom:16px solid {status_color};'></div>
@@ -1111,12 +1173,13 @@ def render_bloco_0():
         # Espaçamento de 20px
         st.markdown('<div style="height: 20px;"></div>', unsafe_allow_html=True)
         
-        # 3 cards abaixo do termômetro
-        st.markdown('<div class="tv-bloco-0-cards-wrapper">', unsafe_allow_html=True)
-        cards_dir = st.columns(3, gap="small")
+        # 4 cards abaixo do termômetro (23% cada)
+        st.markdown('<div class="tv-bloco-0-cards-wrapper tv-bloco-0-cards-termometro">', unsafe_allow_html=True)
+        cards_dir = st.columns([0.23, 0.23, 0.23, 0.23], gap="small")
         render_kpi(cards_dir[0], "Taxa de Conversão Geral", f"{taxa_conversao_geral * 100:.1f}%", "Reservas que viram vendas", compact=True)
         render_kpi(cards_dir[1], "Reservas Atuais", f"{reservas_atuais_total}", "Reservas ativas no pipeline", compact=True)
         render_kpi(cards_dir[2], "Potencial de Vendas", format_compact_currency(potencial_vendas_valor), "Reservas x taxa de conversão", compact=True)
+        render_kpi(cards_dir[3], "Cobertura da Meta", f"{cobertura_percent:.1f}%", "Potencial versus meta", compact=True)
         st.markdown('</div>', unsafe_allow_html=True)
         
         st.markdown('</div>', unsafe_allow_html=True)
