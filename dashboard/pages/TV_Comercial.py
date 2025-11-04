@@ -1019,7 +1019,7 @@ def render_velocimetro_metas(meta_valor: float, vendas_valor: float, atingimento
         },
         gauge = {
             'axis': {'range': [None, 150], 'tickwidth': 2, 'tickcolor': '#f8fafc', 'tickfont': {'size': 12, 'color': '#f8fafc'}},
-            'bar': {'color': cor_principal},
+            'bar': {'color': cor_principal, 'thickness': 0.15},
             'bgcolor': "rgba(15, 23, 42, 0.3)",
             'borderwidth': 2,
             'bordercolor': "rgba(148, 163, 184, 0.5)",
@@ -1029,12 +1029,15 @@ def render_velocimetro_metas(meta_valor: float, vendas_valor: float, atingimento
                 {'range': [100, 150], 'color': '#FF5722'}
             ],
             'threshold': {
-                'line': {'color': "rgba(255, 255, 255, 0.8)", 'width': 4},
-                'thickness': 0.8,
+                'line': {'color': "rgba(255, 255, 255, 0.9)", 'width': 5},
+                'thickness': 0.75,
                 'value': 100
             }
         }
     ))
+    
+    # Formatar valor da meta
+    meta_formatada = format_compact_currency(meta_valor) if meta_valor > 0 else "—"
     
     fig.update_layout(
         paper_bgcolor="rgba(0,0,0,0)",
@@ -1043,7 +1046,22 @@ def render_velocimetro_metas(meta_valor: float, vendas_valor: float, atingimento
         height=200,
         margin=dict(t=5, b=30, l=30, r=30),
         autosize=False,
-        annotations=[]
+        annotations=[
+            dict(
+                text=f"Meta: {meta_formatada}",
+                x=0.98,
+                y=0.95,
+                xref="paper",
+                yref="paper",
+                showarrow=False,
+                font=dict(size=14, color='rgba(248, 250, 252, 0.9)', family='Manrope, sans-serif'),
+                bgcolor='rgba(15, 23, 42, 0.7)',
+                bordercolor='rgba(148, 163, 184, 0.5)',
+                borderwidth=1,
+                borderpad=6,
+                align="right"
+            )
+        ]
     )
     
     return fig
