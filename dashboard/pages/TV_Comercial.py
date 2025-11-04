@@ -165,14 +165,15 @@ st.markdown(
             font-weight: 600;
         }
         .tv-carousel-section--split .tv-kpi-card {
-            min-height: 140px;
-            padding: 18px 18px;
+            min-height: 120px;
+            padding: 16px 16px;
         }
         .tv-carousel-section--split .tv-kpi-card.tv-kpi-card--compact {
-            min-height: 120px;
+            min-height: 100px;
+            padding: 14px 14px;
         }
         .tv-carousel-section--split .tv-kpi-value {
-            font-size: 2.1rem;
+            font-size: 1.85rem;
         }
         @keyframes fadeIn {
             from {
@@ -990,10 +991,10 @@ with carousel_placeholder.container():
                         color_discrete_map=color_map,
                         title='Distribuição de Reservas por Situação'
                     )
-                    fig_reserva_status = apply_dark_theme(fig_reserva_status, margin_top=50)
+                    fig_reserva_status = apply_dark_theme(fig_reserva_status, margin_top=46)
                     fig_reserva_status.update_layout(
-                        height=350,
-                        margin=dict(t=50, b=30, l=0, r=0),
+                        height=420,
+                        margin=dict(t=46, b=28, l=10, r=10),
                         showlegend=False,
                         title=dict(
                             text='Distribuição de Reservas por Situação',
@@ -1011,7 +1012,7 @@ with carousel_placeholder.container():
                         bargap=0.25
                     )
                     max_quantidade = status_counts['Quantidade'].max() if not status_counts.empty else 0
-                    offset_anotacao = max(max_quantidade * 0.015, 0.35)
+                    offset_anotacao = max(max_quantidade * 0.012, 0.3)
                     fig_reserva_status.update_traces(
                         texttemplate='<b>%{text}</b>',
                         textposition='inside',
@@ -1025,7 +1026,7 @@ with carousel_placeholder.container():
                             y=linha['Situacao'],
                             text=linha['QuantidadeFormatada'],
                             showarrow=False,
-                            font=dict(size=14, color='#f8fafc', family='Manrope, sans-serif'),
+                            font=dict(size=13, color='#f8fafc', family='Manrope, sans-serif'),
                             xanchor='left',
                             bgcolor='rgba(15,23,42,0.82)',
                             bordercolor='rgba(148, 163, 184, 0.45)',
@@ -1039,13 +1040,13 @@ with carousel_placeholder.container():
 
                     valor_conversao_prati = f"{taxa_prati:.1f}%" if total_prati > 0 else "—"
                     sub_prati = (
-                        f"{format_int_value(convertidas_prati)}/{format_int_value(total_prati)} reservas"
+                        f"{format_int_value(convertidas_prati)}/{format_int_value(total_prati)}"
                         if total_prati > 0 else "Sem registros no período"
                     )
 
                     valor_conversao_outras = f"{taxa_outras:.1f}%" if total_outras > 0 else "—"
                     sub_outras = (
-                        f"{format_int_value(convertidas_outras)}/{format_int_value(total_outras)} reservas"
+                        f"{format_int_value(convertidas_outras)}/{format_int_value(total_outras)}"
                         if total_outras > 0 else "Sem registros no período"
                     )
 
@@ -1157,7 +1158,7 @@ with carousel_placeholder.container():
                             texttemplate='<b>%{text}</b>',
                             textposition='inside',
                             insidetextanchor='middle',
-                            textfont=dict(color='#f8fafc', size=16, family='Manrope, sans-serif'),
+                            textfont=dict(color='#f8fafc', size=17, family='Manrope, sans-serif'),
                             marker=dict(
                                 color=['#60a5fa', '#3b82f6', '#2563eb', '#7c3aed'],
                                 line=dict(width=0)
@@ -1186,8 +1187,8 @@ with carousel_placeholder.container():
                             paper_bgcolor="rgba(0,0,0,0)",
                             plot_bgcolor="rgba(0,0,0,0)",
                             font=dict(color="#f8fafc"),
-                            height=360,
-                            margin=dict(t=50, b=30, l=150, r=60),
+                            height=430,
+                            margin=dict(t=44, b=24, l=140, r=44),
                             showlegend=False,
                             xaxis=dict(
                                 showgrid=False,
@@ -1197,7 +1198,7 @@ with carousel_placeholder.container():
                             ),
                             yaxis=dict(
                                 showgrid=False,
-                                tickfont=dict(size=14, color='rgba(248,250,252,0.86)', family='Manrope, sans-serif'),
+                                tickfont=dict(size=15, color='rgba(248,250,252,0.88)', family='Manrope, sans-serif'),
                                 categoryorder='array',
                                 categoryarray=list(reversed(funil_etapas_ativos))
                             ),
@@ -1207,20 +1208,6 @@ with carousel_placeholder.container():
 
                         total_card = st.container()
                         render_kpi(total_card, "Total Leads Ativos", format_int_value(total_leads_ativos), "Base ativa consolidada", compact=True)
-
-                        etapa_info = list(zip(funil_etapas_ativos, etapa_counts, percentuais))
-                        primeira_dupla = etapa_info[:2]
-                        segunda_dupla = etapa_info[2:]
-
-                        if primeira_dupla:
-                            row_a = st.columns(len(primeira_dupla))
-                            for col, (etapa, valor, percentual) in zip(row_a, primeira_dupla):
-                                render_kpi(col, etapa, format_int_value(valor), f"{percentual:.1f}% do total", compact=True)
-
-                        if segunda_dupla:
-                            row_b = st.columns(len(segunda_dupla))
-                            for col, (etapa, valor, percentual) in zip(row_b, segunda_dupla):
-                                render_kpi(col, etapa, format_int_value(valor), f"{percentual:.1f}% do total", compact=True)
 
                         st.caption(
                             f"Base consolidada considerada de {TERMOMETRO_DATA_INICIO.strftime('%d/%m/%Y')} até {data_final_analise.strftime('%d/%m/%Y')} · Leads ativos: {format_int_value(total_leads_ativos)}"
