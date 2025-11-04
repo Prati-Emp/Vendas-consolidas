@@ -183,6 +183,20 @@ st.markdown(
             font-size: 0.54rem !important;
             line-height: 1.1;
         }
+        .tv-carousel-section .tv-kpi-card.tv-kpi-card--compact {
+            min-height: 50px !important;
+            padding: 8px 10px !important;
+            margin-bottom: 8px !important;
+        }
+        .tv-carousel-section .tv-kpi-card.tv-kpi-card--compact .tv-kpi-title-main {
+            font-size: 0.7rem !important;
+        }
+        .tv-carousel-section .tv-kpi-card.tv-kpi-card--compact .tv-kpi-value {
+            font-size: 1.3rem !important;
+        }
+        .tv-carousel-section .tv-kpi-card.tv-kpi-card--compact .tv-kpi-subtitle {
+            font-size: 0.65rem !important;
+        }
         @keyframes fadeIn {
             from {
                 opacity: 0;
@@ -840,8 +854,8 @@ def render_velocimetro_metas(meta_valor: float, vendas_valor: float, atingimento
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
         font=dict(color="#f8fafc", family='Manrope, sans-serif'),
-        height=350,
-        margin=dict(t=60, b=60, l=40, r=40),
+        height=300,
+        margin=dict(t=50, b=50, l=40, r=40),
         annotations=[
             dict(
                 text=f"Atingimento do mês atual: {mes_referencia}",
@@ -931,12 +945,12 @@ def render_bloco_0():
         largura_preenchida = min(max(cobertura_percent / escala_max, 0.0), 1.0) * 100
 
         barra_escala_html = f"""
-        <div style='margin-top:0.5rem; position:relative; padding-top:42px;'>
+        <div style='margin-top:0.5rem; position:relative; padding-top:38px;'>
           <div style='position:absolute; top:0; left:{indicador_posicao}%; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center;'>
-            <div style='font-size:0.9rem;font-weight:700;color:{status_color};margin-bottom:8px;background:rgba(11,11,11,0.85);padding:4px 14px;border-radius:999px;'>{cobertura_percent:.1f}%</div>
-            <div style='width:0;height:0;border-left:14px solid transparent;border-right:14px solid transparent;border-bottom:18px solid {status_color};'></div>
+            <div style='font-size:0.85rem;font-weight:700;color:{status_color};margin-bottom:6px;background:rgba(11,11,11,0.85);padding:3px 12px;border-radius:999px;'>{cobertura_percent:.1f}%</div>
+            <div style='width:0;height:0;border-left:12px solid transparent;border-right:12px solid transparent;border-bottom:16px solid {status_color};'></div>
           </div>
-          <div style='position:relative; border-radius:16px; overflow:hidden; height:68px; box-shadow:0 0 18px rgba(0,0,0,0.35);'>
+          <div style='position:relative; border-radius:14px; overflow:hidden; height:60px; box-shadow:0 0 16px rgba(0,0,0,0.35);'>
             <div style='display:flex; height:100%; font-size:1.05rem;'>
               <div style='flex:70; background:#1E90FF; color:#ffffff; display:flex; flex-direction:column; align-items:center; justify-content:center; font-weight:600; opacity:{1 if cobertura_percent >= 0 else 0.25};'>
                 Frio
@@ -960,9 +974,16 @@ def render_bloco_0():
         st.markdown(barra_escala_html, unsafe_allow_html=True)
 
         st.markdown(
-            f"<div style='margin-top:12px; font-size:0.85rem; color:rgba(255,255,255,0.65);'>Base analisada de {TERMOMETRO_DATA_INICIO.strftime('%d/%m/%Y')} até {data_final_analise.strftime('%d/%m/%Y')}</div>",
+            f"<div style='margin-top:8px; font-size:0.75rem; color:rgba(255,255,255,0.65);'>Base analisada de {TERMOMETRO_DATA_INICIO.strftime('%d/%m/%Y')} até {data_final_analise.strftime('%d/%m/%Y')}</div>",
             unsafe_allow_html=True
         )
+        
+        # Cards do termômetro abaixo da barra
+        linha_termometro = st.columns(4)
+        render_kpi(linha_termometro[0], "Taxa de Conversão Geral", f"{taxa_conversao_geral * 100:.1f}%", "Reservas que viram vendas", compact=True)
+        render_kpi(linha_termometro[1], "Reservas Atuais", f"{reservas_atuais_total}", "Reservas ativas no pipeline", compact=True)
+        render_kpi(linha_termometro[2], "Potencial de Vendas", format_compact_currency(potencial_vendas_valor), "Reservas x taxa de conversão", compact=True)
+        render_kpi(linha_termometro[3], "Cobertura da Meta", f"{cobertura_percent:.1f}%", "Potencial versus meta", compact=True)
     
     st.markdown('</div>', unsafe_allow_html=True)
 
