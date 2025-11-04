@@ -1142,7 +1142,7 @@ def render_bloco_0():
           <div style='width:0;height:0;border-left:12px solid transparent;border-right:12px solid transparent;border-bottom:16px solid {status_color};'></div>
         </div>
       </div>
-      <div style='position:relative; border-radius:14px; overflow:hidden; height:140px; box-shadow:0 0 16px rgba(0,0,0,0.35); max-width:70%; width:70%;'>
+      <div style='position:relative; border-radius:14px; overflow:hidden; height:60px; box-shadow:0 0 16px rgba(0,0,0,0.35); max-width:70%; width:70%;'>
         <div style='display:flex; height:100%; font-size:1.05rem; width:100%;'>
           <div style='flex:70; max-width:70%; background:#1E90FF; color:#ffffff; display:flex; flex-direction:column; align-items:center; justify-content:center; font-weight:600; opacity:{1 if cobertura_percent >= 0 else 0.25};'>
             Frio
