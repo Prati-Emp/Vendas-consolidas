@@ -1021,7 +1021,7 @@ def render_velocimetro_metas(meta_valor: float, vendas_valor: float, atingimento
         },
         gauge = {
             'axis': {'range': [None, 150], 'tickwidth': 2, 'tickcolor': '#f8fafc', 'tickfont': {'size': 12, 'color': '#f8fafc'}},
-            'bar': {'color': cor_barra, 'thickness': 0.25, 'line': {'width': 0}},
+            'bar': {'color': cor_barra, 'thickness': 0.4, 'line': {'width': 0}},
             'bgcolor': "rgba(15, 23, 42, 0.3)",
             'borderwidth': 2,
             'bordercolor': "rgba(148, 163, 184, 0.5)",
@@ -1053,17 +1053,17 @@ def render_velocimetro_metas(meta_valor: float, vendas_valor: float, atingimento
         annotations=[
             dict(
                 text=f"Meta: {meta_formatada}",
-                x=0.78,
-                y=0.62,
+                x=0.98,
+                y=0.95,
                 xref="paper",
                 yref="paper",
                 showarrow=False,
-                font=dict(size=12, color='rgba(248, 250, 252, 0.95)', family='Manrope, sans-serif'),
-                bgcolor='rgba(15, 23, 42, 0.9)',
-                bordercolor='rgba(148, 163, 184, 0.6)',
-                borderwidth=1.5,
-                borderpad=8,
-                align="center"
+                font=dict(size=14, color='rgba(248, 250, 252, 0.9)', family='Manrope, sans-serif'),
+                bgcolor='rgba(15, 23, 42, 0.7)',
+                bordercolor='rgba(148, 163, 184, 0.5)',
+                borderwidth=1,
+                borderpad=6,
+                align="right"
             )
         ]
     )
