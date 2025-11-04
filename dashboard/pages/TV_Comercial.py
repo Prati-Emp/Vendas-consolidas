@@ -1171,11 +1171,6 @@ def render_bloco_0():
     """
 
     st.markdown(barra_escala_html, unsafe_allow_html=True)
-
-    st.markdown(
-        f"<div style='margin-top:6px; margin-bottom:0; font-size:0.7rem; color:rgba(255,255,255,0.6);'>Base analisada de {TERMOMETRO_DATA_INICIO.strftime('%d/%m/%Y')} até {data_final_analise.strftime('%d/%m/%Y')}</div>",
-        unsafe_allow_html=True
-    )
     
     # Cards abaixo ocupando toda a largura da página (fora das colunas)
     st.markdown('<div style="margin-top: 20px;">', unsafe_allow_html=True)
