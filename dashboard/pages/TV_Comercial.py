@@ -226,24 +226,31 @@ st.markdown(
             flex-direction: column;
         }
         .tv-carousel-section-termometro-cards .tv-kpi-card.tv-kpi-card--compact {
-            height: 65px !important;
-            min-height: 65px !important;
-            max-height: 65px !important;
-            padding: 6px 8px !important;
-            margin-bottom: 6px !important;
+            height: 58px !important;
+            min-height: 58px !important;
+            max-height: 58px !important;
+            padding: 5px 7px !important;
+            margin-bottom: 5px !important;
+        }
+        .tv-carousel-section-termometro-cards .tv-kpi-card.tv-kpi-card--compact .tv-kpi-title {
+            margin-bottom: 2px;
         }
         .tv-carousel-section-termometro-cards .tv-kpi-card.tv-kpi-card--compact .tv-kpi-title-main {
-            font-size: 0.58rem !important;
+            font-size: 0.55rem !important;
+            line-height: 1.1;
         }
         .tv-carousel-section-termometro-cards .tv-kpi-card.tv-kpi-card--compact .tv-kpi-value {
-            font-size: 1.0rem !important;
+            font-size: 0.95rem !important;
+            margin-bottom: 2px;
+            line-height: 1.1;
         }
         .tv-carousel-section-termometro-cards .tv-kpi-card.tv-kpi-card--compact .tv-kpi-subtitle {
-            font-size: 0.58rem !important;
+            font-size: 0.55rem !important;
+            line-height: 1.1;
         }
         .tv-carousel-section-termometro-cards .tv-kpi-card.tv-kpi-card--compact .tv-kpi-title-tag {
-            font-size: 0.48rem !important;
-            padding: 1px 4px !important;
+            font-size: 0.46rem !important;
+            padding: 1px 3px !important;
         }
         @keyframes fadeIn {
             from {
@@ -903,16 +910,17 @@ def render_velocimetro_metas(meta_valor: float, vendas_valor: float, atingimento
         plot_bgcolor="rgba(0,0,0,0)",
         font=dict(color="#f8fafc", family='Manrope, sans-serif'),
         height=300,
-        margin=dict(t=50, b=50, l=40, r=40),
+        margin=dict(t=45, b=45, l=35, r=35),
+        autosize=True,
         annotations=[
             dict(
                 text=f"Atingimento do mês atual: {mes_referencia}",
                 x=0.5,
-                y=-0.15,
+                y=-0.12,
                 xref="paper",
                 yref="paper",
                 showarrow=False,
-                font=dict(size=14, color='rgba(248, 250, 252, 0.75)', family='Manrope, sans-serif')
+                font=dict(size=13, color='rgba(248, 250, 252, 0.75)', family='Manrope, sans-serif')
             )
         ]
     )
@@ -1000,17 +1008,17 @@ def render_bloco_0():
             <div style='font-size:0.85rem;font-weight:700;color:{status_color};margin-bottom:6px;background:rgba(11,11,11,0.85);padding:3px 12px;border-radius:999px;'>{cobertura_percent:.1f}%</div>
             <div style='width:0;height:0;border-left:12px solid transparent;border-right:12px solid transparent;border-bottom:16px solid {status_color};'></div>
           </div>
-          <div style='position:relative; border-radius:14px; overflow:hidden; height:75px; box-shadow:0 0 16px rgba(0,0,0,0.35);'>
-            <div style='display:flex; height:100%; font-size:1.05rem;'>
-              <div style='flex:70; background:#1E90FF; color:#ffffff; display:flex; flex-direction:column; align-items:center; justify-content:center; font-weight:600; opacity:{1 if cobertura_percent >= 0 else 0.25};'>
+          <div style='position:relative; border-radius:14px; overflow:hidden; height:75px; box-shadow:0 0 16px rgba(0,0,0,0.35); max-width:100%; width:100%;'>
+            <div style='display:flex; height:100%; font-size:1.05rem; width:100%;'>
+              <div style='flex:70; max-width:70%; background:#1E90FF; color:#ffffff; display:flex; flex-direction:column; align-items:center; justify-content:center; font-weight:600; opacity:{1 if cobertura_percent >= 0 else 0.25};'>
                 Frio
                 <span style="font-weight:400;font-size:0.85rem;opacity:0.85;">&lt; 70%</span>
               </div>
-              <div style='flex:30; background:#f1c40f; color:#0b0b0b; display:flex; flex-direction:column; align-items:center; justify-content:center; font-weight:700; opacity:{1 if cobertura_percent >= 70 else 0.3};'>
+              <div style='flex:30; max-width:30%; background:#f1c40f; color:#0b0b0b; display:flex; flex-direction:column; align-items:center; justify-content:center; font-weight:700; opacity:{1 if cobertura_percent >= 70 else 0.3};'>
                 Morno
                 <span style="font-weight:500;font-size:0.85rem;opacity:0.85;">70% – 100%</span>
               </div>
-              <div style='flex:50; background:#FF5722; color:#ffffff; display:flex; flex-direction:column; align-items:center; justify-content:center; font-weight:600; opacity:{1 if cobertura_percent >= 100 else 0.3};'>
+              <div style='flex:50; max-width:50%; background:#FF5722; color:#ffffff; display:flex; flex-direction:column; align-items:center; justify-content:center; font-weight:600; opacity:{1 if cobertura_percent >= 100 else 0.3};'>
                 Quente
                 <span style="font-weight:400;font-size:0.85rem;opacity:0.85;">&gt; 100%</span>
               </div>
