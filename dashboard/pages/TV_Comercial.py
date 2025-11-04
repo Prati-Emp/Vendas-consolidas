@@ -226,24 +226,24 @@ st.markdown(
             flex-direction: column;
         }
         .tv-carousel-section-termometro-cards .tv-kpi-card.tv-kpi-card--compact {
-            height: 70px !important;
-            min-height: 70px !important;
-            max-height: 70px !important;
-            padding: 8px 10px !important;
-            margin-bottom: 8px !important;
+            height: 65px !important;
+            min-height: 65px !important;
+            max-height: 65px !important;
+            padding: 6px 8px !important;
+            margin-bottom: 6px !important;
         }
         .tv-carousel-section-termometro-cards .tv-kpi-card.tv-kpi-card--compact .tv-kpi-title-main {
-            font-size: 0.65rem !important;
+            font-size: 0.58rem !important;
         }
         .tv-carousel-section-termometro-cards .tv-kpi-card.tv-kpi-card--compact .tv-kpi-value {
-            font-size: 1.15rem !important;
+            font-size: 1.0rem !important;
         }
         .tv-carousel-section-termometro-cards .tv-kpi-card.tv-kpi-card--compact .tv-kpi-subtitle {
-            font-size: 0.62rem !important;
+            font-size: 0.58rem !important;
         }
         .tv-carousel-section-termometro-cards .tv-kpi-card.tv-kpi-card--compact .tv-kpi-title-tag {
-            font-size: 0.52rem !important;
-            padding: 1px 5px !important;
+            font-size: 0.48rem !important;
+            padding: 1px 4px !important;
         }
         @keyframes fadeIn {
             from {
@@ -959,6 +959,7 @@ def render_bloco_0():
         st.plotly_chart(fig_velocimetro, use_container_width=True)
         
         # Cards informativos abaixo do velocímetro
+        st.markdown('<div style="margin-top: 2rem;">', unsafe_allow_html=True)
         linha_info = st.columns(3)
         mes_tag = mes_referencia_curto.upper()
         ano_tag = str(TERMOMETRO_DATA_INICIO.year)
@@ -981,6 +982,7 @@ def render_bloco_0():
         render_kpi(linha_info[0], "Falta para Meta", format_compact_currency(falta_para_meta_valor) if meta_total > 0 else "—", "Gap remanescente", tag=mes_tag, valor_color=falta_color, compact=True)
         render_kpi(linha_info[1], "🏠 Taxa House (valor)", f"{taxa_house_percent:.1f}%" if house_data_available else "—", "Meta: 30% vendas internas", tag=ano_tag, valor_color=taxa_house_color, compact=True)
         render_kpi(linha_info[2], "Porcentagem VPL Geral", f"{vpl_percent:.2f}%" if vpl_data_available else "—", "Meta: VPL Positivo", tag=ano_tag, valor_color=vpl_color, compact=True)
+        st.markdown('</div>', unsafe_allow_html=True)
     
     with col_termometro:
         st.markdown("<h3 style='margin: 0 0 0.5rem; text-align: center;'>🌡️ Termômetro de Vendas</h3>", unsafe_allow_html=True)
@@ -993,7 +995,7 @@ def render_bloco_0():
         largura_preenchida = min(max(cobertura_percent / escala_max, 0.0), 1.0) * 100
 
         barra_escala_html = f"""
-        <div style='margin-top:2.5rem; position:relative; padding-top:38px;'>
+        <div style='margin-top:4rem; position:relative; padding-top:38px;'>
           <div style='position:absolute; top:0; left:{indicador_posicao}%; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center;'>
             <div style='font-size:0.85rem;font-weight:700;color:{status_color};margin-bottom:6px;background:rgba(11,11,11,0.85);padding:3px 12px;border-radius:999px;'>{cobertura_percent:.1f}%</div>
             <div style='width:0;height:0;border-left:12px solid transparent;border-right:12px solid transparent;border-bottom:16px solid {status_color};'></div>
@@ -1027,7 +1029,7 @@ def render_bloco_0():
         )
         
         # Cards do termômetro abaixo da barra - com muito mais espaçamento e tamanhos reduzidos
-        st.markdown('<div class="tv-carousel-section-termometro-cards" style="margin-top: 3.5rem;">', unsafe_allow_html=True)
+        st.markdown('<div class="tv-carousel-section-termometro-cards" style="margin-top: 5rem;">', unsafe_allow_html=True)
         linha_termometro = st.columns(4)
         render_kpi(linha_termometro[0], "Taxa de Conversão Geral", f"{taxa_conversao_geral * 100:.1f}%", "Reservas que viram vendas", compact=True)
         render_kpi(linha_termometro[1], "Reservas Atuais", f"{reservas_atuais_total}", "Reservas ativas no pipeline", compact=True)
