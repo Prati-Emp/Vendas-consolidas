@@ -803,17 +803,20 @@ def render_kpi(coluna, titulo: str, valor: str, subtitulo: str | None = None, ta
     )
 
 
-def render_velocimetro_metas(meta_valor: float, vendas_valor: float, atingimento_percent: float):
+def render_velocimetro_metas(meta_valor: float, vendas_valor: float, atingimento_percent: float, mes_referencia: str):
     """Renderiza um velocímetro com os 3 KPIs principais de metas"""
     cor_principal = '#22c55e' if atingimento_percent >= 100 else '#ef4444'
     
     fig = go.Figure(go.Indicator(
-        mode = "gauge+number+delta",
+        mode = "gauge+number",
         value = atingimento_percent,
         domain = {'x': [0, 1], 'y': [0, 1]},
         title = {'text': "Atingimento da Meta", 'font': {'size': 22, 'color': '#f8fafc', 'family': 'Manrope, sans-serif'}},
-        delta = {'reference': 100, 'position': "top", 'font': {'size': 14, 'color': '#f8fafc'}},
-        number = {'font': {'size': 48, 'color': cor_principal, 'family': 'Manrope, sans-serif'}},
+        number = {
+            'valueformat': '.1f',
+            'suffix': '%',
+            'font': {'size': 48, 'color': cor_principal, 'family': 'Manrope, sans-serif'}
+        },
         gauge = {
             'axis': {'range': [None, 150], 'tickwidth': 2, 'tickcolor': '#f8fafc', 'tickfont': {'size': 12, 'color': '#f8fafc'}},
             'bar': {'color': cor_principal},
@@ -838,7 +841,18 @@ def render_velocimetro_metas(meta_valor: float, vendas_valor: float, atingimento
         plot_bgcolor="rgba(0,0,0,0)",
         font=dict(color="#f8fafc", family='Manrope, sans-serif'),
         height=350,
-        margin=dict(t=60, b=40, l=40, r=40)
+        margin=dict(t=60, b=60, l=40, r=40),
+        annotations=[
+            dict(
+                text=f"Atingimento do mês atual: {mes_referencia}",
+                x=0.5,
+                y=-0.15,
+                xref="paper",
+                yref="paper",
+                showarrow=False,
+                font=dict(size=14, color='rgba(248, 250, 252, 0.75)', family='Manrope, sans-serif')
+            )
+        ]
     )
     
     return fig
@@ -879,14 +893,32 @@ def render_bloco_0():
     
     with col_velocimetro:
         st.markdown("### 🎯 Velocímetro de Metas")
-        fig_velocimetro = render_velocimetro_metas(meta_total, vendas_realizadas_valor, atingimento_percent)
+        fig_velocimetro = render_velocimetro_metas(meta_total, vendas_realizadas_valor, atingimento_percent, mes_referencia_curto.capitalize())
         st.plotly_chart(fig_velocimetro, use_container_width=True)
         
         # Cards informativos abaixo do velocímetro
-        linha_info = st.columns(2)
+        linha_info = st.columns(3)
         mes_tag = mes_referencia_curto.upper()
-        render_kpi(linha_info[0], "Meta de Vendas", format_compact_currency(meta_total) if meta_total > 0 else "—", "Objetivo mensal", tag=mes_tag, compact=True)
-        render_kpi(linha_info[1], "Vendas Realizadas", format_compact_currency(vendas_realizadas_valor) if vendas_realizadas_valor > 0 else "R$ 0", "Vendas do mês", tag=mes_tag, compact=True)
+        ano_tag = str(TERMOMETRO_DATA_INICIO.year)
+        
+        falta_color = None
+        if meta_total > 0:
+            falta_color = "#22c55e" if falta_para_meta_valor == 0 else "#ef4444"
+
+        taxa_house_color = None
+        if house_data_available:
+            taxa_house_color = "#22c55e" if taxa_house_percent >= 30 else "#ef4444"
+
+        vpl_color = None
+        if vpl_data_available:
+            if vpl_percent > 0:
+                vpl_color = "#22c55e"
+            elif vpl_percent < 0:
+                vpl_color = "#ef4444"
+        
+        render_kpi(linha_info[0], "Falta para Meta", format_compact_currency(falta_para_meta_valor) if meta_total > 0 else "—", "Gap remanescente", tag=mes_tag, valor_color=falta_color, compact=True)
+        render_kpi(linha_info[1], "🏠 Taxa House (valor)", f"{taxa_house_percent:.1f}%" if house_data_available else "—", "Meta: 30% vendas internas", tag=ano_tag, valor_color=taxa_house_color, compact=True)
+        render_kpi(linha_info[2], "Porcentagem VPL Geral", f"{vpl_percent:.2f}%" if vpl_data_available else "—", "Meta: VPL Positivo", tag=ano_tag, valor_color=vpl_color, compact=True)
     
     with col_termometro:
         st.markdown("### 🌡️ Termômetro de Vendas")
