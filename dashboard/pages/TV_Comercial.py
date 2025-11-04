@@ -184,18 +184,46 @@ st.markdown(
             line-height: 1.1;
         }
         .tv-carousel-section .tv-kpi-card.tv-kpi-card--compact {
-            min-height: 50px !important;
-            padding: 8px 10px !important;
-            margin-bottom: 8px !important;
+            height: 85px !important;
+            min-height: 85px !important;
+            max-height: 85px !important;
+            padding: 10px 12px !important;
+            margin-bottom: 10px !important;
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+        }
+        .tv-carousel-section .tv-kpi-card.tv-kpi-card--compact .tv-kpi-title {
+            width: 100%;
+            margin-bottom: 4px;
         }
         .tv-carousel-section .tv-kpi-card.tv-kpi-card--compact .tv-kpi-title-main {
-            font-size: 0.7rem !important;
+            font-size: 0.72rem !important;
+            line-height: 1.2;
+        }
+        .tv-carousel-section .tv-kpi-card.tv-kpi-card--compact .tv-kpi-title-tag {
+            font-size: 0.58rem !important;
+            padding: 2px 6px !important;
+            margin-top: 2px;
         }
         .tv-carousel-section .tv-kpi-card.tv-kpi-card--compact .tv-kpi-value {
-            font-size: 1.3rem !important;
+            font-size: 1.4rem !important;
+            margin-bottom: 4px;
+            line-height: 1.2;
         }
         .tv-carousel-section .tv-kpi-card.tv-kpi-card--compact .tv-kpi-subtitle {
-            font-size: 0.65rem !important;
+            font-size: 0.68rem !important;
+            line-height: 1.2;
+            text-align: center;
+        }
+        .tv-carousel-section [data-testid="column"] {
+            display: flex;
+            flex-direction: column;
+        }
+        .tv-carousel-section [data-testid="column"] > div {
+            display: flex;
+            flex-direction: column;
         }
         @keyframes fadeIn {
             from {
@@ -906,7 +934,7 @@ def render_bloco_0():
     col_velocimetro, col_termometro = st.columns(2, gap="large")
     
     with col_velocimetro:
-        st.markdown("### 🎯 Velocímetro de Metas")
+        st.markdown("<h3 style='margin: 0 0 0.5rem; text-align: center;'>🎯 Velocímetro de Metas</h3>", unsafe_allow_html=True)
         fig_velocimetro = render_velocimetro_metas(meta_total, vendas_realizadas_valor, atingimento_percent, mes_referencia_curto.capitalize())
         st.plotly_chart(fig_velocimetro, use_container_width=True)
         
@@ -935,7 +963,7 @@ def render_bloco_0():
         render_kpi(linha_info[2], "Porcentagem VPL Geral", f"{vpl_percent:.2f}%" if vpl_data_available else "—", "Meta: VPL Positivo", tag=ano_tag, valor_color=vpl_color, compact=True)
     
     with col_termometro:
-        st.markdown("### 🌡️ Termômetro de Vendas")
+        st.markdown("<h3 style='margin: 0 0 0.5rem; text-align: center;'>🌡️ Termômetro de Vendas</h3>", unsafe_allow_html=True)
         
         # Removido: bloco de status/interpretação/ação
         
@@ -945,7 +973,7 @@ def render_bloco_0():
         largura_preenchida = min(max(cobertura_percent / escala_max, 0.0), 1.0) * 100
 
         barra_escala_html = f"""
-        <div style='margin-top:0.5rem; position:relative; padding-top:38px;'>
+        <div style='margin-top:1.2rem; position:relative; padding-top:38px;'>
           <div style='position:absolute; top:0; left:{indicador_posicao}%; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center;'>
             <div style='font-size:0.85rem;font-weight:700;color:{status_color};margin-bottom:6px;background:rgba(11,11,11,0.85);padding:3px 12px;border-radius:999px;'>{cobertura_percent:.1f}%</div>
             <div style='width:0;height:0;border-left:12px solid transparent;border-right:12px solid transparent;border-bottom:16px solid {status_color};'></div>
