@@ -1102,14 +1102,16 @@ def render_bloco_0():
         elif vpl_percent < 0:
             vpl_color = "#ef4444"
     
-    # COLUNA ESQUERDA (50%): Velocímetro + Termômetro embaixo
+    # COLUNA ESQUERDA (50%): Velocímetro (25% largura) + Termômetro embaixo (100% largura)
     with col_principal_esq:
         st.markdown('<div class="tv-bloco-0-coluna">', unsafe_allow_html=True)
         
-        # Título e Velocímetro
-        st.markdown("<h3 style='margin: 0 0 0.5rem; text-align: center; font-size: 0.9rem;'>🎯 Velocímetro de Metas</h3>", unsafe_allow_html=True)
-        fig_velocimetro = render_velocimetro_metas(meta_total, vendas_realizadas_valor, atingimento_percent, mes_referencia_curto.capitalize())
-        st.plotly_chart(fig_velocimetro, use_container_width=True)
+        # Velocímetro reduzido para 50% da coluna (25% da tela total)
+        col_velocimetro_container, _ = st.columns([0.5, 0.5], gap="small")
+        with col_velocimetro_container:
+            st.markdown("<h3 style='margin: 0 0 0.5rem; text-align: center; font-size: 0.9rem;'>🎯 Velocímetro de Metas</h3>", unsafe_allow_html=True)
+            fig_velocimetro = render_velocimetro_metas(meta_total, vendas_realizadas_valor, atingimento_percent, mes_referencia_curto.capitalize())
+            st.plotly_chart(fig_velocimetro, use_container_width=True)
         
         # Espaçamento
         st.markdown('<div style="height: 20px;"></div>', unsafe_allow_html=True)
@@ -1121,15 +1123,15 @@ def render_bloco_0():
         largura_preenchida = min(max(cobertura_percent / escala_max, 0.0), 1.0) * 100
 
         barra_escala_html = f"""
-        <div style='margin-top:0; position:relative; padding-top:0px; height:500px; display:flex; flex-direction:column; justify-content:center; align-items:center;'>
+        <div style='margin-top:0; position:relative; padding-top:0px; height:500px; display:flex; flex-direction:column; justify-content:center; align-items:center; width:100%;'>
           <h3 style='margin: 0 0 1.5rem; text-align: center; font-size: 1.1rem;'>🌡️ Termômetro de Vendas</h3>
-          <div style='position:relative; margin-bottom:8px; width:85%; max-width:85%;'>
+          <div style='position:relative; margin-bottom:8px; width:100%; max-width:100%;'>
             <div style='position:absolute; bottom:0; left:{indicador_posicao}%; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center; z-index:10;'>
               <div style='font-size:0.85rem;font-weight:700;color:{status_color};margin-bottom:2px;background:rgba(11,11,11,0.85);padding:3px 12px;border-radius:999px;'>{cobertura_percent:.1f}%</div>
               <div style='width:0;height:0;border-left:12px solid transparent;border-right:12px solid transparent;border-bottom:16px solid {status_color};'></div>
             </div>
           </div>
-          <div style='position:relative; border-radius:14px; overflow:hidden; height:140px; box-shadow:0 0 16px rgba(0,0,0,0.35); max-width:85%; width:85%;'>
+          <div style='position:relative; border-radius:14px; overflow:hidden; height:140px; box-shadow:0 0 16px rgba(0,0,0,0.35); max-width:100%; width:100%;'>
             <div style='display:flex; height:100%; font-size:1.05rem; width:100%;'>
               <div style='flex:70; max-width:70%; background:#1E90FF; color:#ffffff; display:flex; flex-direction:column; align-items:center; justify-content:center; font-weight:600; opacity:{1 if cobertura_percent >= 0 else 0.25};'>
                 Frio
