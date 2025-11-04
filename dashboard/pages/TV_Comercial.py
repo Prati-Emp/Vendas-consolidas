@@ -229,28 +229,53 @@ st.markdown(
             height: 58px !important;
             min-height: 58px !important;
             max-height: 58px !important;
-            padding: 5px 7px !important;
+            padding: 5px 6px !important;
             margin-bottom: 5px !important;
+            width: 100%;
+            box-sizing: border-box;
         }
         .tv-carousel-section-termometro-cards .tv-kpi-card.tv-kpi-card--compact .tv-kpi-title {
             margin-bottom: 2px;
         }
         .tv-carousel-section-termometro-cards .tv-kpi-card.tv-kpi-card--compact .tv-kpi-title-main {
-            font-size: 0.55rem !important;
+            font-size: 0.52rem !important;
             line-height: 1.1;
         }
         .tv-carousel-section-termometro-cards .tv-kpi-card.tv-kpi-card--compact .tv-kpi-value {
-            font-size: 0.95rem !important;
+            font-size: 0.9rem !important;
             margin-bottom: 2px;
             line-height: 1.1;
         }
         .tv-carousel-section-termometro-cards .tv-kpi-card.tv-kpi-card--compact .tv-kpi-subtitle {
-            font-size: 0.55rem !important;
+            font-size: 0.52rem !important;
             line-height: 1.1;
         }
         .tv-carousel-section-termometro-cards .tv-kpi-card.tv-kpi-card--compact .tv-kpi-title-tag {
             font-size: 0.46rem !important;
             padding: 1px 3px !important;
+        }
+        .tv-carousel-section-termometro-cards {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            max-width: 100%;
+        }
+        .tv-carousel-section-termometro-cards > div {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+            gap: 0.5rem;
+        }
+        .tv-carousel-section-termometro-cards [data-testid="column"] {
+            flex: 1 1 0;
+            min-width: 0;
+            max-width: 100%;
+            display: flex;
+            justify-content: center;
+        }
+        .tv-carousel-section-termometro-cards [data-testid="column"] > div {
+            width: 100%;
         }
         @keyframes fadeIn {
             from {
@@ -1036,9 +1061,9 @@ def render_bloco_0():
             unsafe_allow_html=True
         )
         
-        # Cards do termômetro abaixo da barra - com muito mais espaçamento e tamanhos reduzidos
-        st.markdown('<div class="tv-carousel-section-termometro-cards" style="margin-top: 5rem;">', unsafe_allow_html=True)
-        linha_termometro = st.columns(4)
+        # Cards do termômetro abaixo da barra - centralizados com espaçamento uniforme
+        st.markdown('<div class="tv-carousel-section-termometro-cards" style="margin-top: 5rem; width: 100%;">', unsafe_allow_html=True)
+        linha_termometro = st.columns(4, gap="small")
         render_kpi(linha_termometro[0], "Taxa de Conversão Geral", f"{taxa_conversao_geral * 100:.1f}%", "Reservas que viram vendas", compact=True)
         render_kpi(linha_termometro[1], "Reservas Atuais", f"{reservas_atuais_total}", "Reservas ativas no pipeline", compact=True)
         render_kpi(linha_termometro[2], "Potencial de Vendas", format_compact_currency(potencial_vendas_valor), "Reservas x taxa de conversão", compact=True)
