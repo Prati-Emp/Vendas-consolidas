@@ -1036,7 +1036,7 @@ def render_velocimetro_metas(meta_valor: float, vendas_valor: float, atingimento
         autosize=False,
         annotations=[
             dict(
-                text=f"Atingimento do mês atual: {mes_referencia}",
+                text=f"{mes_referencia}",
                 x=0.5,
                 y=-0.12,
                 xref="paper",
