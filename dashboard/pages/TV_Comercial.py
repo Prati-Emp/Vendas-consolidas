@@ -141,44 +141,44 @@ st.markdown(
         .tv-carousel-section--split .tv-split-column {
             display: flex;
             flex-direction: column;
-            gap: 0.5rem;
+            gap: 0.4rem;
         }
         .tv-carousel-section--split h3 {
-            margin: 0 0 0.5rem;
-            font-size: 0.95rem;
+            margin: 0 0 0.35rem;
+            font-size: 0.9rem;
             font-weight: 600;
         }
         .tv-carousel-section--split .tv-kpi-card {
-            min-height: 42px;
-            padding: 6px 8px;
-            margin-bottom: 4px;
-            border-radius: 12px;
-            box-shadow: 0 6px 14px rgba(0, 0, 0, 0.18);
+            min-height: 32px !important;
+            padding: 4px 6px !important;
+            margin-bottom: 3px !important;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
             justify-content: flex-start;
-            gap: 4px;
+            gap: 3px;
         }
         .tv-carousel-section--split .tv-kpi-card.tv-kpi-card--compact {
-            min-height: 36px;
-            padding: 5px 6px;
-            margin-bottom: 3px;
+            min-height: 28px !important;
+            padding: 3px 5px !important;
+            margin-bottom: 2px !important;
         }
         .tv-carousel-section--split .tv-kpi-title-main {
-            font-size: 0.7rem;
+            font-size: 0.65rem !important;
         }
         .tv-carousel-section--split .tv-kpi-title {
-            gap: 2px;
-            margin-bottom: 2px;
+            gap: 1px !important;
+            margin-bottom: 1px !important;
         }
         .tv-carousel-section--split .tv-kpi-title-tag {
-            font-size: 0.58rem;
-            padding: 1px 6px;
+            font-size: 0.52rem !important;
+            padding: 1px 4px !important;
         }
         .tv-carousel-section--split .tv-kpi-value {
-            font-size: 1.25rem;
-            margin-bottom: 2px;
+            font-size: 1.1rem !important;
+            margin-bottom: 1px !important;
         }
         .tv-carousel-section--split .tv-kpi-subtitle {
-            font-size: 0.62rem;
+            font-size: 0.58rem !important;
         }
         @keyframes fadeIn {
             from {
@@ -1192,8 +1192,8 @@ with carousel_placeholder.container():
                             paper_bgcolor="rgba(0,0,0,0)",
                             plot_bgcolor="rgba(0,0,0,0)",
                             font=dict(color="#f8fafc"),
-                            height=430,
-                            margin=dict(t=44, b=24, l=140, r=44),
+                            height=400,
+                            margin=dict(t=40, b=20, l=140, r=44),
                             showlegend=False,
                             xaxis=dict(
                                 showgrid=False,
