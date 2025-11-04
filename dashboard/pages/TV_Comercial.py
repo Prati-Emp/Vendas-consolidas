@@ -1031,8 +1031,8 @@ def render_velocimetro_metas(meta_valor: float, vendas_valor: float, atingimento
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
         font=dict(color="#f8fafc", family='Manrope, sans-serif'),
-        height=500,
-        margin=dict(t=50, b=50, l=40, r=40),
+        height=300,
+        margin=dict(t=30, b=30, l=30, r=30),
         autosize=False,
         annotations=[
             dict(
@@ -1042,7 +1042,7 @@ def render_velocimetro_metas(meta_valor: float, vendas_valor: float, atingimento
                 xref="paper",
                 yref="paper",
                 showarrow=False,
-                font=dict(size=13, color='rgba(248, 250, 252, 0.75)', family='Manrope, sans-serif')
+                font=dict(size=11, color='rgba(248, 250, 252, 0.75)', family='Manrope, sans-serif')
             )
         ]
     )
@@ -1080,7 +1080,7 @@ def render_bloco_0():
     """Bloco 0: Velocímetro de Metas + Termômetro de Vendas"""
     st.markdown('<div class="tv-carousel-section tv-bloco-0-layout">', unsafe_allow_html=True)
     
-    # Layout principal: 50% (velocímetro) e 50% (termômetro)
+    # Layout principal: 50% (velocímetro + cards) e 50% (termômetro)
     col_principal_esq, col_principal_dir = st.columns([0.5, 0.5], gap="large")
     
     # Preparar dados dos cards
@@ -1102,29 +1102,30 @@ def render_bloco_0():
         elif vpl_percent < 0:
             vpl_color = "#ef4444"
     
-    # COLUNA ESQUERDA (60%): Velocímetro + 3 cards abaixo
+    # COLUNA ESQUERDA (50%): Velocímetro (50% largura) + 3 cards ao lado (50% largura)
     with col_principal_esq:
         st.markdown('<div class="tv-bloco-0-coluna">', unsafe_allow_html=True)
         
-        # Título e Velocímetro
-        st.markdown("<h3 style='margin: 0 0 0.5rem; text-align: center;'>🎯 Velocímetro de Metas</h3>", unsafe_allow_html=True)
-        fig_velocimetro = render_velocimetro_metas(meta_total, vendas_realizadas_valor, atingimento_percent, mes_referencia_curto.capitalize())
-        st.plotly_chart(fig_velocimetro, use_container_width=True)
+        # Dividir coluna esquerda em 2: velocímetro e cards ao lado
+        col_velocimetro, col_cards_velocimetro = st.columns([0.5, 0.5], gap="small")
         
-        # Espaçamento de 20px
-        st.markdown('<div style="height: 20px;"></div>', unsafe_allow_html=True)
+        with col_velocimetro:
+            # Título e Velocímetro (reduzido para ~30% altura)
+            st.markdown("<h3 style='margin: 0 0 0.5rem; text-align: center; font-size: 0.9rem;'>🎯 Velocímetro de Metas</h3>", unsafe_allow_html=True)
+            fig_velocimetro = render_velocimetro_metas(meta_total, vendas_realizadas_valor, atingimento_percent, mes_referencia_curto.capitalize())
+            st.plotly_chart(fig_velocimetro, use_container_width=True)
         
-        # 3 cards abaixo do velocímetro (32% cada)
-        st.markdown('<div class="tv-bloco-0-cards-wrapper tv-bloco-0-cards-velocimetro">', unsafe_allow_html=True)
-        cards_esq = st.columns([0.32, 0.32, 0.32], gap="small")
-        render_kpi(cards_esq[0], "Falta para Meta", format_compact_currency(falta_para_meta_valor) if meta_total > 0 else "—", "Gap remanescente", tag=mes_tag, valor_color=falta_color, compact=True)
-        render_kpi(cards_esq[1], "🏠 Taxa House (valor)", f"{taxa_house_percent:.1f}%" if house_data_available else "—", "Meta: 30% vendas internas", tag=ano_tag, valor_color=taxa_house_color, compact=True)
-        render_kpi(cards_esq[2], "Porcentagem VPL Geral", f"{vpl_percent:.2f}%" if vpl_data_available else "—", "Meta: VPL Positivo", tag=ano_tag, valor_color=vpl_color, compact=True)
-        st.markdown('</div>', unsafe_allow_html=True)
+        with col_cards_velocimetro:
+            # 3 cards empilhados ao lado do velocímetro
+            st.markdown('<div class="tv-bloco-0-cards-wrapper tv-bloco-0-cards-velocimetro" style="display: flex; flex-direction: column; gap: 10px;">', unsafe_allow_html=True)
+            render_kpi(col_cards_velocimetro, "Falta para Meta", format_compact_currency(falta_para_meta_valor) if meta_total > 0 else "—", "Gap remanescente", tag=mes_tag, valor_color=falta_color, compact=True)
+            render_kpi(col_cards_velocimetro, "🏠 Taxa House (valor)", f"{taxa_house_percent:.1f}%" if house_data_available else "—", "Meta: 30% vendas internas", tag=ano_tag, valor_color=taxa_house_color, compact=True)
+            render_kpi(col_cards_velocimetro, "Porcentagem VPL Geral", f"{vpl_percent:.2f}%" if vpl_data_available else "—", "Meta: VPL Positivo", tag=ano_tag, valor_color=vpl_color, compact=True)
+            st.markdown('</div>', unsafe_allow_html=True)
         
         st.markdown('</div>', unsafe_allow_html=True)
     
-    # COLUNA DIREITA (40%): Termômetro + 3 cards abaixo
+    # COLUNA DIREITA (50%): Termômetro maior (70% espaço) + cards embaixo ocupando toda largura
     with col_principal_dir:
         st.markdown('<div class="tv-bloco-0-coluna">', unsafe_allow_html=True)
         
@@ -1137,14 +1138,14 @@ def render_bloco_0():
         largura_preenchida = min(max(cobertura_percent / escala_max, 0.0), 1.0) * 100
 
         barra_escala_html = f"""
-        <div style='margin-top:2rem; position:relative; padding-top:0px; height:450px; display:flex; flex-direction:column; justify-content:center;'>
+        <div style='margin-top:1rem; position:relative; padding-top:0px; height:756px; display:flex; flex-direction:column; justify-content:center;'>
           <div style='position:relative; margin-bottom:8px; width:100%;'>
             <div style='position:absolute; bottom:0; left:{indicador_posicao}%; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center; z-index:10;'>
               <div style='font-size:0.85rem;font-weight:700;color:{status_color};margin-bottom:2px;background:rgba(11,11,11,0.85);padding:3px 12px;border-radius:999px;'>{cobertura_percent:.1f}%</div>
               <div style='width:0;height:0;border-left:12px solid transparent;border-right:12px solid transparent;border-bottom:16px solid {status_color};'></div>
             </div>
           </div>
-          <div style='position:relative; border-radius:14px; overflow:hidden; height:75px; box-shadow:0 0 16px rgba(0,0,0,0.35); max-width:100%; width:100%;'>
+          <div style='position:relative; border-radius:14px; overflow:hidden; height:120px; box-shadow:0 0 16px rgba(0,0,0,0.35); max-width:100%; width:100%;'>
             <div style='display:flex; height:100%; font-size:1.05rem; width:100%;'>
               <div style='flex:70; max-width:70%; background:#1E90FF; color:#ffffff; display:flex; flex-direction:column; align-items:center; justify-content:center; font-weight:600; opacity:{1 if cobertura_percent >= 0 else 0.25};'>
                 Frio
@@ -1172,30 +1173,29 @@ def render_bloco_0():
             unsafe_allow_html=True
         )
         
-        # Espaçamento de 20px
-        st.markdown('<div style="height: 20px;"></div>', unsafe_allow_html=True)
-        
-        # 4 cards abaixo do termômetro (23% cada)
-        st.markdown('<div class="tv-bloco-0-cards-wrapper tv-bloco-0-cards-termometro">', unsafe_allow_html=True)
-        cards_dir = st.columns([0.23, 0.23, 0.23, 0.23], gap="small")
-        render_kpi(cards_dir[0], "Taxa de Conversão Geral", f"{taxa_conversao_geral * 100:.1f}%", "Reservas que viram vendas", compact=True)
-        render_kpi(cards_dir[1], "Reservas Atuais", f"{reservas_atuais_total}", "Reservas ativas no pipeline", compact=True)
-        
-        # Lógica de cor para "Potencial de Vendas"
-        potencial_color = None
-        if meta_total > 0:
-            if potencial_vendas_valor < meta_total and vendas_realizadas_valor < meta_total:
-                potencial_color = "#ef4444"  # Vermelho
-            else:
-                potencial_color = "#22c55e"  # Verde
-        
-        render_kpi(cards_dir[2], "Potencial de Vendas", format_compact_currency(potencial_vendas_valor), "Reservas x taxa de conversão", valor_color=potencial_color, compact=True)
-        
-        # "Cobertura da Meta" com cor do termômetro e tag de status
-        render_kpi(cards_dir[3], "Cobertura da Meta", f"{cobertura_percent:.1f}%", "Potencial versus meta", tag=status.upper(), valor_color=status_color, compact=True)
         st.markdown('</div>', unsafe_allow_html=True)
-        
-        st.markdown('</div>', unsafe_allow_html=True)
+    
+    # Cards abaixo ocupando toda a largura da página (fora das colunas)
+    st.markdown('<div style="margin-top: 20px;">', unsafe_allow_html=True)
+    
+    # Lógica de cor para "Potencial de Vendas"
+    potencial_color = None
+    if meta_total > 0:
+        if potencial_vendas_valor < meta_total and vendas_realizadas_valor < meta_total:
+            potencial_color = "#ef4444"  # Vermelho
+        else:
+            potencial_color = "#22c55e"  # Verde
+    
+    # 4 cards ocupando toda a largura
+    st.markdown('<div class="tv-bloco-0-cards-wrapper tv-bloco-0-cards-termometro">', unsafe_allow_html=True)
+    cards_dir = st.columns([0.25, 0.25, 0.25, 0.25], gap="small")
+    render_kpi(cards_dir[0], "Taxa de Conversão Geral", f"{taxa_conversao_geral * 100:.1f}%", "Reservas que viram vendas", compact=True)
+    render_kpi(cards_dir[1], "Reservas Atuais", f"{reservas_atuais_total}", "Reservas ativas no pipeline", compact=True)
+    render_kpi(cards_dir[2], "Potencial de Vendas", format_compact_currency(potencial_vendas_valor), "Reservas x taxa de conversão", valor_color=potencial_color, compact=True)
+    render_kpi(cards_dir[3], "Cobertura da Meta", f"{cobertura_percent:.1f}%", "Potencial versus meta", tag=status.upper(), valor_color=status_color, compact=True)
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    st.markdown('</div>', unsafe_allow_html=True)
     
     st.markdown('</div>', unsafe_allow_html=True)  # Fecha tv-carousel-section
 
