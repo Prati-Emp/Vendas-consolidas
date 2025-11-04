@@ -1005,7 +1005,9 @@ def render_kpi(coluna, titulo: str, valor: str, subtitulo: str | None = None, ta
 
 def render_velocimetro_metas(meta_valor: float, vendas_valor: float, atingimento_percent: float, mes_referencia: str):
     """Renderiza um velocímetro com os 3 KPIs principais de metas"""
-    cor_principal = '#22c55e' if atingimento_percent >= 100 else '#ef4444'
+    # Barra sempre verde, cor do número muda conforme atingimento
+    cor_numero = '#22c55e' if atingimento_percent >= 100 else '#ef4444'
+    cor_barra = '#22c55e'  # Sempre verde
     
     fig = go.Figure(go.Indicator(
         mode = "gauge+number",
@@ -1015,11 +1017,11 @@ def render_velocimetro_metas(meta_valor: float, vendas_valor: float, atingimento
         number = {
             'valueformat': '.1f',
             'suffix': '%',
-            'font': {'size': 48, 'color': cor_principal, 'family': 'Manrope, sans-serif'}
+            'font': {'size': 48, 'color': cor_numero, 'family': 'Manrope, sans-serif'}
         },
         gauge = {
             'axis': {'range': [None, 150], 'tickwidth': 2, 'tickcolor': '#f8fafc', 'tickfont': {'size': 12, 'color': '#f8fafc'}},
-            'bar': {'color': cor_principal, 'thickness': 0.15},
+            'bar': {'color': cor_barra, 'thickness': 0.25, 'line': {'width': 0}},
             'bgcolor': "rgba(15, 23, 42, 0.3)",
             'borderwidth': 2,
             'bordercolor': "rgba(148, 163, 184, 0.5)",
@@ -1039,6 +1041,8 @@ def render_velocimetro_metas(meta_valor: float, vendas_valor: float, atingimento
     # Formatar valor da meta
     meta_formatada = format_compact_currency(meta_valor) if meta_valor > 0 else "—"
     
+    # Posicionar annotation próximo ao marcador de 100% (threshold)
+    # O threshold está em 100/150 = 66.7% do gauge, na parte superior direita
     fig.update_layout(
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
@@ -1049,17 +1053,17 @@ def render_velocimetro_metas(meta_valor: float, vendas_valor: float, atingimento
         annotations=[
             dict(
                 text=f"Meta: {meta_formatada}",
-                x=0.98,
-                y=0.95,
+                x=0.78,
+                y=0.62,
                 xref="paper",
                 yref="paper",
                 showarrow=False,
-                font=dict(size=14, color='rgba(248, 250, 252, 0.9)', family='Manrope, sans-serif'),
-                bgcolor='rgba(15, 23, 42, 0.7)',
-                bordercolor='rgba(148, 163, 184, 0.5)',
-                borderwidth=1,
-                borderpad=6,
-                align="right"
+                font=dict(size=12, color='rgba(248, 250, 252, 0.95)', family='Manrope, sans-serif'),
+                bgcolor='rgba(15, 23, 42, 0.9)',
+                bordercolor='rgba(148, 163, 184, 0.6)',
+                borderwidth=1.5,
+                borderpad=8,
+                align="center"
             )
         ]
     )
@@ -1127,6 +1131,7 @@ def render_bloco_0():
         st.markdown("<h3 style='margin: 0 0 0; text-align: center; font-size: 0.9rem;'>🎯 Velocímetro de Vendas</h3>", unsafe_allow_html=True)
         fig_velocimetro = render_velocimetro_metas(meta_total, vendas_realizadas_valor, atingimento_percent, mes_referencia_curto.capitalize())
         st.plotly_chart(fig_velocimetro, use_container_width=True)
+        
         # Tag do mês formatado como nos cards
         st.markdown(
             f"<div style='text-align: center; margin-top: -45px;'><span style='display: inline-block; padding: 4px 12px; border-radius: 999px; background: rgba(15, 23, 42, 0.55); color: rgba(255, 255, 255, 0.75); font-size: 11px; font-family: Manrope, sans-serif; letter-spacing: 0.14em;'>{mes_referencia_curto.upper()}</span></div>",
