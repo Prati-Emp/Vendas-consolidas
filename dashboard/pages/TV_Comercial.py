@@ -55,23 +55,7 @@ if elapsed >= CAROUSEL_INTERVAL:
     # Forçar rerun para mostrar nova seção (preserva sessão)
     st.experimental_rerun()
 
-# Título e informações sempre visíveis
-st.markdown(
-    """
-    <div class="tv-header">
-        <span class="tv-header-icon">📺</span>
-        <span class="tv-header-text">TV Comercial</span>
-    </div>
-    """,
-    unsafe_allow_html=True
-)
-tempo_restante = max(0, int(CAROUSEL_INTERVAL - elapsed))
-st.markdown(
-    f"""
-    <div class="tv-timestamp">Atualização realizada em {datetime.now().strftime('%d/%m/%Y %H:%M:%S')} · Seção {st.session_state.carousel_index + 1}/{CAROUSEL_SECTIONS} · Próxima em {tempo_restante}s</div>
-    """,
-    unsafe_allow_html=True
-)
+# Título e informações removidos para liberar espaço na apresentação
 
 # Placeholder principal que será atualizado com o conteúdo do bloco atual
 carousel_placeholder = st.empty()
