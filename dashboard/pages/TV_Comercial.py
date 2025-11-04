@@ -1002,7 +1002,7 @@ def render_velocimetro_metas(meta_valor: float, vendas_valor: float, atingimento
         mode = "gauge+number",
         value = atingimento_percent,
         domain = {'x': [0, 1], 'y': [0, 1]},
-        title = {'text': "Atingimento da Meta", 'font': {'size': 22, 'color': '#f8fafc', 'family': 'Manrope, sans-serif'}},
+        title = {'text': "", 'font': {'size': 22, 'color': '#f8fafc', 'family': 'Manrope, sans-serif'}},
         number = {
             'valueformat': '.1f',
             'suffix': '%',
@@ -1107,7 +1107,7 @@ def render_bloco_0():
         st.markdown('<div class="tv-bloco-0-coluna">', unsafe_allow_html=True)
         
         # Título e Velocímetro
-        st.markdown("<h3 style='margin: 0 0 0.5rem; text-align: center; font-size: 0.9rem;'>🎯 Velocímetro de Metas</h3>", unsafe_allow_html=True)
+        st.markdown("<h3 style='margin: 0 0 0.5rem; text-align: center; font-size: 0.9rem;'>🎯 Velocímetro de Vendas</h3>", unsafe_allow_html=True)
         fig_velocimetro = render_velocimetro_metas(meta_total, vendas_realizadas_valor, atingimento_percent, mes_referencia_curto.capitalize())
         st.plotly_chart(fig_velocimetro, use_container_width=True)
         
