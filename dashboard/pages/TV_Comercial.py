@@ -1138,11 +1138,13 @@ def render_bloco_0():
 
         barra_escala_html = f"""
         <div style='margin-top:2rem; position:relative; padding-top:0px; height:450px; display:flex; flex-direction:column; justify-content:center;'>
-          <div style='position:absolute; top:-5px; left:{indicador_posicao}%; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center;'>
-            <div style='font-size:0.85rem;font-weight:700;color:{status_color};margin-bottom:2px;background:rgba(11,11,11,0.85);padding:3px 12px;border-radius:999px;'>{cobertura_percent:.1f}%</div>
-            <div style='width:0;height:0;border-left:12px solid transparent;border-right:12px solid transparent;border-bottom:16px solid {status_color};'></div>
+          <div style='position:relative; margin-bottom:8px; width:100%;'>
+            <div style='position:absolute; bottom:0; left:{indicador_posicao}%; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center; z-index:10;'>
+              <div style='font-size:0.85rem;font-weight:700;color:{status_color};margin-bottom:2px;background:rgba(11,11,11,0.85);padding:3px 12px;border-radius:999px;'>{cobertura_percent:.1f}%</div>
+              <div style='width:0;height:0;border-left:12px solid transparent;border-right:12px solid transparent;border-bottom:16px solid {status_color};'></div>
+            </div>
           </div>
-          <div style='position:relative; margin-top:0px; border-radius:14px; overflow:hidden; height:75px; box-shadow:0 0 16px rgba(0,0,0,0.35); max-width:100%; width:100%;'>
+          <div style='position:relative; border-radius:14px; overflow:hidden; height:75px; box-shadow:0 0 16px rgba(0,0,0,0.35); max-width:100%; width:100%;'>
             <div style='display:flex; height:100%; font-size:1.05rem; width:100%;'>
               <div style='flex:70; max-width:70%; background:#1E90FF; color:#ffffff; display:flex; flex-direction:column; align-items:center; justify-content:center; font-weight:600; opacity:{1 if cobertura_percent >= 0 else 0.25};'>
                 Frio
