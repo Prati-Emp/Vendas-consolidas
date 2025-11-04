@@ -136,7 +136,7 @@ st.markdown(
             font-size: 0.9rem;
         }
         .tv-carousel-section--split {
-            padding-top: 4px;
+            padding-top: 2px;
         }
         .tv-carousel-section--split .tv-split-column {
             display: flex;
@@ -149,36 +149,39 @@ st.markdown(
             font-weight: 600;
         }
         .tv-carousel-section--split .tv-kpi-card {
-            min-height: 32px !important;
-            padding: 4px 6px !important;
-            margin-bottom: 3px !important;
-            border-radius: 10px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
-            justify-content: flex-start;
-            gap: 3px;
-        }
-        .tv-carousel-section--split .tv-kpi-card.tv-kpi-card--compact {
-            min-height: 28px !important;
+            min-height: 26px !important;
             padding: 3px 5px !important;
             margin-bottom: 2px !important;
+            border-radius: 8px;
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.12);
+            justify-content: flex-start;
+            gap: 2px;
+        }
+        .tv-carousel-section--split .tv-kpi-card.tv-kpi-card--compact {
+            min-height: 22px !important;
+            padding: 2px 4px !important;
+            margin-bottom: 1px !important;
         }
         .tv-carousel-section--split .tv-kpi-title-main {
-            font-size: 0.65rem !important;
+            font-size: 0.6rem !important;
+            line-height: 1.1;
         }
         .tv-carousel-section--split .tv-kpi-title {
-            gap: 1px !important;
-            margin-bottom: 1px !important;
+            gap: 0px !important;
+            margin-bottom: 0px !important;
         }
         .tv-carousel-section--split .tv-kpi-title-tag {
-            font-size: 0.52rem !important;
-            padding: 1px 4px !important;
+            font-size: 0.48rem !important;
+            padding: 0px 3px !important;
         }
         .tv-carousel-section--split .tv-kpi-value {
-            font-size: 1.1rem !important;
-            margin-bottom: 1px !important;
+            font-size: 1.0rem !important;
+            margin-bottom: 0px !important;
+            line-height: 1.1;
         }
         .tv-carousel-section--split .tv-kpi-subtitle {
-            font-size: 0.58rem !important;
+            font-size: 0.54rem !important;
+            line-height: 1.1;
         }
         @keyframes fadeIn {
             from {
@@ -996,10 +999,10 @@ with carousel_placeholder.container():
                         color_discrete_map=color_map,
                         title='Distribuição de Reservas por Situação'
                     )
-                    fig_reserva_status = apply_dark_theme(fig_reserva_status, margin_top=40)
+                    fig_reserva_status = apply_dark_theme(fig_reserva_status, margin_top=35)
                     fig_reserva_status.update_layout(
-                        height=480,
-                        margin=dict(t=40, b=24, l=10, r=10),
+                        height=520,
+                        margin=dict(t=35, b=20, l=10, r=10),
                         showlegend=False,
                         title=dict(
                             text='Distribuição de Reservas por Situação',
@@ -1192,8 +1195,8 @@ with carousel_placeholder.container():
                             paper_bgcolor="rgba(0,0,0,0)",
                             plot_bgcolor="rgba(0,0,0,0)",
                             font=dict(color="#f8fafc"),
-                            height=400,
-                            margin=dict(t=40, b=20, l=140, r=44),
+                            height=480,
+                            margin=dict(t=35, b=18, l=135, r=40),
                             showlegend=False,
                             xaxis=dict(
                                 showgrid=False,
