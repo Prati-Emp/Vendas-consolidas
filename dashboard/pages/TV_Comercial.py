@@ -7,6 +7,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from dateutil.relativedelta import relativedelta
 import time
+import math
 
 # Garantir que os módulos compartilhados possam ser importados quando o app for executado diretamente
 sys.path.append(str(Path(__file__).resolve().parent.parent))
@@ -1021,7 +1022,7 @@ def render_velocimetro_metas(meta_valor: float, vendas_valor: float, atingimento
         },
         gauge = {
             'axis': {'range': [None, 150], 'tickwidth': 2, 'tickcolor': '#f8fafc', 'tickfont': {'size': 12, 'color': '#f8fafc'}},
-            'bar': {'color': cor_barra, 'thickness': 0.8, 'line': {'width': 0}},
+            'bar': {'color': cor_barra, 'thickness': 1.0, 'line': {'width': 0}},
             'bgcolor': "rgba(15, 23, 42, 0.3)",
             'borderwidth': 2,
             'bordercolor': "rgba(148, 163, 184, 0.5)",
@@ -1043,6 +1044,27 @@ def render_velocimetro_metas(meta_valor: float, vendas_valor: float, atingimento
     
     # Posicionar annotation próximo ao marcador de 100% (threshold)
     # O threshold está em 100/150 = 66.7% do gauge, na parte superior direita
+    # Calcular posição angular do valor atual para a barra indicadora
+    # O gauge vai de 0 a 150, então precisamos calcular o ângulo
+    # 0% = -90 graus (esquerda), 100% = 90 graus (direita)
+    angulo_atual = -90 + (atingimento_percent / 150) * 180
+    
+    # Converter para radianos para cálculos
+    angulo_rad = math.radians(angulo_atual)
+    
+    # Posição no círculo (centro em 0.5, 0.5, raio aproximado 0.4)
+    raio = 0.38
+    centro_x = 0.5
+    centro_y = 0.48
+    
+    # Ponto inicial (no centro do gauge)
+    x0 = centro_x + raio * 0.7 * math.cos(angulo_rad)
+    y0 = centro_y + raio * 0.7 * math.sin(angulo_rad)
+    
+    # Ponto final (na borda do gauge)
+    x1 = centro_x + raio * math.cos(angulo_rad)
+    y1 = centro_y + raio * math.sin(angulo_rad)
+    
     fig.update_layout(
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
@@ -1064,6 +1086,21 @@ def render_velocimetro_metas(meta_valor: float, vendas_valor: float, atingimento
                 borderwidth=1,
                 borderpad=6,
                 align="right"
+            )
+        ],
+        shapes=[
+            dict(
+                type="line",
+                x0=x0,
+                y0=y0,
+                x1=x1,
+                y1=y1,
+                xref="paper",
+                yref="paper",
+                line=dict(
+                    color="rgba(255, 255, 255, 0.95)",
+                    width=3
+                )
             )
         ]
     )
