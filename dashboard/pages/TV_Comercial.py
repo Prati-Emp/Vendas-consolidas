@@ -165,15 +165,21 @@ st.markdown(
             font-weight: 600;
         }
         .tv-carousel-section--split .tv-kpi-card {
-            min-height: 120px;
-            padding: 16px 16px;
+            min-height: 72px;
+            padding: 12px 12px;
         }
         .tv-carousel-section--split .tv-kpi-card.tv-kpi-card--compact {
-            min-height: 100px;
-            padding: 14px 14px;
+            min-height: 60px;
+            padding: 10px 10px;
+        }
+        .tv-carousel-section--split .tv-kpi-title-main {
+            font-size: 0.82rem;
         }
         .tv-carousel-section--split .tv-kpi-value {
-            font-size: 1.85rem;
+            font-size: 1.6rem;
+        }
+        .tv-carousel-section--split .tv-kpi-subtitle {
+            font-size: 0.75rem;
         }
         @keyframes fadeIn {
             from {
