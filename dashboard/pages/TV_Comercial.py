@@ -1116,11 +1116,12 @@ def render_bloco_0():
             st.plotly_chart(fig_velocimetro, use_container_width=True)
         
         with col_cards_velocimetro:
-            # 3 cards empilhados ao lado do velocímetro
-            st.markdown('<div class="tv-bloco-0-cards-wrapper tv-bloco-0-cards-velocimetro" style="display: flex; flex-direction: column; gap: 10px;">', unsafe_allow_html=True)
-            render_kpi(col_cards_velocimetro, "Falta para Meta", format_compact_currency(falta_para_meta_valor) if meta_total > 0 else "—", "Gap remanescente", tag=mes_tag, valor_color=falta_color, compact=True)
-            render_kpi(col_cards_velocimetro, "🏠 Taxa House (valor)", f"{taxa_house_percent:.1f}%" if house_data_available else "—", "Meta: 30% vendas internas", tag=ano_tag, valor_color=taxa_house_color, compact=True)
-            render_kpi(col_cards_velocimetro, "Porcentagem VPL Geral", f"{vpl_percent:.2f}%" if vpl_data_available else "—", "Meta: VPL Positivo", tag=ano_tag, valor_color=vpl_color, compact=True)
+            # 3 cards lado a lado ao lado do velocímetro
+            st.markdown('<div class="tv-bloco-0-cards-wrapper tv-bloco-0-cards-velocimetro">', unsafe_allow_html=True)
+            cards_velocimetro = st.columns(3, gap="small")
+            render_kpi(cards_velocimetro[0], "Falta para Meta", format_compact_currency(falta_para_meta_valor) if meta_total > 0 else "—", "Gap remanescente", tag=mes_tag, valor_color=falta_color, compact=True)
+            render_kpi(cards_velocimetro[1], "🏠 Taxa House (valor)", f"{taxa_house_percent:.1f}%" if house_data_available else "—", "Meta: 30% vendas internas", tag=ano_tag, valor_color=taxa_house_color, compact=True)
+            render_kpi(cards_velocimetro[2], "Porcentagem VPL Geral", f"{vpl_percent:.2f}%" if vpl_data_available else "—", "Meta: VPL Positivo", tag=ano_tag, valor_color=vpl_color, compact=True)
             st.markdown('</div>', unsafe_allow_html=True)
         
         st.markdown('</div>', unsafe_allow_html=True)
