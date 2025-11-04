@@ -141,43 +141,44 @@ st.markdown(
         .tv-carousel-section--split .tv-split-column {
             display: flex;
             flex-direction: column;
-            gap: 0.75rem;
+            gap: 0.5rem;
         }
         .tv-carousel-section--split h3 {
-            margin: 0 0 0.75rem;
-            font-size: 1.05rem;
+            margin: 0 0 0.5rem;
+            font-size: 0.95rem;
             font-weight: 600;
         }
         .tv-carousel-section--split .tv-kpi-card {
-            min-height: 58px;
-            padding: 8px 10px;
-            margin-bottom: 6px;
-            border-radius: 14px;
-            box-shadow: 0 8px 18px rgba(0, 0, 0, 0.22);
+            min-height: 42px;
+            padding: 6px 8px;
+            margin-bottom: 4px;
+            border-radius: 12px;
+            box-shadow: 0 6px 14px rgba(0, 0, 0, 0.18);
             justify-content: flex-start;
-            gap: 6px;
+            gap: 4px;
         }
         .tv-carousel-section--split .tv-kpi-card.tv-kpi-card--compact {
-            min-height: 48px;
-            padding: 6px 8px;
+            min-height: 36px;
+            padding: 5px 6px;
+            margin-bottom: 3px;
         }
         .tv-carousel-section--split .tv-kpi-title-main {
-            font-size: 0.78rem;
+            font-size: 0.7rem;
         }
         .tv-carousel-section--split .tv-kpi-title {
-            gap: 3px;
-            margin-bottom: 4px;
+            gap: 2px;
+            margin-bottom: 2px;
         }
         .tv-carousel-section--split .tv-kpi-title-tag {
-            font-size: 0.62rem;
-            padding: 2px 8px;
+            font-size: 0.58rem;
+            padding: 1px 6px;
         }
         .tv-carousel-section--split .tv-kpi-value {
-            font-size: 1.42rem;
-            margin-bottom: 4px;
+            font-size: 1.25rem;
+            margin-bottom: 2px;
         }
         .tv-carousel-section--split .tv-kpi-subtitle {
-            font-size: 0.68rem;
+            font-size: 0.62rem;
         }
         @keyframes fadeIn {
             from {
@@ -995,10 +996,10 @@ with carousel_placeholder.container():
                         color_discrete_map=color_map,
                         title='Distribuição de Reservas por Situação'
                     )
-                    fig_reserva_status = apply_dark_theme(fig_reserva_status, margin_top=46)
+                    fig_reserva_status = apply_dark_theme(fig_reserva_status, margin_top=40)
                     fig_reserva_status.update_layout(
-                        height=420,
-                        margin=dict(t=46, b=28, l=10, r=10),
+                        height=480,
+                        margin=dict(t=40, b=24, l=10, r=10),
                         showlegend=False,
                         title=dict(
                             text='Distribuição de Reservas por Situação',
