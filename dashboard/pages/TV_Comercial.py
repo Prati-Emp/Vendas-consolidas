@@ -1102,7 +1102,7 @@ def render_bloco_0():
         st.plotly_chart(fig_velocimetro, use_container_width=True)
         # Tag do mês formatado como nos cards
         st.markdown(
-            f"<div style='text-align: center; margin-top: -25px;'><span style='display: inline-block; padding: 4px 12px; border-radius: 999px; background: rgba(15, 23, 42, 0.55); color: rgba(255, 255, 255, 0.75); font-size: 11px; font-family: Manrope, sans-serif; letter-spacing: 0.14em;'>{mes_referencia_curto.upper()}</span></div>",
+            f"<div style='text-align: center; margin-top: -45px;'><span style='display: inline-block; padding: 4px 12px; border-radius: 999px; background: rgba(15, 23, 42, 0.55); color: rgba(255, 255, 255, 0.75); font-size: 11px; font-family: Manrope, sans-serif; letter-spacing: 0.14em;'>{mes_referencia_curto.upper()}</span></div>",
             unsafe_allow_html=True
         )
         
