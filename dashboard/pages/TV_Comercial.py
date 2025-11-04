@@ -1021,7 +1021,7 @@ def render_velocimetro_metas(meta_valor: float, vendas_valor: float, atingimento
         },
         gauge = {
             'axis': {'range': [None, 150], 'tickwidth': 2, 'tickcolor': '#f8fafc', 'tickfont': {'size': 12, 'color': '#f8fafc'}},
-            'bar': {'color': cor_barra, 'thickness': 0.5, 'line': {'width': 0}},
+            'bar': {'color': cor_barra, 'thickness': 0.8, 'line': {'width': 0}},
             'bgcolor': "rgba(15, 23, 42, 0.3)",
             'borderwidth': 2,
             'bordercolor': "rgba(148, 163, 184, 0.5)",
