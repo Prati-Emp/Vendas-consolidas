@@ -1121,15 +1121,15 @@ def render_bloco_0():
         largura_preenchida = min(max(cobertura_percent / escala_max, 0.0), 1.0) * 100
 
         barra_escala_html = f"""
-        <div style='margin-top:0; position:relative; padding-top:0px; height:400px; display:flex; flex-direction:column; justify-content:flex-start; align-items:center;'>
-          <h3 style='margin: 0 0 1rem; text-align: center; font-size: 1.1rem;'>🌡️ Termômetro de Vendas</h3>
-          <div style='position:relative; margin-bottom:8px; width:90%; max-width:90%;'>
+        <div style='margin-top:0; position:relative; padding-top:0px; height:650px; display:flex; flex-direction:column; justify-content:flex-start; align-items:center;'>
+          <h3 style='margin: 0 0 1.5rem; text-align: center; font-size: 1.1rem;'>🌡️ Termômetro de Vendas</h3>
+          <div style='position:relative; margin-bottom:8px; width:45%; max-width:45%;'>
             <div style='position:absolute; bottom:0; left:{indicador_posicao}%; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center; z-index:10;'>
               <div style='font-size:0.85rem;font-weight:700;color:{status_color};margin-bottom:2px;background:rgba(11,11,11,0.85);padding:3px 12px;border-radius:999px;'>{cobertura_percent:.1f}%</div>
               <div style='width:0;height:0;border-left:12px solid transparent;border-right:12px solid transparent;border-bottom:16px solid {status_color};'></div>
             </div>
           </div>
-          <div style='position:relative; border-radius:14px; overflow:hidden; height:100px; box-shadow:0 0 16px rgba(0,0,0,0.35); max-width:90%; width:90%;'>
+          <div style='position:relative; border-radius:14px; overflow:hidden; height:220px; box-shadow:0 0 16px rgba(0,0,0,0.35); max-width:45%; width:45%;'>
             <div style='display:flex; height:100%; font-size:1.05rem; width:100%;'>
               <div style='flex:70; max-width:70%; background:#1E90FF; color:#ffffff; display:flex; flex-direction:column; align-items:center; justify-content:center; font-weight:600; opacity:{1 if cobertura_percent >= 0 else 0.25};'>
                 Frio
