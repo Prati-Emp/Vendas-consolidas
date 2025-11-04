@@ -301,12 +301,12 @@ st.markdown(
             gap: 6px;
         }
         .tv-bloco-0-cards-velocimetro .tv-kpi-card.tv-kpi-card--compact .tv-kpi-title-main {
-            font-size: 0.595rem !important; /* ~9.52px - reduzido 15% de 0.7rem */
+            font-size: 0.5rem !important; /* ~8px - reduzido ainda mais */
             line-height: 1.2;
             font-weight: 600;
         }
         .tv-bloco-0-cards-velocimetro .tv-kpi-card.tv-kpi-card--compact .tv-kpi-value {
-            font-size: 0.796875rem !important; /* ~12.75px - reduzido 15% de 0.9375rem */
+            font-size: 0.65rem !important; /* ~10.4px - reduzido ainda mais */
             margin-bottom: 8px;
             line-height: 1.3;
             font-weight: 700;
@@ -316,12 +316,12 @@ st.markdown(
             text-overflow: ellipsis;
         }
         .tv-bloco-0-cards-velocimetro .tv-kpi-card.tv-kpi-card--compact .tv-kpi-subtitle {
-            font-size: 0.5525rem !important; /* ~8.84px - reduzido 15% de 0.65rem */
+            font-size: 0.45rem !important; /* ~7.2px - reduzido ainda mais */
             line-height: 1.2;
             text-align: center;
         }
         .tv-bloco-0-cards-velocimetro .tv-kpi-card.tv-kpi-card--compact .tv-kpi-title-tag {
-            font-size: 0.4675rem !important; /* ~7.48px - reduzido 15% de 0.55rem */
+            font-size: 0.4rem !important; /* ~6.4px - reduzido ainda mais */
             padding: 2px 4px !important;
             margin-left: 4px;
         }
@@ -1080,8 +1080,8 @@ def render_bloco_0():
     """Bloco 0: Velocímetro de Metas + Termômetro de Vendas"""
     st.markdown('<div class="tv-carousel-section tv-bloco-0-layout">', unsafe_allow_html=True)
     
-    # Layout principal: 60% (velocímetro) e 40% (termômetro)
-    col_principal_esq, col_principal_dir = st.columns([0.6, 0.4], gap="large")
+    # Layout principal: 50% (velocímetro) e 50% (termômetro)
+    col_principal_esq, col_principal_dir = st.columns([0.5, 0.5], gap="large")
     
     # Preparar dados dos cards
     mes_tag = mes_referencia_curto.upper()
