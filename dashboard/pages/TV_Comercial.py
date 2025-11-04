@@ -301,12 +301,12 @@ st.markdown(
             gap: 5px;
         }
         .tv-bloco-0-cards-velocimetro .tv-kpi-card.tv-kpi-card--compact .tv-kpi-title-main {
-            font-size: 0.375rem !important; /* 6px - igual ao termômetro */
+            font-size: 0.3125rem !important; /* 5px */
             line-height: 1.2;
             font-weight: 600;
         }
         .tv-bloco-0-cards-velocimetro .tv-kpi-card.tv-kpi-card--compact .tv-kpi-value {
-            font-size: 0.525rem !important; /* 8.4px - igual ao termômetro */
+            font-size: 0.4625rem !important; /* 7.4px */
             margin-bottom: 6px;
             line-height: 1.3;
             font-weight: 700;
@@ -316,12 +316,12 @@ st.markdown(
             text-overflow: ellipsis;
         }
         .tv-bloco-0-cards-velocimetro .tv-kpi-card.tv-kpi-card--compact .tv-kpi-subtitle {
-            font-size: 0.3875rem !important; /* 6.2px - igual ao termômetro */
+            font-size: 0.325rem !important; /* 5.2px */
             line-height: 1.2;
             text-align: center;
         }
         .tv-bloco-0-cards-velocimetro .tv-kpi-card.tv-kpi-card--compact .tv-kpi-title-tag {
-            font-size: 0.3375rem !important; /* 5.4px - igual ao termômetro */
+            font-size: 0.275rem !important; /* 4.4px */
             padding: 2px 4px !important;
             margin-left: 4px;
         }
@@ -350,12 +350,12 @@ st.markdown(
             gap: 5px;
         }
         .tv-bloco-0-cards-termometro .tv-kpi-card.tv-kpi-card--compact .tv-kpi-title-main {
-            font-size: 0.375rem !important; /* 6px */
+            font-size: 0.3125rem !important; /* 5px */
             line-height: 1.2;
             font-weight: 600;
         }
         .tv-bloco-0-cards-termometro .tv-kpi-card.tv-kpi-card--compact .tv-kpi-value {
-            font-size: 0.525rem !important; /* 8.4px */
+            font-size: 0.4625rem !important; /* 7.4px */
             margin-bottom: 6px;
             line-height: 1.3;
             font-weight: 700;
@@ -365,12 +365,12 @@ st.markdown(
             text-overflow: ellipsis;
         }
         .tv-bloco-0-cards-termometro .tv-kpi-card.tv-kpi-card--compact .tv-kpi-subtitle {
-            font-size: 0.3875rem !important; /* 6.2px */
+            font-size: 0.325rem !important; /* 5.2px */
             line-height: 1.2;
             text-align: center;
         }
         .tv-bloco-0-cards-termometro .tv-kpi-card.tv-kpi-card--compact .tv-kpi-title-tag {
-            font-size: 0.3375rem !important; /* 5.4px */
+            font-size: 0.275rem !important; /* 4.4px */
             padding: 2px 4px !important;
             margin-left: 4px;
         }
