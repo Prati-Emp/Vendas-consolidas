@@ -244,6 +244,8 @@ st.markdown(
             display: flex;
             flex-direction: column;
             justify-content: flex-start;
+            margin-bottom: 0 !important;
+            padding-bottom: 0 !important;
         }
         /* Garantir que os gráficos ocupem o espaço necessário */
         .tv-bloco-0-coluna > div:first-of-type {
@@ -252,6 +254,7 @@ st.markdown(
         .tv-bloco-0-cards-wrapper {
             width: 100%;
             margin-top: 0;
+            margin-bottom: 0 !important;
             flex-shrink: 0;
         }
         /* Garantir que os cards comecem na mesma linha horizontal usando flexbox */
@@ -260,6 +263,8 @@ st.markdown(
             flex-direction: column;
             justify-content: flex-start;
             align-items: stretch;
+            margin-bottom: 0 !important;
+            padding-bottom: 0 !important;
         }
         .tv-bloco-0-cards-wrapper > div[data-testid="column-container"] {
             gap: 20px !important;
@@ -1122,6 +1127,9 @@ def render_bloco_0():
         
         st.markdown('</div>', unsafe_allow_html=True)
     
+    # Remover espaçamento padrão do Streamlit após as colunas
+    st.markdown('<style>div[data-testid="column-container"]:last-child { margin-bottom: 0 !important; }</style>', unsafe_allow_html=True)
+    
     # Termômetro ocupando toda a largura da página (fora das colunas principais)
     escala_max = 150
     indicador_percentual = max(0.0, min(cobertura_percent, escala_max))
@@ -1129,7 +1137,7 @@ def render_bloco_0():
     largura_preenchida = min(max(cobertura_percent / escala_max, 0.0), 1.0) * 100
 
     barra_escala_html = f"""
-    <div style='margin-top:5px; position:relative; padding-top:0px; height:500px; display:flex; flex-direction:column; justify-content:center; align-items:center; width:100%;'>
+    <div style='margin-top:0px; position:relative; padding-top:0px; height:500px; display:flex; flex-direction:column; justify-content:center; align-items:center; width:100%;'>
       <h3 style='margin: 0 0 1.5rem; text-align: center; font-size: 1.1rem;'>🌡️ Termômetro de Vendas</h3>
       <div style='position:relative; margin-bottom:8px; width:90%; max-width:90%;'>
         <div style='position:absolute; bottom:0; left:{indicador_posicao}%; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center; z-index:10;'>
