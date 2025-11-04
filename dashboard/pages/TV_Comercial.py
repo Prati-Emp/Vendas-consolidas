@@ -993,12 +993,12 @@ def render_bloco_0():
         largura_preenchida = min(max(cobertura_percent / escala_max, 0.0), 1.0) * 100
 
         barra_escala_html = f"""
-        <div style='margin-top:1.2rem; position:relative; padding-top:38px;'>
+        <div style='margin-top:2.5rem; position:relative; padding-top:38px;'>
           <div style='position:absolute; top:0; left:{indicador_posicao}%; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center;'>
             <div style='font-size:0.85rem;font-weight:700;color:{status_color};margin-bottom:6px;background:rgba(11,11,11,0.85);padding:3px 12px;border-radius:999px;'>{cobertura_percent:.1f}%</div>
             <div style='width:0;height:0;border-left:12px solid transparent;border-right:12px solid transparent;border-bottom:16px solid {status_color};'></div>
           </div>
-          <div style='position:relative; border-radius:14px; overflow:hidden; height:60px; box-shadow:0 0 16px rgba(0,0,0,0.35);'>
+          <div style='position:relative; border-radius:14px; overflow:hidden; height:75px; box-shadow:0 0 16px rgba(0,0,0,0.35);'>
             <div style='display:flex; height:100%; font-size:1.05rem;'>
               <div style='flex:70; background:#1E90FF; color:#ffffff; display:flex; flex-direction:column; align-items:center; justify-content:center; font-weight:600; opacity:{1 if cobertura_percent >= 0 else 0.25};'>
                 Frio
@@ -1022,12 +1022,12 @@ def render_bloco_0():
         st.markdown(barra_escala_html, unsafe_allow_html=True)
 
         st.markdown(
-            f"<div style='margin-top:8px; font-size:0.75rem; color:rgba(255,255,255,0.65);'>Base analisada de {TERMOMETRO_DATA_INICIO.strftime('%d/%m/%Y')} até {data_final_analise.strftime('%d/%m/%Y')}</div>",
+            f"<div style='margin-top:6px; margin-bottom:0; font-size:0.7rem; color:rgba(255,255,255,0.6);'>Base analisada de {TERMOMETRO_DATA_INICIO.strftime('%d/%m/%Y')} até {data_final_analise.strftime('%d/%m/%Y')}</div>",
             unsafe_allow_html=True
         )
         
-        # Cards do termômetro abaixo da barra - com mais espaçamento e tamanhos reduzidos
-        st.markdown('<div class="tv-carousel-section-termometro-cards" style="margin-top: 1.5rem;">', unsafe_allow_html=True)
+        # Cards do termômetro abaixo da barra - com muito mais espaçamento e tamanhos reduzidos
+        st.markdown('<div class="tv-carousel-section-termometro-cards" style="margin-top: 3.5rem;">', unsafe_allow_html=True)
         linha_termometro = st.columns(4)
         render_kpi(linha_termometro[0], "Taxa de Conversão Geral", f"{taxa_conversao_geral * 100:.1f}%", "Reservas que viram vendas", compact=True)
         render_kpi(linha_termometro[1], "Reservas Atuais", f"{reservas_atuais_total}", "Reservas ativas no pipeline", compact=True)
