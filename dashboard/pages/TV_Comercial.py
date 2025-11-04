@@ -157,7 +157,7 @@ st.markdown(
         .tv-carousel-section--split .tv-split-column {
             display: flex;
             flex-direction: column;
-            gap: 1rem;
+            gap: 0.75rem;
         }
         .tv-carousel-section--split h3 {
             margin: 0 0 0.75rem;
@@ -165,21 +165,35 @@ st.markdown(
             font-weight: 600;
         }
         .tv-carousel-section--split .tv-kpi-card {
-            min-height: 72px;
-            padding: 12px 12px;
+            min-height: 58px;
+            padding: 8px 10px;
+            margin-bottom: 6px;
+            border-radius: 14px;
+            box-shadow: 0 8px 18px rgba(0, 0, 0, 0.22);
+            justify-content: flex-start;
+            gap: 6px;
         }
         .tv-carousel-section--split .tv-kpi-card.tv-kpi-card--compact {
-            min-height: 60px;
-            padding: 10px 10px;
+            min-height: 48px;
+            padding: 6px 8px;
         }
         .tv-carousel-section--split .tv-kpi-title-main {
-            font-size: 0.82rem;
+            font-size: 0.78rem;
+        }
+        .tv-carousel-section--split .tv-kpi-title {
+            gap: 3px;
+            margin-bottom: 4px;
+        }
+        .tv-carousel-section--split .tv-kpi-title-tag {
+            font-size: 0.62rem;
+            padding: 2px 8px;
         }
         .tv-carousel-section--split .tv-kpi-value {
-            font-size: 1.6rem;
+            font-size: 1.42rem;
+            margin-bottom: 4px;
         }
         .tv-carousel-section--split .tv-kpi-subtitle {
-            font-size: 0.75rem;
+            font-size: 0.68rem;
         }
         @keyframes fadeIn {
             from {
