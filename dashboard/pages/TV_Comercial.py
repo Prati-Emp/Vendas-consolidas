@@ -1178,8 +1178,19 @@ def render_bloco_0():
         cards_dir = st.columns([0.23, 0.23, 0.23, 0.23], gap="small")
         render_kpi(cards_dir[0], "Taxa de Conversão Geral", f"{taxa_conversao_geral * 100:.1f}%", "Reservas que viram vendas", compact=True)
         render_kpi(cards_dir[1], "Reservas Atuais", f"{reservas_atuais_total}", "Reservas ativas no pipeline", compact=True)
-        render_kpi(cards_dir[2], "Potencial de Vendas", format_compact_currency(potencial_vendas_valor), "Reservas x taxa de conversão", compact=True)
-        render_kpi(cards_dir[3], "Cobertura da Meta", f"{cobertura_percent:.1f}%", "Potencial versus meta", compact=True)
+        
+        # Lógica de cor para "Potencial de Vendas"
+        potencial_color = None
+        if meta_total > 0:
+            if potencial_vendas_valor < meta_total and vendas_realizadas_valor < meta_total:
+                potencial_color = "#ef4444"  # Vermelho
+            else:
+                potencial_color = "#22c55e"  # Verde
+        
+        render_kpi(cards_dir[2], "Potencial de Vendas", format_compact_currency(potencial_vendas_valor), "Reservas x taxa de conversão", valor_color=potencial_color, compact=True)
+        
+        # "Cobertura da Meta" com cor do termômetro e tag de status
+        render_kpi(cards_dir[3], "Cobertura da Meta", f"{cobertura_percent:.1f}%", "Potencial versus meta", tag=status.upper(), valor_color=status_color, compact=True)
         st.markdown('</div>', unsafe_allow_html=True)
         
         st.markdown('</div>', unsafe_allow_html=True)
