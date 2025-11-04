@@ -1129,7 +1129,7 @@ def render_bloco_0():
     largura_preenchida = min(max(cobertura_percent / escala_max, 0.0), 1.0) * 100
 
     barra_escala_html = f"""
-    <div style='margin-top:20px; position:relative; padding-top:0px; height:500px; display:flex; flex-direction:column; justify-content:center; align-items:center; width:100%;'>
+    <div style='margin-top:5px; position:relative; padding-top:0px; height:500px; display:flex; flex-direction:column; justify-content:center; align-items:center; width:100%;'>
       <h3 style='margin: 0 0 1.5rem; text-align: center; font-size: 1.1rem;'>🌡️ Termômetro de Vendas</h3>
       <div style='position:relative; margin-bottom:8px; width:90%; max-width:90%;'>
         <div style='position:absolute; bottom:0; left:{indicador_posicao}%; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center; z-index:10;'>
