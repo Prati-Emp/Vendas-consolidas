@@ -301,12 +301,12 @@ st.markdown(
             gap: 6px;
         }
         .tv-bloco-0-cards-velocimetro .tv-kpi-card.tv-kpi-card--compact .tv-kpi-title-main {
-            font-size: 0.5rem !important; /* ~8px - reduzido ainda mais */
+            font-size: 0.595rem !important; /* ~9.52px - reduzido 15% de 0.7rem */
             line-height: 1.2;
             font-weight: 600;
         }
         .tv-bloco-0-cards-velocimetro .tv-kpi-card.tv-kpi-card--compact .tv-kpi-value {
-            font-size: 0.65rem !important; /* ~10.4px - reduzido ainda mais */
+            font-size: 0.796875rem !important; /* ~12.75px - reduzido 15% de 0.9375rem */
             margin-bottom: 8px;
             line-height: 1.3;
             font-weight: 700;
@@ -316,12 +316,12 @@ st.markdown(
             text-overflow: ellipsis;
         }
         .tv-bloco-0-cards-velocimetro .tv-kpi-card.tv-kpi-card--compact .tv-kpi-subtitle {
-            font-size: 0.45rem !important; /* ~7.2px - reduzido ainda mais */
+            font-size: 0.5525rem !important; /* ~8.84px - reduzido 15% de 0.65rem */
             line-height: 1.2;
             text-align: center;
         }
         .tv-bloco-0-cards-velocimetro .tv-kpi-card.tv-kpi-card--compact .tv-kpi-title-tag {
-            font-size: 0.4rem !important; /* ~6.4px - reduzido ainda mais */
+            font-size: 0.4675rem !important; /* ~7.48px - reduzido 15% de 0.55rem */
             padding: 2px 4px !important;
             margin-left: 4px;
         }
@@ -350,12 +350,12 @@ st.markdown(
             gap: 5px;
         }
         .tv-bloco-0-cards-termometro .tv-kpi-card.tv-kpi-card--compact .tv-kpi-title-main {
-            font-size: 0.595rem !important; /* ~9.52px - reduzido 15% */
+            font-size: 0.375rem !important; /* 6px */
             line-height: 1.2;
             font-weight: 600;
         }
         .tv-bloco-0-cards-termometro .tv-kpi-card.tv-kpi-card--compact .tv-kpi-value {
-            font-size: 0.796875rem !important; /* ~12.75px - reduzido 15% */
+            font-size: 0.5875rem !important; /* 9.4px */
             margin-bottom: 6px;
             line-height: 1.3;
             font-weight: 700;
@@ -365,12 +365,12 @@ st.markdown(
             text-overflow: ellipsis;
         }
         .tv-bloco-0-cards-termometro .tv-kpi-card.tv-kpi-card--compact .tv-kpi-subtitle {
-            font-size: 0.5525rem !important; /* ~8.84px - reduzido 15% */
+            font-size: 0.3875rem !important; /* 6.2px */
             line-height: 1.2;
             text-align: center;
         }
         .tv-bloco-0-cards-termometro .tv-kpi-card.tv-kpi-card--compact .tv-kpi-title-tag {
-            font-size: 0.4675rem !important; /* ~7.48px - reduzido 15% */
+            font-size: 0.3375rem !important; /* 5.4px */
             padding: 2px 4px !important;
             margin-left: 4px;
         }
