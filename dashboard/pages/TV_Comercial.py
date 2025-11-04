@@ -225,57 +225,125 @@ st.markdown(
             display: flex;
             flex-direction: column;
         }
-        .tv-carousel-section-termometro-cards .tv-kpi-card.tv-kpi-card--compact {
-            height: 58px !important;
-            min-height: 58px !important;
-            max-height: 58px !important;
-            padding: 5px 6px !important;
-            margin-bottom: 5px !important;
-            width: 100%;
-            box-sizing: border-box;
-        }
-        .tv-carousel-section-termometro-cards .tv-kpi-card.tv-kpi-card--compact .tv-kpi-title {
-            margin-bottom: 2px;
-        }
-        .tv-carousel-section-termometro-cards .tv-kpi-card.tv-kpi-card--compact .tv-kpi-title-main {
-            font-size: 0.52rem !important;
-            line-height: 1.1;
-        }
-        .tv-carousel-section-termometro-cards .tv-kpi-card.tv-kpi-card--compact .tv-kpi-value {
-            font-size: 0.9rem !important;
-            margin-bottom: 2px;
-            line-height: 1.1;
-        }
-        .tv-carousel-section-termometro-cards .tv-kpi-card.tv-kpi-card--compact .tv-kpi-subtitle {
-            font-size: 0.52rem !important;
-            line-height: 1.1;
-        }
-        .tv-carousel-section-termometro-cards .tv-kpi-card.tv-kpi-card--compact .tv-kpi-title-tag {
-            font-size: 0.46rem !important;
-            padding: 1px 3px !important;
-        }
-        .tv-carousel-section-termometro-cards {
-            display: flex;
-            justify-content: center;
-            align-items: center;
+        /* CSS unificado para todos os cards do bloco 0 (velocímetro + termômetro) */
+        .tv-bloco-0-cards-container {
             width: 100%;
             max-width: 100%;
+            margin-top: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            align-items: center;
         }
-        .tv-carousel-section-termometro-cards > div {
+        .tv-bloco-0-cards-row {
+            width: 100%;
+            max-width: 100%;
             display: flex;
             justify-content: center;
-            width: 100%;
-            gap: 0.5rem;
+            align-items: stretch;
+            gap: 0.75rem;
+            box-sizing: border-box;
         }
-        .tv-carousel-section-termometro-cards [data-testid="column"] {
-            flex: 1 1 0;
+        .tv-bloco-0-cards-row > div {
+            width: 100%;
+            max-width: 100%;
+            display: flex;
+            justify-content: center;
+            gap: 0.75rem;
+        }
+        .tv-bloco-0-cards-row [data-testid="column"] {
+            flex: 1;
             min-width: 0;
             max-width: 100%;
             display: flex;
-            justify-content: center;
+            flex-direction: column;
+            padding: 0;
         }
-        .tv-carousel-section-termometro-cards [data-testid="column"] > div {
+        .tv-bloco-0-cards-row [data-testid="column"] > div {
             width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        /* Primeira linha: 3 cards - centralizados com espaçamento igual */
+        .tv-bloco-0-cards-row-1 {
+            width: 100%;
+        }
+        .tv-bloco-0-cards-row-1 > div {
+            width: 100%;
+            max-width: 100%;
+            display: flex;
+            justify-content: center;
+            gap: 0.75rem;
+        }
+        .tv-bloco-0-cards-row-1 [data-testid="column"] {
+            flex: 0 0 calc(33.333% - 0.5rem);
+            min-width: calc(33.333% - 0.5rem);
+            max-width: calc(33.333% - 0.5rem);
+        }
+        /* Segunda linha: 4 cards - centralizados com espaçamento igual */
+        .tv-bloco-0-cards-row-2 {
+            width: 100%;
+        }
+        .tv-bloco-0-cards-row-2 > div {
+            width: 100%;
+            max-width: 100%;
+            display: flex;
+            justify-content: center;
+            gap: 0.75rem;
+        }
+        .tv-bloco-0-cards-row-2 [data-testid="column"] {
+            flex: 0 0 calc(25% - 0.5625rem);
+            min-width: calc(25% - 0.5625rem);
+            max-width: calc(25% - 0.5625rem);
+        }
+        /* Cards unificados - tamanho e fonte reduzidos drasticamente */
+        .tv-bloco-0-cards-container .tv-kpi-card.tv-kpi-card--compact {
+            height: 60px !important;
+            min-height: 60px !important;
+            max-height: 60px !important;
+            padding: 5px 6px !important;
+            margin-bottom: 0 !important;
+            width: 100%;
+            box-sizing: border-box;
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+        }
+        .tv-bloco-0-cards-container .tv-kpi-card.tv-kpi-card--compact .tv-kpi-title {
+            width: 100%;
+            margin-bottom: 2px;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .tv-bloco-0-cards-container .tv-kpi-card.tv-kpi-card--compact .tv-kpi-title-main {
+            font-size: 0.6rem !important; /* ~9.6px */
+            line-height: 1.1;
+            font-weight: 600;
+        }
+        .tv-bloco-0-cards-container .tv-kpi-card.tv-kpi-card--compact .tv-kpi-value {
+            font-size: 0.9375rem !important; /* 15px exato */
+            margin-bottom: 2px;
+            line-height: 1.2;
+            font-weight: 700;
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .tv-bloco-0-cards-container .tv-kpi-card.tv-kpi-card--compact .tv-kpi-subtitle {
+            font-size: 0.6rem !important; /* ~9.6px */
+            line-height: 1.1;
+            text-align: center;
+        }
+        .tv-bloco-0-cards-container .tv-kpi-card.tv-kpi-card--compact .tv-kpi-title-tag {
+            font-size: 0.5rem !important; /* ~8px */
+            padding: 1px 3px !important;
+            margin-left: 3px;
         }
         @keyframes fadeIn {
             from {
@@ -990,37 +1058,9 @@ def render_bloco_0():
         st.markdown("<h3 style='margin: 0 0 0.5rem; text-align: center;'>🎯 Velocímetro de Metas</h3>", unsafe_allow_html=True)
         fig_velocimetro = render_velocimetro_metas(meta_total, vendas_realizadas_valor, atingimento_percent, mes_referencia_curto.capitalize())
         st.plotly_chart(fig_velocimetro, use_container_width=True)
-        
-        # Cards informativos abaixo do velocímetro
-        st.markdown('<div style="margin-top: 2rem;">', unsafe_allow_html=True)
-        linha_info = st.columns(3)
-        mes_tag = mes_referencia_curto.upper()
-        ano_tag = str(TERMOMETRO_DATA_INICIO.year)
-        
-        falta_color = None
-        if meta_total > 0:
-            falta_color = "#22c55e" if falta_para_meta_valor == 0 else "#ef4444"
-
-        taxa_house_color = None
-        if house_data_available:
-            taxa_house_color = "#22c55e" if taxa_house_percent >= 30 else "#ef4444"
-
-        vpl_color = None
-        if vpl_data_available:
-            if vpl_percent > 0:
-                vpl_color = "#22c55e"
-            elif vpl_percent < 0:
-                vpl_color = "#ef4444"
-        
-        render_kpi(linha_info[0], "Falta para Meta", format_compact_currency(falta_para_meta_valor) if meta_total > 0 else "—", "Gap remanescente", tag=mes_tag, valor_color=falta_color, compact=True)
-        render_kpi(linha_info[1], "🏠 Taxa House (valor)", f"{taxa_house_percent:.1f}%" if house_data_available else "—", "Meta: 30% vendas internas", tag=ano_tag, valor_color=taxa_house_color, compact=True)
-        render_kpi(linha_info[2], "Porcentagem VPL Geral", f"{vpl_percent:.2f}%" if vpl_data_available else "—", "Meta: VPL Positivo", tag=ano_tag, valor_color=vpl_color, compact=True)
-        st.markdown('</div>', unsafe_allow_html=True)
     
     with col_termometro:
         st.markdown("<h3 style='margin: 0 0 0.5rem; text-align: center;'>🌡️ Termômetro de Vendas</h3>", unsafe_allow_html=True)
-        
-        # Removido: bloco de status/interpretação/ação
         
         escala_max = 150
         indicador_percentual = max(0.0, min(cobertura_percent, escala_max))
@@ -1060,17 +1100,48 @@ def render_bloco_0():
             f"<div style='margin-top:6px; margin-bottom:0; font-size:0.7rem; color:rgba(255,255,255,0.6);'>Base analisada de {TERMOMETRO_DATA_INICIO.strftime('%d/%m/%Y')} até {data_final_analise.strftime('%d/%m/%Y')}</div>",
             unsafe_allow_html=True
         )
-        
-        # Cards do termômetro abaixo da barra - centralizados com espaçamento uniforme
-        st.markdown('<div class="tv-carousel-section-termometro-cards" style="margin-top: 5rem; width: 100%;">', unsafe_allow_html=True)
-        linha_termometro = st.columns(4, gap="small")
-        render_kpi(linha_termometro[0], "Taxa de Conversão Geral", f"{taxa_conversao_geral * 100:.1f}%", "Reservas que viram vendas", compact=True)
-        render_kpi(linha_termometro[1], "Reservas Atuais", f"{reservas_atuais_total}", "Reservas ativas no pipeline", compact=True)
-        render_kpi(linha_termometro[2], "Potencial de Vendas", format_compact_currency(potencial_vendas_valor), "Reservas x taxa de conversão", compact=True)
-        render_kpi(linha_termometro[3], "Cobertura da Meta", f"{cobertura_percent:.1f}%", "Potencial versus meta", compact=True)
-        st.markdown('</div>', unsafe_allow_html=True)
     
+    # Container unificado para todos os cards abaixo dos gráficos
+    st.markdown('<div class="tv-bloco-0-cards-container">', unsafe_allow_html=True)
+    
+    # Primeira linha: 3 cards (do velocímetro)
+    mes_tag = mes_referencia_curto.upper()
+    ano_tag = str(TERMOMETRO_DATA_INICIO.year)
+    
+    falta_color = None
+    if meta_total > 0:
+        falta_color = "#22c55e" if falta_para_meta_valor == 0 else "#ef4444"
+
+    taxa_house_color = None
+    if house_data_available:
+        taxa_house_color = "#22c55e" if taxa_house_percent >= 30 else "#ef4444"
+
+    vpl_color = None
+    if vpl_data_available:
+        if vpl_percent > 0:
+            vpl_color = "#22c55e"
+        elif vpl_percent < 0:
+            vpl_color = "#ef4444"
+    
+    st.markdown('<div class="tv-bloco-0-cards-row tv-bloco-0-cards-row-1">', unsafe_allow_html=True)
+    linha_1 = st.columns(3, gap="small")
+    render_kpi(linha_1[0], "Falta para Meta", format_compact_currency(falta_para_meta_valor) if meta_total > 0 else "—", "Gap remanescente", tag=mes_tag, valor_color=falta_color, compact=True)
+    render_kpi(linha_1[1], "🏠 Taxa House (valor)", f"{taxa_house_percent:.1f}%" if house_data_available else "—", "Meta: 30% vendas internas", tag=ano_tag, valor_color=taxa_house_color, compact=True)
+    render_kpi(linha_1[2], "Porcentagem VPL Geral", f"{vpl_percent:.2f}%" if vpl_data_available else "—", "Meta: VPL Positivo", tag=ano_tag, valor_color=vpl_color, compact=True)
     st.markdown('</div>', unsafe_allow_html=True)
+    
+    # Segunda linha: 4 cards (do termômetro)
+    st.markdown('<div class="tv-bloco-0-cards-row tv-bloco-0-cards-row-2">', unsafe_allow_html=True)
+    linha_2 = st.columns(4, gap="small")
+    render_kpi(linha_2[0], "Taxa de Conversão Geral", f"{taxa_conversao_geral * 100:.1f}%", "Reservas que viram vendas", compact=True)
+    render_kpi(linha_2[1], "Reservas Atuais", f"{reservas_atuais_total}", "Reservas ativas no pipeline", compact=True)
+    render_kpi(linha_2[2], "Potencial de Vendas", format_compact_currency(potencial_vendas_valor), "Reservas x taxa de conversão", compact=True)
+    render_kpi(linha_2[3], "Cobertura da Meta", f"{cobertura_percent:.1f}%", "Potencial versus meta", compact=True)
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    st.markdown('</div>', unsafe_allow_html=True)  # Fecha tv-bloco-0-cards-container
+    
+    st.markdown('</div>', unsafe_allow_html=True)  # Fecha tv-carousel-section
 
 def render_bloco_1():
     """Bloco 1: KPIs Adicionais (cards movidos)"""
