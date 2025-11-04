@@ -1102,49 +1102,34 @@ def render_bloco_0():
         elif vpl_percent < 0:
             vpl_color = "#ef4444"
     
-    # COLUNA ESQUERDA (50%): Velocímetro (50% largura) + 3 cards ao lado (50% largura)
+    # COLUNA ESQUERDA (50%): Velocímetro + Termômetro embaixo
     with col_principal_esq:
         st.markdown('<div class="tv-bloco-0-coluna">', unsafe_allow_html=True)
         
-        # Dividir coluna esquerda em 2: velocímetro e cards ao lado
-        col_velocimetro, col_cards_velocimetro = st.columns([0.5, 0.5], gap="small")
+        # Título e Velocímetro
+        st.markdown("<h3 style='margin: 0 0 0.5rem; text-align: center; font-size: 0.9rem;'>🎯 Velocímetro de Metas</h3>", unsafe_allow_html=True)
+        fig_velocimetro = render_velocimetro_metas(meta_total, vendas_realizadas_valor, atingimento_percent, mes_referencia_curto.capitalize())
+        st.plotly_chart(fig_velocimetro, use_container_width=True)
         
-        with col_velocimetro:
-            # Título e Velocímetro (reduzido para ~30% altura)
-            st.markdown("<h3 style='margin: 0 0 0.5rem; text-align: center; font-size: 0.9rem;'>🎯 Velocímetro de Metas</h3>", unsafe_allow_html=True)
-            fig_velocimetro = render_velocimetro_metas(meta_total, vendas_realizadas_valor, atingimento_percent, mes_referencia_curto.capitalize())
-            st.plotly_chart(fig_velocimetro, use_container_width=True)
+        # Espaçamento
+        st.markdown('<div style="height: 20px;"></div>', unsafe_allow_html=True)
         
-        with col_cards_velocimetro:
-            # 3 cards lado a lado ao lado do velocímetro
-            st.markdown('<div class="tv-bloco-0-cards-wrapper tv-bloco-0-cards-velocimetro">', unsafe_allow_html=True)
-            cards_velocimetro = st.columns(3, gap="small")
-            render_kpi(cards_velocimetro[0], "Falta para Meta", format_compact_currency(falta_para_meta_valor) if meta_total > 0 else "—", "Gap remanescente", tag=mes_tag, valor_color=falta_color, compact=True)
-            render_kpi(cards_velocimetro[1], "🏠 Taxa House (valor)", f"{taxa_house_percent:.1f}%" if house_data_available else "—", "Meta: 30% vendas internas", tag=ano_tag, valor_color=taxa_house_color, compact=True)
-            render_kpi(cards_velocimetro[2], "Porcentagem VPL Geral", f"{vpl_percent:.2f}%" if vpl_data_available else "—", "Meta: VPL Positivo", tag=ano_tag, valor_color=vpl_color, compact=True)
-            st.markdown('</div>', unsafe_allow_html=True)
-        
-        st.markdown('</div>', unsafe_allow_html=True)
-    
-    # COLUNA DIREITA (50%): Termômetro maior (70% espaço) + cards embaixo ocupando toda largura
-    with col_principal_dir:
-        st.markdown('<div class="tv-bloco-0-coluna">', unsafe_allow_html=True)
-        
+        # Termômetro embaixo do velocímetro
         escala_max = 150
         indicador_percentual = max(0.0, min(cobertura_percent, escala_max))
         indicador_posicao = indicador_percentual / escala_max * 100
         largura_preenchida = min(max(cobertura_percent / escala_max, 0.0), 1.0) * 100
 
         barra_escala_html = f"""
-        <div style='margin-top:0; position:relative; padding-top:0px; height:850px; display:flex; flex-direction:column; justify-content:flex-start; align-items:center;'>
+        <div style='margin-top:0; position:relative; padding-top:0px; height:400px; display:flex; flex-direction:column; justify-content:flex-start; align-items:center;'>
           <h3 style='margin: 0 0 1rem; text-align: center; font-size: 1.1rem;'>🌡️ Termômetro de Vendas</h3>
-          <div style='position:relative; margin-bottom:8px; width:70%; max-width:70%;'>
+          <div style='position:relative; margin-bottom:8px; width:90%; max-width:90%;'>
             <div style='position:absolute; bottom:0; left:{indicador_posicao}%; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center; z-index:10;'>
               <div style='font-size:0.85rem;font-weight:700;color:{status_color};margin-bottom:2px;background:rgba(11,11,11,0.85);padding:3px 12px;border-radius:999px;'>{cobertura_percent:.1f}%</div>
               <div style='width:0;height:0;border-left:12px solid transparent;border-right:12px solid transparent;border-bottom:16px solid {status_color};'></div>
             </div>
           </div>
-          <div style='position:relative; border-radius:14px; overflow:hidden; height:150px; box-shadow:0 0 16px rgba(0,0,0,0.35); max-width:70%; width:70%;'>
+          <div style='position:relative; border-radius:14px; overflow:hidden; height:100px; box-shadow:0 0 16px rgba(0,0,0,0.35); max-width:90%; width:90%;'>
             <div style='display:flex; height:100%; font-size:1.05rem; width:100%;'>
               <div style='flex:70; max-width:70%; background:#1E90FF; color:#ffffff; display:flex; flex-direction:column; align-items:center; justify-content:center; font-weight:600; opacity:{1 if cobertura_percent >= 0 else 0.25};'>
                 Frio
@@ -1171,6 +1156,20 @@ def render_bloco_0():
             f"<div style='margin-top:6px; margin-bottom:0; font-size:0.7rem; color:rgba(255,255,255,0.6);'>Base analisada de {TERMOMETRO_DATA_INICIO.strftime('%d/%m/%Y')} até {data_final_analise.strftime('%d/%m/%Y')}</div>",
             unsafe_allow_html=True
         )
+        
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    # COLUNA DIREITA (50%): Cards de vendas
+    with col_principal_dir:
+        st.markdown('<div class="tv-bloco-0-coluna">', unsafe_allow_html=True)
+        
+        # 3 cards de vendas lado a lado
+        st.markdown('<div class="tv-bloco-0-cards-wrapper tv-bloco-0-cards-velocimetro">', unsafe_allow_html=True)
+        cards_vendas = st.columns(3, gap="small")
+        render_kpi(cards_vendas[0], "Falta para Meta", format_compact_currency(falta_para_meta_valor) if meta_total > 0 else "—", "Gap remanescente", tag=mes_tag, valor_color=falta_color, compact=True)
+        render_kpi(cards_vendas[1], "🏠 Taxa House (valor)", f"{taxa_house_percent:.1f}%" if house_data_available else "—", "Meta: 30% vendas internas", tag=ano_tag, valor_color=taxa_house_color, compact=True)
+        render_kpi(cards_vendas[2], "Porcentagem VPL Geral", f"{vpl_percent:.2f}%" if vpl_data_available else "—", "Meta: VPL Positivo", tag=ano_tag, valor_color=vpl_color, compact=True)
+        st.markdown('</div>', unsafe_allow_html=True)
         
         st.markdown('</div>', unsafe_allow_html=True)
     
