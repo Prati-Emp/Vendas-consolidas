@@ -1031,7 +1031,7 @@ def render_velocimetro_metas(meta_valor: float, vendas_valor: float, atingimento
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
         font=dict(color="#f8fafc", family='Manrope, sans-serif'),
-        height=300,
+        height=200,
         margin=dict(t=30, b=30, l=30, r=30),
         autosize=False,
         annotations=[
@@ -1080,8 +1080,8 @@ def render_bloco_0():
     """Bloco 0: Velocímetro de Metas + Termômetro de Vendas"""
     st.markdown('<div class="tv-carousel-section tv-bloco-0-layout">', unsafe_allow_html=True)
     
-    # Layout principal: 50% (velocímetro + cards) e 50% (termômetro)
-    col_principal_esq, col_principal_dir = st.columns([0.5, 0.5], gap="large")
+    # Layout principal: 40% (velocímetro) e 60% (cards)
+    col_principal_esq, col_principal_dir = st.columns([0.4, 0.6], gap="large")
     
     # Preparar dados dos cards
     mes_tag = mes_referencia_curto.upper()
@@ -1102,7 +1102,7 @@ def render_bloco_0():
         elif vpl_percent < 0:
             vpl_color = "#ef4444"
     
-    # COLUNA ESQUERDA (50%): Velocímetro
+    # COLUNA ESQUERDA (40%): Velocímetro
     with col_principal_esq:
         st.markdown('<div class="tv-bloco-0-coluna">', unsafe_allow_html=True)
         
@@ -1113,7 +1113,7 @@ def render_bloco_0():
         
         st.markdown('</div>', unsafe_allow_html=True)
     
-    # COLUNA DIREITA (50%): Cards de vendas
+    # COLUNA DIREITA (60%): Cards de vendas
     with col_principal_dir:
         st.markdown('<div class="tv-bloco-0-coluna">', unsafe_allow_html=True)
         
