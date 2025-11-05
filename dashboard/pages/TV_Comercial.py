@@ -867,8 +867,15 @@ mes_referencia_curto = mes_referencia.capitalize() if mes_referencia else "Mês 
 periodo_inicio_str = TERMOMETRO_DATA_INICIO.strftime('%Y-%m-%d')
 periodo_fim_str = data_final_analise.strftime('%Y-%m-%d')
 
+# Período do mês atual para Taxa House e VPL Geral
+mes_atual_inicio = datetime.now().replace(day=1).date()
+proximo_mes = datetime.now() + relativedelta(months=1)
+mes_atual_fim = (proximo_mes.replace(day=1) - relativedelta(days=1)).date()
+mes_atual_inicio_str = mes_atual_inicio.strftime('%Y-%m-%d')
+mes_atual_fim_str = mes_atual_fim.strftime('%Y-%m-%d')
 
-house_raw_df = load_vendas_house_overview(periodo_inicio_str, periodo_fim_str)
+
+house_raw_df = load_vendas_house_overview(mes_atual_inicio_str, mes_atual_fim_str)
 house_data_available = False
 house_df = pd.DataFrame()
 total_valor_house = 0.0
@@ -887,7 +894,7 @@ if not house_raw_df.empty and house_raw_df['valor_total'].fillna(0).sum() > 0:
     house_data_available = True
 
 
-vpl_df = load_vpl_geral(periodo_inicio_str, periodo_fim_str)
+vpl_df = load_vpl_geral(mes_atual_inicio_str, mes_atual_fim_str)
 vpl_data_available = False
 total_vpl_reserva = 0.0
 total_vpl_tabela = 0.0
@@ -1216,8 +1223,8 @@ def render_bloco_0():
         st.markdown('<div class="tv-bloco-0-cards-wrapper tv-bloco-0-cards-velocimetro">', unsafe_allow_html=True)
         cards_vendas = st.columns(3, gap="small")
         render_kpi(cards_vendas[0], "Falta para Meta", format_compact_currency(falta_para_meta_valor) if meta_total > 0 else "—", "Gap remanescente", tag=mes_tag, valor_color=falta_color, compact=True)
-        render_kpi(cards_vendas[1], "🏠 Taxa House (valor)", f"{taxa_house_percent:.1f}%" if house_data_available else "—", "Meta: 30% vendas internas", tag=ano_tag, valor_color=taxa_house_color, compact=True)
-        render_kpi(cards_vendas[2], "Porcentagem VPL Geral", f"{vpl_percent:.2f}%" if vpl_data_available else "—", "Meta: VPL Positivo", tag=ano_tag, valor_color=vpl_color, compact=True)
+        render_kpi(cards_vendas[1], "🏠 Taxa House (valor)", f"{taxa_house_percent:.1f}%" if house_data_available else "—", "Meta: 30% vendas internas", tag=mes_tag, valor_color=taxa_house_color, compact=True)
+        render_kpi(cards_vendas[2], "Porcentagem VPL Geral", f"{vpl_percent:.2f}%" if vpl_data_available else "—", "Meta: VPL Positivo", tag=mes_tag, valor_color=vpl_color, compact=True)
         st.markdown('</div>', unsafe_allow_html=True)
         
         st.markdown('</div>', unsafe_allow_html=True)
@@ -1313,8 +1320,8 @@ def render_bloco_1():
             vpl_color = "#ef4444"
 
     render_kpi(linha_um[0], "Falta para Meta", format_compact_currency(falta_para_meta_valor) if meta_total > 0 else "—", "Gap remanescente", tag=mes_tag, valor_color=falta_color, compact=True)
-    render_kpi(linha_um[1], "🏠 Taxa House (valor)", f"{taxa_house_percent:.1f}%" if house_data_available else "—", "Meta: 30% vendas internas", tag=ano_tag, valor_color=taxa_house_color, compact=True)
-    render_kpi(linha_um[2], "Porcentagem VPL Geral", f"{vpl_percent:.2f}%" if vpl_data_available else "—", "Meta: VPL Positivo", tag=ano_tag, valor_color=vpl_color, compact=True)
+    render_kpi(linha_um[1], "🏠 Taxa House (valor)", f"{taxa_house_percent:.1f}%" if house_data_available else "—", "Meta: 30% vendas internas", tag=mes_tag, valor_color=taxa_house_color, compact=True)
+    render_kpi(linha_um[2], "Porcentagem VPL Geral", f"{vpl_percent:.2f}%" if vpl_data_available else "—", "Meta: VPL Positivo", tag=mes_tag, valor_color=vpl_color, compact=True)
     
     st.markdown("---")
     
