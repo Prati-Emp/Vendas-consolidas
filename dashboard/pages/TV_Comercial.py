@@ -1126,7 +1126,7 @@ def render_velocimetro_metas(meta_valor: float, vendas_valor: float, atingimento
             dict(
                 text=vendas_formatada,
                 x=0.5,
-                y=0.5,
+                y=0.35,
                 xref="paper",
                 yref="paper",
                 showarrow=False,
