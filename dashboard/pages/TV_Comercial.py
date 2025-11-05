@@ -1053,12 +1053,12 @@ def render_velocimetro_metas(meta_valor: float, vendas_valor: float, atingimento
     # Converter para radianos para cálculos
     angulo_rad = math.radians(angulo_atual)
     
-    # Posição no círculo - centro do gauge está aproximadamente em (0.5, 0.6) em coordenadas de papel
-    # Raio do gauge visível está entre 0.18 e 0.35 aproximadamente
-    raio_interno = 0.18  # Começa próximo ao centro (onde termina o número)
-    raio_externo = 0.34  # Vai até a borda do gauge
+    # Posição no círculo - centro do gauge está aproximadamente em (0.5, 0.52) em coordenadas de papel
+    # Raio do gauge visível está entre 0.22 e 0.38 aproximadamente
+    raio_interno = 0.22  # Começa próximo à borda interna do gauge
+    raio_externo = 0.38  # Vai até a borda externa do gauge (no arco)
     centro_x = 0.5
-    centro_y = 0.6  # Centro do semicírculo do gauge
+    centro_y = 0.52  # Centro do semicírculo do gauge (ajustado para aparecer no arco)
     
     # Ponto inicial da barra (próximo ao centro)
     x_barra_inicio = centro_x + raio_interno * math.cos(angulo_rad)
