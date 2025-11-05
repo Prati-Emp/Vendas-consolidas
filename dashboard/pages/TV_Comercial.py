@@ -7,7 +7,6 @@ import plotly.express as px
 import plotly.graph_objects as go
 from dateutil.relativedelta import relativedelta
 import time
-import math
 
 # Garantir que os módulos compartilhados possam ser importados quando o app for executado diretamente
 sys.path.append(str(Path(__file__).resolve().parent.parent))
@@ -1042,62 +1041,6 @@ def render_velocimetro_metas(meta_valor: float, vendas_valor: float, atingimento
     # Formatar valor da meta
     meta_formatada = format_compact_currency(meta_valor) if meta_valor > 0 else "—"
     
-    # Posicionar annotation próximo ao marcador de 100% (threshold)
-    # O threshold está em 100/150 = 66.7% do gauge, na parte superior direita
-    # Calcular posição angular do valor atual para a barra indicadora
-    # O gauge vai de 0 a 150, então precisamos calcular o ângulo
-    # 0 = -90 graus (esquerda), 150 = 90 graus (direita)
-    # O gauge é um semicírculo que vai de -90° a +90°
-    angulo_atual = -90 + (atingimento_percent / 150) * 180
-    
-    # Converter para radianos para cálculos
-    angulo_rad = math.radians(angulo_atual)
-    
-    # Posição no círculo - centro do gauge está aproximadamente em (0.5, 0.55) em coordenadas de papel
-    # Raio do gauge visível está entre 0.20 e 0.36 aproximadamente
-    raio_interno = 0.20  # Começa próximo à borda interna do gauge
-    raio_externo = 0.36  # Vai até a borda externa do gauge (no arco)
-    centro_x = 0.5
-    centro_y = 0.55  # Centro do semicírculo do gauge (ajustado para aparecer no arco)
-    
-    # Offset fino para ajustar posicionamento horizontal da barra
-    # Ajuste fino para posicionar corretamente no arco do gauge
-    offset_x = -0.40
-    
-    # Ajustes específicos apenas para a ponta esquerda (início) do ponteiro
-    # Estes offsets permitem pivotar o ponteiro ajustando apenas o ponto inicial
-    offset_inicio_x = 0.02  # Ajuste horizontal fino no ponto inicial (esquerda)
-    offset_inicio_y = -0.03  # Ajuste vertical fino no ponto inicial (esquerda)
-    
-    # Ponto inicial da barra (próximo ao centro) - apenas esta ponta será ajustada
-    x_barra_inicio = centro_x + raio_interno * math.cos(angulo_rad) + offset_x + offset_inicio_x
-    y_barra_inicio = centro_y + raio_interno * math.sin(angulo_rad) + offset_inicio_y
-    
-    # Ponto final da barra (na borda do gauge) - mantido fixo (sem ajustes)
-    x_barra_fim = centro_x + raio_externo * math.cos(angulo_rad) + offset_x
-    y_barra_fim = centro_y + raio_externo * math.sin(angulo_rad)
-    
-    # Criar triângulo na ponta da barra (apontando para fora do gauge)
-    # O triângulo precisa ser perpendicular à barra
-    angulo_perpendicular = angulo_rad + math.pi / 2  # 90 graus em relação à barra
-    
-    # Tamanho do triângulo (em coordenadas de papel)
-    tamanho_triangulo = 0.015
-    
-    # Ponto do topo do triângulo (na ponta da barra, um pouco mais para fora)
-    x_triangulo_topo = centro_x + (raio_externo + 0.01) * math.cos(angulo_rad) + offset_x
-    y_triangulo_topo = centro_y + (raio_externo + 0.01) * math.sin(angulo_rad)
-    
-    # Pontos da base do triângulo (perpendiculares à barra)
-    x_triangulo_base1 = x_triangulo_topo + tamanho_triangulo * math.cos(angulo_perpendicular)
-    y_triangulo_base1 = y_triangulo_topo + tamanho_triangulo * math.sin(angulo_perpendicular)
-    
-    x_triangulo_base2 = x_triangulo_topo - tamanho_triangulo * math.cos(angulo_perpendicular)
-    y_triangulo_base2 = y_triangulo_topo - tamanho_triangulo * math.sin(angulo_perpendicular)
-    
-    # Cor do triângulo (mesma cor do número ou branca)
-    cor_triangulo = cor_numero if atingimento_percent >= 100 else '#ffffff'
-    
     fig.update_layout(
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
@@ -1119,31 +1062,6 @@ def render_velocimetro_metas(meta_valor: float, vendas_valor: float, atingimento
                 borderwidth=1,
                 borderpad=6,
                 align="right"
-            )
-        ],
-        shapes=[
-            # Barra vertical (como no termômetro, 7px de largura)
-            dict(
-                type="line",
-                x0=x_barra_inicio,
-                y0=y_barra_inicio,
-                x1=x_barra_fim,
-                y1=y_barra_fim,
-                xref="paper",
-                yref="paper",
-                line=dict(
-                    color="#ffffff",
-                    width=7
-                )
-            ),
-            # Triângulo na ponta da barra
-            dict(
-                type="path",
-                path=f"M {x_triangulo_topo},{y_triangulo_topo} L {x_triangulo_base1},{y_triangulo_base1} L {x_triangulo_base2},{y_triangulo_base2} Z",
-                xref="paper",
-                yref="paper",
-                fillcolor=cor_triangulo,
-                line=dict(color=cor_triangulo, width=0)
             )
         ]
     )
