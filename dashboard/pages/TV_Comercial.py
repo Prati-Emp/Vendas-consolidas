@@ -1059,20 +1059,17 @@ def render_kpi(coluna, titulo: str, valor: str, subtitulo: str | None = None, ta
 
 def render_velocimetro_metas(meta_valor: float, vendas_valor: float, atingimento_percent: float, mes_referencia: str):
     """Renderiza um velocímetro com os 3 KPIs principais de metas"""
-    # Barra sempre verde, cor do número muda conforme atingimento
-    cor_numero = '#22c55e' if atingimento_percent >= 100 else '#ef4444'
+    # Barra sempre verde
     cor_barra = '#22c55e'  # Sempre verde
     
+    # Formatar valor de vendas realizado para o centro
+    vendas_formatada = format_compact_currency(vendas_valor) if vendas_valor > 0 else "—"
+    
     fig = go.Figure(go.Indicator(
-        mode = "gauge+number",
+        mode = "gauge",
         value = atingimento_percent,
         domain = {'x': [0, 1], 'y': [0, 1]},
         title = {'text': "", 'font': {'size': 22, 'color': '#f8fafc', 'family': 'Manrope, sans-serif'}},
-        number = {
-            'valueformat': '.1f',
-            'suffix': '%',
-            'font': {'size': 48, 'color': cor_numero, 'family': 'Manrope, sans-serif'}
-        },
         gauge = {
             'axis': {'range': [None, 150], 'tickwidth': 2, 'tickcolor': '#f8fafc', 'tickfont': {'size': 12, 'color': '#f8fafc'}},
             'bar': {'color': cor_barra, 'thickness': 1.0, 'line': {'width': 0}},
@@ -1112,6 +1109,26 @@ def render_velocimetro_metas(meta_valor: float, vendas_valor: float, atingimento
                 showarrow=False,
                 font=dict(size=14, color='rgba(248, 250, 252, 0.9)', family='Manrope, sans-serif'),
                 align="right"
+            ),
+            dict(
+                text=f"Atingimento: {atingimento_percent:.1f}%",
+                x=0.98,
+                y=0.88,
+                xref="paper",
+                yref="paper",
+                showarrow=False,
+                font=dict(size=14, color='rgba(248, 250, 252, 0.9)', family='Manrope, sans-serif'),
+                align="right"
+            ),
+            dict(
+                text=vendas_formatada,
+                x=0.5,
+                y=0.5,
+                xref="paper",
+                yref="paper",
+                showarrow=False,
+                font=dict(size=48, color='#f8fafc', family='Manrope, sans-serif'),
+                align="center"
             )
         ]
     )
