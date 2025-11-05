@@ -1114,13 +1114,13 @@ def render_velocimetro_metas(meta_valor: float, vendas_valor: float, atingimento
                 align="right"
             ),
             dict(
-                text=f"Realizado: {atingimento_percent:.1f}%",
+                text=f"% Realiz.: <b>{atingimento_percent:.1f}%</b>",
                 x=0.98,
                 y=0.88,
                 xref="paper",
                 yref="paper",
                 showarrow=False,
-                font=dict(size=14, color='rgba(248, 250, 252, 0.9)', family='Manrope, sans-serif'),
+                font=dict(size=14, color=cor_vendas, family='Manrope, sans-serif'),
                 align="right"
             ),
             dict(
@@ -1130,7 +1130,7 @@ def render_velocimetro_metas(meta_valor: float, vendas_valor: float, atingimento
                 xref="paper",
                 yref="paper",
                 showarrow=False,
-                font=dict(size=48, color=cor_vendas, family='Manrope, sans-serif'),
+                font=dict(size=48, color='#f8fafc', family='Manrope, sans-serif'),
                 align="center"
             )
         ]
