@@ -1285,7 +1285,8 @@ def render_bloco_reservas():
             status_counts['Indice'] = status_counts['Situacao'].apply(
                 lambda s: RESERVAS_SITUACAO_INDICES.get(str(s).strip(), 999)
             )
-            status_counts = status_counts.sort_values(['Indice', 'Situacao']).reset_index(drop=True)
+            # Ordenar por índice (crescente) e depois por situação (alfabética)
+            status_counts = status_counts.sort_values(['Indice', 'Situacao'], ascending=[True, True]).reset_index(drop=True)
 
             total_reservas_status = int(status_counts['Quantidade'].sum())
             status_counts['Percentual'] = status_counts['Quantidade'].apply(
@@ -1294,6 +1295,17 @@ def render_bloco_reservas():
             status_counts['Valor'] = status_counts['Valor'].fillna(0.0)
             status_counts['ValorFormatado'] = status_counts['Valor'].apply(format_compact_currency)
             status_counts['QuantidadeFormatada'] = status_counts['Quantidade'].apply(format_int_value)
+
+            # Ordem esperada: índice 1 no topo
+            # No Plotly com gráfico horizontal, precisamos garantir que a ordem seja respeitada
+            # Criar uma coluna de ordem para garantir a ordenação correta
+            ordem_dict = {situacao: idx for idx, situacao in enumerate(status_counts['Situacao'].tolist())}
+            status_counts['_ordem_plot'] = status_counts['Situacao'].map(ordem_dict)
+            
+            # Ordem para o categoryarray: índice 1 deve aparecer no topo
+            # No Plotly com gráfico horizontal, testamos sem inversão primeiro
+            ordem_situacoes = status_counts['Situacao'].tolist()
+            ordem_plotly = ordem_situacoes  # Testar sem reversed
 
             paleta_reservas = ['#16295f', '#1e3a8a', '#2563eb', '#3b82f6', '#60a5fa', '#7c3aed', '#a855f7']
             color_map = {
@@ -1325,7 +1337,7 @@ def render_bloco_reservas():
                 ),
                 yaxis=dict(
                     categoryorder='array',
-                    categoryarray=list(reversed(status_counts['Situacao'].tolist())),
+                    categoryarray=ordem_plotly,
                     title='',
                     tickfont=dict(size=14, color='rgba(248,250,252,0.88)', family='Manrope, sans-serif')
                 ),
