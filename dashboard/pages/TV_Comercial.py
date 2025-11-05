@@ -1750,6 +1750,7 @@ with carousel_placeholder.container():
                     )
                     fig_cancelamentos = apply_dark_theme(fig_cancelamentos, margin_top=35)
                     fig_cancelamentos.update_layout(
+                        autosize=False,
                         height=800,  # Aumentado para ocupar mais tela
                         margin=dict(t=35, b=20, l=10, r=10),
                         showlegend=False,
