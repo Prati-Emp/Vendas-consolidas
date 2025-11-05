@@ -1764,7 +1764,7 @@ with carousel_placeholder.container():
     elif current_index == 3:
         # Bloco 3: Distribuição por Mídia
         st.markdown('<div class="tv-carousel-section">', unsafe_allow_html=True)
-        st.markdown("## 📣 Distribuição por Mídia")
+        st.markdown("## 📣 Distribuição de leads por midia")
 
         leads_base_df = load_leads_tv()
 
