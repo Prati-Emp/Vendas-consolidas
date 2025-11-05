@@ -1712,8 +1712,80 @@ with carousel_placeholder.container():
             if leads_tv_df.empty:
                 st.info("Sem dados de leads para análise de cancelamentos.")
             else:
-                # Código de cancelamentos será implementado aqui
-                st.info("Análise de cancelamentos em desenvolvimento.")
+                # Filtrar apenas cancelamentos (onde há motivo de cancelamento)
+                cancelamentos_df = leads_tv_df[
+                    (leads_tv_df['motivo_cancelamento_consolidada'].notna()) &
+                    (leads_tv_df['motivo_cancelamento_consolidada'] != '') &
+                    (leads_tv_df['motivo_cancelamento_consolidada'].str.strip() != '')
+                ].copy()
+                
+                if cancelamentos_df.empty:
+                    st.info("Nenhum cancelamento encontrado no período selecionado.")
+                else:
+                    # Contar cancelamentos por motivo
+                    motivo_counts = (
+                        cancelamentos_df.groupby('motivo_cancelamento_consolidada')
+                        .size()
+                        .reset_index(name='Quantidade')
+                        .sort_values('Quantidade', ascending=False)
+                    )
+                    motivo_counts = motivo_counts.rename(columns={'motivo_cancelamento_consolidada': 'Motivo'})
+                    
+                    # Criar gráfico de barras horizontal
+                    paleta_cancelamentos = ['#ef4444', '#f87171', '#fca5a5', '#dc2626', '#b91c1c', '#991b1b', '#7f1d1d']
+                    color_map = {
+                        motivo: paleta_cancelamentos[i % len(paleta_cancelamentos)]
+                        for i, motivo in enumerate(motivo_counts['Motivo'].tolist())
+                    }
+                    
+                    fig_cancelamentos = px.bar(
+                        motivo_counts,
+                        x='Quantidade',
+                        y='Motivo',
+                        orientation='h',
+                        text='Quantidade',
+                        color='Motivo',
+                        color_discrete_map=color_map,
+                        title='Distribuição de Cancelamentos por Motivo'
+                    )
+                    fig_cancelamentos = apply_dark_theme(fig_cancelamentos, margin_top=35)
+                    fig_cancelamentos.update_layout(
+                        height=800,  # Aumentado para ocupar mais tela
+                        margin=dict(t=35, b=20, l=10, r=10),
+                        showlegend=False,
+                        title=dict(
+                            text='Distribuição de Cancelamentos por Motivo',
+                            x=0,
+                            xanchor='left',
+                            font=dict(size=18, color='#f8fafc', family='Manrope, sans-serif')
+                        ),
+                        yaxis=dict(
+                            categoryorder='total ascending',
+                            title='',
+                            tickfont=dict(size=14, color='rgba(248,250,252,0.88)', family='Manrope, sans-serif')
+                        ),
+                        xaxis=dict(
+                            showticklabels=True,
+                            showgrid=True,
+                            gridcolor='rgba(148, 163, 184, 0.2)',
+                            title='Quantidade',
+                            titlefont=dict(size=14, color='rgba(248,250,252,0.88)', family='Manrope, sans-serif'),
+                            tickfont=dict(size=12, color='rgba(248,250,252,0.7)', family='Manrope, sans-serif')
+                        ),
+                        hovermode='closest',
+                        hoverlabel=dict(
+                            bgcolor='rgba(15, 23, 42, 0.9)',
+                            bordercolor='rgba(148, 163, 184, 0.5)',
+                            font_size=12,
+                            font_family='Manrope, sans-serif'
+                        )
+                    )
+                    fig_cancelamentos.update_traces(
+                        textposition='outside',
+                        textfont=dict(size=12, color='rgba(248,250,252,0.9)', family='Manrope, sans-serif')
+                    )
+                    
+                    st.plotly_chart(fig_cancelamentos, use_container_width=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
 
