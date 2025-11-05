@@ -36,7 +36,7 @@ if email not in {"odair.santos@grupoprati.com"}:
 # ============================================================================
 # CONFIGURAÇÕES DO CARROSSEL - SEM JAVASCRIPT, SEM RELOAD, APENAS PYTHON
 # ============================================================================
-CAROUSEL_SECTIONS = 6  # Número de seções/blocos (Velocímetro+Termômetro, Indicadores Adicionais, Reservas, Leads Ativos, Distribuição por Mídia, Cancelamentos)
+CAROUSEL_SECTIONS = 5  # Número de seções/blocos (Velocímetro+Termômetro, Reservas, Leads Ativos, Distribuição por Mídia, Cancelamentos)
 CAROUSEL_INTERVAL = 5  # Segundos por seção
 
 # Inicializar estado do carrossel
@@ -1596,6 +1596,9 @@ def render_bloco_2():
                 )
                 st.plotly_chart(fig_leads, use_container_width=True)
 
+                # Espaçamento para mover texto para baixo
+                st.markdown('<br><br><br><br><br><br><br><br><br><br>', unsafe_allow_html=True)
+
                 # Mostrar total de leads ativos em formato de texto (duas linhas)
                 st.caption(f"Total Leads Ativos: {format_int_value(total_leads_ativos)}")
                 st.caption(f"Período analisado: {TERMOMETRO_DATA_INICIO.strftime('%d/%m/%Y')} até {data_final_analise.strftime('%d/%m/%Y')}")
@@ -1711,6 +1714,9 @@ def render_bloco_cancelamentos():
                 )
                 st.plotly_chart(fig_cancelamentos, use_container_width=True)
                 
+                # Espaçamento para mover texto para baixo
+                st.markdown('<br><br><br><br><br><br><br><br><br><br>', unsafe_allow_html=True)
+                
                 # Mostrar total de cancelamentos em formato de texto (duas linhas)
                 st.caption(f"Total Cancelamentos: {format_int_value(total_cancelamentos)}")
                 st.caption(f"Período analisado: {TERMOMETRO_DATA_INICIO.strftime('%d/%m/%Y')} até {data_final_analise.strftime('%d/%m/%Y')}")
@@ -1725,11 +1731,10 @@ def render_bloco_cancelamentos():
 # Dicionário mapeando índice para função de renderização
 RENDER_FUNCTIONS = {
     0: render_bloco_0,
-    1: render_bloco_1,
-    2: render_bloco_reservas,
-    3: render_bloco_2,
-    5: render_bloco_cancelamentos,
-    # Bloco 4 (Mídia) ainda está inline no código
+    1: render_bloco_reservas,
+    2: render_bloco_2,
+    4: render_bloco_cancelamentos,
+    # Bloco 3 (Mídia) ainda está inline no código
 }
 
 # Renderizar o bloco atual dentro do placeholder baseado no índice
@@ -1739,13 +1744,11 @@ with carousel_placeholder.container():
     if current_index == 0:
         render_bloco_0()
     elif current_index == 1:
-        render_bloco_1()
-    elif current_index == 2:
         render_bloco_reservas()
-    elif current_index == 3:
+    elif current_index == 2:
         render_bloco_2()
-    elif current_index == 4:
-        # Bloco 4: Distribuição por Mídia
+    elif current_index == 3:
+        # Bloco 3: Distribuição por Mídia
         st.markdown('<div class="tv-carousel-section">', unsafe_allow_html=True)
         st.markdown("## 📣 Distribuição por Mídia")
 
@@ -1807,7 +1810,7 @@ with carousel_placeholder.container():
                         f"Base consolidada de {TERMOMETRO_DATA_INICIO.strftime('%d/%m/%Y')} até {data_final_analise.strftime('%d/%m/%Y')} · Leads contabilizados: {total_leads_exibidos}"
                     )
         st.markdown('</div>', unsafe_allow_html=True)
-    elif current_index == 5:
+    elif current_index == 4:
         render_bloco_cancelamentos()
 
 
