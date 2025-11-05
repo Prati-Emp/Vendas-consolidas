@@ -1111,10 +1111,6 @@ def render_velocimetro_metas(meta_valor: float, vendas_valor: float, atingimento
                 yref="paper",
                 showarrow=False,
                 font=dict(size=14, color='rgba(248, 250, 252, 0.9)', family='Manrope, sans-serif'),
-                bgcolor='rgba(15, 23, 42, 0.7)',
-                bordercolor='rgba(148, 163, 184, 0.5)',
-                borderwidth=1,
-                borderpad=6,
                 align="right"
             )
         ]
