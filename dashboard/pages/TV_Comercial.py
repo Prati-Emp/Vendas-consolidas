@@ -1596,12 +1596,9 @@ def render_bloco_2():
                 )
                 st.plotly_chart(fig_leads, use_container_width=True)
 
-                total_card = st.container()
-                render_kpi(total_card, "Total Leads Ativos", format_int_value(total_leads_ativos), "Base ativa consolidada", compact=True)
-
-                st.caption(
-                    f"Base consolidada considerada de {TERMOMETRO_DATA_INICIO.strftime('%d/%m/%Y')} até {data_final_analise.strftime('%d/%m/%Y')} · Leads ativos: {format_int_value(total_leads_ativos)}"
-                )
+                # Mostrar total de leads ativos em formato de texto (duas linhas)
+                st.caption(f"Total Leads Ativos: {format_int_value(total_leads_ativos)}")
+                st.caption(f"Período analisado: {TERMOMETRO_DATA_INICIO.strftime('%d/%m/%Y')} até {data_final_analise.strftime('%d/%m/%Y')}")
     
     st.markdown('</div>', unsafe_allow_html=True)
 
