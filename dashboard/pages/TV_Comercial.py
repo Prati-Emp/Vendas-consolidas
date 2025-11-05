@@ -1046,24 +1046,27 @@ def render_velocimetro_metas(meta_valor: float, vendas_valor: float, atingimento
     # O threshold está em 100/150 = 66.7% do gauge, na parte superior direita
     # Calcular posição angular do valor atual para a barra indicadora
     # O gauge vai de 0 a 150, então precisamos calcular o ângulo
-    # 0% = -90 graus (esquerda), 100% = 90 graus (direita)
+    # 0 = -90 graus (esquerda), 150 = 90 graus (direita)
+    # O gauge é um semicírculo que vai de -90° a +90°
     angulo_atual = -90 + (atingimento_percent / 150) * 180
     
     # Converter para radianos para cálculos
     angulo_rad = math.radians(angulo_atual)
     
-    # Posição no círculo (centro em 0.5, 0.5, raio aproximado 0.4)
-    raio = 0.38
+    # Posição no círculo - centro do gauge está aproximadamente em (0.5, 0.55) em coordenadas de papel
+    # Raio do gauge visível está entre 0.15 e 0.35 aproximadamente
+    raio_interno = 0.15  # Começa mais próximo do centro
+    raio_externo = 0.32  # Vai até a borda do gauge
     centro_x = 0.5
-    centro_y = 0.48
+    centro_y = 0.55  # Ajustado para o centro do semicírculo do gauge
     
-    # Ponto inicial (no centro do gauge)
-    x0 = centro_x + raio * 0.7 * math.cos(angulo_rad)
-    y0 = centro_y + raio * 0.7 * math.sin(angulo_rad)
+    # Ponto inicial (mais próximo do centro)
+    x0 = centro_x + raio_interno * math.cos(angulo_rad)
+    y0 = centro_y + raio_interno * math.sin(angulo_rad)
     
     # Ponto final (na borda do gauge)
-    x1 = centro_x + raio * math.cos(angulo_rad)
-    y1 = centro_y + raio * math.sin(angulo_rad)
+    x1 = centro_x + raio_externo * math.cos(angulo_rad)
+    y1 = centro_y + raio_externo * math.sin(angulo_rad)
     
     fig.update_layout(
         paper_bgcolor="rgba(0,0,0,0)",
