@@ -1329,7 +1329,12 @@ def render_bloco_reservas():
                     title='',
                     tickfont=dict(size=14, color='rgba(248,250,252,0.88)', family='Manrope, sans-serif')
                 ),
-                xaxis=dict(showticklabels=False, showgrid=False, zeroline=False),
+                xaxis=dict(
+                    showticklabels=False,
+                    showgrid=False,
+                    zeroline=False,
+                    title=''
+                ),
                 bargap=0.25
             )
             max_quantidade = status_counts['Quantidade'].max() if not status_counts.empty else 0
