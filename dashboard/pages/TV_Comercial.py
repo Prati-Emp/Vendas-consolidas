@@ -7,6 +7,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from dateutil.relativedelta import relativedelta
 import time
+import re
 
 # Garantir que os módulos compartilhados possam ser importados quando o app for executado diretamente
 sys.path.append(str(Path(__file__).resolve().parent.parent))
@@ -506,19 +507,28 @@ LEADS_FUNIL_ETAPAS = [
 # Situações "Mútuo" e "Vendida" não aparecem no dataset, mas mantemos a hierarquia
 RESERVAS_SITUACAO_INDICES = {
     "Reserva": 1,
+    "Reserva (7)": 1,
     "Crédito (CEF)": 2,
+    "Crédito (CEF) (3)": 2,
     "Crédito reprovado (CEF)": 3,
     "Negociação": 4,
-    # Índice 5 = "Mútuo" (excluído do dataset)
+    "Negociação (5)": 4,
+    "Mútuo": 5,
     "Análise de proposta (Diretoria)": 6,
+    "Análise de proposta (Diretoria) (1)": 6,
     "Análise Diretoria": 6,
     "Análise Diretoria (Diretoria)": 6,
     "Crédito (Interno)": 7,
+    "Crédito (Interno) (2)": 7,
     "Contrato - Elaboração": 8,
+    "Contrato - Elaboração (2)": 8,
     "Contrato - Assinatura": 9,
+    "Contrato - Assinatura (5)": 9,
     "Contrato Assinado": 10,
+    "Contrato Assinado (1)": 10,
     "Sienge": 11,
-    # Índice 11 também = "Vendida" (excluído do dataset)
+    "Vendia": 12,
+    "Vendida": 12,
 }
 
 # Lista de ordem para compatibilidade com código existente
@@ -558,6 +568,51 @@ def normalize_reserva_label(label: str | None) -> str:
     if not isinstance(label, str):
         return ""
     return label.split(" (")[0].strip()
+
+
+def get_reserva_indice(situacao: str | None) -> int:
+    """
+    Busca o índice de uma situação de reserva no dicionário.
+    Tenta primeiro o nome exato, depois normaliza removendo números entre parênteses no final.
+    """
+    if not situacao or pd.isna(situacao):
+        return 999
+    
+    situacao_str = str(situacao).strip()
+    
+    # Tentar busca exata primeiro
+    if situacao_str in RESERVAS_SITUACAO_INDICES:
+        return RESERVAS_SITUACAO_INDICES[situacao_str]
+    
+    # Normalizar removendo números entre parênteses no final
+    # Remove múltiplos "(número)" no final (ex: "Crédito (CEF) (3)" -> "Crédito (CEF)")
+    situacao_normalizada = re.sub(r'\s*\(\d+\)\s*$', '', situacao_str).strip()
+    # Tenta novamente para remover múltiplos níveis
+    while situacao_normalizada != re.sub(r'\s*\(\d+\)\s*$', '', situacao_normalizada).strip():
+        situacao_normalizada = re.sub(r'\s*\(\d+\)\s*$', '', situacao_normalizada).strip()
+    
+    # Tentar busca normalizada
+    if situacao_normalizada in RESERVAS_SITUACAO_INDICES:
+        return RESERVAS_SITUACAO_INDICES[situacao_normalizada]
+    
+    # Tentar correspondência parcial: verificar se a situação normalizada corresponde
+    # ao início de alguma chave do dicionário ou vice-versa
+    for key in RESERVAS_SITUACAO_INDICES.keys():
+        # Correspondência exata após normalização
+        key_normalizada = re.sub(r'\s*\(\d+\)\s*$', '', key).strip()
+        while key_normalizada != re.sub(r'\s*\(\d+\)\s*$', '', key_normalizada).strip():
+            key_normalizada = re.sub(r'\s*\(\d+\)\s*$', '', key_normalizada).strip()
+        
+        if situacao_normalizada == key_normalizada:
+            return RESERVAS_SITUACAO_INDICES[key]
+        
+        # Correspondência de início: se uma começa com a outra
+        if situacao_normalizada.startswith(key_normalizada) or key_normalizada.startswith(situacao_normalizada):
+            # Verificar se não é apenas uma substring acidental
+            if len(situacao_normalizada) > 3 and len(key_normalizada) > 3:
+                return RESERVAS_SITUACAO_INDICES[key]
+    
+    return 999
 
 
 @st.cache_data(ttl=300)
@@ -1282,9 +1337,7 @@ def render_bloco_reservas():
             st.info("Nenhuma situação ativa encontrada no período.")
         else:
             status_counts['SituacaoNormalizada'] = status_counts['Situacao'].apply(normalize_reserva_label)
-            status_counts['Indice'] = status_counts['Situacao'].apply(
-                lambda s: RESERVAS_SITUACAO_INDICES.get(str(s).strip(), 999)
-            )
+            status_counts['Indice'] = status_counts['Situacao'].apply(get_reserva_indice)
             # Ordenar por índice (crescente) e depois por situação (alfabética)
             status_counts = status_counts.sort_values(['Indice', 'Situacao'], ascending=[True, True]).reset_index(drop=True)
 
