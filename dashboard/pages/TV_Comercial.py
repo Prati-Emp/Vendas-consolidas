@@ -36,7 +36,7 @@ if email not in {"odair.santos@grupoprati.com"}:
 # ============================================================================
 # CONFIGURAÇÕES DO CARROSSEL - SEM JAVASCRIPT, SEM RELOAD, APENAS PYTHON
 # ============================================================================
-CAROUSEL_SECTIONS = 5  # Número de seções/blocos
+CAROUSEL_SECTIONS = 4  # Número de seções/blocos
 CAROUSEL_INTERVAL = 5  # Segundos por seção
 
 # Inicializar estado do carrossel
@@ -1062,7 +1062,7 @@ def render_velocimetro_metas(meta_valor: float, vendas_valor: float, atingimento
     
     # Offset fino para ajustar posicionamento horizontal da barra
     # Ajuste fino para posicionar corretamente no arco do gauge
-    offset_x = -0.35
+    offset_x = -0.40
     
     # Ponto inicial da barra (próximo ao centro)
     x_barra_inicio = centro_x + raio_interno * math.cos(angulo_rad) + offset_x
@@ -1339,7 +1339,7 @@ def render_bloco_1():
 # Dicionário mapeando índice para função de renderização
 RENDER_FUNCTIONS = {
     0: render_bloco_0,
-    1: render_bloco_1,
+    # Bloco 1 (Indicadores Adicionais) removido
     # Os outros blocos serão adicionados após extrair do código antigo
 }
 
@@ -1350,9 +1350,7 @@ with carousel_placeholder.container():
     if current_index == 0:
         render_bloco_0()
     elif current_index == 1:
-        render_bloco_1()
-    elif current_index == 2:
-        # Bloco 2: Reservas + Leads lado a lado
+        # Bloco 1 (anteriormente 2): Reservas + Leads lado a lado
         st.markdown('<div class="tv-carousel-section tv-carousel-section--split">', unsafe_allow_html=True)
         col_reservas, col_leads = st.columns(2, gap="large")
 
@@ -1635,8 +1633,8 @@ with carousel_placeholder.container():
             st.markdown('</div>', unsafe_allow_html=True)
 
         st.markdown('</div>', unsafe_allow_html=True)
-    elif current_index == 3:
-        # Bloco 4: Distribuição por Mídia
+    elif current_index == 2:
+        # Bloco 2 (anteriormente 3): Distribuição por Mídia
         st.markdown('<div class="tv-carousel-section">', unsafe_allow_html=True)
         st.markdown("## 📣 Distribuição por Mídia")
 
@@ -1698,8 +1696,8 @@ with carousel_placeholder.container():
                         f"Base consolidada de {TERMOMETRO_DATA_INICIO.strftime('%d/%m/%Y')} até {data_final_analise.strftime('%d/%m/%Y')} · Leads contabilizados: {total_leads_exibidos}"
                     )
         st.markdown('</div>', unsafe_allow_html=True)
-    elif current_index == 4:
-        # Bloco 5: Cancelamentos por Motivo
+    elif current_index == 3:
+        # Bloco 3 (anteriormente 4): Cancelamentos por Motivo
         st.markdown('<div class="tv-carousel-section">', unsafe_allow_html=True)
         st.markdown("## ❌ Cancelamentos por Motivo")
         
