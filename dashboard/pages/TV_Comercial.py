@@ -1626,7 +1626,7 @@ def render_bloco_2():
 def render_bloco_cancelamentos():
     """Bloco Cancelamentos: Cancelamentos por Motivo"""
     st.markdown('<div class="tv-carousel-section">', unsafe_allow_html=True)
-    st.markdown("## ❌ Cancelamentos por Motivo")
+    st.markdown("## ❌ Cancelamento de leads por motivo")
     
     leads_base_df = load_leads_tv()
     
