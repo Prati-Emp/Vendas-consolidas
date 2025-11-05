@@ -1062,6 +1062,9 @@ def render_velocimetro_metas(meta_valor: float, vendas_valor: float, atingimento
     # Barra sempre verde
     cor_barra = '#22c55e'  # Sempre verde
     
+    # Cor do valor de vendas: verde se >= 100%, vermelho caso contrário
+    cor_vendas = '#22c55e' if atingimento_percent >= 100 else '#ef4444'
+    
     # Formatar valor de vendas realizado para o centro
     vendas_formatada = format_compact_currency(vendas_valor) if vendas_valor > 0 else "—"
     
@@ -1111,7 +1114,7 @@ def render_velocimetro_metas(meta_valor: float, vendas_valor: float, atingimento
                 align="right"
             ),
             dict(
-                text=f"Atingimento: {atingimento_percent:.1f}%",
+                text=f"Realizado: {atingimento_percent:.1f}%",
                 x=0.98,
                 y=0.88,
                 xref="paper",
@@ -1127,7 +1130,7 @@ def render_velocimetro_metas(meta_valor: float, vendas_valor: float, atingimento
                 xref="paper",
                 yref="paper",
                 showarrow=False,
-                font=dict(size=48, color='#f8fafc', family='Manrope, sans-serif'),
+                font=dict(size=48, color=cor_vendas, family='Manrope, sans-serif'),
                 align="center"
             )
         ]
