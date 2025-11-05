@@ -1053,20 +1053,41 @@ def render_velocimetro_metas(meta_valor: float, vendas_valor: float, atingimento
     # Converter para radianos para cálculos
     angulo_rad = math.radians(angulo_atual)
     
-    # Posição no círculo - centro do gauge está aproximadamente em (0.5, 0.55) em coordenadas de papel
-    # Raio do gauge visível está entre 0.15 e 0.35 aproximadamente
-    raio_interno = 0.15  # Começa mais próximo do centro
-    raio_externo = 0.32  # Vai até a borda do gauge
+    # Posição no círculo - centro do gauge está aproximadamente em (0.5, 0.6) em coordenadas de papel
+    # Raio do gauge visível está entre 0.18 e 0.35 aproximadamente
+    raio_interno = 0.18  # Começa próximo ao centro (onde termina o número)
+    raio_externo = 0.34  # Vai até a borda do gauge
     centro_x = 0.5
-    centro_y = 0.55  # Ajustado para o centro do semicírculo do gauge
+    centro_y = 0.6  # Centro do semicírculo do gauge
     
-    # Ponto inicial (mais próximo do centro)
-    x0 = centro_x + raio_interno * math.cos(angulo_rad)
-    y0 = centro_y + raio_interno * math.sin(angulo_rad)
+    # Ponto inicial da barra (próximo ao centro)
+    x_barra_inicio = centro_x + raio_interno * math.cos(angulo_rad)
+    y_barra_inicio = centro_y + raio_interno * math.sin(angulo_rad)
     
-    # Ponto final (na borda do gauge)
-    x1 = centro_x + raio_externo * math.cos(angulo_rad)
-    y1 = centro_y + raio_externo * math.sin(angulo_rad)
+    # Ponto final da barra (na borda do gauge)
+    x_barra_fim = centro_x + raio_externo * math.cos(angulo_rad)
+    y_barra_fim = centro_y + raio_externo * math.sin(angulo_rad)
+    
+    # Criar triângulo na ponta da barra (apontando para fora do gauge)
+    # O triângulo precisa ser perpendicular à barra
+    angulo_perpendicular = angulo_rad + math.pi / 2  # 90 graus em relação à barra
+    
+    # Tamanho do triângulo (em coordenadas de papel)
+    tamanho_triangulo = 0.015
+    
+    # Ponto do topo do triângulo (na ponta da barra, um pouco mais para fora)
+    x_triangulo_topo = centro_x + (raio_externo + 0.01) * math.cos(angulo_rad)
+    y_triangulo_topo = centro_y + (raio_externo + 0.01) * math.sin(angulo_rad)
+    
+    # Pontos da base do triângulo (perpendiculares à barra)
+    x_triangulo_base1 = x_triangulo_topo + tamanho_triangulo * math.cos(angulo_perpendicular)
+    y_triangulo_base1 = y_triangulo_topo + tamanho_triangulo * math.sin(angulo_perpendicular)
+    
+    x_triangulo_base2 = x_triangulo_topo - tamanho_triangulo * math.cos(angulo_perpendicular)
+    y_triangulo_base2 = y_triangulo_topo - tamanho_triangulo * math.sin(angulo_perpendicular)
+    
+    # Cor do triângulo (mesma cor do número ou branca)
+    cor_triangulo = cor_numero if atingimento_percent >= 100 else '#ffffff'
     
     fig.update_layout(
         paper_bgcolor="rgba(0,0,0,0)",
@@ -1092,18 +1113,28 @@ def render_velocimetro_metas(meta_valor: float, vendas_valor: float, atingimento
             )
         ],
         shapes=[
+            # Barra vertical (como no termômetro, 7px de largura)
             dict(
                 type="line",
-                x0=x0,
-                y0=y0,
-                x1=x1,
-                y1=y1,
+                x0=x_barra_inicio,
+                y0=y_barra_inicio,
+                x1=x_barra_fim,
+                y1=y_barra_fim,
                 xref="paper",
                 yref="paper",
                 line=dict(
-                    color="rgba(255, 255, 255, 0.95)",
-                    width=3
+                    color="#ffffff",
+                    width=7
                 )
+            ),
+            # Triângulo na ponta da barra
+            dict(
+                type="path",
+                path=f"M {x_triangulo_topo},{y_triangulo_topo} L {x_triangulo_base1},{y_triangulo_base1} L {x_triangulo_base2},{y_triangulo_base2} Z",
+                xref="paper",
+                yref="paper",
+                fillcolor=cor_triangulo,
+                line=dict(color=cor_triangulo, width=0)
             )
         ]
     )
