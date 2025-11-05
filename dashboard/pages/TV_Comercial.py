@@ -750,13 +750,6 @@ reservas_ativas_df = reservas_base_df[
 reservas_atuais_total = len(reservas_ativas_df)
 valor_total_reservas = float(reservas_ativas_df['valor_contrato'].sum())
 
-total_reservas_periodo = len(reservas_base_df)
-reservas_convertidas_total = reservas_base_df['situacao_normalizada'].isin(CONVERSAO_SITUACOES).sum()
-taxa_conversao_geral = (
-    reservas_convertidas_total / total_reservas_periodo
-) if total_reservas_periodo > 0 else 0.0
-
-
 seis_meses_atras = data_final_analise - relativedelta(months=6)
 reservas_6m_df = reservas_df[
     (reservas_df['data_cad'].dt.date >= seis_meses_atras)
@@ -770,6 +763,12 @@ def calcular_conversao(df: pd.DataFrame) -> tuple[int, int, float]:
     convertidas = df['situacao_normalizada'].isin(CONVERSAO_SITUACOES).sum()
     taxa = (convertidas / total * 100) if total > 0 else 0.0
     return total, convertidas, taxa
+
+
+# Calcular taxa de conversão geral usando últimos 6 meses
+total_reservas_6m, reservas_convertidas_6m, taxa_conversao_geral = calcular_conversao(reservas_6m_df)
+# Converter de percentual para decimal (função retorna em %)
+taxa_conversao_geral = taxa_conversao_geral / 100
 
 
 def calcular_tempo_medio_conversao(df: pd.DataFrame) -> tuple[float | None, int]:
@@ -1262,7 +1261,8 @@ def render_bloco_0():
     # 4 cards ocupando toda a largura
     st.markdown('<div class="tv-bloco-0-cards-wrapper tv-bloco-0-cards-termometro">', unsafe_allow_html=True)
     cards_dir = st.columns([0.25, 0.25, 0.25, 0.25], gap="small")
-    render_kpi(cards_dir[0], "Taxa de Conversão Geral", f"{taxa_conversao_geral * 100:.1f}%", "Reservas que viram vendas", compact=True)
+    tag_6m = "6 MESES"
+    render_kpi(cards_dir[0], "Taxa de Conversão Geral", f"{taxa_conversao_geral * 100:.1f}%", f"{format_int_value(reservas_convertidas_6m)}/{format_int_value(total_reservas_6m)}", tag=tag_6m, compact=True)
     render_kpi(cards_dir[1], "Reservas Atuais", f"{reservas_atuais_total}", "Reservas ativas no pipeline", compact=True)
     render_kpi(cards_dir[2], "Potencial de Vendas", format_compact_currency(potencial_vendas_valor), "Reservas x taxa de conversão", valor_color=potencial_color, compact=True)
     render_kpi(cards_dir[3], "Cobertura da Meta", f"{cobertura_percent:.1f}%", "Potencial versus meta", tag=status.upper(), valor_color=status_color, compact=True)
@@ -1303,7 +1303,8 @@ def render_bloco_1():
     st.markdown("---")
     
     linha_termometro = st.columns(4)
-    render_kpi(linha_termometro[0], "Taxa de Conversão Geral", f"{taxa_conversao_geral * 100:.1f}%", "Reservas que viram vendas")
+    tag_6m = "6 MESES"
+    render_kpi(linha_termometro[0], "Taxa de Conversão Geral", f"{taxa_conversao_geral * 100:.1f}%", f"{format_int_value(reservas_convertidas_6m)}/{format_int_value(total_reservas_6m)}", tag=tag_6m)
     render_kpi(linha_termometro[1], "Reservas Atuais", f"{reservas_atuais_total}", "Reservas ativas no pipeline")
     render_kpi(linha_termometro[2], "Potencial de Vendas", format_compact_currency(potencial_vendas_valor), "Reservas x taxa de conversão")
     render_kpi(linha_termometro[3], "Cobertura da Meta", f"{cobertura_percent:.1f}%", "Potencial versus meta")
