@@ -1114,7 +1114,7 @@ def render_velocimetro_metas(meta_valor: float, vendas_valor: float, atingimento
                 align="right"
             ),
             dict(
-                text=f"% Realiz.: <b>{atingimento_percent:.1f}%</b>",
+                text=f"%Realiz: <b>{atingimento_percent:.1f}%</b>",
                 x=0.98,
                 y=0.88,
                 xref="paper",
