@@ -1325,8 +1325,7 @@ def render_bloco_reservas():
                 ),
                 yaxis=dict(
                     categoryorder='array',
-                    categoryarray=status_counts['Situacao'].tolist(),
-                    autorange='reversed',
+                    categoryarray=list(reversed(status_counts['Situacao'].tolist())),
                     title='',
                     tickfont=dict(size=14, color='rgba(248,250,252,0.88)', family='Manrope, sans-serif')
                 ),
