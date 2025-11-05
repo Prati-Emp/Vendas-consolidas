@@ -1062,7 +1062,7 @@ def render_velocimetro_metas(meta_valor: float, vendas_valor: float, atingimento
     
     # Offset fino para ajustar posicionamento horizontal da barra
     # Ajuste fino para posicionar corretamente no arco do gauge
-    offset_x = -0.15
+    offset_x = 0.15
     
     # Ponto inicial da barra (próximo ao centro)
     x_barra_inicio = centro_x + raio_interno * math.cos(angulo_rad) + offset_x
