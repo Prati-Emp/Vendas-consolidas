@@ -1807,7 +1807,7 @@ with carousel_placeholder.container():
                         axis=1
                     )
 
-                    midia_resumo = midia_resumo.sort_values('total_leads', ascending=False)
+                    midia_resumo = midia_resumo.sort_values('total_leads', ascending=False).head(10)
 
                     midia_display = midia_resumo.copy()
                     midia_display['Mídia'] = midia_display['midia_consolidada']
