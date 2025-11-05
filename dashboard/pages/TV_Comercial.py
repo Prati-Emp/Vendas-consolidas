@@ -1060,9 +1060,9 @@ def render_velocimetro_metas(meta_valor: float, vendas_valor: float, atingimento
     centro_x = 0.5
     centro_y = 0.52  # Centro do semicírculo do gauge (ajustado para aparecer no arco)
     
-    # Offset para mover a barra aproximadamente 150px para a direita
+    # Offset para mover a barra aproximadamente 150px para a esquerda
     # Considerando largura aproximada de 400-500px, 150px = ~0.35 em coordenadas de papel
-    offset_x = 0.35
+    offset_x = -0.35
     
     # Ponto inicial da barra (próximo ao centro)
     x_barra_inicio = centro_x + raio_interno * math.cos(angulo_rad) + offset_x
