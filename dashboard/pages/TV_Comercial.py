@@ -1748,8 +1748,10 @@ with carousel_placeholder.container():
                         color_discrete_map=color_map,
                         title='Distribuição de Cancelamentos por Motivo'
                     )
-                    fig_cancelamentos = apply_dark_theme(fig_cancelamentos, margin_top=35)
                     fig_cancelamentos.update_layout(
+                        paper_bgcolor="rgba(0,0,0,0)",
+                        plot_bgcolor="rgba(0,0,0,0)",
+                        font_color="#f8fafc",
                         height=800,  # Aumentado para ocupar mais tela
                         margin=dict(t=35, b=20, l=10, r=10),
                         showlegend=False,
@@ -1772,13 +1774,7 @@ with carousel_placeholder.container():
                             titlefont=dict(size=14, color='rgba(248,250,252,0.88)', family='Manrope, sans-serif'),
                             tickfont=dict(size=12, color='rgba(248,250,252,0.7)', family='Manrope, sans-serif')
                         ),
-                        hovermode='closest',
-                        hoverlabel=dict(
-                            bgcolor='rgba(15, 23, 42, 0.9)',
-                            bordercolor='rgba(148, 163, 184, 0.5)',
-                            font_size=12,
-                            font_family='Manrope, sans-serif'
-                        )
+                        hovermode='closest'
                     )
                     fig_cancelamentos.update_traces(
                         textposition='outside',
