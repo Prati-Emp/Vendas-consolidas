@@ -1596,8 +1596,8 @@ def render_bloco_2():
                 )
                 st.plotly_chart(fig_leads, use_container_width=True)
 
-                # Espaçamento para mover texto para baixo
-                st.markdown('<br><br><br><br><br><br><br><br><br><br>', unsafe_allow_html=True)
+                # Espaçamento para mover texto para baixo (reduzido para ficar um pouco mais para cima)
+                st.markdown('<br><br><br><br><br>', unsafe_allow_html=True)
 
                 # Mostrar total de leads ativos em formato de texto (duas linhas)
                 st.caption(f"Total Leads Ativos: {format_int_value(total_leads_ativos)}")
@@ -1713,9 +1713,6 @@ def render_bloco_cancelamentos():
                     hoverlabel=dict(bgcolor='rgba(15,23,42,0.92)', font_size=13, font_family='Manrope, sans-serif')
                 )
                 st.plotly_chart(fig_cancelamentos, use_container_width=True)
-                
-                # Espaçamento para mover texto para baixo
-                st.markdown('<br><br><br><br><br><br><br><br><br><br>', unsafe_allow_html=True)
                 
                 # Mostrar total de cancelamentos em formato de texto (duas linhas)
                 st.caption(f"Total Cancelamentos: {format_int_value(total_cancelamentos)}")
