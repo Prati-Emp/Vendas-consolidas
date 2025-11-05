@@ -1605,6 +1605,122 @@ def render_bloco_2():
     
     st.markdown('</div>', unsafe_allow_html=True)
 
+
+def render_bloco_cancelamentos():
+    """Bloco Cancelamentos: Cancelamentos por Motivo"""
+    st.markdown('<div class="tv-carousel-section">', unsafe_allow_html=True)
+    st.markdown("## ❌ Cancelamentos por Motivo")
+    
+    leads_base_df = load_leads_tv()
+    
+    if leads_base_df.empty:
+        st.info("Não foi possível carregar dados de leads para análise de cancelamentos.")
+    else:
+        leads_tv_df = leads_base_df.copy()
+        leads_tv_df['data_consolidada'] = pd.to_datetime(leads_tv_df['data_consolidada'], errors='coerce')
+        leads_tv_df = leads_tv_df[leads_tv_df['data_consolidada'].notna()]
+        leads_tv_df = leads_tv_df[
+            (leads_tv_df['data_consolidada'].dt.date >= TERMOMETRO_DATA_INICIO) &
+            (leads_tv_df['data_consolidada'].dt.date <= data_final_analise)
+        ].copy()
+        
+        if leads_tv_df.empty:
+            st.info("Sem dados de leads para análise de cancelamentos.")
+        else:
+            # Filtrar apenas cancelamentos (onde há motivo de cancelamento)
+            cancelamentos_df = leads_tv_df[
+                (leads_tv_df['motivo_cancelamento_consolidada'].notna()) &
+                (leads_tv_df['motivo_cancelamento_consolidada'] != '') &
+                (leads_tv_df['motivo_cancelamento_consolidada'].str.strip() != '')
+            ].copy()
+            
+            if cancelamentos_df.empty:
+                st.info("Nenhum cancelamento encontrado no período selecionado.")
+            else:
+                # Contar cancelamentos por motivo
+                motivo_counts = (
+                    cancelamentos_df.groupby('motivo_cancelamento_consolidada')
+                    .size()
+                    .reset_index(name='Quantidade')
+                    .sort_values('Quantidade', ascending=False)
+                )
+                motivo_counts = motivo_counts.rename(columns={'motivo_cancelamento_consolidada': 'Motivo'})
+                
+                total_cancelamentos = int(motivo_counts['Quantidade'].sum())
+                motivo_counts['Percentual'] = motivo_counts['Quantidade'].apply(
+                    lambda v: round(v / total_cancelamentos * 100, 1) if total_cancelamentos > 0 else 0.0
+                )
+                motivo_counts['QuantidadeFormatada'] = motivo_counts['Quantidade'].apply(format_int_value)
+                
+                # Criar gráfico usando go.Figure (mais simples e confiável)
+                paleta_cancelamentos = ['#ef4444', '#f87171', '#fca5a5', '#dc2626', '#b91c1c', '#991b1b', '#7f1d1d']
+                max_valor = motivo_counts['Quantidade'].max() if not motivo_counts.empty else 0
+                offset_anotacao = max(max_valor * 0.015, 3)
+                
+                fig_cancelamentos = go.Figure()
+                fig_cancelamentos.add_trace(go.Bar(
+                    y=motivo_counts['Motivo'].tolist(),
+                    x=motivo_counts['Quantidade'].tolist(),
+                    orientation='h',
+                    text=motivo_counts['Percentual'].apply(lambda x: f"{x:.1f}%").tolist(),
+                    texttemplate='<b>%{text}</b>',
+                    textposition='inside',
+                    insidetextanchor='middle',
+                    textfont=dict(color='#f8fafc', size=16, family='Manrope, sans-serif'),
+                    marker=dict(
+                        color=[paleta_cancelamentos[i % len(paleta_cancelamentos)] for i in range(len(motivo_counts))],
+                        line=dict(width=0)
+                    ),
+                    customdata=motivo_counts['QuantidadeFormatada'].tolist(),
+                    hovertemplate="<b>%{y}</b><br>Quantidade: %{customdata}<br>Percentual: %{text}<extra></extra>",
+                    cliponaxis=False
+                ))
+                
+                # Adicionar anotações com quantidade
+                for _, linha in motivo_counts.iterrows():
+                    fig_cancelamentos.add_annotation(
+                        x=float(linha['Quantidade']) + offset_anotacao,
+                        y=linha['Motivo'],
+                        text=linha['QuantidadeFormatada'],
+                        showarrow=False,
+                        font=dict(size=14, color='#f8fafc', family='Manrope, sans-serif'),
+                        xanchor='left',
+                        bgcolor='rgba(15,23,42,0.82)',
+                        bordercolor='rgba(148, 163, 184, 0.45)',
+                        borderwidth=1,
+                        borderpad=5
+                    )
+                
+                range_max = max_valor + offset_anotacao * 3 if max_valor else 1
+                fig_cancelamentos.update_layout(
+                    paper_bgcolor="rgba(0,0,0,0)",
+                    plot_bgcolor="rgba(0,0,0,0)",
+                    font=dict(color="#f8fafc"),
+                    height=700,
+                    margin=dict(t=35, b=20, l=10, r=40),
+                    showlegend=False,
+                    xaxis=dict(
+                        showgrid=False,
+                        zeroline=False,
+                        showticklabels=False,
+                        range=[0, range_max]
+                    ),
+                    yaxis=dict(
+                        showgrid=False,
+                        tickfont=dict(size=14, color='rgba(248,250,252,0.88)', family='Manrope, sans-serif'),
+                        categoryorder='total ascending'
+                    ),
+                    hoverlabel=dict(bgcolor='rgba(15,23,42,0.92)', font_size=13, font_family='Manrope, sans-serif')
+                )
+                st.plotly_chart(fig_cancelamentos, use_container_width=True)
+                
+                # Mostrar total de cancelamentos
+                total_card = st.container()
+                render_kpi(total_card, "Total Cancelamentos", format_int_value(total_cancelamentos), "Período analisado", compact=True)
+    
+    st.markdown('</div>', unsafe_allow_html=True)
+
+
 # ============================================================================
 # LÓGICA DE RENDERIZAÇÃO DO CARROSSEL - SEM JAVASCRIPT, APENAS PYTHON
 # ============================================================================
@@ -1612,8 +1728,11 @@ def render_bloco_2():
 # Dicionário mapeando índice para função de renderização
 RENDER_FUNCTIONS = {
     0: render_bloco_0,
-    # Bloco 1 (Indicadores Adicionais) removido
-    # Os outros blocos serão adicionados após extrair do código antigo
+    1: render_bloco_1,
+    2: render_bloco_reservas,
+    3: render_bloco_2,
+    5: render_bloco_cancelamentos,
+    # Bloco 4 (Mídia) ainda está inline no código
 }
 
 # Renderizar o bloco atual dentro do placeholder baseado no índice
@@ -1692,97 +1811,7 @@ with carousel_placeholder.container():
                     )
         st.markdown('</div>', unsafe_allow_html=True)
     elif current_index == 5:
-        # Bloco 5: Cancelamentos por Motivo
-        st.markdown('<div class="tv-carousel-section">', unsafe_allow_html=True)
-        st.markdown("## ❌ Cancelamentos por Motivo")
-        
-        # Carregar leads para cancelamentos
-        leads_base_df = load_leads_tv()
-        if leads_base_df.empty:
-            st.info("Não foi possível carregar dados de leads para análise de cancelamentos.")
-        else:
-            leads_tv_df = leads_base_df.copy()
-            leads_tv_df['data_consolidada'] = pd.to_datetime(leads_tv_df['data_consolidada'], errors='coerce')
-            leads_tv_df = leads_tv_df[leads_tv_df['data_consolidada'].notna()]
-            leads_tv_df = leads_tv_df[
-                (leads_tv_df['data_consolidada'].dt.date >= TERMOMETRO_DATA_INICIO) &
-                (leads_tv_df['data_consolidada'].dt.date <= data_final_analise)
-            ].copy()
-
-            if leads_tv_df.empty:
-                st.info("Sem dados de leads para análise de cancelamentos.")
-            else:
-                # Filtrar apenas cancelamentos (onde há motivo de cancelamento)
-                cancelamentos_df = leads_tv_df[
-                    (leads_tv_df['motivo_cancelamento_consolidada'].notna()) &
-                    (leads_tv_df['motivo_cancelamento_consolidada'] != '') &
-                    (leads_tv_df['motivo_cancelamento_consolidada'].str.strip() != '')
-                ].copy()
-                
-                if cancelamentos_df.empty:
-                    st.info("Nenhum cancelamento encontrado no período selecionado.")
-                else:
-                    # Contar cancelamentos por motivo
-                    motivo_counts = (
-                        cancelamentos_df.groupby('motivo_cancelamento_consolidada')
-                        .size()
-                        .reset_index(name='Quantidade')
-                        .sort_values('Quantidade', ascending=False)
-                    )
-                    motivo_counts = motivo_counts.rename(columns={'motivo_cancelamento_consolidada': 'Motivo'})
-                    
-                    # Criar gráfico de barras horizontal
-                    paleta_cancelamentos = ['#ef4444', '#f87171', '#fca5a5', '#dc2626', '#b91c1c', '#991b1b', '#7f1d1d']
-                    color_map = {
-                        motivo: paleta_cancelamentos[i % len(paleta_cancelamentos)]
-                        for i, motivo in enumerate(motivo_counts['Motivo'].tolist())
-                    }
-                    
-                    fig_cancelamentos = px.bar(
-                        motivo_counts,
-                        x='Quantidade',
-                        y='Motivo',
-                        orientation='h',
-                        text='Quantidade',
-                        color='Motivo',
-                        color_discrete_map=color_map,
-                        title='Distribuição de Cancelamentos por Motivo'
-                    )
-                    fig_cancelamentos.update_layout(
-                        paper_bgcolor="rgba(0,0,0,0)",
-                        plot_bgcolor="rgba(0,0,0,0)",
-                        font_color="#f8fafc",
-                        height=800,  # Aumentado para ocupar mais tela
-                        margin=dict(t=35, b=20, l=10, r=10),
-                        showlegend=False,
-                        title=dict(
-                            text='Distribuição de Cancelamentos por Motivo',
-                            x=0,
-                            xanchor='left',
-                            font=dict(size=18, color='#f8fafc', family='Manrope, sans-serif')
-                        ),
-                        yaxis=dict(
-                            categoryorder='total ascending',
-                            title='',
-                            tickfont=dict(size=14, color='rgba(248,250,252,0.88)', family='Manrope, sans-serif')
-                        ),
-                        xaxis=dict(
-                            showticklabels=True,
-                            showgrid=True,
-                            gridcolor='rgba(148, 163, 184, 0.2)',
-                            title='Quantidade',
-                            titlefont=dict(size=14, color='rgba(248,250,252,0.88)', family='Manrope, sans-serif'),
-                            tickfont=dict(size=12, color='rgba(248,250,252,0.7)', family='Manrope, sans-serif')
-                        ),
-                        hovermode='closest'
-                    )
-                    fig_cancelamentos.update_traces(
-                        textposition='outside',
-                        textfont=dict(size=12, color='rgba(248,250,252,0.9)', family='Manrope, sans-serif')
-                    )
-                    
-                    st.plotly_chart(fig_cancelamentos, use_container_width=True)
-        st.markdown('</div>', unsafe_allow_html=True)
+        render_bloco_cancelamentos()
 
 
 # ============================================================================
