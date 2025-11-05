@@ -1714,9 +1714,10 @@ def render_bloco_cancelamentos():
                 )
                 st.plotly_chart(fig_cancelamentos, use_container_width=True)
                 
-                # Mostrar total de cancelamentos
-                total_card = st.container()
-                render_kpi(total_card, "Total Cancelamentos", format_int_value(total_cancelamentos), "Período analisado", compact=True)
+                # Mostrar total de cancelamentos em formato de texto
+                st.caption(
+                    f"Total Cancelamentos: {format_int_value(total_cancelamentos)} · Período analisado de {TERMOMETRO_DATA_INICIO.strftime('%d/%m/%Y')} até {data_final_analise.strftime('%d/%m/%Y')}"
+                )
     
     st.markdown('</div>', unsafe_allow_html=True)
 
