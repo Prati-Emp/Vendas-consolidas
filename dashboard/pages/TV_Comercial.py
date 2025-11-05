@@ -1356,7 +1356,7 @@ def render_bloco_reservas():
                 )
             st.plotly_chart(fig_reserva_status, use_container_width=True)
 
-            linha_conversao = st.columns(2)
+            linha_cards = st.columns(4)
             tag_6m = "6 MESES"
 
             valor_conversao_prati = f"{taxa_prati:.1f}%" if total_prati > 0 else "—"
@@ -1371,25 +1371,6 @@ def render_bloco_reservas():
                 if total_outras > 0 else "Sem registros no período"
             )
 
-            render_kpi(
-                linha_conversao[0],
-                "Conversão Prati",
-                valor_conversao_prati,
-                sub_prati,
-                tag=tag_6m,
-                compact=True
-            )
-            render_kpi(
-                linha_conversao[1],
-                "Conversão Outras Imobiliárias",
-                valor_conversao_outras,
-                sub_outras,
-                tag=tag_6m,
-                compact=True
-            )
-
-            linha_tempo_conversao = st.columns(2)
-
             tempo_prati_display = f"{tempo_medio_prati_dias:.1f} dias" if tempo_medio_prati_dias is not None else "—"
             sub_tempo_prati = (
                 f"Base: {format_int_value(tempo_medio_prati_base)} conv."
@@ -1403,16 +1384,31 @@ def render_bloco_reservas():
             )
 
             render_kpi(
-                linha_tempo_conversao[0],
+                linha_cards[0],
+                "Conversão Prati",
+                valor_conversao_prati,
+                sub_prati,
+                tag=tag_6m,
+                compact=True
+            )
+            render_kpi(
+                linha_cards[1],
+                "Conversão Outras Imobiliárias",
+                valor_conversao_outras,
+                sub_outras,
+                tag=tag_6m,
+                compact=True
+            )
+            render_kpi(
+                linha_cards[2],
                 "Tempo Médio Conversão Prati",
                 tempo_prati_display,
                 sub_tempo_prati,
                 tag=tag_6m,
                 compact=True
             )
-
             render_kpi(
-                linha_tempo_conversao[1],
+                linha_cards[3],
                 "Tempo Médio Conversão Outras",
                 tempo_outras_display,
                 sub_tempo_outras,
