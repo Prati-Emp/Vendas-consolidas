@@ -1064,11 +1064,16 @@ def render_velocimetro_metas(meta_valor: float, vendas_valor: float, atingimento
     # Ajuste fino para posicionar corretamente no arco do gauge
     offset_x = -0.40
     
-    # Ponto inicial da barra (próximo ao centro)
-    x_barra_inicio = centro_x + raio_interno * math.cos(angulo_rad) + offset_x
-    y_barra_inicio = centro_y + raio_interno * math.sin(angulo_rad)
+    # Ajustes específicos apenas para a ponta esquerda (início) do ponteiro
+    # Estes offsets permitem pivotar o ponteiro ajustando apenas o ponto inicial
+    offset_inicio_x = 0.02  # Ajuste horizontal fino no ponto inicial (esquerda)
+    offset_inicio_y = -0.03  # Ajuste vertical fino no ponto inicial (esquerda)
     
-    # Ponto final da barra (na borda do gauge)
+    # Ponto inicial da barra (próximo ao centro) - apenas esta ponta será ajustada
+    x_barra_inicio = centro_x + raio_interno * math.cos(angulo_rad) + offset_x + offset_inicio_x
+    y_barra_inicio = centro_y + raio_interno * math.sin(angulo_rad) + offset_inicio_y
+    
+    # Ponto final da barra (na borda do gauge) - mantido fixo (sem ajustes)
     x_barra_fim = centro_x + raio_externo * math.cos(angulo_rad) + offset_x
     y_barra_fim = centro_y + raio_externo * math.sin(angulo_rad)
     
