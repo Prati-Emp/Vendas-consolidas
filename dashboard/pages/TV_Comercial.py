@@ -1356,9 +1356,10 @@ def render_bloco_reservas():
             status_counts['_ordem_plot'] = status_counts['Situacao'].map(ordem_dict)
             
             # Ordem para o categoryarray: índice 1 deve aparecer no topo
-            # No Plotly com gráfico horizontal, testamos sem inversão primeiro
+            # No Plotly com gráfico horizontal, a primeira entrada do array aparece no topo
+            # Como ordenamos por índice crescente (1 primeiro), precisamos inverter para o topo
             ordem_situacoes = status_counts['Situacao'].tolist()
-            ordem_plotly = ordem_situacoes  # Testar sem reversed
+            ordem_plotly = list(reversed(ordem_situacoes))  # Inverter para índice 1 no topo
 
             paleta_reservas = ['#16295f', '#1e3a8a', '#2563eb', '#3b82f6', '#60a5fa', '#7c3aed', '#a855f7']
             color_map = {
