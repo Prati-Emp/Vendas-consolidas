@@ -1060,12 +1060,16 @@ def render_velocimetro_metas(meta_valor: float, vendas_valor: float, atingimento
     centro_x = 0.5
     centro_y = 0.52  # Centro do semicírculo do gauge (ajustado para aparecer no arco)
     
+    # Offset para mover a barra aproximadamente 150px para a direita
+    # Considerando largura aproximada de 400-500px, 150px = ~0.35 em coordenadas de papel
+    offset_x = 0.35
+    
     # Ponto inicial da barra (próximo ao centro)
-    x_barra_inicio = centro_x + raio_interno * math.cos(angulo_rad)
+    x_barra_inicio = centro_x + raio_interno * math.cos(angulo_rad) + offset_x
     y_barra_inicio = centro_y + raio_interno * math.sin(angulo_rad)
     
     # Ponto final da barra (na borda do gauge)
-    x_barra_fim = centro_x + raio_externo * math.cos(angulo_rad)
+    x_barra_fim = centro_x + raio_externo * math.cos(angulo_rad) + offset_x
     y_barra_fim = centro_y + raio_externo * math.sin(angulo_rad)
     
     # Criar triângulo na ponta da barra (apontando para fora do gauge)
@@ -1076,7 +1080,7 @@ def render_velocimetro_metas(meta_valor: float, vendas_valor: float, atingimento
     tamanho_triangulo = 0.015
     
     # Ponto do topo do triângulo (na ponta da barra, um pouco mais para fora)
-    x_triangulo_topo = centro_x + (raio_externo + 0.01) * math.cos(angulo_rad)
+    x_triangulo_topo = centro_x + (raio_externo + 0.01) * math.cos(angulo_rad) + offset_x
     y_triangulo_topo = centro_y + (raio_externo + 0.01) * math.sin(angulo_rad)
     
     # Pontos da base do triângulo (perpendiculares à barra)
