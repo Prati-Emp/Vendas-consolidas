@@ -1215,9 +1215,9 @@ def render_bloco_0():
         # 3 cards de vendas lado a lado
         st.markdown('<div class="tv-bloco-0-cards-wrapper tv-bloco-0-cards-velocimetro">', unsafe_allow_html=True)
         cards_vendas = st.columns(3, gap="small")
-        render_kpi(cards_vendas[0], "Falta para Meta", format_compact_currency(falta_para_meta_valor) if meta_total > 0 else "—", "Gap remanescente", tag=mes_tag, valor_color=falta_color, compact=True)
-        render_kpi(cards_vendas[1], "🏠 Taxa House (valor)", f"{taxa_house_percent:.1f}%" if house_data_available else "—", "Meta: 30% vendas internas", tag=ano_tag, valor_color=taxa_house_color, compact=True)
-        render_kpi(cards_vendas[2], "Porcentagem VPL Geral", f"{vpl_percent:.2f}%" if vpl_data_available else "—", "Meta: VPL Positivo", tag=ano_tag, valor_color=vpl_color, compact=True)
+        render_kpi(cards_vendas[0], "Falta para Meta", format_compact_currency(falta_para_meta_valor) if meta_total > 0 else "—", "Gap remanescente", tag=mes_tag, compact=True)
+        render_kpi(cards_vendas[1], "🏠 Taxa House (valor)", f"{taxa_house_percent:.1f}%" if house_data_available else "—", "Meta: 30% vendas internas", tag=ano_tag, compact=True)
+        render_kpi(cards_vendas[2], "Porcentagem VPL Geral", f"{vpl_percent:.2f}%" if vpl_data_available else "—", "Meta: VPL Positivo", tag=ano_tag, compact=True)
         st.markdown('</div>', unsafe_allow_html=True)
         
         st.markdown('</div>', unsafe_allow_html=True)
@@ -1280,8 +1280,8 @@ def render_bloco_0():
     tag_6m = "6 MESES"
     render_kpi(cards_dir[0], "Taxa de Conversão Geral", f"{taxa_conversao_geral * 100:.1f}%", f"{format_int_value(reservas_convertidas_6m)}/{format_int_value(total_reservas_6m)}", tag=tag_6m, compact=True)
     render_kpi(cards_dir[1], "Reservas Atuais", f"{reservas_atuais_total}", "Reservas ativas no pipeline", compact=True)
-    render_kpi(cards_dir[2], "Potencial de Vendas", format_compact_currency(potencial_vendas_valor), "Reservas x taxa de conversão", valor_color=potencial_color, compact=True)
-    render_kpi(cards_dir[3], "Cobertura da Meta", f"{cobertura_percent:.1f}%", "Potencial versus meta", tag=status.upper(), valor_color=status_color, compact=True)
+    render_kpi(cards_dir[2], "Potencial de Vendas", format_compact_currency(potencial_vendas_valor), "Reservas x taxa de conversão", compact=True)
+    render_kpi(cards_dir[3], "Cobertura da Meta", f"{cobertura_percent:.1f}%", "Potencial versus meta", tag=status.upper(), compact=True)
     st.markdown('</div>', unsafe_allow_html=True)
     
     st.markdown('</div>', unsafe_allow_html=True)
@@ -1312,9 +1312,9 @@ def render_bloco_1():
         elif vpl_percent < 0:
             vpl_color = "#ef4444"
 
-    render_kpi(linha_um[0], "Falta para Meta", format_compact_currency(falta_para_meta_valor) if meta_total > 0 else "—", "Gap remanescente", tag=mes_tag, valor_color=falta_color, compact=True)
-    render_kpi(linha_um[1], "🏠 Taxa House (valor)", f"{taxa_house_percent:.1f}%" if house_data_available else "—", "Meta: 30% vendas internas", tag=ano_tag, valor_color=taxa_house_color, compact=True)
-    render_kpi(linha_um[2], "Porcentagem VPL Geral", f"{vpl_percent:.2f}%" if vpl_data_available else "—", "Meta: VPL Positivo", tag=ano_tag, valor_color=vpl_color, compact=True)
+    render_kpi(linha_um[0], "Falta para Meta", format_compact_currency(falta_para_meta_valor) if meta_total > 0 else "—", "Gap remanescente", tag=mes_tag, compact=True)
+    render_kpi(linha_um[1], "🏠 Taxa House (valor)", f"{taxa_house_percent:.1f}%" if house_data_available else "—", "Meta: 30% vendas internas", tag=ano_tag, compact=True)
+    render_kpi(linha_um[2], "Porcentagem VPL Geral", f"{vpl_percent:.2f}%" if vpl_data_available else "—", "Meta: VPL Positivo", tag=ano_tag, compact=True)
     
     st.markdown("---")
     
