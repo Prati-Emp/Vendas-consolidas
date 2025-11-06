@@ -12,7 +12,7 @@ import re
 # Garantir que os módulos compartilhados possam ser importados quando o app for executado diretamente
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
-from advanced_auth import require_auth, get_current_user
+from advanced_auth import require_auth
 from utils import display_navigation
 from utils.md_conn import get_md_connection, get_metas_data
 from utils.formatters import format_compact_currency, format_currency
@@ -26,12 +26,7 @@ require_auth(disable_timeout=True)  # Desabilitar timeout para modo TV (roda sem
 st.session_state['current_page'] = __file__
 
 
-# Bloqueio de acesso: somente o usuário Odair pode ver esta página
-current_user = get_current_user() or {}
-email = (current_user.get('email') or "").lower()
-if email not in {"odair.santos@grupoprati.com"}:
-    st.warning("⚠️ Você não tem permissão para acessar a TV Comercial.")
-    st.stop()
+# Acesso liberado para todos os usuários autenticados
 
 # ============================================================================
 # CONFIGURAÇÕES DO CARROSSEL - SEM JAVASCRIPT, SEM RELOAD, APENAS PYTHON
