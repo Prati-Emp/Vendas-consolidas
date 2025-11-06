@@ -449,22 +449,33 @@ else:
                 funnel_df['ordem_grafico'] = funnel_df['ordem_grafico'].fillna(len(ordem_situacoes))
                 funnel_df = funnel_df.sort_values('ordem_grafico').drop(columns=['ordem_grafico'])
                 
+                # Calcular valor monetário total por situação
+                valores_por_situacao = (
+                    df_sem_canceladas_vendidas.groupby('situacao', dropna=False)['valor_contrato']
+                    .sum()
+                    .reset_index()
+                )
+                valores_por_situacao.columns = ['Situação', 'Valor Total']
+                
+                # Mesclar valores com funnel_df
+                funnel_df = funnel_df.merge(valores_por_situacao, on='Situação', how='left')
+                funnel_df['Valor Total'] = funnel_df['Valor Total'].fillna(0.0)
+                
                 # Preparar dados para o gráfico
                 situacoes = funnel_df['Situação'].tolist()
                 quantidades = funnel_df['Quantidade'].tolist()
+                valores = funnel_df['Valor Total'].tolist()
                 
                 # Calcular percentuais em relação à primeira etapa (Reserva)
                 base_quantidade = quantidades[0] if quantidades else 1
                 
                 # Preparar dados para texto dentro e fora das barras
-                text_inside = []  # Quantidades dentro das barras
-                text_outside = []  # Percentuais fora das barras (opcional)
+                text_inside = []  # Valores monetários dentro das barras
                 
-                for quantidade in quantidades:
-                    # Percentual calculado em relação à primeira etapa
-                    percentual = (quantidade / base_quantidade * 100) if base_quantidade > 0 else 0
-                    text_inside.append(f"{quantidade}")  # Quantidade dentro da barra
-                    text_outside.append(f"{percentual:.0f}%")
+                for valor in valores:
+                    # Formatar valor monetário
+                    valor_formatado = format_compact_currency(valor)
+                    text_inside.append(valor_formatado)
                 
                 # Criar gráfico de barras horizontais
                 fig_barras = go.Figure()
@@ -474,26 +485,25 @@ else:
                     y=situacoes,
                     x=quantidades,
                     orientation='h',
-                    text=text_inside,  # Quantidade dentro da barra
+                    text=text_inside,  # Valor monetário dentro da barra
                     textposition='inside',
                     textfont=dict(color='white', size=12, family='Arial Black'),
                     marker=dict(
                         color='#4A90E2',  # Azul claro uniforme
                         line=dict(width=0)  # Sem bordas
                     ),
-                    hovertemplate='<b>%{y}</b><br>Quantidade: %{x}<br>Percentual: %{customdata:.0f}%<extra></extra>',
-                    customdata=[(qtd / base_quantidade * 100) if base_quantidade > 0 else 0 for qtd in quantidades]
+                    hovertemplate='<b>%{y}</b><br>Quantidade: %{x}<br>Valor Total: R$ %{customdata:,.0f}<extra></extra>',
+                    customdata=valores
                 ))
                 
-                # Adicionar anotações com percentuais fora das barras
+                # Adicionar anotações com quantidades fora das barras
                 max_quantidade = max(quantidades) if quantidades else 0
                 for i, situacao in enumerate(situacoes):
                     quantidade = quantidades[i]
-                    percentual = (quantidade / base_quantidade * 100) if base_quantidade > 0 else 0
                     fig_barras.add_annotation(
                         x=quantidade + max_quantidade * 0.02,  # Posicionar um pouco à direita da barra
                         y=situacao,
-                        text=f"{percentual:.0f}%",
+                        text=f"{quantidade}",
                         showarrow=False,
                         font=dict(size=12, color='white', family='Arial'),
                         xref='x',
