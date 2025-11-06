@@ -120,15 +120,6 @@ def require_auth():
         st.markdown("### 👤 Sessão Ativa")
         st.markdown(f"**Usuário:** {ADMIN_USER}")
         
-        if st.session_state.login_time:
-            import time
-            elapsed = int(time.time() - st.session_state.login_time)
-            remaining = SESSION_TIMEOUT - elapsed
-            minutes = remaining // 60
-            seconds = remaining % 60
-            
-            st.markdown(f"**Tempo restante:** {minutes:02d}:{seconds:02d}")
-        
         if st.button("🚪 Sair", use_container_width=True):
             logout()
 
