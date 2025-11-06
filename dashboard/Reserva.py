@@ -352,13 +352,16 @@ st.subheader("Reservas Por Situação")
 ordem_situacoes = [
     'Reserva (7)',
     'Crédito (CEF) (3)',
+    'Crédito reprovado (CEF)',
     'Negociação (5)',
     'Mútuo',
-    'Análise Diretoria',
-    'Contrato - Elaboração',
-    'Contrato - Assinatura',
-    #'Vendida',
-    # 'Distrato'
+    'Análise de proposta (Diretoria) (1)',
+    'Crédito (Interno) (2)',
+    'Contrato - Elaboração (2)',
+    'Contrato - Assinatura (5)',
+    'Contrato Assinado (1)',
+    'Sienge',
+    'Vendida'
 ]
 
 if df_filtrado.empty:
@@ -439,6 +442,13 @@ else:
             import plotly.graph_objects as go
             funnel_df = reservas_por_situacao[reservas_por_situacao['Situação'] != 'Total'].copy()
             if not funnel_df.empty:
+                # Ordenar situações conforme ordem definida
+                ordem_mapping_grafico = {situacao: idx for idx, situacao in enumerate(ordem_situacoes)}
+                funnel_df['ordem_grafico'] = funnel_df['Situação'].map(ordem_mapping_grafico)
+                # Situações não mapeadas vão para o final
+                funnel_df['ordem_grafico'] = funnel_df['ordem_grafico'].fillna(len(ordem_situacoes))
+                funnel_df = funnel_df.sort_values('ordem_grafico').drop(columns=['ordem_grafico'])
+                
                 # Preparar dados para o gráfico
                 situacoes = funnel_df['Situação'].tolist()
                 quantidades = funnel_df['Quantidade'].tolist()
@@ -510,7 +520,7 @@ else:
                         gridcolor='rgba(255,255,255,0.1)',
                         showgrid=False,
                         categoryorder='array',
-                        categoryarray=situacoes[::-1]  # Inverter ordem para maior no topo
+                        categoryarray=situacoes[::-1]  # Inverter ordem (última situação no topo, primeira no fundo)
                     ),
                     margin=dict(l=150, r=100, t=50, b=50)  # Aumentar margem esquerda para nomes longos
                 )
