@@ -961,6 +961,24 @@ if selected_corretores:
         tempo_situacao_df["corretor_consolidado"].isin(selected_corretores)
     ]
 
+# Ordem customizada das situações (usada em ambas as tabelas)
+ordem_situacoes = [
+    "Aguardando Atendimento",
+    "Aguardando Atendimento Corretor",
+    "Qualificação",
+    "Descoberta",
+    "Em Atendimento",
+    "Atendimento Futuro",
+    "Visita Agendada",
+    "Visita Realizada",
+    "Atendimento pós visita",
+    "Em Pré-Cadastro",
+    "Com Reserva",
+    "Venda Realizada",
+    "Descartado",
+    "Vencido"
+]
+
 if tempo_situacao_df.empty:
     st.info("Nenhuma informação de tempo encontrada para os filtros atuais.")
 else:
@@ -980,7 +998,26 @@ else:
             st.info("Nenhuma informação geral disponível para exibição.")
         else:
             tempo_por_situacao_geral["situacao"] = tempo_por_situacao_geral["situacao"].fillna("—")
-            tempo_por_situacao_geral = tempo_por_situacao_geral.sort_values("tempo", ascending=False)
+            
+            # Função para normalizar e encontrar a ordem
+            def obter_ordem_situacao(situacao):
+                situacao_limpa = str(situacao).strip()
+                # Remover números no início (ex: "2 Atendimento Futuro" -> "Atendimento Futuro")
+                situacao_limpa = situacao_limpa.split(' ', 1)[-1] if situacao_limpa and situacao_limpa[0].isdigit() else situacao_limpa
+                situacao_lower = situacao_limpa.lower()
+                
+                # Buscar correspondência na ordem
+                for idx, situacao_ordem in enumerate(ordem_situacoes):
+                    if situacao_lower == situacao_ordem.lower() or situacao_lower in situacao_ordem.lower() or situacao_ordem.lower() in situacao_lower:
+                        return idx
+                # Se não encontrar, colocar no final
+                return len(ordem_situacoes)
+            
+            # Aplicar ordenação
+            tempo_por_situacao_geral["ordem"] = tempo_por_situacao_geral["situacao"].apply(obter_ordem_situacao)
+            tempo_por_situacao_geral = tempo_por_situacao_geral.sort_values("ordem")
+            tempo_por_situacao_geral = tempo_por_situacao_geral.drop(columns=["ordem"])
+            
             tempo_por_situacao_geral["Tempo médio"] = tempo_por_situacao_geral["tempo"].apply(formatar_tempo_minutos)
             tempo_por_situacao_geral = tempo_por_situacao_geral.rename(columns={"situacao": "Situação"})
             tempo_por_situacao_geral = tempo_por_situacao_geral.drop(columns=["tempo"])
@@ -1012,10 +1049,24 @@ else:
             )
 
             tempo_pivot = tempo_pivot.sort_index()
-            tempo_pivot = tempo_pivot.reindex(
-                sorted(tempo_pivot.columns, key=lambda x: (x is None, str(x).lower())),
-                axis=1
-            )
+            
+            # Aplicar mesma ordem customizada nas colunas (situações)
+            def obter_ordem_coluna(col):
+                if col is None:
+                    return len(ordem_situacoes) + 1
+                col_limpa = str(col).strip()
+                # Remover números no início
+                col_limpa = col_limpa.split(' ', 1)[-1] if col_limpa and col_limpa[0].isdigit() else col_limpa
+                col_lower = col_limpa.lower()
+                
+                for idx, situacao_ordem in enumerate(ordem_situacoes):
+                    if col_lower == situacao_ordem.lower() or col_lower in situacao_ordem.lower() or situacao_ordem.lower() in col_lower:
+                        return idx
+                return len(ordem_situacoes)
+            
+            # Ordenar colunas pela ordem customizada
+            colunas_ordenadas = sorted(tempo_pivot.columns, key=obter_ordem_coluna)
+            tempo_pivot = tempo_pivot.reindex(colunas_ordenadas, axis=1)
 
             tempo_pivot_display = tempo_pivot.applymap(formatar_tempo_minutos).reset_index()
             tempo_pivot_display = tempo_pivot_display.rename(columns={"corretor_consolidado": "Corretor"})
