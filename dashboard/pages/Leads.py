@@ -1055,13 +1055,34 @@ else:
                 if col is None:
                     return len(ordem_situacoes) + 1
                 col_limpa = str(col).strip()
-                # Remover números no início
-                col_limpa = col_limpa.split(' ', 1)[-1] if col_limpa and col_limpa[0].isdigit() else col_limpa
-                col_lower = col_limpa.lower()
+                # Remover números no início (ex: "2 Atendimento Futuro" -> "Atendimento Futuro")
+                if col_limpa and len(col_limpa) > 0 and col_limpa[0].isdigit():
+                    col_limpa = col_limpa.split(' ', 1)[-1] if ' ' in col_limpa else col_limpa
+                col_lower = col_limpa.lower().strip()
                 
+                # Normalizar variações comuns
+                col_lower = col_lower.replace("pós", "pos").replace("pré", "pre")
+                
+                # Buscar correspondência exata primeiro
                 for idx, situacao_ordem in enumerate(ordem_situacoes):
-                    if col_lower == situacao_ordem.lower() or col_lower in situacao_ordem.lower() or situacao_ordem.lower() in col_lower:
+                    situacao_ordem_lower = situacao_ordem.lower().strip()
+                    situacao_ordem_lower = situacao_ordem_lower.replace("pós", "pos").replace("pré", "pre")
+                    
+                    # Match exato
+                    if col_lower == situacao_ordem_lower:
                         return idx
+                    # Match parcial (um contém o outro)
+                    if col_lower in situacao_ordem_lower or situacao_ordem_lower in col_lower:
+                        return idx
+                    # Match por palavras-chave principais
+                    palavras_col = set(col_lower.split())
+                    palavras_ordem = set(situacao_ordem_lower.split())
+                    if len(palavras_col) > 0 and len(palavras_ordem) > 0:
+                        # Se mais da metade das palavras coincidem
+                        palavras_comuns = palavras_col.intersection(palavras_ordem)
+                        if len(palavras_comuns) >= min(len(palavras_col), len(palavras_ordem)) * 0.5:
+                            return idx
+                
                 return len(ordem_situacoes)
             
             # Ordenar colunas pela ordem customizada
