@@ -24,6 +24,7 @@ st.session_state['current_page'] = __file__
 
 import pandas as pd
 from datetime import datetime
+from dateutil.relativedelta import relativedelta
 import re
 import locale
 import duckdb
@@ -662,10 +663,13 @@ st.subheader("🌡️ Termômetro de Vendas")
 
 # Base fixa para o termômetro (independente dos filtros da sidebar)
 data_final_termometro = datetime.now().date()
+# Calcular data de início para últimos 6 meses (para taxa de conversão)
+data_inicio_6meses = (datetime.now() - relativedelta(months=6)).replace(day=1).date()
 reservas_data_cad = pd.to_datetime(reservas_df['data_cad'], errors='coerce')
 
+# Para taxa de conversão: usar últimos 6 meses
 reservas_termometro_mask = (
-    reservas_data_cad.dt.date >= TERMOMETRO_DATA_INICIO
+    reservas_data_cad.dt.date >= data_inicio_6meses
 ) & (
     reservas_data_cad.dt.date <= data_final_termometro
 ) & (
@@ -902,7 +906,7 @@ st.markdown(
           <ul>
             <li><strong>Foto atual:</strong> Considera todas as reservas cadastradas desde janeiro de 2025 até hoje, independentemente dos filtros da barra lateral.</li>
             <li><strong>Reservas Atuais:</strong> Inclui apenas reservas ativas (excluídas <code>Cancelada</code>, <code>Vendida</code> e <code>Distrato</code>).</li>
-            <li><strong>Taxa de Conversão:</strong> Usa a mesma base desde janeiro de 2025 para calcular a eficiência geral.</li>
+            <li><strong>Taxa de Conversão:</strong> Calculada com base nos últimos 6 meses para refletir a eficiência recente.</li>
             <li><strong>Vendas Realizadas:</strong> Sempre olha para as vendas concluídas no mês corrente.</li>
             <li><strong>Metas:</strong> Utilizam os valores cadastrados para o mês atual no arquivo <code>meta_vendas_2025</code>.</li>
             <li><strong>Cobertura &amp; Potencial:</strong> Calculados com base no total de reservas ativas e na taxa de conversão geral, projetando o potencial de vendas.</li>
