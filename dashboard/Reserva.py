@@ -457,14 +457,14 @@ else:
                 base_quantidade = quantidades[0] if quantidades else 1
                 
                 # Preparar dados para texto dentro e fora das barras
-                text_inside = []  # Percentuais dentro das barras
-                text_outside = []  # Quantidades fora das barras
+                text_inside = []  # Quantidades dentro das barras
+                text_outside = []  # Percentuais fora das barras (opcional)
                 
                 for quantidade in quantidades:
                     # Percentual calculado em relação à primeira etapa
                     percentual = (quantidade / base_quantidade * 100) if base_quantidade > 0 else 0
-                    text_inside.append(f"{percentual:.0f}%")
-                    text_outside.append(f"{quantidade}")
+                    text_inside.append(f"{quantidade}")  # Quantidade dentro da barra
+                    text_outside.append(f"{percentual:.0f}%")
                 
                 # Criar gráfico de barras horizontais
                 fig_barras = go.Figure()
@@ -474,7 +474,7 @@ else:
                     y=situacoes,
                     x=quantidades,
                     orientation='h',
-                    text=text_inside,  # Percentual dentro da barra
+                    text=text_inside,  # Quantidade dentro da barra
                     textposition='inside',
                     textfont=dict(color='white', size=12, family='Arial Black'),
                     marker=dict(
@@ -485,14 +485,15 @@ else:
                     customdata=[(qtd / base_quantidade * 100) if base_quantidade > 0 else 0 for qtd in quantidades]
                 ))
                 
-                # Adicionar anotações com quantidades fora das barras
+                # Adicionar anotações com percentuais fora das barras
                 max_quantidade = max(quantidades) if quantidades else 0
                 for i, situacao in enumerate(situacoes):
                     quantidade = quantidades[i]
+                    percentual = (quantidade / base_quantidade * 100) if base_quantidade > 0 else 0
                     fig_barras.add_annotation(
                         x=quantidade + max_quantidade * 0.02,  # Posicionar um pouco à direita da barra
                         y=situacao,
-                        text=f"{quantidade}",
+                        text=f"{percentual:.0f}%",
                         showarrow=False,
                         font=dict(size=12, color='white', family='Arial'),
                         xref='x',
