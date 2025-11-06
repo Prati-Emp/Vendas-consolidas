@@ -694,15 +694,13 @@ reservas_atuais_total = len(reservas_termometro_ativas)
 valor_total_reservas = float(reservas_termometro_ativas['valor_contrato'].sum())
 
 # 2. TAXA DE CONVERSÃO: últimos 6 meses
-# IMPORTANTE: Alinhar com TV_Comercial.py - usar mesmo critério de exclusão
-# TV usa apenas "vencida" na exclusão do período, não "Mútuo"
-CONVERSAO_SITUACOES_EXCLUIDAS = {situacao.lower() for situacao in ["Vencida"]}
+# Excluir "Mútuo" e "Vencida" do período de análise
 reservas_conversao_mask = (
     reservas_data_cad.dt.date >= data_inicio_6meses
 ) & (
     reservas_data_cad.dt.date <= data_final_termometro
 ) & (
-    ~reservas_df['situacao'].astype(str).str.strip().str.lower().isin(CONVERSAO_SITUACOES_EXCLUIDAS)
+    ~reservas_df['situacao'].astype(str).str.strip().str.upper().isin(SITUACOES_RESERVAS_EXCLUIDAS)
 )
 reservas_conversao_mask = reservas_conversao_mask.fillna(False)
 
@@ -723,7 +721,7 @@ if st.sidebar.checkbox("🔍 Debug Taxa de Conversão", value=False):
     st.sidebar.write(f"**Reservas Convertidas:** {reservas_convertidas_termometro}")
     st.sidebar.write(f"**Taxa de Conversão:** {taxa_conversao_termometro * 100:.2f}%")
     st.sidebar.write(f"**Situações Convertidas:** {CONVERSAO_SITUACOES}")
-    st.sidebar.write(f"**Situações Excluídas:** {CONVERSAO_SITUACOES_EXCLUIDAS}")
+    st.sidebar.write(f"**Situações Excluídas:** {SITUACOES_RESERVAS_EXCLUIDAS}")
     
     # Mostrar distribuição por situação
     if not reservas_conversao_df.empty:

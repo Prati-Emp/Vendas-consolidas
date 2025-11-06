@@ -751,10 +751,11 @@ reservas_atuais_total = len(reservas_ativas_df)
 valor_total_reservas = float(reservas_ativas_df['valor_contrato'].sum())
 
 seis_meses_atras = data_final_analise - relativedelta(months=6)
+# IMPORTANTE: Alinhar com Reserva.py - excluir "Mútuo" e "Vencida"
 reservas_6m_df = reservas_df[
     (reservas_df['data_cad'].dt.date >= seis_meses_atras)
     & (reservas_df['data_cad'].dt.date <= data_final_analise)
-    & (~reservas_df['situacao_normalizada'].isin(CONVERSAO_SITUACOES_EXCLUIDAS))
+    & (~reservas_df['situacao_normalizada'].isin(SITUACOES_RESERVAS_EXCLUIDAS))
 ].copy()
 
 
@@ -778,7 +779,7 @@ if st.sidebar.checkbox("🔍 Debug Taxa de Conversão", value=False, key="debug_
     st.sidebar.write(f"**Reservas Convertidas:** {reservas_convertidas_6m}")
     st.sidebar.write(f"**Taxa de Conversão:** {taxa_conversao_geral * 100:.2f}%")
     st.sidebar.write(f"**Situações Convertidas:** {CONVERSAO_SITUACOES}")
-    st.sidebar.write(f"**Situações Excluídas:** {CONVERSAO_SITUACOES_EXCLUIDAS}")
+    st.sidebar.write(f"**Situações Excluídas:** {SITUACOES_RESERVAS_EXCLUIDAS}")
     
     # Mostrar distribuição por situação
     if not reservas_6m_df.empty:
