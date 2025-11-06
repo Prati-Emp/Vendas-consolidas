@@ -118,7 +118,7 @@ def check_credentials(email: str, password: str) -> Optional[Dict]:
             return user_data
     return None
 
-def is_authenticated() -> bool:
+def is_authenticated(disable_timeout: bool = False) -> bool:
     """Verifica se o usuário está autenticado"""
     if 'authenticated' not in st.session_state:
         st.session_state.authenticated = False
@@ -126,8 +126,8 @@ def is_authenticated() -> bool:
     if 'login_time' not in st.session_state:
         st.session_state.login_time = None
     
-    # Verificar timeout
-    if st.session_state.authenticated and st.session_state.login_time:
+    # Verificar timeout (desabilitado se disable_timeout=True)
+    if not disable_timeout and st.session_state.authenticated and st.session_state.login_time:
         import time
         if time.time() - st.session_state.login_time > SESSION_TIMEOUT:
             st.session_state.authenticated = False
@@ -218,9 +218,9 @@ def logout():
     st.session_state.user_data = None
     st.rerun()
 
-def require_auth():
+def require_auth(disable_timeout: bool = False):
     """Protege páginas que requerem autenticação"""
-    if not is_authenticated():
+    if not is_authenticated(disable_timeout=disable_timeout):
         login_form()
         st.stop()
     
