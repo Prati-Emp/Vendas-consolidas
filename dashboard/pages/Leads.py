@@ -1092,14 +1092,14 @@ else:
             # Calcular tempo médio total (soma de todas as situações) para cada corretor
             # Todas as colunas do tempo_pivot são situações (valores numéricos em minutos)
             # Somar todas as colunas, tratando NaN como 0
-            tempo_pivot['Tempo médio total'] = tempo_pivot.fillna(0).sum(axis=1)
+            tempo_pivot['Total'] = tempo_pivot.fillna(0).sum(axis=1)
 
             tempo_pivot_display = tempo_pivot.applymap(formatar_tempo_minutos).reset_index()
             tempo_pivot_display = tempo_pivot_display.rename(columns={"corretor_consolidado": "Corretor"})
             
-            # Reordenar colunas para colocar "Tempo médio total" no final
-            colunas_display = [col for col in tempo_pivot_display.columns if col != 'Tempo médio total']
-            colunas_display.append('Tempo médio total')
+            # Reordenar colunas para colocar "Total" no final
+            colunas_display = [col for col in tempo_pivot_display.columns if col != 'Total']
+            colunas_display.append('Total')
             tempo_pivot_display = tempo_pivot_display[colunas_display]
 
             st.dataframe(tempo_pivot_display, use_container_width=True)
