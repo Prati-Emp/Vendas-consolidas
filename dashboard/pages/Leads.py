@@ -1090,8 +1090,9 @@ else:
             tempo_pivot = tempo_pivot.reindex(colunas_ordenadas, axis=1)
 
             # Calcular tempo médio total (soma de todas as situações) para cada corretor
-            # Somar apenas valores numéricos válidos (ignorar NaN)
-            tempo_pivot['Tempo médio total'] = tempo_pivot.select_dtypes(include=[float, int]).sum(axis=1, skipna=True)
+            # Todas as colunas do tempo_pivot são situações (valores numéricos em minutos)
+            # Somar todas as colunas, tratando NaN como 0
+            tempo_pivot['Tempo médio total'] = tempo_pivot.fillna(0).sum(axis=1)
 
             tempo_pivot_display = tempo_pivot.applymap(formatar_tempo_minutos).reset_index()
             tempo_pivot_display = tempo_pivot_display.rename(columns={"corretor_consolidado": "Corretor"})
