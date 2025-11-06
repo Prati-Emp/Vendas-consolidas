@@ -37,7 +37,7 @@ if email not in {"odair.santos@grupoprati.com"}:
 # CONFIGURAÇÕES DO CARROSSEL - SEM JAVASCRIPT, SEM RELOAD, APENAS PYTHON
 # ============================================================================
 CAROUSEL_SECTIONS = 5  # Número de seções/blocos (Velocímetro+Termômetro, Reservas, Leads Ativos, Distribuição por Mídia, Cancelamentos)
-CAROUSEL_INTERVAL = 5  # Segundos por seção
+CAROUSEL_INTERVAL = 60  # Segundos por seção (1 minuto)
 
 # Inicializar estado do carrossel
 if 'carousel_index' not in st.session_state:
