@@ -434,21 +434,88 @@ else:
 
         st.table(reservas_por_situacao)
 
-        # Funil de Reservas por Situação
+        # Funil de Reservas por Situação (Gráfico de Barras Horizontais)
         try:
             import plotly.graph_objects as go
-            funnel_df = reservas_por_situacao[reservas_por_situacao['Situação'] != 'Total']
+            funnel_df = reservas_por_situacao[reservas_por_situacao['Situação'] != 'Total'].copy()
             if not funnel_df.empty:
-                fig = go.Figure(go.Funnel(
-                    y=funnel_df['Situação'],
-                    x=funnel_df['Quantidade'],
-                    textinfo="value+percent initial"
+                # Preparar dados para o gráfico
+                situacoes = funnel_df['Situação'].tolist()
+                quantidades = funnel_df['Quantidade'].tolist()
+                
+                # Calcular percentuais em relação à primeira etapa (Reserva)
+                base_quantidade = quantidades[0] if quantidades else 1
+                
+                # Preparar dados para texto dentro e fora das barras
+                text_inside = []  # Percentuais dentro das barras
+                text_outside = []  # Quantidades fora das barras
+                
+                for quantidade in quantidades:
+                    # Percentual calculado em relação à primeira etapa
+                    percentual = (quantidade / base_quantidade * 100) if base_quantidade > 0 else 0
+                    text_inside.append(f"{percentual:.0f}%")
+                    text_outside.append(f"{quantidade}")
+                
+                # Criar gráfico de barras horizontais
+                fig_barras = go.Figure()
+                
+                # Adicionar barras horizontais
+                fig_barras.add_trace(go.Bar(
+                    y=situacoes,
+                    x=quantidades,
+                    orientation='h',
+                    text=text_inside,  # Percentual dentro da barra
+                    textposition='inside',
+                    textfont=dict(color='white', size=12, family='Arial Black'),
+                    marker=dict(
+                        color='#4A90E2',  # Azul claro uniforme
+                        line=dict(width=0)  # Sem bordas
+                    ),
+                    hovertemplate='<b>%{y}</b><br>Quantidade: %{x}<br>Percentual: %{customdata:.0f}%<extra></extra>',
+                    customdata=[(qtd / base_quantidade * 100) if base_quantidade > 0 else 0 for qtd in quantidades]
                 ))
-                fig.update_layout(
+                
+                # Adicionar anotações com quantidades fora das barras
+                max_quantidade = max(quantidades) if quantidades else 0
+                for i, situacao in enumerate(situacoes):
+                    quantidade = quantidades[i]
+                    fig_barras.add_annotation(
+                        x=quantidade + max_quantidade * 0.02,  # Posicionar um pouco à direita da barra
+                        y=situacao,
+                        text=f"{quantidade}",
+                        showarrow=False,
+                        font=dict(size=12, color='white', family='Arial'),
+                        xref='x',
+                        yref='y'
+                    )
+                
+                # Configurar layout do gráfico
+                fig_barras.update_layout(
                     title="Funil de Reservas por Situação",
-                    height=500
+                    xaxis_title="Quantidade de Reservas",
+                    yaxis_title="Situações",
+                    showlegend=False,
+                    height=500,
+                    plot_bgcolor='rgba(0,0,0,0)',
+                    paper_bgcolor='rgba(0,0,0,0)',
+                    font=dict(color='white'),
+                    xaxis=dict(
+                        tickfont=dict(size=12),
+                        gridcolor='rgba(255,255,255,0.1)',
+                        showgrid=True,
+                        range=[0, max_quantidade * 1.3]  # Expandir eixo X para acomodar texto externo
+                    ),
+                    yaxis=dict(
+                        tickfont=dict(size=12),
+                        gridcolor='rgba(255,255,255,0.1)',
+                        showgrid=False,
+                        categoryorder='array',
+                        categoryarray=situacoes[::-1]  # Inverter ordem para maior no topo
+                    ),
+                    margin=dict(l=150, r=100, t=50, b=50)  # Aumentar margem esquerda para nomes longos
                 )
-                st.plotly_chart(fig, use_container_width=True)
+                
+                st.plotly_chart(fig_barras, use_container_width=True)
             else:
                 st.info("Sem dados suficientes para montar o funil com os filtros selecionados.")
         except Exception as e:
