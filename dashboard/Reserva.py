@@ -667,9 +667,9 @@ data_final_termometro = datetime.now().date()
 data_inicio_6meses = (datetime.now() - relativedelta(months=6)).replace(day=1).date()
 reservas_data_cad = pd.to_datetime(reservas_df['data_cad'], errors='coerce')
 
-# Para taxa de conversão: usar últimos 6 meses
+# 1. RESERVAS ATUAIS: desde janeiro de 2025 (independente dos filtros da sidebar)
 reservas_termometro_mask = (
-    reservas_data_cad.dt.date >= data_inicio_6meses
+    reservas_data_cad.dt.date >= TERMOMETRO_DATA_INICIO
 ) & (
     reservas_data_cad.dt.date <= data_final_termometro
 ) & (
@@ -691,8 +691,21 @@ reservas_termometro_ativas = reservas_termometro_df[
 reservas_atuais_total = len(reservas_termometro_ativas)
 valor_total_reservas = float(reservas_termometro_ativas['valor_contrato'].sum())
 
-total_reservas_termometro = len(reservas_termometro_df)
-reservas_convertidas_termometro = reservas_termometro_df['situacao_normalizada'].isin(CONVERSAO_SITUACOES).sum()
+# 2. TAXA DE CONVERSÃO: últimos 6 meses
+reservas_conversao_mask = (
+    reservas_data_cad.dt.date >= data_inicio_6meses
+) & (
+    reservas_data_cad.dt.date <= data_final_termometro
+) & (
+    ~reservas_df['situacao'].astype(str).str.strip().str.upper().isin(SITUACOES_RESERVAS_EXCLUIDAS)
+)
+reservas_conversao_mask = reservas_conversao_mask.fillna(False)
+
+reservas_conversao_df = reservas_df[reservas_conversao_mask].copy()
+reservas_conversao_df['situacao_normalizada'] = reservas_conversao_df['situacao'].astype(str).str.strip().str.lower()
+
+total_reservas_termometro = len(reservas_conversao_df)
+reservas_convertidas_termometro = reservas_conversao_df['situacao_normalizada'].isin(CONVERSAO_SITUACOES).sum()
 taxa_conversao_termometro = (
     reservas_convertidas_termometro / total_reservas_termometro
 ) if total_reservas_termometro > 0 else 0.0
