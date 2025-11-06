@@ -1087,9 +1087,9 @@ def render_velocimetro_metas(meta_valor: float, vendas_valor: float, atingimento
             'borderwidth': 2,
             'bordercolor': "rgba(148, 163, 184, 0.5)",
             'steps': [
-                {'range': [0, 70], 'color': 'rgba(30, 144, 255, 0.3)'},  # Azul mais transparente
-                {'range': [70, 100], 'color': 'rgba(241, 196, 15, 0.3)'},  # Amarelo mais transparente
-                {'range': [100, 150], 'color': 'rgba(255, 87, 34, 0.3)'}  # Laranja mais transparente
+                {'range': [0, 70], 'color': 'rgba(30, 144, 255, 0.15)'},  # Azul muito mais transparente
+                {'range': [70, 100], 'color': 'rgba(241, 196, 15, 0.15)'},  # Amarelo muito mais transparente
+                {'range': [100, 150], 'color': 'rgba(255, 87, 34, 0.15)'}  # Laranja muito mais transparente
             ],
             'threshold': {
                 'line': {'color': "rgba(255, 255, 255, 0.9)", 'width': 5},
