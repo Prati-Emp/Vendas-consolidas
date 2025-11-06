@@ -664,7 +664,9 @@ st.subheader("🌡️ Termômetro de Vendas")
 # Base fixa para o termômetro (independente dos filtros da sidebar)
 data_final_termometro = datetime.now().date()
 # Calcular data de início para últimos 6 meses (para taxa de conversão)
-data_inicio_6meses = (datetime.now() - relativedelta(months=6)).replace(day=1).date()
+# IMPORTANTE: Alinhar com TV_Comercial.py - usar mesmo cálculo de data
+seis_meses_atras = data_final_termometro - relativedelta(months=6)
+data_inicio_6meses = seis_meses_atras
 reservas_data_cad = pd.to_datetime(reservas_df['data_cad'], errors='coerce')
 
 # 1. RESERVAS ATUAIS: desde janeiro de 2025 (independente dos filtros da sidebar)
@@ -692,12 +694,15 @@ reservas_atuais_total = len(reservas_termometro_ativas)
 valor_total_reservas = float(reservas_termometro_ativas['valor_contrato'].sum())
 
 # 2. TAXA DE CONVERSÃO: últimos 6 meses
+# IMPORTANTE: Alinhar com TV_Comercial.py - usar mesmo critério de exclusão
+# TV usa apenas "vencida" na exclusão do período, não "Mútuo"
+CONVERSAO_SITUACOES_EXCLUIDAS = {situacao.lower() for situacao in ["Vencida"]}
 reservas_conversao_mask = (
     reservas_data_cad.dt.date >= data_inicio_6meses
 ) & (
     reservas_data_cad.dt.date <= data_final_termometro
 ) & (
-    ~reservas_df['situacao'].astype(str).str.strip().str.upper().isin(SITUACOES_RESERVAS_EXCLUIDAS)
+    ~reservas_df['situacao'].astype(str).str.strip().str.lower().isin(CONVERSAO_SITUACOES_EXCLUIDAS)
 )
 reservas_conversao_mask = reservas_conversao_mask.fillna(False)
 
@@ -709,6 +714,24 @@ reservas_convertidas_termometro = reservas_conversao_df['situacao_normalizada'].
 taxa_conversao_termometro = (
     reservas_convertidas_termometro / total_reservas_termometro
 ) if total_reservas_termometro > 0 else 0.0
+
+# DEBUG: Log para comparar com TV
+if st.sidebar.checkbox("🔍 Debug Taxa de Conversão", value=False):
+    st.sidebar.write("### Debug - Taxa de Conversão")
+    st.sidebar.write(f"**Período:** {data_inicio_6meses} até {data_final_termometro}")
+    st.sidebar.write(f"**Total Reservas (6m):** {total_reservas_termometro}")
+    st.sidebar.write(f"**Reservas Convertidas:** {reservas_convertidas_termometro}")
+    st.sidebar.write(f"**Taxa de Conversão:** {taxa_conversao_termometro * 100:.2f}%")
+    st.sidebar.write(f"**Situações Convertidas:** {CONVERSAO_SITUACOES}")
+    st.sidebar.write(f"**Situações Excluídas:** {CONVERSAO_SITUACOES_EXCLUIDAS}")
+    
+    # Mostrar distribuição por situação
+    if not reservas_conversao_df.empty:
+        st.sidebar.write("**Distribuição por Situação:**")
+        situacoes_count = reservas_conversao_df['situacao'].value_counts()
+        for situacao, count in situacoes_count.items():
+            is_convertida = situacao.lower() in CONVERSAO_SITUACOES
+            st.sidebar.write(f"  - {situacao}: {count} {'✓' if is_convertida else ''}")
 
 # Calcular metas do mês atual
 meta_total = 0.0

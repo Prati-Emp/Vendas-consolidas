@@ -770,6 +770,24 @@ total_reservas_6m, reservas_convertidas_6m, taxa_conversao_geral = calcular_conv
 # Converter de percentual para decimal (função retorna em %)
 taxa_conversao_geral = taxa_conversao_geral / 100
 
+# DEBUG: Log para comparar com Reserva.py
+if st.sidebar.checkbox("🔍 Debug Taxa de Conversão", value=False, key="debug_tv"):
+    st.sidebar.write("### Debug - Taxa de Conversão (TV)")
+    st.sidebar.write(f"**Período:** {seis_meses_atras} até {data_final_analise}")
+    st.sidebar.write(f"**Total Reservas (6m):** {total_reservas_6m}")
+    st.sidebar.write(f"**Reservas Convertidas:** {reservas_convertidas_6m}")
+    st.sidebar.write(f"**Taxa de Conversão:** {taxa_conversao_geral * 100:.2f}%")
+    st.sidebar.write(f"**Situações Convertidas:** {CONVERSAO_SITUACOES}")
+    st.sidebar.write(f"**Situações Excluídas:** {CONVERSAO_SITUACOES_EXCLUIDAS}")
+    
+    # Mostrar distribuição por situação
+    if not reservas_6m_df.empty:
+        st.sidebar.write("**Distribuição por Situação:**")
+        situacoes_count = reservas_6m_df['situacao'].value_counts()
+        for situacao, count in situacoes_count.items():
+            is_convertida = situacao.lower() in CONVERSAO_SITUACOES
+            st.sidebar.write(f"  - {situacao}: {count} {'✓' if is_convertida else ''}")
+
 
 def calcular_tempo_medio_conversao(df: pd.DataFrame) -> tuple[float | None, int]:
     if df.empty or 'data_venda' not in df.columns:
