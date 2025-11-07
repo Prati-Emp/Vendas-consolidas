@@ -1,10 +1,9 @@
-name: Update Database - Sienge (2x/week)
+name: Update Database - Sienge (Daily)
 
 on:
   schedule:
-    # Executar domingo às 23:40 BRT (02:40 UTC) e quarta às 01:15 BRT (04:15 UTC)
-    - cron: '40 2 * * 0'  # Domingo às 02:40 UTC (23:40 BRT)
-    - cron: '15 4 * * 3'  # Quarta-feira às 04:15 UTC (01:15 BRT)
+    # Executar diariamente às 02:00 BRT (05:00 UTC)
+    - cron: '0 5 * * *'  # Diariamente às 05:00 UTC (02:00 BRT)
   workflow_dispatch:
     inputs:
       reason:
@@ -44,7 +43,7 @@ jobs:
           SIENGE_ONLY_MODE: 'true'
           SIENGE_SKIP_CANCELADAS: 'false'  # Incluir canceladas no Sienge
         run: |
-          echo "🌙 Iniciando atualização Sienge do MotherDuck (2x/semana)..."
+          echo "🌙 Iniciando atualização Sienge do MotherDuck (diário)..."
           python -u scripts/update_motherduck_sienge.py
       
       - name: Notify success
