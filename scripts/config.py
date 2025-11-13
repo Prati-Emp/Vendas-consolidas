@@ -178,6 +178,20 @@ def get_api_config(api_name: str) -> Optional[APIConfig]:
             rate_limit=50
         )
     
+    elif api_name == 'jira':
+        # Jira usa autenticação Basic Auth (email + token)
+        # base_url é a URL base do Jira (sem /rest/api/3)
+        jira_url = os.environ.get('JIRA_URL', 'https://prati-empreendimentos.atlassian.net')
+        return APIConfig(
+            name='Jira',
+            base_url=jira_url,
+            headers={
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            },
+            rate_limit=30  # Jira é mais lento, usar rate limit menor
+        )
+    
     return None
 
 def get_all_rate_limits() -> Dict[str, int]:
@@ -192,5 +206,6 @@ def get_all_rate_limits() -> Dict[str, int]:
         'sienge_vendas_realizadas': 50,
         'sienge_vendas_canceladas': 50,
         'sienge_contratos_suprimentos': 50,
-        'sienge_pedidos_compras': 50
+        'sienge_pedidos_compras': 50,
+        'jira': 30
     }
