@@ -44,11 +44,11 @@ jobs:
         run: |
           echo "Iniciando atualizacao Jira do MotherDuck..."
           python -u scripts/update_motherduck_jira.py
-      
+
       - name: Notify success
         if: success()
         run: echo "OK: Jira database updated successfully at $(date)"
-      
+
       - name: Notify failure
         if: failure()
         run: echo "ERRO: Jira database update failed at $(date)"
