@@ -1,17 +1,15 @@
-name: Update Database - Madrugada (DISABLED - Use Daily/Sienge workflows)
+name: Update Database - Jira
 
 on:
-  # DESABILITADO - Usar update-database-daily.yml e update-database-sienge.yml
-  # schedule:
-  #   # Executar às 01:15 da manhã (4:15 BRT) - Segunda e Quinta-feira
-  #   - cron: '15 1 * * 1'  # Segunda-feira
-  #   - cron: '15 1 * * 4'  # Quinta-feira
+  schedule:
+    # Executar diariamente às 01:00 BRT (04:00 UTC)
+    - cron: '0 4 * * *'  # Diariamente às 04:00 UTC (01:00 BRT)
   workflow_dispatch:
     inputs:
       reason:
-        description: 'Razão para executar a atualização'
+        description: 'Razão para executar a atualização Jira'
         required: false
-        default: 'Atualização manual'
+        default: 'Atualização manual Jira'
         type: string
 
 jobs:
@@ -35,28 +33,21 @@ jobs:
       - name: Set file permissions
         run: chmod +x scripts/*.py
 
-      - name: Update database
+      - name: Update database (Jira API only)
         env:
           MOTHERDUCK_TOKEN: ${{ secrets.MOTHERDUCK_TOKEN }}
-          CVCRM_EMAIL: ${{ secrets.CVCRM_EMAIL }}
-          CVCRM_TOKEN: ${{ secrets.CVCRM_TOKEN }}
-          CV_VENDAS_BASE_URL: ${{ secrets.CV_VENDAS_BASE_URL }}
-          SIENGE_BASE_URL: ${{ secrets.SIENGE_BASE_URL }}
-          SIENGE_TOKEN: ${{ secrets.SIENGE_TOKEN }}
+          JIRA_URL: ${{ secrets.JIRA_URL }}
+          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+          JIRA_TOKEN: ${{ secrets.JIRA_TOKEN }}
           PYTHONPATH: ${{ github.workspace }}/scripts:${{ github.workspace }}
-          # Flags de controle (default: pausar canceladas) e repasses habilitado
-          SIENGE_SKIP_CANCELADAS: ${{ vars.SIENGE_SKIP_CANCELADAS || 'true' }}
-          CV_REPASSES_ENABLED: 'true'
-          CV_LEADS_ENABLED: 'true'
-          CV_REPASSES_WORKFLOW_ENABLED: 'true'
         run: |
-          echo "🌙 Iniciando atualização do MotherDuck (madrugada)..."
-          python -u scripts/update_motherduck_vendas.py
+          echo "Iniciando atualizacao Jira do MotherDuck..."
+          python -u scripts/update_motherduck_jira.py
       
       - name: Notify success
         if: success()
-        run: echo "✅ Database updated successfully at $(date)"
+        run: echo "OK: Jira database updated successfully at $(date)"
       
       - name: Notify failure
         if: failure()
-        run: echo "❌ Database update failed at $(date)"
+        run: echo "ERRO: Jira database update failed at $(date)"
