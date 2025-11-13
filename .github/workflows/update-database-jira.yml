@@ -15,7 +15,6 @@ on:
 jobs:
   update-database-jira:
     runs-on: ubuntu-latest
-    timeout-minutes: 90  # Timeout de 90 minutos (Jira é mais demorado)
 
     steps:
       - uses: actions/checkout@v3
