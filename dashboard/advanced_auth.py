@@ -253,7 +253,7 @@ def get_user_pages(user_data: Dict) -> List[str]:
     """Retorna páginas que o usuário pode acessar baseado no role"""
     # Todos os usuários cadastrados têm acesso total
     if user_data.get('email') in USERS_DATABASE:
-        return ['vendas', 'leads', 'reservas', 'motivo_fora_prazo']
+        return ['vendas', 'leads', 'reservas', 'operacoes', 'motivo_fora_prazo']
     
     # Usuários não cadastrados veem apenas Vendas
     return ['vendas']

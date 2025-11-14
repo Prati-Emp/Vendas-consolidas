@@ -57,6 +57,7 @@ def display_navigation():
             ("Vendas", "vendas", "pages/1_Vendas.py"),
             ("Leads", "leads", "pages/2_Leads.py"),
             ("Reservas", "reservas", "pages/3_Reservas.py"),
+            ("Operações", "operacoes", "pages/Operacoes.py"),
             ("Motivo Fora do Prazo", "motivo_fora_prazo", "pages/4_Motivo_fora_do_prazo.py")
         ]
         
