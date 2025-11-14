@@ -46,8 +46,10 @@ jobs:
       
       - name: Notify success
         if: success()
-        run: echo "OK: Jira database updated successfully at $(date)"
+        run: |
+          echo "OK: Jira database updated successfully at $(date)"
       
       - name: Notify failure
         if: failure()
-        run: echo "ERRO: Jira database update failed at $(date)"
+        run: |
+          echo "ERRO: Jira database update failed at $(date)"
