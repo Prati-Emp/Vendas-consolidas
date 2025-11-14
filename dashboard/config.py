@@ -21,13 +21,14 @@ class SecureConfig:
         return token.strip()
     
     @staticmethod
-    def get_cvcrm_credentials():
+    def get_cvcrm_credentials(show_error=False):
         """Obtém credenciais do CVCRM de forma segura"""
         email = st.secrets.get("CVCRM_EMAIL", os.getenv("CVCRM_EMAIL", ""))
         token = st.secrets.get("CVCRM_TOKEN", os.getenv("CVCRM_TOKEN", ""))
         
         if not email or not token:
-            st.error("Credenciais CVCRM não configuradas. Verifique as configurações de secrets.")
+            if show_error:
+                st.error("Credenciais CVCRM não configuradas. Verifique as configurações de secrets.")
             return None, None
             
         return email.strip(), token.strip()
@@ -39,9 +40,9 @@ class SecureConfig:
         return f"md:reservas?token={token}"
     
     @staticmethod
-    def get_cvcrm_headers():
+    def get_cvcrm_headers(show_error=False):
         """Retorna headers seguros para API CVCRM"""
-        email, token = SecureConfig.get_cvcrm_credentials()
+        email, token = SecureConfig.get_cvcrm_credentials(show_error=show_error)
         if not email or not token:
             return None
             
