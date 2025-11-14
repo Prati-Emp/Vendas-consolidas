@@ -290,27 +290,36 @@ def get_reservation_messages(idreserva):
     """Busca as mensagens de uma reserva específica"""
     url = f"https://prati.cvcrm.com.br/api/v2/cv/reservas/{idreserva}/mensagens"
     
-    # Tentar primeiro usar credenciais dos secrets do Streamlit
-    headers = SecureConfig.get_cvcrm_headers()
+    # Ordem de tentativa de credenciais: secrets > fallback original
+    candidate_headers = []
     
-    # Se não houver credenciais nos secrets, usar as credenciais hardcoded que funcionam
-    if not headers:
-        headers = {
-            "accept": "application/json",
-            "email": "djonathan.souza@grupoprati.com",
-            "token": "394f594bc6192c86d94f329355ae13ca0b78a2a9",
-        }
+    secrets_headers = SecureConfig.get_cvcrm_headers()
+    if secrets_headers:
+        candidate_headers.append(("secrets", secrets_headers))
     
-    try:
-        response = requests.get(url, headers=headers, timeout=10)
-        response.raise_for_status()
-        data = response.json()
-        messages = data.get("dados", [])
-        return messages
-    except Exception as e:
-        # Não exibir erro na interface - busca de mensagens é opcional
-        # Os cards funcionam mesmo sem as mensagens
-        return []
+    fallback_headers = {
+        "accept": "application/json",
+        "email": "djonathan.souza@grupoprati.com",
+        "token": "394f594bc6192c86d94f329355ae13ca0b78a2a9",
+    }
+    candidate_headers.append(("fallback", fallback_headers))
+    
+    for origin, headers in candidate_headers:
+        try:
+            response = requests.get(url, headers=headers, timeout=10)
+            response.raise_for_status()
+            data = response.json()
+            messages = data.get("dados", [])
+            return messages
+        except requests.exceptions.HTTPError:
+            # Se as credenciais atuais falharem, tentar o próximo conjunto
+            continue
+        except Exception:
+            # Para outros erros, seguir tentando demais opções
+            continue
+    
+    # Se todas as tentativas falharem, retornar lista vazia
+    return []
 
 st.divider()
 
