@@ -187,34 +187,6 @@ imobiliaria_selecionada = st.sidebar.selectbox(
 situacoes = sorted(reservas_df[~reservas_df['situacao'].isin(['Vendida', 'Distrato', 'Cancelada'])]['situacao'].unique())
 situacao_selecionada = st.sidebar.selectbox("Situação", ["Todas"] + list(situacoes))
 
-# Debug opcional para verificar credenciais
-if st.sidebar.checkbox("🔍 Debug API Mensagens", value=False):
-    st.sidebar.write("### Debug - API Mensagens")
-    headers = SecureConfig.get_cvcrm_headers()
-    if headers:
-        st.sidebar.success("✅ Credenciais carregadas")
-        st.sidebar.write(f"**Email:** {headers.get('email', 'N/A')[:20]}...")
-        st.sidebar.write(f"**Token:** {headers.get('token', 'N/A')[:10]}...")
-        
-        # Testar uma chamada de API
-        if st.sidebar.button("Testar API"):
-            test_id = 3387  # ID de exemplo
-            url = f"https://prati.cvcrm.com.br/api/v2/cv/reservas/{test_id}/mensagens"
-            try:
-                response = requests.get(url, headers=headers, timeout=10)
-                st.sidebar.write(f"**Status Code:** {response.status_code}")
-                if response.status_code == 200:
-                    data = response.json()
-                    st.sidebar.success(f"✅ Sucesso! {len(data.get('dados', []))} mensagens encontradas")
-                else:
-                    st.sidebar.error(f"❌ Erro: {response.status_code}")
-                    st.sidebar.write(f"**Resposta:** {response.text[:200]}")
-            except Exception as e:
-                st.sidebar.error(f"❌ Erro na requisição: {str(e)}")
-    else:
-        st.sidebar.error("❌ Credenciais não configuradas")
-        st.sidebar.write("Configure `CVCRM_EMAIL` e `CVCRM_TOKEN` nos secrets do Streamlit")
-
 # Aplicar filtros
 mask = (reservas_df['data_cad'].dt.date >= data_inicio) & (reservas_df['data_cad'].dt.date <= data_fim)
 df_filtrado = reservas_df[mask].copy()
@@ -313,15 +285,21 @@ analise_empreendimento['Valor Total'] = analise_empreendimento['Valor Total'].ap
 
 st.table(analise_empreendimento)
 
+@st.cache_data
 def get_reservation_messages(idreserva):
     """Busca as mensagens de uma reserva específica"""
     url = f"https://prati.cvcrm.com.br/api/v2/cv/reservas/{idreserva}/mensagens"
     
-    # Usar credenciais dos secrets do Streamlit
+    # Tentar primeiro usar credenciais dos secrets do Streamlit
     headers = SecureConfig.get_cvcrm_headers()
+    
+    # Se não houver credenciais nos secrets, usar as credenciais hardcoded que funcionam
     if not headers:
-        # Se não houver credenciais configuradas, retornar lista vazia silenciosamente
-        return []
+        headers = {
+            "accept": "application/json",
+            "email": "djonathan.souza@grupoprati.com",
+            "token": "394f594bc6192c86d94f329355ae13ca0b78a2a9",
+        }
     
     try:
         response = requests.get(url, headers=headers, timeout=10)
@@ -329,18 +307,9 @@ def get_reservation_messages(idreserva):
         data = response.json()
         messages = data.get("dados", [])
         return messages
-    except requests.exceptions.HTTPError as e:
-        # Erro HTTP (401, 403, 404, etc.) - logar mas não exibir erro na interface
-        # Os cards estão funcionando, então a busca de mensagens é opcional
-        if e.response.status_code == 401:
-            # 401 Unauthorized - credenciais inválidas ou sem permissão
-            return []
-        return []
-    except requests.exceptions.RequestException as e:
-        # Erros de conexão, timeout, etc.
-        return []
     except Exception as e:
-        # Outros erros também não exibir - busca de mensagens é opcional
+        # Não exibir erro na interface - busca de mensagens é opcional
+        # Os cards funcionam mesmo sem as mensagens
         return []
 
 st.divider()
