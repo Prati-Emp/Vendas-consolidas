@@ -78,8 +78,9 @@ def prepare_dataframe(df: pd.DataFrame) -> pd.DataFrame:
 
     data["data_referencia"] = data["data_limite"].combine_first(data["atualizado"])
 
-    hoje = pd.Timestamp.utcnow().normalize()
-    data["dias_para_limite"] = (data["data_limite"] - hoje).dt.days
+    hoje = pd.Timestamp.utcnow().tz_localize(None).normalize()
+    limite_series = pd.to_datetime(data["data_limite"], errors="coerce")
+    data["dias_para_limite"] = (limite_series - hoje).dt.days
     data["esta_em_aberto"] = data["status_tarefas"].isin(["A iniciar", "Em Andamento", "Atrasada"])
     data["esta_atrasada"] = data["status_tarefas"].eq("Atrasada")
     data["critica_proxima"] = data["esta_em_aberto"] & data["dias_para_limite"].between(0, 7, inclusive="both")
