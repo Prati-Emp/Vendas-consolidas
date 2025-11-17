@@ -35,13 +35,13 @@ def load_jira_status_data() -> pd.DataFrame:
             resolucao,
             atualizado,
             data_limite,
-            pai,
-            status_transition,
-            status_transition_to,
-            status_transition_from,
-            status_transition_author_display_name,
-            status_transition_author_email,
-            status_transition_date,
+            projeto_name,
+            data_inicio_corrigida,
+            data_fim_corrigida,
+            data_original_inicio,
+            data_original_fim,
+            start_date,
+            dias_para_conclusao,
             status_tarefas
         FROM informacoes_consolidadas.Jira_status_tarefas
     """
@@ -54,7 +54,15 @@ def prepare_dataframe(df: pd.DataFrame) -> pd.DataFrame:
         return df
 
     data = df.copy()
-    date_columns = ["atualizado", "data_limite", "status_transition_date"]
+    date_columns = [
+        "atualizado",
+        "data_limite",
+        "data_inicio_corrigida",
+        "data_fim_corrigida",
+        "data_original_inicio",
+        "data_original_fim",
+        "start_date",
+    ]
     for col in date_columns:
         data[col] = pd.to_datetime(data[col], errors="coerce", dayfirst=True)
 
@@ -63,14 +71,15 @@ def prepare_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     data["status_tarefas"] = data["status_tarefas"].fillna("Em Andamento")
 
     # Definir uma coluna de data de referência (prioridade: transition -> atualizado -> data limite)
-    data["data_referencia"] = data["status_transition_date"]
-    mask = data["data_referencia"].isna()
-    data.loc[mask, "data_referencia"] = data.loc[mask, "atualizado"]
-    mask = data["data_referencia"].isna()
-    data.loc[mask, "data_referencia"] = data.loc[mask, "data_limite"]
+    data["dias_para_conclusao"] = pd.to_numeric(data["dias_para_conclusao"], errors="coerce")
+
+    referencia = data["data_fim_corrigida"].combine_first(data["data_limite"])
+    referencia = referencia.combine_first(data["atualizado"])
+    data["data_referencia"] = referencia
 
     today = pd.Timestamp.now().normalize()
-    data["dias_para_limite"] = (data["data_limite"].dt.normalize() - today).dt.days
+    limite_base = data["data_fim_corrigida"].combine_first(data["data_limite"])
+    data["dias_para_limite"] = (limite_base.dt.normalize() - today).dt.days
     data["esta_em_aberto"] = data["status_tarefas"].isin(["A iniciar", "Em Andamento", "Atrasada"])
     data["esta_atrasada"] = data["status_tarefas"].eq("Atrasada")
     data["critica_proxima"] = data["esta_em_aberto"] & data["dias_para_limite"].between(0, 7)
@@ -104,9 +113,9 @@ def build_filters(data: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
             default=status_options,
         )
 
-        projetos = sorted(data["pai"].dropna().unique().tolist())
+        projetos = sorted(data["projeto_name"].dropna().unique().tolist())
         projeto_selected = st.multiselect(
-            "Projetos (pai)",
+            "Projetos",
             options=projetos,
         )
 
@@ -131,7 +140,7 @@ def build_filters(data: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
         filtered = filtered[filtered["status_tarefas"].isin(status_selected)]
 
     if projeto_selected:
-        filtered = filtered[filtered["pai"].isin(projeto_selected)]
+        filtered = filtered[filtered["projeto_name"].isin(projeto_selected)]
 
     if responsavel_selected:
         filtered = filtered[filtered["responsavel"].isin(responsavel_selected)]
@@ -343,23 +352,40 @@ def render_detailed_table(df: pd.DataFrame):
         return
 
     display_df = df.copy()
-    display_df["atualizado"] = display_df["atualizado"].dt.strftime("%d/%m/%Y %H:%M")
-    display_df["data_limite"] = display_df["data_limite"].dt.strftime("%d/%m/%Y")
-    display_df["status_transition_date"] = display_df["status_transition_date"].dt.strftime("%d/%m/%Y %H:%M")
+    for col in [
+        "atualizado",
+        "data_limite",
+        "data_inicio_corrigida",
+        "data_fim_corrigida",
+        "data_original_inicio",
+        "data_original_fim",
+        "start_date",
+    ]:
+        if col in display_df.columns:
+            if "hora" in col or col in ["atualizado", "start_date"]:
+                display_df[col] = display_df[col].dt.strftime("%d/%m/%Y %H:%M")
+            else:
+                display_df[col] = display_df[col].dt.strftime("%d/%m/%Y")
 
     st.dataframe(
         display_df[
             [
                 "chave",
                 "resumo",
+                "projeto_name",
                 "responsavel",
                 "prioridade",
                 "status",
                 "status_tarefas",
+                "data_inicio_corrigida",
+                "data_fim_corrigida",
+                "data_original_inicio",
+                "data_original_fim",
+                "start_date",
                 "data_limite",
                 "dias_para_limite",
                 "atualizado",
-                "status_transition_date",
+                "dias_para_conclusao",
             ]
         ],
         hide_index=True,
