@@ -76,15 +76,16 @@ def prepare_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     data["status_tarefas"] = data["status_tarefas"].fillna("Em Andamento")
     data["dias_para_conclusao"] = pd.to_numeric(data["dias_para_conclusao"], errors="coerce")
 
-    referencia = data["data_fim_corrigida"].combine_first(data["data_limite"])
+    referencia = data["data_limite"].combine_first(data["data_fim_corrigida"])
     referencia = referencia.combine_first(data["atualizado"])
     data["data_referencia"] = referencia
 
     hoje = pd.Timestamp.utcnow().normalize()
     limite_base = (
-        data["data_fim_corrigida"]
-        .combine_first(data["data_limite"])
+        data["data_limite"]
+        .combine_first(data["data_fim_corrigida"])
         .combine_first(data["data_original_fim"])
+        .combine_first(data["start_date"])
     )
     data["dias_para_limite"] = (limite_base - hoje).dt.days
     data["esta_em_aberto"] = data["status_tarefas"].isin(["A iniciar", "Em Andamento", "Atrasada"])
