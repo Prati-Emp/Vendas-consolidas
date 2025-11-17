@@ -48,6 +48,23 @@ def load_jira_status_data() -> pd.DataFrame:
     return md_conn.run_query(query)
 
 
+@st.cache_data(ttl=600)
+def load_calendar_mapping() -> pd.DataFrame:
+    """Carrega tabela de subtarefas para o calendário."""
+    md_conn = get_md_connection()
+    return md_conn.run_query(
+        """
+        SELECT 
+            COALESCE(TRIM(Resumo), '') AS resumo_chave,
+            COALESCE(TRIM(Subtarefa), '') AS subtarefa,
+            COALESCE(Indice, 999999) AS indice
+        FROM informacoes_consolidadas.de_para_situacoes_operacoes_jira
+        WHERE COALESCE(TRIM(Resumo), '') <> ''
+          AND COALESCE(TRIM(Subtarefa), '') <> ''
+        """
+    )
+
+
 def prepare_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     """Padroniza tipos e cria colunas derivadas."""
     if df.empty:
@@ -214,15 +231,6 @@ def render_status_section(df: pd.DataFrame):
         .sort_values("quantidade", ascending=True)
     )
 
-    timeline = (
-        df.dropna(subset=["data_referencia"])
-        .assign(periodo=lambda d: d["data_referencia"].dt.to_period("W").dt.start_time)
-        .groupby(["periodo", "status_tarefas"])
-        .size()
-        .reset_index(name="quantidade")
-        .sort_values("periodo")
-    )
-
     col1, col2 = st.columns(2)
     with col1:
         st.subheader("Distribuição por status")
@@ -257,20 +265,87 @@ def render_status_section(df: pd.DataFrame):
             fig_prioridade.update_layout(showlegend=False, xaxis_title="Tarefas", yaxis_title="")
             st.plotly_chart(fig_prioridade, use_container_width=True)
 
-    st.subheader("Evolução semanal por status")
-    if timeline.empty:
-        st.info("Não há histórico suficiente para montar a timeline.")
-    else:
-        fig_timeline = px.area(
-            timeline,
-            x="periodo",
-            y="quantidade",
-            color="status_tarefas",
-            line_group="status_tarefas",
-            color_discrete_sequence=px.colors.qualitative.Set2,
+    st.subheader("Calendário de projetos")
+    render_project_calendar(df)
+
+
+def render_project_calendar(df: pd.DataFrame):
+    """Tabela calendário com base em subtarefas mapeadas."""
+    mapping = load_calendar_mapping()
+    projetos = sorted(df["projeto_name"].dropna().unique().tolist())
+
+    if not projetos:
+        st.info("Nenhum projeto disponível para montar o calendário.")
+        return
+
+    projeto_sel = st.selectbox("Projeto para calendário", projetos, key="calendar_project")
+    df_proj = df[df["projeto_name"] == projeto_sel].copy()
+
+    if df_proj.empty:
+        st.warning("Projeto selecionado sem tarefas correspondentes nos filtros atuais.")
+        return
+
+    if mapping.empty:
+        st.warning("Tabela de mapeamento de subtarefas não encontrada.")
+        return
+
+    linhas = []
+    df_proj["resumo_lower"] = df_proj["resumo"].str.lower().fillna("")
+
+    for _, row in mapping.sort_values("indice").iterrows():
+        termo = row["resumo_chave"].lower()
+        mask = df_proj["resumo_lower"].str.contains(termo, na=False)
+        if not mask.any():
+            continue
+
+        tarefa = df_proj.loc[mask].sort_values("data_limite").iloc[0]
+        data_original = tarefa["data_original_fim"]
+        if pd.isna(data_original):
+            data_original = tarefa["data_limite"]
+
+        data_corrigida = tarefa["data_fim_corrigida"]
+        if pd.isna(data_corrigida):
+            data_corrigida = tarefa["data_limite"]
+
+        status = "sem_dado"
+        if pd.notna(data_corrigida) and pd.notna(data_original):
+            status = "adiantado" if data_corrigida <= data_original else "atrasado"
+
+        linhas.append(
+            {
+                "Subtarefa": row["subtarefa"],
+                "Data Original": data_original,
+                "Data Corrigida": data_corrigida,
+                "status_cor": status,
+            }
         )
-        fig_timeline.update_layout(xaxis_title="Semana", yaxis_title="Tarefas", legend_title="Status")
-        st.plotly_chart(fig_timeline, use_container_width=True)
+
+    if not linhas:
+        st.info("Nenhuma subtarefa da tabela de referência encontrada para este projeto.")
+        return
+
+    calendario_df = pd.DataFrame(linhas)
+    display_df = calendario_df.copy()
+    for col in ["Data Original", "Data Corrigida"]:
+        display_df[col] = display_df[col].dt.strftime("%d/%m/%Y")
+
+    status_series = calendario_df["status_cor"]
+
+    def highlight(row):
+        idx = row.name
+        base_styles = [""] * len(row)
+        status_row = status_series.iloc[idx]
+        if status_row == "adiantado":
+            base_styles[2] = "background-color:#065f46;color:white;font-weight:bold"
+        elif status_row == "atrasado":
+            base_styles[2] = "background-color:#7f1d1d;color:white;font-weight:bold"
+        return base_styles
+
+    st.dataframe(
+        display_df[["Subtarefa", "Data Original", "Data Corrigida"]].style.apply(highlight, axis=1),
+        use_container_width=True,
+        hide_index=True,
+    )
 
 
 def render_responsavel_section(df: pd.DataFrame):
