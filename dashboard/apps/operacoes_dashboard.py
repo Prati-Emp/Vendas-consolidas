@@ -104,6 +104,12 @@ def build_filters(data: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
             default=status_options,
         )
 
+        projetos = sorted(data["pai"].dropna().unique().tolist())
+        projeto_selected = st.multiselect(
+            "Projetos (pai)",
+            options=projetos,
+        )
+
         responsaveis = sorted(data["responsavel"].dropna().unique().tolist())
         responsavel_selected = st.multiselect(
             "Responsáveis",
@@ -123,6 +129,9 @@ def build_filters(data: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
 
     if status_selected:
         filtered = filtered[filtered["status_tarefas"].isin(status_selected)]
+
+    if projeto_selected:
+        filtered = filtered[filtered["pai"].isin(projeto_selected)]
 
     if responsavel_selected:
         filtered = filtered[filtered["responsavel"].isin(responsavel_selected)]
@@ -148,6 +157,7 @@ def build_filters(data: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
     metadata = {
         "periodo_texto": periodo_texto,
         "status": status_selected,
+        "projetos": projeto_selected,
         "responsaveis": responsavel_selected,
         "prioridades": prioridade_selected,
         "apenas_abertas": apenas_abertas,
@@ -412,12 +422,15 @@ def render_operacoes_dashboard(
 
     status_filtros = filters_meta.get("status") or []
     status_text = ", ".join(status_filtros) if status_filtros else "Todos"
+    projetos_filtro = filters_meta.get("projetos") or []
+    projetos_text = ", ".join(projetos_filtro) if projetos_filtro else "Todos"
     apenas_abertas = filters_meta.get("apenas_abertas", False)
 
     st.markdown(
         f"""
         **Período disponível:** {filters_meta.get('periodo_texto', 'N/D')} | 
         **Status filtrados:** {status_text} |
+        **Projetos filtrados:** {projetos_text} |
         **Somente abertas:** {"Sim" if apenas_abertas else "Não"}
         """
     )
