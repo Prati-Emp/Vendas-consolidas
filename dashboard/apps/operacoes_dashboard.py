@@ -182,18 +182,20 @@ def render_kpis(df: pd.DataFrame):
     total = int(len(df))
     abertas = int(df["esta_em_aberto"].sum())
     a_iniciar = int((df["status_tarefas"] == "A iniciar").sum())
+    em_andamento = int((df["status_tarefas"] == "Em Andamento").sum())
     atrasadas = int(df["esta_atrasada"].sum())
     criticas = int(df["critica_proxima"].sum())
 
     atraso_pct = f"{(atrasadas / abertas * 100):.1f}%" if abertas else "0%"
-    abertas_pct = f"{(abertas / total * 100):.1f}%" if total else "0%"
+    andamento_pct = f"{(em_andamento / total * 100):.1f}% do total" if total else "0%"
     criticas_pct = f"{(criticas / max(abertas, 1) * 100):.1f}%" if abertas else "0%"
 
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2, col3, col4, col5 = st.columns(5)
     col1.metric("Tarefas monitoradas", total)
     col2.metric("A iniciar", a_iniciar, delta=f"{(a_iniciar / total * 100):.1f}% do total" if total else "0%")
-    col3.metric("Atrasadas", atrasadas, delta=f"{atraso_pct} das abertas")
-    col4.metric("Próximas do prazo (≤7 dias)", criticas, delta=f"{criticas_pct} das abertas")
+    col3.metric("Em andamento", em_andamento, delta=andamento_pct)
+    col4.metric("Atrasadas", atrasadas, delta=f"{atraso_pct} das abertas")
+    col5.metric("Próximas do prazo (≤7 dias)", criticas, delta=f"{criticas_pct} das abertas")
 
 
 def render_status_section(df: pd.DataFrame):
