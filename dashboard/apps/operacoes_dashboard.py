@@ -5,7 +5,6 @@ Fonte de dados: informacoes_consolidadas.Jira_status_tarefas
 
 import sys
 from pathlib import Path
-from datetime import timedelta, date
 from typing import Optional
 
 import pandas as pd
@@ -90,24 +89,13 @@ def build_filters(data: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
         min_date = data["data_referencia"].min()
         max_date = data["data_referencia"].max()
 
-        today = date.today()
-        min_date = (min_date.date() if pd.notna(min_date) else today - timedelta(days=90))
-        max_date = (max_date.date() if pd.notna(max_date) else today)
-
-        default_start = max(min_date, max_date - timedelta(days=30))
-
-        period = st.date_input(
-            "Período (data de referência)",
-            value=(default_start, max_date),
-            min_value=min_date,
-            max_value=max_date,
-        )
-
-        if isinstance(period, tuple):
-            start_date, end_date = period
+        if pd.notna(min_date) and pd.notna(max_date):
+            st.caption(
+                f"📅 Período disponível: {min_date.strftime('%Y-%m-%d')} — "
+                f"{max_date.strftime('%Y-%m-%d')}"
+            )
         else:
-            start_date = period
-            end_date = period
+            st.caption("📅 Período disponível: dados sem data de referência registrada.")
 
         status_options = sorted(data["status_tarefas"].dropna().unique().tolist())
         status_selected = st.multiselect(
@@ -132,13 +120,6 @@ def build_filters(data: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
         texto_busca = st.text_input("Busca por chave ou resumo").strip()
 
     filtered = data.copy()
-    start_ts = pd.Timestamp(start_date)
-    end_ts = pd.Timestamp(end_date) + pd.Timedelta(days=1) - pd.Timedelta(seconds=1)
-
-    filtered = filtered[
-        filtered["data_referencia"].between(start_ts, end_ts, inclusive="both")
-        | filtered["data_referencia"].isna()
-    ]
 
     if status_selected:
         filtered = filtered[filtered["status_tarefas"].isin(status_selected)]
@@ -159,9 +140,13 @@ def build_filters(data: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
             | filtered["resumo"].astype(str).str.lower().str.contains(texto_busca, na=False)
         ]
 
+    if pd.notna(min_date) and pd.notna(max_date):
+        periodo_texto = f"{min_date.strftime('%Y-%m-%d')} — {max_date.strftime('%Y-%m-%d')}"
+    else:
+        periodo_texto = "Dados sem data de referência definida"
+
     metadata = {
-        "start": start_date,
-        "end": end_date,
+        "periodo_texto": periodo_texto,
         "status": status_selected,
         "responsaveis": responsavel_selected,
         "prioridades": prioridade_selected,
@@ -425,11 +410,15 @@ def render_operacoes_dashboard(
     filtered_df, filters_meta = build_filters(base_df)
     filters_meta = filters_meta or {}
 
+    status_filtros = filters_meta.get("status") or []
+    status_text = ", ".join(status_filtros) if status_filtros else "Todos"
+    apenas_abertas = filters_meta.get("apenas_abertas", False)
+
     st.markdown(
         f"""
-        **Período exibido:** {filters_meta.get('start')} — {filters_meta.get('end')} | 
-        **Status:** {", ".join(filters_meta.get('status', [])) or "Todos"} |
-        **Somente abertas:** {"Sim" if filters_meta.get('apenas_abertas') else "Não"}
+        **Período disponível:** {filters_meta.get('periodo_texto', 'N/D')} | 
+        **Status filtrados:** {status_text} |
+        **Somente abertas:** {"Sim" if apenas_abertas else "Não"}
         """
     )
 
