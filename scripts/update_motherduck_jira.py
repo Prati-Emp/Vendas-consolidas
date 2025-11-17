@@ -16,6 +16,7 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 # Importar controle de concorrência
 from scripts.concurrency_control import check_concurrency, release_concurrency
+from scripts.utils.google_sheets import load_project_keys_from_sheet
 
 async def sistema_jira():
     """Sistema de atualização do Jira"""
@@ -34,7 +35,10 @@ async def sistema_jira():
         
         # 1. Coletar dados do Jira
         print("\n1. Coletando dados do Jira...")
-        df_jira = await obter_dados_jira()
+        projetos_alvo = load_project_keys_from_sheet()
+        if projetos_alvo:
+            print(f"   -> Filtrando {len(projetos_alvo)} projetos do Google Sheets")
+        df_jira = await obter_dados_jira(projetos_alvo=projetos_alvo)
         
         if df_jira.empty:
             print("AVISO: Nenhum dado coletado do Jira")
@@ -185,4 +189,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
 

@@ -1,0 +1,3 @@
+"""Utilitários compartilhados entre scripts."""
+
+
