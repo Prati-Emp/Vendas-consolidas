@@ -181,6 +181,7 @@ def render_kpis(df: pd.DataFrame):
     """Exibe indicadores principais."""
     total = int(len(df))
     abertas = int(df["esta_em_aberto"].sum())
+    a_iniciar = int((df["status_tarefas"] == "A iniciar").sum())
     atrasadas = int(df["esta_atrasada"].sum())
     criticas = int(df["critica_proxima"].sum())
 
@@ -190,7 +191,7 @@ def render_kpis(df: pd.DataFrame):
 
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("Tarefas monitoradas", total)
-    col2.metric("Em aberto", abertas, delta=f"{abertas_pct} do total")
+    col2.metric("A iniciar", a_iniciar, delta=f"{(a_iniciar / total * 100):.1f}% do total" if total else "0%")
     col3.metric("Atrasadas", atrasadas, delta=f"{atraso_pct} das abertas")
     col4.metric("Próximas do prazo (≤7 dias)", criticas, delta=f"{criticas_pct} das abertas")
 
