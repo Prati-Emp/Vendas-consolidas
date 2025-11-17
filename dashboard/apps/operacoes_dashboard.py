@@ -60,21 +60,38 @@ def load_jira_status_data() -> pd.DataFrame:
 
 @st.cache_data(ttl=600)
 def load_calendar_mapping() -> pd.DataFrame:
-    """Carrega tabela de subtarefas para o calendário."""
+    """Carrega tabela de subtarefas para o calendário (fonte oficial do visual)."""
     md_conn = get_md_connection()
-    df = md_conn.run_query(
-        """
-        SELECT 
-            COALESCE(TRIM(Resumo), '') AS resumo_chave,
-            COALESCE(TRIM(Subtarefa), '') AS subtarefa,
-            COALESCE(Indice, 999999) AS indice
+
+    sql_new = """
+        SELECT
+            COALESCE(TRIM(chamada_para), '') AS chamada_para,
+            COALESCE(TRIM(subtarefa), '') AS subtarefa,
+            COALESCE(indice, 999999) AS indice
         FROM informacoes_consolidadas.de_para_situacoes_operacoes_jira
-        WHERE COALESCE(TRIM(Resumo), '') <> ''
-          AND COALESCE(TRIM(Subtarefa), '') <> ''
-        """
-    )
+        WHERE COALESCE(TRIM(chamada_para), '') <> ''
+          AND COALESCE(TRIM(subtarefa), '') <> ''
+    """
+    try:
+        df = md_conn.run_query(sql_new)
+    except Exception:
+        df = pd.DataFrame()
+
+    if df.empty:
+        df = md_conn.run_query(
+            """
+            SELECT 
+                COALESCE(TRIM(Resumo), '') AS chamada_para,
+                COALESCE(TRIM(Subtarefa), '') AS subtarefa,
+                COALESCE(Indice, 999999) AS indice
+            FROM informacoes_consolidadas.de_para_situacoes_operacoes_jira
+            WHERE COALESCE(TRIM(Resumo), '') <> ''
+              AND COALESCE(TRIM(Subtarefa), '') <> ''
+            """
+        )
+
     if not df.empty:
-        df["resumo_norm"] = df["resumo_chave"].map(_normalize_text)
+        df["match_norm"] = df["chamada_para"].map(_normalize_text)
     return df
 
 
@@ -304,10 +321,12 @@ def render_project_calendar(df: pd.DataFrame):
         return
 
     linhas = []
-    df_proj["resumo_lower"] = df_proj["resumo"].str.lower().fillna("")
+    df_proj["resumo_norm"] = df_proj["resumo"].fillna("").map(_normalize_text)
 
     for _, row in mapping.sort_values("indice").iterrows():
-        termo = row.get("resumo_norm") or _normalize_text(row["resumo_chave"])
+        termo = row.get("match_norm") or _normalize_text(row.get("chamada_para", ""))
+        if not termo:
+            continue
         mask = df_proj["resumo_norm"].str.contains(termo, na=False)
         if not mask.any():
             continue
@@ -344,6 +363,7 @@ def render_project_calendar(df: pd.DataFrame):
     display_df = calendario_df.copy()
     for col in ["Data Original", "Data Corrigida"]:
         display_df[col] = display_df[col].dt.strftime("%d/%m/%Y")
+        display_df[col] = display_df[col].fillna("—")
 
     status_series = calendario_df["status_cor"]
 
