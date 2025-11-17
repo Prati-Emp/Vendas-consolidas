@@ -20,6 +20,16 @@ from utils import display_navigation  # noqa: E402
 from utils.md_conn import get_md_connection  # noqa: E402
 
 
+def _normalize_text(value: str) -> str:
+    if not isinstance(value, str):
+        return ""
+    value = value.strip().lower()
+    import unicodedata
+
+    value = unicodedata.normalize("NFKD", value).encode("ascii", "ignore").decode("ascii")
+    return " ".join(value.split())
+
+
 @st.cache_data(ttl=600)
 def load_jira_status_data() -> pd.DataFrame:
     """Carrega os dados da view Jira_status_tarefas do MotherDuck."""
@@ -52,7 +62,7 @@ def load_jira_status_data() -> pd.DataFrame:
 def load_calendar_mapping() -> pd.DataFrame:
     """Carrega tabela de subtarefas para o calendário."""
     md_conn = get_md_connection()
-    return md_conn.run_query(
+    df = md_conn.run_query(
         """
         SELECT 
             COALESCE(TRIM(Resumo), '') AS resumo_chave,
@@ -63,6 +73,9 @@ def load_calendar_mapping() -> pd.DataFrame:
           AND COALESCE(TRIM(Subtarefa), '') <> ''
         """
     )
+    if not df.empty:
+        df["resumo_norm"] = df["resumo_chave"].map(_normalize_text)
+    return df
 
 
 def prepare_dataframe(df: pd.DataFrame) -> pd.DataFrame:
@@ -92,6 +105,7 @@ def prepare_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     data["prioridade"] = data["prioridade"].replace("", pd.NA).fillna("Sem prioridade")
     data["status_tarefas"] = data["status_tarefas"].fillna("Em Andamento")
     data["dias_para_conclusao"] = pd.to_numeric(data["dias_para_conclusao"], errors="coerce")
+    data["resumo_norm"] = data["resumo"].fillna("").map(_normalize_text)
 
     data["data_referencia"] = data["data_limite"].combine_first(data["atualizado"])
 
@@ -293,13 +307,15 @@ def render_project_calendar(df: pd.DataFrame):
     df_proj["resumo_lower"] = df_proj["resumo"].str.lower().fillna("")
 
     for _, row in mapping.sort_values("indice").iterrows():
-        termo = row["resumo_chave"].lower()
-        mask = df_proj["resumo_lower"].str.contains(termo, na=False)
+        termo = row.get("resumo_norm") or _normalize_text(row["resumo_chave"])
+        mask = df_proj["resumo_norm"].str.contains(termo, na=False)
         if not mask.any():
             continue
 
         tarefa = df_proj.loc[mask].sort_values("data_limite").iloc[0]
         data_original = tarefa["data_original_fim"]
+        if pd.isna(data_original):
+            data_original = tarefa["data_original_inicio"]
         if pd.isna(data_original):
             data_original = tarefa["data_limite"]
 
@@ -336,8 +352,10 @@ def render_project_calendar(df: pd.DataFrame):
         base_styles = [""] * len(row)
         status_row = status_series.iloc[idx]
         if status_row == "adiantado":
+            base_styles[1] = "background-color:#065f46;color:white;font-weight:bold"
             base_styles[2] = "background-color:#065f46;color:white;font-weight:bold"
         elif status_row == "atrasado":
+            base_styles[1] = "background-color:#7f1d1d;color:white;font-weight:bold"
             base_styles[2] = "background-color:#7f1d1d;color:white;font-weight:bold"
         return base_styles
 
@@ -346,6 +364,7 @@ def render_project_calendar(df: pd.DataFrame):
         use_container_width=True,
         hide_index=True,
     )
+    st.caption("Data Original = primeira previsão | Verde = dentro do prazo | Vermelho = replanejado após a data original")
 
 
 def render_responsavel_section(df: pd.DataFrame):
