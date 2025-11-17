@@ -54,6 +54,11 @@ def prepare_dataframe(df: pd.DataFrame) -> pd.DataFrame:
         return df
 
     data = df.copy()
+
+    def _parse_datetime(series: pd.Series) -> pd.Series:
+        parsed = pd.to_datetime(series, errors="coerce", dayfirst=True, utc=True)
+        return parsed.dt.tz_convert(None)
+
     date_columns = [
         "atualizado",
         "data_limite",
@@ -64,25 +69,27 @@ def prepare_dataframe(df: pd.DataFrame) -> pd.DataFrame:
         "start_date",
     ]
     for col in date_columns:
-        data[col] = pd.to_datetime(data[col], errors="coerce", dayfirst=True)
+        data[col] = _parse_datetime(data[col])
 
     data["responsavel"] = data["responsavel"].fillna("—")
     data["prioridade"] = data["prioridade"].replace("", pd.NA).fillna("Sem prioridade")
     data["status_tarefas"] = data["status_tarefas"].fillna("Em Andamento")
-
-    # Definir uma coluna de data de referência (prioridade: transition -> atualizado -> data limite)
     data["dias_para_conclusao"] = pd.to_numeric(data["dias_para_conclusao"], errors="coerce")
 
     referencia = data["data_fim_corrigida"].combine_first(data["data_limite"])
     referencia = referencia.combine_first(data["atualizado"])
     data["data_referencia"] = referencia
 
-    today = pd.Timestamp.now().normalize()
-    limite_base = data["data_fim_corrigida"].combine_first(data["data_limite"])
-    data["dias_para_limite"] = (limite_base.dt.normalize() - today).dt.days
+    hoje = pd.Timestamp.utcnow().normalize()
+    limite_base = (
+        data["data_fim_corrigida"]
+        .combine_first(data["data_limite"])
+        .combine_first(data["data_original_fim"])
+    )
+    data["dias_para_limite"] = (limite_base - hoje).dt.days
     data["esta_em_aberto"] = data["status_tarefas"].isin(["A iniciar", "Em Andamento", "Atrasada"])
     data["esta_atrasada"] = data["status_tarefas"].eq("Atrasada")
-    data["critica_proxima"] = data["esta_em_aberto"] & data["dias_para_limite"].between(0, 7)
+    data["critica_proxima"] = data["esta_em_aberto"] & data["dias_para_limite"].between(0, 7, inclusive="both")
 
     return data
 
