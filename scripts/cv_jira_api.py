@@ -15,8 +15,9 @@ Adaptação do código exportar_issues_jira.py:
 import asyncio
 import logging
 import time
+from io import StringIO
 import requests
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Dict, List, Any, Optional
 import pandas as pd
 
@@ -38,11 +39,17 @@ MAX_RETRIES = 4    # para 429/5xx
 BACKOFF_BASE = 1.6  # fator exponencial
 
 # Pausas entre requisições (em segundos)
-PAUSA_ENTRE_CHANGELOG = 0.5
 PAUSA_ENTRE_PAGINAS = 0.3
 PAUSA_ENTRE_PROJETOS = 2.0
 
-# Campos necessários para as colunas
+DEFAULT_SHEET_CSV_URL = (
+    os.environ.get(
+        "JIRA_PROJECTS_SHEET_URL",
+        "https://docs.google.com/spreadsheets/d/1i927uMKgiX-rDvKVQKb-JP9NAA4KcjWHzGcZG61y35s/export?format=csv&gid=0",
+    )
+)
+
+# Campos necessários (fluxo simplificado conforme exportação validada)
 FIELDS = [
     "summary",                     # C: Resumo
     "issuetype",                   # A: Tipo de item
@@ -51,19 +58,73 @@ FIELDS = [
     "priority",                    # F: Prioridade
     "status",                      # G: Status
     "resolution",                  # H: Resolução
-    "created",                     # I: Criado
-    "updated",                     # J: Atualizado(a)
     "duedate",                     # K: Data limite
     "description",                 # L: Descrição
     "parent",                      # AA: Pai
     "project",                     # Z: Projeto.name
-    "customfield_10015",          # V, X: Start date / Data original início
-    "customfield_10170",           # Y: Dias para conclusão de Tarefa
-    "customfield_10370",           # U: Data Fim corrigida (Adj Finish)
-    "customfield_10371",           # T: Data Início corrigida (Adj Start)
+    "customfield_10339",           # Data original início
+    "customfield_10338",           # Data original fim
+    "customfield_10371",           # Data Início corrigida (Adj Start)
+    "customfield_10370",           # Data Fim corrigida (Adj Finish)
+    "customfield_10015",           # Start date
+    "customfield_10170",           # Dias para conclusão de Tarefa
 ]
 
 HEADERS = {"Accept": "application/json", "Content-Type": "application/json"}
+
+
+def _format_duration(value: Any) -> str:
+    """Normaliza duração para string."""
+    if value is None or (isinstance(value, str) and not value.strip()):
+        return ""
+    if isinstance(value, (int, float)):
+        return str(int(value))
+    return str(value)
+
+
+def obter_lista_projetos_planilha(sheet_url: str = DEFAULT_SHEET_CSV_URL) -> List[str]:
+    """
+    Busca a lista de projetos a partir da planilha Google Sheets (CSV export).
+    Espera uma coluna chamada 'Projeto.key' (case insensitive).
+    """
+    if not sheet_url:
+        return []
+
+    try:
+        resp = requests.get(sheet_url, timeout=30)
+        resp.raise_for_status()
+
+        csv_buffer = StringIO(resp.text)
+        df = pd.read_csv(csv_buffer)
+
+        colunas_normalizadas = {col.strip().lower(): col for col in df.columns}
+        chave_coluna = None
+        for candidato in ("projeto.key", "projeto_key", "project.key", "project_key"):
+            if candidato in colunas_normalizadas:
+                chave_coluna = colunas_normalizadas[candidato]
+                break
+
+        if not chave_coluna:
+            logger.warning("Coluna 'Projeto.key' não encontrada na planilha.")
+            return []
+
+        projetos = (
+            df[chave_coluna]
+            .dropna()
+            .astype(str)
+            .str.strip()
+            .replace("", pd.NA)
+            .dropna()
+            .unique()
+            .tolist()
+        )
+
+        logger.info(f"Planilha retornou {len(projetos)} projetos do Jira.")
+        return projetos
+
+    except Exception as exc:
+        logger.warning(f"Falha ao carregar planilha de projetos Jira: {exc}")
+        return []
 
 
 class JiraAPIClient:
@@ -124,64 +185,34 @@ class JiraAPIClient:
             raise last_exception
         raise RuntimeError("Falha ao fazer requisição GET")
     
-    def buscar_projetos_jira(self, projetos_alvo: List[str] = None) -> List[str]:
+    def buscar_projetos_jira(self, projetos_alvo: Optional[List[str]] = None) -> List[str]:
         """
-        Busca todos os projetos ou retorna a lista de projetos alvo.
+        Determina quais projetos serão processados.
+        Prioridade:
+            1. Lista recebida via argumento
+            2. Lista da planilha (DEFAULT_SHEET_CSV_URL)
+            3. Todos os projetos da instância Jira (fallback)
         """
         if projetos_alvo:
-            logger.info(f"Usando projetos específicos: {', '.join(projetos_alvo)}")
+            logger.info(f"Usando projetos fornecidos: {', '.join(projetos_alvo)}")
             return projetos_alvo
-        
-        logger.info("Buscando todos os projetos do Jira...")
+
+        projetos_planilha = obter_lista_projetos_planilha()
+        if projetos_planilha:
+            return projetos_planilha
+
+        logger.info("Planilha indisponível. Buscando todos os projetos do Jira (fallback).")
         url = f"{self.base_url}/rest/api/3/project"
         resp = self._get_retry(url)
-        
+
         if resp.status_code != 200:
             logger.error(f"Erro ao buscar projetos: {resp.status_code}")
             raise RuntimeError(f"Erro JIRA {resp.status_code}")
-        
+
         projetos = resp.json()
         project_keys = [p.get('key', '') for p in projetos if p.get('key')]
-        logger.info(f"{len(project_keys)} projetos encontrados")
+        logger.info(f"{len(project_keys)} projetos encontrados (fallback).")
         return project_keys
-    
-    def buscar_changelog(self, issue_key: str) -> List[Dict[str, Any]]:
-        """
-        Busca o changelog (histórico de mudanças) de uma issue para obter transições de status.
-        """
-        url = f"{self.base_url}/rest/api/3/issue/{issue_key}?expand=changelog"
-        
-        try:
-            resp = self._get_retry(url)
-            
-            if resp.status_code != 200:
-                return []
-            
-            data = resp.json()
-            changelog = data.get('changelog', {})
-            histories = changelog.get('histories', [])
-            
-            transicoes = []
-            for history in histories:
-                author = history.get('author', {}) or {}
-                created = history.get('created', '')
-                
-                for item in history.get('items', []):
-                    if item.get('field') == 'status':
-                        transicoes.append({
-                            'to': item.get('toString', ''),
-                            'from': item.get('fromString', ''),
-                            'authorDisplayName': author.get('displayName', ''),
-                            'authorEmail': author.get('emailAddress', ''),
-                            'date': created,
-                            'id': history.get('id', ''),
-                        })
-            
-            return transicoes
-            
-        except Exception as e:
-            logger.warning(f"Erro ao buscar changelog de {issue_key}: {e}")
-            return []
     
     def buscar_issues_jira(self, projeto: str) -> List[Dict[str, Any]]:
         """
@@ -230,37 +261,20 @@ class JiraAPIClient:
         logger.info(f"Busca concluída: {len(issues)} issues encontradas")
         return issues
     
-    def formatar_data(self, data_str: Optional[str]) -> str:
-        """Formata data do Jira para formato brasileiro."""
-        if not data_str:
-            return ''
-        try:
-            # Jira retorna: "2025-10-29T10:07:46.000-0300"
-            dt = datetime.strptime(data_str[:19], "%Y-%m-%dT%H:%M:%S")
-            return dt.strftime("%d/%m/%Y %H:%M:%S")
-        except:
-            try:
-                # Tenta formato de data simples
-                dt = datetime.strptime(data_str[:10], "%Y-%m-%d")
-                return dt.strftime("%d/%m/%Y")
-            except:
-                return data_str
-    
-    def formatar_data_simples(self, data_str: Optional[str]) -> str:
+    @staticmethod
+    def formatar_data_simples(data_str: Optional[str]) -> str:
         """Formata data do Jira para formato brasileiro simples (sem hora)."""
         if not data_str:
             return ''
         try:
-            dt = datetime.strptime(data_str[:10], "%Y-%m-%d")
+            dt = datetime.strptime(str(data_str)[:10], "%Y-%m-%d")
             return dt.strftime("%d/%m/%Y")
-        except:
-            return data_str
+        except Exception:
+            return str(data_str) if data_str is not None else ''
     
     def processar_issues(self, issues: List[Dict[str, Any]], projeto_nome: str) -> List[Dict[str, Any]]:
         """
-        Processa as issues e extrai todas as colunas solicitadas.
-        Para cada issue, busca o changelog e cria uma linha por transição de status.
-        Se não houver transições, cria uma linha com a issue.
+        Processa issues e retorna apenas as colunas necessárias (uma linha por issue).
         """
         logger.info(f"Processando {len(issues)} issues do projeto {projeto_nome}...")
         dados_processados = []
@@ -282,24 +296,14 @@ class JiraAPIClient:
             parent = fields.get('parent', {}) or {}
             project = fields.get('project', {}) or {}
             
-            # Campos customizados
-            start_date = fields.get('customfield_10015')  # Start date
-            duration = fields.get('customfield_10170')    # Duração
-            adj_finish = fields.get('customfield_10370')  # Adj Finish
-            adj_start = fields.get('customfield_10371')   # Adj Start
-            
-            # Calcula data original fim (W)
-            data_original_fim = ''
-            if start_date and duration:
-                try:
-                    dt_start = datetime.strptime(start_date[:10], "%Y-%m-%d")
-                    dt_fim = dt_start + timedelta(days=int(duration))
-                    data_original_fim = dt_fim.strftime("%d/%m/%Y")
-                except:
-                    pass
-            
-            # Dados base da issue
-            dados_base = {
+            data_original_inicio = fields.get('customfield_10339')
+            data_original_fim = fields.get('customfield_10338')
+            adj_start = fields.get('customfield_10371')
+            adj_finish = fields.get('customfield_10370')
+            start_date = fields.get('customfield_10015')
+            duration = fields.get('customfield_10170')
+
+            dados_processados.append({
                 "A - Tipo de item": issuetype.get('name', ''),
                 "B - Chave": key,
                 "C - Resumo": fields.get('summary', ''),
@@ -308,51 +312,17 @@ class JiraAPIClient:
                 "F - Prioridade": priority.get('name', ''),
                 "G - Status": status.get('name', ''),
                 "H - Resolução": resolution.get('name', ''),
-                "I - Criado": self.formatar_data(fields.get('created')),
-                "J - Atualizado(a)": self.formatar_data(fields.get('updated')),
+                "I - Data original fim": self.formatar_data_simples(data_original_fim),
+                "J - Data original início": self.formatar_data_simples(data_original_inicio),
                 "K - Data limite": self.formatar_data_simples(fields.get('duedate')),
                 "L - Descrição": fields.get('description', ''),
                 "T - Data Início corrigida": self.formatar_data_simples(adj_start),
                 "U - Data Fim corrigida": self.formatar_data_simples(adj_finish),
-                "V - Data original início": self.formatar_data_simples(start_date),
-                "W - Data original fim": data_original_fim,
                 "X - Start date": self.formatar_data_simples(start_date),
-                "Y - Dias para conclusão de Tarefa": duration if duration else '',
+                "Y - Dias para conclusão de Tarefa": _format_duration(duration),
                 "Z - Projeto.name": project.get('name', projeto_nome),
                 "AA - Pai": parent.get('key', ''),
-            }
-            
-            # Busca transições de status
-            transicoes = self.buscar_changelog(key)
-            time.sleep(PAUSA_ENTRE_CHANGELOG)
-            
-            # Se não houver transições, cria uma linha sem dados de transição
-            if not transicoes:
-                linha = dados_base.copy()
-                linha.update({
-                    "M - Status Transition": '',
-                    "N - Status Transition.to": '',
-                    "O - Status Transition.from": '',
-                    "P - Status Transition.authorDisplayName": '',
-                    "Q - Status Transition.authorEmail": '',
-                    "R - Status Transition.date": '',
-                    "S - Status Transition.id": '',
-                })
-                dados_processados.append(linha)
-            else:
-                # Cria uma linha para cada transição
-                for trans in transicoes:
-                    linha = dados_base.copy()
-                    linha.update({
-                        "M - Status Transition": f"{trans.get('from', '')} → {trans.get('to', '')}",
-                        "N - Status Transition.to": trans.get('to', ''),
-                        "O - Status Transition.from": trans.get('from', ''),
-                        "P - Status Transition.authorDisplayName": trans.get('authorDisplayName', ''),
-                        "Q - Status Transition.authorEmail": trans.get('authorEmail', ''),
-                        "R - Status Transition.date": self.formatar_data(trans.get('date')),
-                        "S - Status Transition.id": trans.get('id', ''),
-                    })
-                    dados_processados.append(linha)
+            })
         
         return dados_processados
     
@@ -365,6 +335,16 @@ class JiraAPIClient:
             return pd.DataFrame()
         
         df = pd.DataFrame(dados)
+        colunas_descartar = [
+            "M - Status Transition",
+            "N - Status Transition.to",
+            "O - Status Transition.from",
+            "P - Status Transition.authorDisplayName",
+            "Q - Status Transition.authorEmail",
+            "R - Status Transition.date",
+            "S - Status Transition.id",
+        ]
+        df = df.drop(columns=colunas_descartar, errors="ignore")
         
         # Adicionar colunas de controle
         df['fonte'] = 'jira'
@@ -391,10 +371,13 @@ async def obter_dados_jira(projetos_alvo: List[str] = None) -> pd.DataFrame:
         
         # Buscar projetos
         projetos = client.buscar_projetos_jira(projetos_alvo)
-        
+        projetos = list(dict.fromkeys(projetos))  # remove duplicados preservando ordem
+
         if not projetos:
             logger.warning("Nenhum projeto encontrado")
             return pd.DataFrame()
+
+        logger.info(f"Projetos selecionados ({len(projetos)}): {', '.join(projetos)}")
         
         todas_issues = []
         
@@ -456,4 +439,7 @@ if __name__ == "__main__":
             print(df.head().to_markdown(index=False))
     
     asyncio.run(main_test())
+
+
+
 
