@@ -60,35 +60,25 @@ def load_jira_status_data() -> pd.DataFrame:
 
 @st.cache_data(ttl=600)
 def load_calendar_mapping() -> pd.DataFrame:
-    """Carrega tabela de subtarefas para o calendário (fonte oficial do visual)."""
+    """Carrega subtarefas únicas a partir da própria view Jira_status_tarefas."""
     md_conn = get_md_connection()
 
-    columns = md_conn.run_query(
-        """
-        SELECT column_name
-        FROM information_schema.columns
-        WHERE table_schema = current_schema()
-          AND table_name = 'de_para_situacoes_operacoes_jira'
-        """
-    )["column_name"].str.lower().tolist()
-
-    has_chamada = "chamada_para" in columns
-    nome_coluna = "chamada_para" if has_chamada else "Resumo"
-
     df = md_conn.run_query(
-        f"""
-        SELECT 
-            COALESCE(TRIM({nome_coluna}), '') AS chamada_para,
-            COALESCE(TRIM(Subtarefa), '') AS subtarefa,
-            COALESCE(Indice, 999999) AS indice
-        FROM informacoes_consolidadas.de_para_situacoes_operacoes_jira
-        WHERE COALESCE(TRIM({nome_coluna}), '') <> ''
-          AND COALESCE(TRIM(Subtarefa), '') <> ''
+        """
+        SELECT DISTINCT
+            COALESCE(TRIM(chamada_para), '') AS chamada_para
+        FROM informacoes_consolidadas.Jira_status_tarefas
+        WHERE chamada_para IS NOT NULL AND TRIM(chamada_para) <> ''
         """
     )
 
-    if not df.empty:
-        df["match_norm"] = df["chamada_para"].map(_normalize_text)
+    if df.empty:
+        return df.assign(match_norm=[])
+
+    df = df.sort_values("chamada_para").reset_index(drop=True)
+    df["indice"] = df.index + 1
+    df["subtarefa"] = df["chamada_para"]
+    df["match_norm"] = df["chamada_para"].map(_normalize_text)
     return df
 
 
