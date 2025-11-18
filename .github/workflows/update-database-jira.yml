@@ -39,6 +39,7 @@ jobs:
           JIRA_URL: ${{ secrets.JIRA_URL }}
           JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
           JIRA_TOKEN: ${{ secrets.JIRA_TOKEN }}
+          JIRA_PROJECTS_SHEET_URL: ${{ secrets.JIRA_PROJECTS_SHEET_URL }}
           PYTHONPATH: ${{ github.workspace }}/scripts:${{ github.workspace }}
         run: |
           echo "Iniciando atualizacao Jira do MotherDuck..."
