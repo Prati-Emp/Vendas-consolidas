@@ -63,32 +63,29 @@ def load_calendar_mapping() -> pd.DataFrame:
     """Carrega tabela de subtarefas para o calendário (fonte oficial do visual)."""
     md_conn = get_md_connection()
 
-    sql_new = """
-        SELECT
-            COALESCE(TRIM(chamada_para), '') AS chamada_para,
-            COALESCE(TRIM(subtarefa), '') AS subtarefa,
-            COALESCE(indice, 999999) AS indice
-        FROM informacoes_consolidadas.de_para_situacoes_operacoes_jira
-        WHERE COALESCE(TRIM(chamada_para), '') <> ''
-          AND COALESCE(TRIM(subtarefa), '') <> ''
-    """
-    try:
-        df = md_conn.run_query(sql_new)
-    except Exception:
-        df = pd.DataFrame()
+    columns = md_conn.run_query(
+        """
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_schema = current_schema()
+          AND table_name = 'de_para_situacoes_operacoes_jira'
+        """
+    )["column_name"].str.lower().tolist()
 
-    if df.empty:
-        df = md_conn.run_query(
-            """
-            SELECT 
-                COALESCE(TRIM(Resumo), '') AS chamada_para,
-                COALESCE(TRIM(Subtarefa), '') AS subtarefa,
-                COALESCE(Indice, 999999) AS indice
-            FROM informacoes_consolidadas.de_para_situacoes_operacoes_jira
-            WHERE COALESCE(TRIM(Resumo), '') <> ''
-              AND COALESCE(TRIM(Subtarefa), '') <> ''
-            """
-        )
+    has_chamada = "chamada_para" in columns
+    nome_coluna = "chamada_para" if has_chamada else "Resumo"
+
+    df = md_conn.run_query(
+        f"""
+        SELECT 
+            COALESCE(TRIM({nome_coluna}), '') AS chamada_para,
+            COALESCE(TRIM(Subtarefa), '') AS subtarefa,
+            COALESCE(Indice, 999999) AS indice
+        FROM informacoes_consolidadas.de_para_situacoes_operacoes_jira
+        WHERE COALESCE(TRIM({nome_coluna}), '') <> ''
+          AND COALESCE(TRIM(Subtarefa), '') <> ''
+        """
+    )
 
     if not df.empty:
         df["match_norm"] = df["chamada_para"].map(_normalize_text)
