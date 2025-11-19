@@ -26,7 +26,8 @@ USERS_DATABASE = {
         "department": "TI",
         "created": "2024-10-21",
         "last_login": None,
-        "active": True
+        "active": True,
+        "subpages": ["operacoes.jira", "operacoes.compras"]  # Páginas subordinadas permitidas
     },
     "gustavo.sordi@grupoprati.com": {
         "password": "Pr@ti2024!Gustavo",
@@ -35,7 +36,8 @@ USERS_DATABASE = {
         "department": "Vendas",
         "created": "2024-10-21",
         "last_login": None,
-        "active": True
+        "active": True,
+        "subpages": ["operacoes.jira", "operacoes.compras"]  # Acesso a todas as subpáginas
     },
     "lucas.follmann@grupoprati.com": {
         "password": "Pr@ti2024!Lucas",
@@ -44,7 +46,8 @@ USERS_DATABASE = {
         "department": "Vendas", 
         "created": "2024-10-21",
         "last_login": None,
-        "active": True
+        "active": True,
+        "subpages": ["operacoes.jira", "operacoes.compras"]  # Acesso a todas as subpáginas
     },
     "jose.aquino@grupoprati.com": {
         "password": "Pr@ti2024!Jose",
@@ -53,7 +56,8 @@ USERS_DATABASE = {
         "department": "Análise",
         "created": "2024-10-21", 
         "last_login": None,
-        "active": True
+        "active": True,
+        "subpages": ["operacoes.jira"]  # Apenas acesso ao Jira
     },
     "evelyn.padilha@grupoprati.com": {
         "password": "Pr@ti2024!Evelyn",
@@ -62,7 +66,8 @@ USERS_DATABASE = {
         "department": "Análise",
         "created": "2024-10-21",
         "last_login": None,
-        "active": True
+        "active": True,
+        "subpages": ["operacoes.jira"]  # Apenas acesso ao Jira
     }
 }
 
@@ -270,8 +275,26 @@ def can_access_page(page_name: str) -> bool:
     user_data = get_current_user()
     if not user_data:
         return False
+    
+    # Verificar páginas principais
     allowed_pages = get_user_pages(user_data)
-    return page_name in allowed_pages
+    if page_name in allowed_pages:
+        return True
+    
+    # Verificar páginas subordinadas (ex: "operacoes.jira")
+    if "." in page_name:
+        # Se o usuário tem acesso à página principal, verificar subpáginas
+        main_page = page_name.split(".")[0]
+        if main_page in allowed_pages:
+            # Verificar se o usuário tem acesso específico à subpágina
+            user_subpages = user_data.get("subpages", [])
+            # Se não há subpages definidas, dar acesso total (compatibilidade)
+            if not user_subpages:
+                return True
+            # Verificar se a subpágina está na lista permitida
+            return page_name in user_subpages
+    
+    return False
 
 def require_page_access(page_name: str):
     """Protege uma página específica - redireciona se usuário não tem acesso"""
