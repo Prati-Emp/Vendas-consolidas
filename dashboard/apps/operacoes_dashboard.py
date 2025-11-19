@@ -159,6 +159,12 @@ def build_filters(data: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
             options=projetos,
         )
 
+        tipo_item_options = sorted(data["tipo_item"].dropna().unique().tolist())
+        tipo_item_selected = st.multiselect(
+            "Tipo de item",
+            options=tipo_item_options,
+        )
+
         responsaveis = sorted(data["responsavel"].dropna().unique().tolist())
         responsavel_selected = st.multiselect(
             "Responsáveis",
@@ -181,6 +187,9 @@ def build_filters(data: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
 
     if projeto_selected:
         filtered = filtered[filtered["projeto_name"].isin(projeto_selected)]
+
+    if tipo_item_selected:
+        filtered = filtered[filtered["tipo_item"].isin(tipo_item_selected)]
 
     if responsavel_selected:
         filtered = filtered[filtered["responsavel"].isin(responsavel_selected)]
@@ -207,6 +216,7 @@ def build_filters(data: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
         "periodo_texto": periodo_texto,
         "status": status_selected,
         "projetos": projeto_selected,
+        "tipo_item": tipo_item_selected,
         "responsaveis": responsavel_selected,
         "prioridades": prioridade_selected,
         "apenas_abertas": apenas_abertas,
