@@ -13,9 +13,10 @@ if str(DASHBOARD_DIR) not in sys.path:
 
 from advanced_auth import require_auth, require_page_access  # noqa: E402
 from apps.operacoes_dashboard import render_operacoes_dashboard  # noqa: E402
+from apps.compras_dashboard import render_compras_dashboard  # noqa: E402
 
 st.set_page_config(
-    page_title="Operações - Jira",
+    page_title="Operações",
     page_icon="⚙️",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -25,11 +26,25 @@ st.set_page_config(
 require_auth()
 require_page_access("operacoes")
 
-render_operacoes_dashboard(
-    show_navigation=False,  # App independente não usa menu global
-    show_title=True,
-    show_caption=True,
-    set_session_state=False,
-    title_text="⚙️ Operações - Jira",
-)
+# Título principal do dashboard
+st.title("⚙️ Dashboard de Operações")
+st.caption("Monitoramento integrado de operações")
+
+# Navegação por páginas usando tabs
+tab_jira, tab_compras = st.tabs(["📋 Jira", "🛒 Compras"])
+
+with tab_jira:
+    render_operacoes_dashboard(
+        show_navigation=False,  # App independente não usa menu global
+        show_title=False,  # Título já está no topo
+        show_caption=False,  # Caption já está no topo
+        set_session_state=False,
+        title_text="⚙️ Operações - Jira",
+    )
+
+with tab_compras:
+    render_compras_dashboard(
+        show_title=False,  # Título já está no topo
+        show_caption=False,  # Caption já está no topo
+    )
 
