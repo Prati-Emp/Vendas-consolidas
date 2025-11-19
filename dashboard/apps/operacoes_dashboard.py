@@ -53,7 +53,8 @@ def load_jira_status_data() -> pd.DataFrame:
             start_date,
             dias_para_conclusao,
             status_tarefas,
-            chamada_para
+            chamada_para,
+            indice
         FROM informacoes_consolidadas.Jira_status_tarefas
     """
     return md_conn.run_query(query)
@@ -61,23 +62,25 @@ def load_jira_status_data() -> pd.DataFrame:
 
 @st.cache_data(ttl=600)
 def load_calendar_mapping() -> pd.DataFrame:
-    """Carrega subtarefas únicas a partir da própria view Jira_status_tarefas."""
+    """Carrega subtarefas únicas a partir da própria view Jira_status_tarefas, usando o Indice da tabela de mapeamento."""
     md_conn = get_md_connection()
 
     df = md_conn.run_query(
         """
-        SELECT DISTINCT
-            COALESCE(TRIM(chamada_para), '') AS chamada_para
+        SELECT 
+            COALESCE(TRIM(chamada_para), '') AS chamada_para,
+            MIN(indice) AS indice
         FROM informacoes_consolidadas.Jira_status_tarefas
         WHERE chamada_para IS NOT NULL AND TRIM(chamada_para) <> ''
+          AND indice IS NOT NULL
+        GROUP BY chamada_para
+        ORDER BY indice
         """
     )
 
     if df.empty:
-        return df.assign(match_norm=[])
+        return df.assign(match_norm=[], subtarefa=[])
 
-    df = df.sort_values("chamada_para").reset_index(drop=True)
-    df["indice"] = df.index + 1
     df["subtarefa"] = df["chamada_para"]
     df["match_norm"] = df["chamada_para"].map(_normalize_text)
     return df
