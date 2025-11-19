@@ -160,6 +160,8 @@ def build_filters(data: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
         )
 
         tipo_item_options = sorted(data["tipo_item"].dropna().unique().tolist())
+        # Remover "Delay" da lista de opções
+        tipo_item_options = [item for item in tipo_item_options if item != "Delay"]
         tipo_item_selected = st.multiselect(
             "Tipo de item",
             options=tipo_item_options,
