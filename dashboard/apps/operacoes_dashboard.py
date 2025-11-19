@@ -458,6 +458,7 @@ def render_alerts(df: pd.DataFrame):
 
     display_cols = [
         "chave",
+        "tipo_item",
         "resumo",
         "responsavel",
         "prioridade",
