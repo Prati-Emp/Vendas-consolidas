@@ -23,7 +23,7 @@ st.set_page_config(
 )
 
 # Autenticação padrão do projeto
-require_auth()
+require_auth(dashboard_title="Dashboard Operações")
 require_page_access("operacoes")
 
 # Verificar acesso às subpáginas

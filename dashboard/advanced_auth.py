@@ -166,11 +166,11 @@ def get_current_user() -> Optional[Dict]:
     """Retorna dados do usuário atual"""
     return st.session_state.get('user_data', None)
 
-def login_form() -> bool:
+def login_form(dashboard_title: str = "Dashboard de Vendas") -> bool:
     """Exibe formulário de login avançado"""
-    st.markdown("""
+    st.markdown(f"""
     <div style="text-align: center; padding: 1.5rem; background: linear-gradient(135deg, #1e3a8a 0%, #dc2626 100%); border-radius: 8px; margin-bottom: 1.5rem;">
-        <h1 style="color: white; margin: 0; font-size: 1.8rem; font-weight: 600;">🔐 Dashboard de Vendas</h1>
+        <h1 style="color: white; margin: 0; font-size: 1.8rem; font-weight: 600;">🔐 {dashboard_title}</h1>
         <p style="color: #f3f4f6; margin: 0.5rem 0 0 0; font-size: 0.95rem;">Grupo Prati - Acesso restrito</p>
     </div>
     """, unsafe_allow_html=True)
@@ -243,10 +243,10 @@ def logout():
     st.session_state.user_data = None
     st.rerun()
 
-def require_auth(disable_timeout: bool = False):
+def require_auth(disable_timeout: bool = False, dashboard_title: str = "Dashboard de Vendas"):
     """Protege páginas que requerem autenticação"""
     if not is_authenticated(disable_timeout=disable_timeout):
-        login_form()
+        login_form(dashboard_title=dashboard_title)
         st.stop()
     
     # Mostrar informações da sessão na sidebar
