@@ -68,6 +68,26 @@ USERS_DATABASE = {
         "last_login": None,
         "active": True,
         "subpages": ["operacoes.jira"]  # Apenas acesso ao Jira
+    },
+    "joao.fantinel@grupoprati.com": {
+        "password": "0sIOnX%d9@sz",
+        "role": "analyst",
+        "name": "João Fantinel",
+        "department": "Operações",
+        "created": "2025-01-23",
+        "last_login": None,
+        "active": True,
+        "subpages": ["operacoes.jira"]  # Apenas acesso ao Jira
+    },
+    "andre.pozza@grupoprati.com": {
+        "password": "EcwSG52eL&qk",
+        "role": "analyst",
+        "name": "André Pozza",
+        "department": "Operações",
+        "created": "2025-01-23",
+        "last_login": None,
+        "active": True,
+        "subpages": ["operacoes.jira"]  # Apenas acesso ao Jira
     }
 }
 
