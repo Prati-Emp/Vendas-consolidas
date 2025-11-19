@@ -52,7 +52,8 @@ def load_jira_status_data() -> pd.DataFrame:
             data_original_fim,
             start_date,
             dias_para_conclusao,
-            status_tarefas
+            status_tarefas,
+            chamada_para
         FROM informacoes_consolidadas.Jira_status_tarefas
     """
     return md_conn.run_query(query)
@@ -308,13 +309,18 @@ def render_project_calendar(df: pd.DataFrame):
         return
 
     linhas = []
-    df_proj["resumo_norm"] = df_proj["resumo"].fillna("").map(_normalize_text)
+    # Normalizar chamada_para para matching
+    df_proj["chamada_para_norm"] = df_proj["chamada_para"].fillna("").map(_normalize_text)
 
     for _, row in mapping.sort_values("indice").iterrows():
-        termo = row.get("match_norm") or _normalize_text(row.get("chamada_para", ""))
-        if not termo:
+        termo_match = row.get("match_norm") or _normalize_text(row.get("chamada_para", ""))
+        if not termo_match:
             continue
-        mask = df_proj["resumo_norm"].str.contains(termo, na=False)
+        # Fazer match direto pela coluna chamada_para normalizada (match exato)
+        mask = df_proj["chamada_para_norm"] == termo_match
+        # Se não encontrar match exato, tentar busca flexível como fallback
+        if not mask.any():
+            mask = df_proj["chamada_para_norm"].str.contains(termo_match, na=False, regex=False)
         if not mask.any():
             continue
 
