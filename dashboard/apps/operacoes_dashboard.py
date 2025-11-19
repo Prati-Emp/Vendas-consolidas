@@ -230,7 +230,12 @@ def render_kpis(df: pd.DataFrame):
     criticas_pct = f"{(criticas / max(abertas, 1) * 100):.1f}%" if abertas else "0%"
 
     col1, col2, col3, col4, col5 = st.columns(5)
-    col1.metric("Tarefas monitoradas", total)
+    tooltip_monitoradas = (
+        "Atividades monitoradas são tarefas com status diferente de 'Finalizada' "
+        "e atividades que estão 'A iniciar' (status 'Backlog' no Jira). "
+        "Essas são as tarefas que estão sendo acompanhadas no dashboard."
+    )
+    col1.metric("Tarefas monitoradas", total, help=tooltip_monitoradas)
     col2.metric("A iniciar", a_iniciar, delta=f"{(a_iniciar / total * 100):.1f}% do total" if total else "0%")
     col3.metric("Em andamento", em_andamento, delta=andamento_pct)
     col4.metric("Atrasadas", atrasadas, delta=f"{atraso_pct} das abertas")
