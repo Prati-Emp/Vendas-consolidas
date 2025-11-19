@@ -53,7 +53,7 @@ def load_jira_status_data() -> pd.DataFrame:
             start_date,
             dias_para_conclusao,
             status_tarefas,
-            chamada_para,
+            "chamada_Para" as chamada_para,
             indice
         FROM informacoes_consolidadas.Jira_status_tarefas
     """
@@ -68,12 +68,12 @@ def load_calendar_mapping() -> pd.DataFrame:
     df = md_conn.run_query(
         """
         SELECT 
-            COALESCE(TRIM(chamada_para), '') AS chamada_para,
+            COALESCE(TRIM("chamada_Para"), '') AS chamada_para,
             MIN(indice) AS indice
         FROM informacoes_consolidadas.Jira_status_tarefas
-        WHERE chamada_para IS NOT NULL AND TRIM(chamada_para) <> ''
+        WHERE "chamada_Para" IS NOT NULL AND TRIM("chamada_Para") <> ''
           AND indice IS NOT NULL
-        GROUP BY chamada_para
+        GROUP BY "chamada_Para"
         ORDER BY indice
         """
     )
@@ -311,9 +311,20 @@ def render_project_calendar(df: pd.DataFrame):
         st.warning("Tabela de mapeamento de subtarefas não encontrada.")
         return
 
+    # Verificar se a coluna chamada_para existe (pode ter variações de case)
+    col_chamada = None
+    for col in df_proj.columns:
+        if col.lower() == "chamada_para":
+            col_chamada = col
+            break
+    
+    if col_chamada is None:
+        st.warning("Coluna 'chamada_para' não encontrada nos dados. Verifique se a view está atualizada.")
+        return
+
     linhas = []
     # Normalizar chamada_para para matching
-    df_proj["chamada_para_norm"] = df_proj["chamada_para"].fillna("").map(_normalize_text)
+    df_proj["chamada_para_norm"] = df_proj[col_chamada].fillna("").map(_normalize_text)
 
     for _, row in mapping.sort_values("indice").iterrows():
         termo_match = row.get("match_norm") or _normalize_text(row.get("chamada_para", ""))
