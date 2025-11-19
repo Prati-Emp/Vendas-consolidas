@@ -9,6 +9,7 @@ import pandas as pd
 from typing import List, Optional, Dict, Any
 from dotenv import load_dotenv
 import streamlit as st
+import time
 
 # Carregar variáveis de ambiente
 import os
@@ -68,16 +69,39 @@ class MotherDuckConnection:
         
         return token
     
-    def connect(self):
-        """Estabelece conexão com MotherDuck."""
+    def connect(self, max_retries: int = 3, retry_delay: float = 2.0):
+        """Estabelece conexão com MotherDuck com retry automático."""
         if not self.connection:
-            try:
-                
-                connection_string = f"md:?motherduck_token={self.token}"
-                self.connection = duckdb.connect(connection_string)
-            except Exception as e:
-                st.error(f"❌ Erro ao conectar com MotherDuck: {str(e)}")
-                raise
+            connection_string = f"md:?motherduck_token={self.token}"
+            last_error = None
+            
+            for attempt in range(max_retries):
+                try:
+                    self.connection = duckdb.connect(connection_string)
+                    return  # Sucesso
+                except Exception as e:
+                    last_error = e
+                    if attempt < max_retries - 1:
+                        # Aguardar antes de tentar novamente (backoff exponencial)
+                        wait_time = retry_delay * (2 ** attempt)
+                        time.sleep(wait_time)
+                    else:
+                        # Última tentativa falhou
+                        error_msg = str(e)
+                        if "UNAVAILABLE" in error_msg or "GET_WELCOME_PACK" in error_msg:
+                            st.error(
+                                "❌ **Erro de conexão com MotherDuck**\n\n"
+                                "O serviço MotherDuck está temporariamente indisponível. "
+                                "Isso pode ser causado por:\n"
+                                "- Problemas temporários de rede\n"
+                                "- Manutenção do serviço MotherDuck\n"
+                                "- Sobrecarga do servidor\n\n"
+                                "**Solução:** Tente recarregar a página em alguns instantes. "
+                                "Se o problema persistir, verifique o status do MotherDuck ou entre em contato com o suporte."
+                            )
+                        else:
+                            st.error(f"❌ Erro ao conectar com MotherDuck: {error_msg}")
+                        raise
     
     def disconnect(self):
         """Fecha a conexão com MotherDuck."""
@@ -107,11 +131,29 @@ class MotherDuckConnection:
             else:
                 return _self.connection.execute(sql).df()
         except Exception as e:
-            st.error(f"❌ Erro na consulta SQL: {str(e)}")
-            st.error(f"SQL: {sql}")
-            if params:
-                st.error(f"Parâmetros: {params}")
-            raise
+            error_msg = str(e)
+            # Se a conexão foi perdida, tentar reconectar uma vez
+            if "connection" in error_msg.lower() or "closed" in error_msg.lower():
+                try:
+                    _self.connection = None  # Resetar conexão
+                    _self.connect()
+                    # Tentar novamente após reconectar
+                    if params:
+                        return _self.connection.execute(sql, params).df()
+                    else:
+                        return _self.connection.execute(sql).df()
+                except Exception as retry_error:
+                    st.error(f"❌ Erro na consulta SQL após tentativa de reconexão: {str(retry_error)}")
+                    st.error(f"SQL: {sql}")
+                    if params:
+                        st.error(f"Parâmetros: {params}")
+                    raise
+            else:
+                st.error(f"❌ Erro na consulta SQL: {error_msg}")
+                st.error(f"SQL: {sql}")
+                if params:
+                    st.error(f"Parâmetros: {params}")
+                raise
 
 # Instância global da conexão
 @st.cache_resource
