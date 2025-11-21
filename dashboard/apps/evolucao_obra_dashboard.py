@@ -176,7 +176,7 @@ def aplicar_drill_down(df: pd.DataFrame, nivel_drill: List[str]) -> pd.DataFrame
     
     return df_filtrado
 
-def obter_valores_unicos_hierarquia(df: pd.DataFrame, nivel: int) -> List[str]:
+def obter_valores_unicos_hierarquia(df: pd.DataFrame, nivel: int, session_key: str = 'nivel_drill') -> List[str]:
     """
     Obtém valores únicos para um nível específico da hierarquia
     """
@@ -186,8 +186,8 @@ def obter_valores_unicos_hierarquia(df: pd.DataFrame, nivel: int) -> List[str]:
     df_filtrado = df.copy()
     
     # Aplicar filtros dos níveis anteriores
-    if 'nivel_drill' in st.session_state:
-        df_filtrado = aplicar_drill_down(df_filtrado, st.session_state['nivel_drill'])
+    if session_key in st.session_state:
+        df_filtrado = aplicar_drill_down(df_filtrado, st.session_state[session_key])
     
     # Identificar coluna do nível
     colunas_niveis = [
@@ -218,58 +218,42 @@ def render_breadcrumb(nivel_drill: List[str]):
         caminho = " > ".join(nivel_drill)
         st.caption(f"📊 {caminho}")
 
-def render_evolucao_obra_dashboard(
-    *,
-    show_title: bool = True,
-    show_caption: bool = True,
-):
+def render_visao_geral(df: pd.DataFrame):
     """
-    Renderiza o dashboard de Evolução de Obra com drill-down.
+    Renderiza a visão geral (todos os empreendimentos)
     """
-    if show_title:
-        st.title("🏗️ Evolução de Obra")
-        if show_caption:
-            st.caption("COMPARATIVO FÍSICO - FINANCEIRO RESIDENCIAL HORIZONT")
-    
     # Inicializar estado do drill-down
-    if 'nivel_drill' not in st.session_state:
-        st.session_state['nivel_drill'] = []
-    
-    # Carregar dados
-    with st.spinner("📥 Carregando dados..."):
-        df = carregar_dados_consolidados()
-    
-    if df.empty:
-        st.warning("⚠️ Nenhum dado encontrado. Verifique a conexão com o banco de dados.")
-        return
+    if 'nivel_drill_geral' not in st.session_state:
+        st.session_state['nivel_drill_geral'] = []
     
     # Sidebar - Controles
     with st.sidebar:
         st.header("🔍 Filtros")
         
         # Botão para voltar um nível
-        if len(st.session_state['nivel_drill']) > 0:
-            if st.button("⬅️ Voltar", use_container_width=True):
-                st.session_state['nivel_drill'] = st.session_state['nivel_drill'][:-1]
+        if len(st.session_state['nivel_drill_geral']) > 0:
+            if st.button("⬅️ Voltar", use_container_width=True, key="voltar_geral"):
+                st.session_state['nivel_drill_geral'] = st.session_state['nivel_drill_geral'][:-1]
                 st.rerun()
         
         # Seleção de Unidade Construtiva (se no nível 0)
-        if len(st.session_state['nivel_drill']) == 0:
-            unidades = obter_valores_unicos_hierarquia(df, 0)
+        if len(st.session_state['nivel_drill_geral']) == 0:
+            unidades = obter_valores_unicos_hierarquia(df, 0, 'nivel_drill_geral')
             if unidades:
                 unidade_selecionada = st.selectbox(
                     "Unidade Construtiva",
-                    options=["Todas"] + unidades
+                    options=["Todas"] + unidades,
+                    key="select_unidade_geral"
                 )
                 if unidade_selecionada != "Todas":
-                    st.session_state['nivel_drill'] = [unidade_selecionada]
+                    st.session_state['nivel_drill_geral'] = [unidade_selecionada]
                     st.rerun()
     
     # Breadcrumb
-    render_breadcrumb(st.session_state['nivel_drill'])
+    render_breadcrumb(st.session_state['nivel_drill_geral'])
     
     # Aplicar drill-down
-    df_filtrado = aplicar_drill_down(df, st.session_state['nivel_drill'])
+    df_filtrado = aplicar_drill_down(df, st.session_state['nivel_drill_geral'])
     
     if df_filtrado.empty:
         st.info("ℹ️ Nenhum dado encontrado para os filtros selecionados.")
@@ -303,6 +287,106 @@ def render_evolucao_obra_dashboard(
     
     st.markdown("---")
     
+    # Renderizar tabela
+    render_tabela_detalhada(df_filtrado, key_suffix="_geral")
+
+def render_visao_horizont(df: pd.DataFrame):
+    """
+    Renderiza a visão específica do empreendimento Horizont
+    """
+    # Filtrar apenas dados do Horizont
+    # Procurar coluna de empreendimento ou obra
+    col_empreendimento = None
+    for col in df.columns:
+        if col and isinstance(col, str):
+            col_lower = col.lower()
+            if 'empreendimento' in col_lower or (col_lower == 'obra'):
+                col_empreendimento = col
+                break
+    
+    if col_empreendimento:
+        df_horizont = df[df[col_empreendimento].astype(str).str.contains('Horizont', case=False, na=False)].copy()
+    else:
+        # Se não encontrar coluna, usar todos os dados (assumindo que já estão filtrados)
+        df_horizont = df.copy()
+    
+    if df_horizont.empty:
+        st.warning("⚠️ Nenhum dado encontrado para o empreendimento Horizont.")
+        return
+    
+    # Inicializar estado do drill-down específico do Horizont
+    if 'nivel_drill_horizont' not in st.session_state:
+        st.session_state['nivel_drill_horizont'] = []
+    
+    # Sidebar - Controles
+    with st.sidebar:
+        st.header("🔍 Filtros - Horizont")
+        
+        # Botão para voltar um nível
+        if len(st.session_state['nivel_drill_horizont']) > 0:
+            if st.button("⬅️ Voltar", use_container_width=True, key="voltar_horizont"):
+                st.session_state['nivel_drill_horizont'] = st.session_state['nivel_drill_horizont'][:-1]
+                st.rerun()
+        
+        # Seleção de Unidade Construtiva (se no nível 0)
+        if len(st.session_state['nivel_drill_horizont']) == 0:
+            unidades = obter_valores_unicos_hierarquia(df_horizont, 0, 'nivel_drill_horizont')
+            if unidades:
+                unidade_selecionada = st.selectbox(
+                    "Unidade Construtiva",
+                    options=["Todas"] + unidades,
+                    key="select_unidade_horizont"
+                )
+                if unidade_selecionada != "Todas":
+                    st.session_state['nivel_drill_horizont'] = [unidade_selecionada]
+                    st.rerun()
+    
+    # Breadcrumb
+    st.caption("🏗️ Residencial Horizont")
+    render_breadcrumb(st.session_state['nivel_drill_horizont'])
+    
+    # Aplicar drill-down
+    df_filtrado = aplicar_drill_down(df_horizont, st.session_state['nivel_drill_horizont'])
+    
+    if df_filtrado.empty:
+        st.info("ℹ️ Nenhum dado encontrado para os filtros selecionados.")
+        return
+    
+    # Calcular métricas resumidas
+    total_orcamento = df_filtrado['Orçamento'].sum() if 'Orçamento' in df_filtrado.columns else 0
+    total_realizado = df_filtrado['Realizado'].sum() if 'Realizado' in df_filtrado.columns else 0
+    
+    conclusao_financeira_geral = (total_realizado / total_orcamento * 100) if total_orcamento > 0 else 0
+    conclusao_fisica_geral = df_filtrado['Conclusão Física'].mean() if 'Conclusão Física' in df_filtrado.columns else 0
+    idc_geral = (conclusao_financeira_geral / conclusao_fisica_geral * 100) if conclusao_fisica_geral > 0 else 0
+    
+    # Cards com métricas principais
+    col1, col2, col3, col4, col5 = st.columns(5)
+    
+    with col1:
+        st.metric("Total Orçamento", formatar_moeda(total_orcamento))
+    
+    with col2:
+        st.metric("Total Realizado", formatar_moeda(total_realizado))
+    
+    with col3:
+        st.metric("Conclusão Financeira", formatar_percentual(conclusao_financeira_geral))
+    
+    with col4:
+        st.metric("Conclusão Física", formatar_percentual(conclusao_fisica_geral))
+    
+    with col5:
+        st.metric("IDC", formatar_idc(idc_geral))
+    
+    st.markdown("---")
+    
+    # Renderizar tabela
+    render_tabela_detalhada(df_filtrado, key_suffix="_horizont")
+
+def render_tabela_detalhada(df_filtrado: pd.DataFrame, key_suffix: str = ""):
+    """
+    Renderiza a tabela detalhada com formatação
+    """
     # Tabela principal
     st.subheader("📊 Tabela Detalhada")
     
@@ -319,11 +403,12 @@ def render_evolucao_obra_dashboard(
     # Adicionar colunas de hierarquia
     for termos in colunas_hierarquia:
         for col in df_filtrado.columns:
-            col_lower = col.lower()
-            if all(termo in col_lower for termo in termos):
-                if col not in colunas_exibicao:
-                    colunas_exibicao.append(col)
-                break
+            if col and isinstance(col, str):
+                col_lower = col.lower()
+                if all(termo in col_lower for termo in termos):
+                    if col not in colunas_exibicao:
+                        colunas_exibicao.append(col)
+                    break
     
     # Adicionar colunas de medidas
     if 'Orçamento' in df_filtrado.columns:
@@ -379,6 +464,37 @@ def render_evolucao_obra_dashboard(
         st.download_button(
             label="📥 Exportar CSV",
             data=csv,
-            file_name="evolucao_obra.csv",
-            mime="text/csv"
+            file_name=f"evolucao_obra{key_suffix}.csv",
+            mime="text/csv",
+            key=f"export_csv{key_suffix}"
         )
+
+def render_evolucao_obra_dashboard(
+    *,
+    show_title: bool = True,
+    show_caption: bool = True,
+):
+    """
+    Renderiza o dashboard de Evolução de Obra com tabs para diferentes visões.
+    """
+    if show_title:
+        st.title("🏗️ Evolução de Obra")
+        if show_caption:
+            st.caption("COMPARATIVO FÍSICO - FINANCEIRO")
+    
+    # Carregar dados
+    with st.spinner("📥 Carregando dados..."):
+        df = carregar_dados_consolidados()
+    
+    if df.empty:
+        st.warning("⚠️ Nenhum dado encontrado. Verifique a conexão com o banco de dados.")
+        return
+    
+    # Criar tabs
+    tab1, tab2 = st.tabs(["📊 Visão Geral", "🏗️ Horizont"])
+    
+    with tab1:
+        render_visao_geral(df)
+    
+    with tab2:
+        render_visao_horizont(df)
