@@ -14,6 +14,7 @@ if str(DASHBOARD_DIR) not in sys.path:
 from advanced_auth import require_auth, require_page_access, can_access_page  # noqa: E402
 from apps.operacoes_dashboard import render_operacoes_dashboard  # noqa: E402
 from apps.compras_dashboard import render_compras_dashboard  # noqa: E402
+from apps.evolucao_obra_dashboard import render_evolucao_obra_dashboard  # noqa: E402
 
 st.set_page_config(
     page_title="Operações",
@@ -29,9 +30,10 @@ require_page_access("operacoes")
 # Verificar acesso às subpáginas
 has_jira_access = can_access_page("operacoes.jira")
 has_compras_access = can_access_page("operacoes.compras")
+has_evolucao_obra_access = can_access_page("operacoes.evolucao_obra")
 
 # Verificar se o usuário tem acesso a pelo menos uma subpágina
-if not has_jira_access and not has_compras_access:
+if not has_jira_access and not has_compras_access and not has_evolucao_obra_access:
     st.error("🚫 Acesso negado! Você não tem permissão para acessar nenhuma página de Operações.")
     st.info("💡 Entre em contato com o administrador para solicitar acesso.")
     st.stop()
@@ -46,6 +48,8 @@ if has_jira_access:
     tabs_config.append(("📋 Jira", "jira"))
 if has_compras_access:
     tabs_config.append(("🛒 Compras", "compras"))
+if has_evolucao_obra_access:
+    tabs_config.append(("🏗️ Evolução de Obra", "evolucao_obra"))
 
 # Criar tabs dinamicamente
 if len(tabs_config) == 1:
@@ -61,6 +65,11 @@ if len(tabs_config) == 1:
         )
     elif tab_key == "compras":
         render_compras_dashboard(
+            show_title=False,
+            show_caption=False,
+        )
+    elif tab_key == "evolucao_obra":
+        render_evolucao_obra_dashboard(
             show_title=False,
             show_caption=False,
         )
@@ -81,6 +90,11 @@ else:
                 )
             elif tab_key == "compras":
                 render_compras_dashboard(
+                    show_title=False,
+                    show_caption=False,
+                )
+            elif tab_key == "evolucao_obra":
+                render_evolucao_obra_dashboard(
                     show_title=False,
                     show_caption=False,
                 )
