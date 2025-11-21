@@ -68,23 +68,23 @@ def tratar_apropricao_horizont(df: pd.DataFrame) -> pd.DataFrame:
     """
     Trata tabela apropricao_horizont
     
-    - Identifica e remove cabeçalhos
-    - Renomeia colunas genéricas
+    - Identifica e remove cabeçalhos (linhas 0 e 1)
+    - Renomeia colunas genéricas baseado na linha 1
     - Converte valores para numérico
     - Aplica filtros
     """
     df = df.copy()
     
-    # Verificar se primeira linha é cabeçalho
+    # Remover primeira linha (cabeçalho de período)
     if len(df) > 0:
-        primeira_linha = df.iloc[0].astype(str).str.lower().str.contains('período|periodo', case=False, na=False)
-        if primeira_linha.any():
-            # Remover primeira linha
+        primeira_valor = str(df.iloc[0]['column00']) if 'column00' in df.columns else ''
+        if 'período' in primeira_valor.lower() or 'periodo' in primeira_valor.lower():
             df = df.iloc[1:].reset_index(drop=True)
     
-    # Verificar se segunda linha contém nomes reais das colunas
+    # Remover segunda linha (cabeçalho real) e usar para renomear colunas
     if len(df) > 0:
-        # Mapeamento de colunas genéricas para nomes reais
+        # Mapeamento baseado na estrutura real:
+        # Linha 1 contém: Obra, Unidade construtiva, Célula construtiva, Etapa, Subetapa, Serviço, Credor/Histórico, Valor
         col_mapping = {
             'column00': 'Obra',
             'column03': 'Unidade construtiva',
@@ -96,31 +96,33 @@ def tratar_apropricao_horizont(df: pd.DataFrame) -> pd.DataFrame:
             'column17': 'Valor'
         }
         
-        # Renomear colunas se existirem
-        for old_col, new_col in col_mapping.items():
-            if old_col in df.columns:
-                df = df.rename(columns={old_col: new_col})
+        # Renomear colunas
+        df = df.rename(columns=col_mapping)
         
-        # Se ainda tiver colunas genéricas, tentar inferir da segunda linha
-        if any(col.startswith('column') for col in df.columns) and len(df) > 0:
-            # Verificar se segunda linha parece ser cabeçalho
-            segunda_linha = df.iloc[0]
-            # Se a segunda linha contém valores que parecem nomes de colunas, usar como cabeçalho
-            if segunda_linha.astype(str).str.contains('obra|unidade|etapa|serviço', case=False, na=False).any():
-                # Usar segunda linha como nomes de colunas
-                df.columns = df.iloc[0]
+        # Remover linha de cabeçalho (agora é a primeira linha após remover a anterior)
+        if len(df) > 0:
+            # Verificar se primeira linha ainda é cabeçalho
+            primeira_obra = str(df.iloc[0].get('Obra', '')) if 'Obra' in df.columns else ''
+            primeira_unidade = str(df.iloc[0].get('Unidade construtiva', '')) if 'Unidade construtiva' in df.columns else ''
+            
+            # Se contém "Obra" e "Unidade construtiva" como texto literal, é cabeçalho
+            if primeira_obra.lower() == 'obra' or primeira_unidade.lower() == 'unidade construtiva':
                 df = df.iloc[1:].reset_index(drop=True)
     
     # Converter 'Valor' para numérico (formato brasileiro)
     if 'Valor' in df.columns:
-        df['Valor'] = df['Valor'].astype(str).str.replace('.', '', regex=False).str.replace(',', '.', regex=False)
-        df['Valor'] = pd.to_numeric(df['Valor'], errors='coerce')
+        # Tratar valores None/NaN antes de converter
+        df['Valor'] = df['Valor'].fillna('0').astype(str)
+        df['Valor'] = df['Valor'].str.replace('.', '', regex=False).str.replace(',', '.', regex=False)
+        df['Valor'] = pd.to_numeric(df['Valor'], errors='coerce').fillna(0)
     
-    # Aplicar filtros
+    # Aplicar filtros (tratando valores None)
     if 'Serviço' in df.columns:
+        df['Serviço'] = df['Serviço'].fillna('').astype(str)
         df = df[~df['Serviço'].isin(['Comissões', 'Devolução apartamentos', 'Imposto sobre vendas'])]
     
     if 'Credor/Histórico' in df.columns:
+        df['Credor/Histórico'] = df['Credor/Histórico'].fillna('').astype(str)
         df = df[df['Credor/Histórico'] != 'Pagamento - DÉBITO AMORTIZAÇÃO PJ']
     
     return df

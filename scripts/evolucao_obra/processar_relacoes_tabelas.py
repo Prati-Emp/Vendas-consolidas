@@ -31,9 +31,14 @@ def processar_relacoes_tabelas(tabelas: Dict[str, pd.DataFrame]) -> pd.DataFrame
     # Normalizar nomes de colunas para matching
     def normalizar_coluna(df: pd.DataFrame, col_name: str) -> Optional[str]:
         """Encontra coluna similar (case-insensitive)"""
+        if df is None or df.empty:
+            return None
+        col_name_norm = col_name.lower().replace('_', ' ').replace('-', ' ').strip()
         for col in df.columns:
-            if col.lower().replace('_', ' ').replace('-', ' ') == col_name.lower().replace('_', ' ').replace('-', ' '):
-                return col
+            if col and isinstance(col, str):
+                col_norm = col.lower().replace('_', ' ').replace('-', ' ').strip()
+                if col_norm == col_name_norm:
+                    return col
         return None
     
     # JOIN com Apropriação

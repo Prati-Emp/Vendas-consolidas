@@ -13,22 +13,25 @@ def calcular_orcamento(df: pd.DataFrame) -> pd.Series:
     Medida: Orçamento
     CountNonNull(Orcamento_base_horizont.Orcamento + contingência)
     """
+    if df is None or df.empty:
+        return pd.Series([0])
+    
     col_orcamento = None
     for col in df.columns:
-        if 'orcamento' in col.lower() and 'contingência' in col.lower():
-            col_orcamento = col
-            break
-        elif 'orcamento' in col.lower() and 'contingencia' in col.lower():
-            col_orcamento = col
-            break
+        if col and isinstance(col, str):
+            col_lower = col.lower()
+            if 'orcamento' in col_lower and ('contingência' in col_lower or 'contingencia' in col_lower):
+                col_orcamento = col
+                break
     
     if col_orcamento:
         return df[col_orcamento].fillna(0)
     else:
-        # Tentar encontrar coluna de orçamento
+        # Tentar encontrar coluna de orçamento (Preço total)
         for col in df.columns:
-            if 'preço total' in col.lower() or 'preco total' in col.lower():
-                return df[col].fillna(0)
+            if col and isinstance(col, str):
+                if 'preço total' in col.lower() or 'preco total' in col.lower():
+                    return df[col].fillna(0)
     
     return pd.Series([0] * len(df))
 
@@ -38,17 +41,22 @@ def calcular_realizado(df: pd.DataFrame) -> pd.Series:
     Custos_Horizont.Apropriações_Horizont
     Soma de valores da tabela apropricao_horizont
     """
+    if df is None or df.empty:
+        return pd.Series([0])
+    
     # Procurar coluna de valor da apropriação
     col_valor = None
     for col in df.columns:
-        if 'valor' in col.lower() and ('aprop' in col.lower() or 'apropriacao' in col.lower()):
-            col_valor = col
-            break
+        if col and isinstance(col, str):
+            col_lower = col.lower()
+            if 'valor' in col_lower and ('aprop' in col_lower or 'apropriacao' in col_lower):
+                col_valor = col
+                break
     
     if not col_valor:
         # Tentar encontrar qualquer coluna de valor
         for col in df.columns:
-            if col.lower() == 'valor':
+            if col and isinstance(col, str) and col.lower() == 'valor':
                 col_valor = col
                 break
     
@@ -57,9 +65,11 @@ def calcular_realizado(df: pd.DataFrame) -> pd.Series:
         df_filtrado = df.copy()
         
         if 'Serviço' in df_filtrado.columns:
+            df_filtrado['Serviço'] = df_filtrado['Serviço'].fillna('').astype(str)
             df_filtrado = df_filtrado[~df_filtrado['Serviço'].isin(['Comissões', 'Devolução apartamentos', 'Imposto sobre vendas'])]
         
         if 'Credor/Histórico' in df_filtrado.columns:
+            df_filtrado['Credor/Histórico'] = df_filtrado['Credor/Histórico'].fillna('').astype(str)
             df_filtrado = df_filtrado[df_filtrado['Credor/Histórico'] != 'Pagamento - DÉBITO AMORTIZAÇÃO PJ']
         
         return df_filtrado[col_valor].fillna(0)
@@ -86,12 +96,17 @@ def calcular_conclusao_fisica(df: pd.DataFrame) -> pd.Series:
     Medicao_Horizont.Medicao_fisica_hr
     Usa Percentual_Realizado da tabela sienge_medicoes
     """
+    if df is None or df.empty:
+        return pd.Series([0])
+    
     # Procurar coluna Percentual_Realizado
     col_percentual = None
     for col in df.columns:
-        if 'percentual' in col.lower() and 'realizado' in col.lower():
-            col_percentual = col
-            break
+        if col and isinstance(col, str):
+            col_lower = col.lower()
+            if 'percentual' in col_lower and 'realizado' in col_lower:
+                col_percentual = col
+                break
     
     if col_percentual:
         return df[col_percentual].fillna(0)
@@ -154,34 +169,42 @@ def aplicar_filtros_power_bi(df: pd.DataFrame) -> pd.DataFrame:
     """
     Aplica filtros do Power BI conforme especificação
     """
+    if df is None or df.empty:
+        return pd.DataFrame()
+    
     df_filtrado = df.copy()
     
     # 1. Célula Construtiva = 'FECHAMENTOS E ACABAMENTOS' (fixo)
     col_celula = None
     for col in df_filtrado.columns:
-        if 'célula' in col.lower() or 'celula' in col.lower():
-            col_celula = col
-            break
+        if col and isinstance(col, str):
+            if 'célula' in col.lower() or 'celula' in col.lower():
+                col_celula = col
+                break
     
     if col_celula:
+        df_filtrado[col_celula] = df_filtrado[col_celula].fillna('').astype(str)
         df_filtrado = df_filtrado[
-            df_filtrado[col_celula].astype(str).str.upper().str.contains('FECHAMENTOS E ACABAMENTOS', na=False)
+            df_filtrado[col_celula].str.upper().str.contains('FECHAMENTOS E ACABAMENTOS', na=False)
         ]
     
     # 2. Serviço != 'Contingência'
     if 'Serviço' in df_filtrado.columns:
-        df_filtrado = df_filtrado[df_filtrado['Serviço'].astype(str).str.upper() != 'CONTINGÊNCIA']
+        df_filtrado['Serviço'] = df_filtrado['Serviço'].fillna('').astype(str)
+        df_filtrado = df_filtrado[df_filtrado['Serviço'].str.upper() != 'CONTINGÊNCIA']
     
     # 3. Unidade Construtiva != 'Administrativo'
     col_unidade = None
     for col in df_filtrado.columns:
-        if 'unidade' in col.lower() and 'construtiva' in col.lower():
-            col_unidade = col
-            break
+        if col and isinstance(col, str):
+            if 'unidade' in col.lower() and 'construtiva' in col.lower():
+                col_unidade = col
+                break
     
     if col_unidade:
+        df_filtrado[col_unidade] = df_filtrado[col_unidade].fillna('').astype(str)
         df_filtrado = df_filtrado[
-            df_filtrado[col_unidade].astype(str).str.upper() != 'ADMINISTRATIVO'
+            df_filtrado[col_unidade].str.upper() != 'ADMINISTRATIVO'
         ]
     
     # 4. Serviço (Apropriação) != 'Comissões', 'Devolução apartamentos', 'Imposto sobre vendas'
@@ -192,6 +215,7 @@ def aplicar_filtros_power_bi(df: pd.DataFrame) -> pd.DataFrame:
     
     # 5. Credor/Histórico != 'Pagamento - DÉBITO AMORTIZAÇÃO PJ'
     if 'Credor/Histórico' in df_filtrado.columns:
+        df_filtrado['Credor/Histórico'] = df_filtrado['Credor/Histórico'].fillna('').astype(str)
         df_filtrado = df_filtrado[
             df_filtrado['Credor/Histórico'] != 'Pagamento - DÉBITO AMORTIZAÇÃO PJ'
         ]

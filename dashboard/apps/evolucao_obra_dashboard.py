@@ -111,6 +111,9 @@ def aplicar_drill_down(df: pd.DataFrame, nivel_drill: List[str]) -> pd.DataFrame
     """
     Aplica filtros baseados no nível de drill-down atual
     """
+    if df is None or df.empty:
+        return pd.DataFrame()
+    
     df_filtrado = df.copy()
     
     # Nível 0: Mostrar tudo
@@ -121,47 +124,54 @@ def aplicar_drill_down(df: pd.DataFrame, nivel_drill: List[str]) -> pd.DataFrame
     if len(nivel_drill) >= 1:
         col_unidade = None
         for col in df_filtrado.columns:
-            if 'unidade' in col.lower() and 'construtiva' in col.lower():
-                col_unidade = col
-                break
+            if col and isinstance(col, str):
+                if 'unidade' in col.lower() and 'construtiva' in col.lower():
+                    col_unidade = col
+                    break
         
         if col_unidade:
+            df_filtrado[col_unidade] = df_filtrado[col_unidade].fillna('').astype(str)
             df_filtrado = df_filtrado[
-                df_filtrado[col_unidade].astype(str).str.strip() == nivel_drill[0]
+                df_filtrado[col_unidade].str.strip() == nivel_drill[0]
             ]
     
     # Nível 2: Filtrar por Célula Construtiva
     if len(nivel_drill) >= 2:
         col_celula = None
         for col in df_filtrado.columns:
-            if 'célula' in col.lower() or 'celula' in col.lower():
-                col_celula = col
-                break
+            if col and isinstance(col, str):
+                if 'célula' in col.lower() or 'celula' in col.lower():
+                    col_celula = col
+                    break
         
         if col_celula:
+            df_filtrado[col_celula] = df_filtrado[col_celula].fillna('').astype(str)
             df_filtrado = df_filtrado[
-                df_filtrado[col_celula].astype(str).str.strip() == nivel_drill[1]
+                df_filtrado[col_celula].str.strip() == nivel_drill[1]
             ]
     
     # Nível 3: Filtrar por Etapa
     if len(nivel_drill) >= 3:
         if 'Etapa' in df_filtrado.columns:
+            df_filtrado['Etapa'] = df_filtrado['Etapa'].fillna('').astype(str)
             df_filtrado = df_filtrado[
-                df_filtrado['Etapa'].astype(str).str.strip() == nivel_drill[2]
+                df_filtrado['Etapa'].str.strip() == nivel_drill[2]
             ]
     
     # Nível 4: Filtrar por Subetapa
     if len(nivel_drill) >= 4:
         if 'Subetapa' in df_filtrado.columns:
+            df_filtrado['Subetapa'] = df_filtrado['Subetapa'].fillna('').astype(str)
             df_filtrado = df_filtrado[
-                df_filtrado['Subetapa'].astype(str).str.strip() == nivel_drill[3]
+                df_filtrado['Subetapa'].str.strip() == nivel_drill[3]
             ]
     
     # Nível 5: Filtrar por Serviço
     if len(nivel_drill) >= 5:
         if 'Serviço' in df_filtrado.columns:
+            df_filtrado['Serviço'] = df_filtrado['Serviço'].fillna('').astype(str)
             df_filtrado = df_filtrado[
-                df_filtrado['Serviço'].astype(str).str.strip() == nivel_drill[4]
+                df_filtrado['Serviço'].str.strip() == nivel_drill[4]
             ]
     
     return df_filtrado
@@ -170,6 +180,9 @@ def obter_valores_unicos_hierarquia(df: pd.DataFrame, nivel: int) -> List[str]:
     """
     Obtém valores únicos para um nível específico da hierarquia
     """
+    if df is None or df.empty:
+        return []
+    
     df_filtrado = df.copy()
     
     # Aplicar filtros dos níveis anteriores
@@ -188,10 +201,12 @@ def obter_valores_unicos_hierarquia(df: pd.DataFrame, nivel: int) -> List[str]:
     if nivel < len(colunas_niveis):
         termos = colunas_niveis[nivel]
         for col in df_filtrado.columns:
-            col_lower = col.lower()
-            if all(termo in col_lower for termo in termos):
-                valores = df_filtrado[col].dropna().unique().tolist()
-                return sorted([str(v).strip() for v in valores if str(v).strip()])
+            if col and isinstance(col, str):
+                col_lower = col.lower()
+                if all(termo in col_lower for termo in termos):
+                    valores = df_filtrado[col].dropna().fillna('').astype(str)
+                    valores_unicos = valores.unique().tolist()
+                    return sorted([str(v).strip() for v in valores_unicos if v and str(v).strip()])
     
     return []
 
