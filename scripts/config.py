@@ -192,6 +192,27 @@ def get_api_config(api_name: str) -> Optional[APIConfig]:
             rate_limit=30  # Jira é mais lento, usar rate limit menor
         )
     
+    elif api_name == 'sienge_medicoes':
+        token = os.environ.get('SIENGE_TOKEN', '')
+        # Limpar token de caracteres extras
+        token = token.strip()
+        if token.startswith('sBasic '):
+            token = token[1:]  # Remove o 's' extra
+        if token.startswith('Basic '):
+            auth_header = token
+        else:
+            auth_header = f'Basic {token}'
+            
+        return APIConfig(
+            name='Sienge Medições',
+            base_url='https://api.sienge.com.br/pratiemp/public/api/bulk-data/v1/building-cost-estimation-items',
+            headers={
+                'accept': 'application/json',
+                'authorization': auth_header
+            },
+            rate_limit=50
+        )
+    
     return None
 
 def get_all_rate_limits() -> Dict[str, int]:
@@ -207,5 +228,6 @@ def get_all_rate_limits() -> Dict[str, int]:
         'sienge_vendas_canceladas': 50,
         'sienge_contratos_suprimentos': 50,
         'sienge_pedidos_compras': 50,
+        'sienge_medicoes': 50,
         'jira': 30
     }
