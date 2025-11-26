@@ -497,6 +497,7 @@ def render_vendas_tab(
     meta_total_periodo: float,
     imobiliarias_override: Optional[List[str]] = None,
     meta_ratio: float = 1.0,
+    mostrar_analise_imobiliaria: bool = True,
 ):
     """Renderiza o conteúdo completo de uma aba (geral, interna ou externa)."""
     imobiliaria_filter = resolve_imobiliaria_filter(imobiliaria_selecionada, imobiliarias_override)
@@ -564,12 +565,13 @@ def render_vendas_tab(
     )
     st.markdown("---")
 
-    render_analytics_imobiliaria(
-        data_inicial, data_final,
-        midia_selecionada, tipovenda_selecionada,
-        empreendimento_selecionado, corretor_selecionado,
-        imobiliaria_list
-    )
+    if mostrar_analise_imobiliaria:
+        render_analytics_imobiliaria(
+            data_inicial, data_final,
+            midia_selecionada, tipovenda_selecionada,
+            empreendimento_selecionado, corretor_selecionado,
+            imobiliaria_list
+        )
 
 
 def main():
@@ -705,7 +707,8 @@ def main():
             imobiliaria_selecionada,
             meta_total_periodo,
             imobiliarias_override=imobiliarias_internas,
-            meta_ratio=0.3
+            meta_ratio=0.3,
+            mostrar_analise_imobiliaria=False
         )
 
     with tab_externa:
