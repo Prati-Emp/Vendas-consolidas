@@ -8,7 +8,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime, date, timedelta
-from typing import List, Optional
+from typing import List, Optional, Tuple
 import sys
 from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
@@ -106,6 +106,45 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+
+def split_imobiliarias_por_origem(imobiliarias: List[str]) -> Tuple[List[str], List[str]]:
+    """Classifica imobiliárias em internas (Prati) e externas."""
+    internas, externas = [], []
+    for nome in imobiliarias:
+        nome_normalizado = str(nome or "").upper()
+        if "PRATI" in nome_normalizado:
+            internas.append(nome)
+        else:
+            externas.append(nome)
+    return internas, externas
+
+
+def resolve_imobiliaria_filter(
+    selecionadas: List[str],
+    origem_lista: Optional[List[str]]
+) -> Optional[List[str]]:
+    """
+    Determina a lista final a ser usada no filtro de imobiliárias.
+
+    Retorna:
+        - None quando não há filtro a aplicar.
+        - Lista vazia quando não existem imobiliárias compatíveis com a origem.
+        - Lista com os nomes que devem ser filtrados.
+    """
+    if origem_lista is None:
+        return selecionadas if selecionadas else None
+
+    origem_set = {item for item in origem_lista if item not in (None, "")}
+    if not origem_set:
+        return []
+
+    if selecionadas:
+        filtradas = [item for item in selecionadas if item in origem_set]
+        return filtradas
+
+    return list(origem_set)
+
+
 def initialize_session_state():
     """Inicializa o estado da sessão."""
     if 'kpis' not in st.session_state:
@@ -156,24 +195,30 @@ def render_kpis(kpis: dict):
             help="Menor valor de venda individual"
         )
 
-def render_metas_section(data_inicial: str, data_final: str, empreendimento: str):
-    """Renderiza seção de metas."""
+def render_metas_section(kpis: dict, meta_total: float, meta_ratio: float = 1.0):
+    """Renderiza seção de metas considerando o rateio configurado."""
     st.subheader("🎯 Análise de Metas")
+
+    meta_periodo = (meta_total or 0.0) * meta_ratio
+    meta_display = format_compact_currency(meta_periodo) if meta_periodo else "R$ 0"
+    ratio_pct = int(meta_ratio * 100)
+    ratio_caption = (
+        f"Meta ajustada para {ratio_pct}% do total do período."
+        if meta_ratio != 1.0 else None
+    )
     
     col1, col2, col3 = st.columns(3)
     
     with col1:
-        # Calcular meta do período
-        meta_periodo = get_metas_periodo(data_inicial, data_final, empreendimento)
         st.metric(
             "Meta do Período",
-            format_compact_currency(meta_periodo),
+            meta_display,
             help="Meta de vendas para o período selecionado"
         )
+        if ratio_caption:
+            st.caption(ratio_caption)
     
     with col2:
-        # Calcular atingimento
-        kpis = st.session_state.get('kpis', {})
         valor_vendas = kpis.get('total_valor', 0)
         atingimento = (valor_vendas / meta_periodo * 100) if meta_periodo > 0 else 0
         
@@ -203,7 +248,6 @@ def render_metas_section(data_inicial: str, data_final: str, empreendimento: str
         )
     
     with col3:
-        # Diferença para meta (sem o campo vermelho embaixo)
         diferenca = valor_vendas - meta_periodo
         # Formatar diferença corretamente, incluindo valores negativos
         if diferenca >= 0:
@@ -441,6 +485,93 @@ def render_empreendimentos_estratificados(data_inicial: str, data_final: str,
     st.dataframe(estratificacao, use_container_width=True)
 
 
+def render_vendas_tab(
+    titulo_tab: str,
+    data_inicial: str,
+    data_final: str,
+    midia_selecionada: List[str],
+    tipovenda_selecionada: List[str],
+    empreendimento_selecionado: str,
+    corretor_selecionado: List[str],
+    imobiliaria_selecionada: List[str],
+    meta_total_periodo: float,
+    imobiliarias_override: Optional[List[str]] = None,
+    meta_ratio: float = 1.0,
+):
+    """Renderiza o conteúdo completo de uma aba (geral, interna ou externa)."""
+    imobiliaria_filter = resolve_imobiliaria_filter(imobiliaria_selecionada, imobiliarias_override)
+
+    if imobiliarias_override is not None and not imobiliarias_override:
+        st.info(f"Não existem imobiliárias classificadas para {titulo_tab.lower()}.")
+        return
+
+    if isinstance(imobiliaria_filter, list) and len(imobiliaria_filter) == 0:
+        st.info(f"Os filtros atuais não retornam dados para {titulo_tab.lower()}. Ajuste a seleção e tente novamente.")
+        return
+
+    imobiliaria_param = imobiliaria_filter if isinstance(imobiliaria_filter, list) else None
+
+    try:
+        with st.spinner(f"🔄 Carregando dados ({titulo_tab})..."):
+            kpis = get_kpis(
+                data_inicial, data_final,
+                midia_selecionada, tipovenda_selecionada,
+                empreendimento_selecionado, corretor_selecionado,
+                imobiliaria_param
+            )
+            top_empreendimentos = get_top_empreendimentos(
+                data_inicial, data_final,
+                midia_selecionada, tipovenda_selecionada,
+                empreendimento_selecionado, corretor_selecionado,
+                imobiliaria_param, limit=10
+            )
+    except Exception as e:
+        st.error(f"❌ Erro ao carregar dados de {titulo_tab}: {str(e)}")
+        return
+
+    render_kpis(kpis)
+    st.markdown("---")
+
+    render_metas_section(kpis, meta_total_periodo, meta_ratio)
+    st.markdown("---")
+
+    render_top_empreendimentos(top_empreendimentos)
+    st.markdown("---")
+
+    imobiliaria_list = imobiliaria_param if isinstance(imobiliaria_param, list) else []
+
+    render_house_analysis(
+        data_inicial, data_final,
+        midia_selecionada, tipovenda_selecionada,
+        empreendimento_selecionado, corretor_selecionado,
+        imobiliaria_list
+    )
+    st.markdown("---")
+
+    render_empreendimentos_estratificados(
+        data_inicial, data_final,
+        midia_selecionada, tipovenda_selecionada,
+        empreendimento_selecionado, corretor_selecionado,
+        imobiliaria_list
+    )
+    st.markdown("---")
+
+    render_analytics_corretor(
+        data_inicial, data_final,
+        midia_selecionada, tipovenda_selecionada,
+        empreendimento_selecionado, corretor_selecionado,
+        imobiliaria_list
+    )
+    st.markdown("---")
+
+    render_analytics_imobiliaria(
+        data_inicial, data_final,
+        midia_selecionada, tipovenda_selecionada,
+        empreendimento_selecionado, corretor_selecionado,
+        imobiliaria_list
+    )
+
+
 def main():
     """Função principal do app."""
     initialize_session_state()
@@ -543,52 +674,52 @@ def main():
     # Converter datas para string
     data_inicial_str = data_inicial.strftime('%Y-%m-%d')
     data_final_str = data_final.strftime('%Y-%m-%d')
-    
-    # Carregar dados com loading
-    with st.spinner("🔄 Carregando dados..."):
-        try:
-            # Carregar KPIs
-            kpis = get_kpis(data_inicial_str, data_final_str, midia_selecionada, tipovenda_selecionada, empreendimento_selecionado, corretor_selecionado, imobiliaria_selecionada)
-            st.session_state.kpis = kpis
-            
-            # Carregar timeline
-            timeline_data = get_timeline_data(data_inicial_str, data_final_str, midia_selecionada, tipovenda_selecionada, empreendimento_selecionado, corretor_selecionado, imobiliaria_selecionada)
-            st.session_state.timeline_data = timeline_data
-            
-            # Carregar top empreendimentos
-            top_empreendimentos = get_top_empreendimentos(data_inicial_str, data_final_str, midia_selecionada, tipovenda_selecionada, empreendimento_selecionado, corretor_selecionado, imobiliaria_selecionada, limit=10)
-            st.session_state.top_empreendimentos = top_empreendimentos
-            
-        except Exception as e:
-            st.error(f"❌ Erro ao carregar dados: {str(e)}")
-            return
-    
-    # Renderizar seções principais
-    render_kpis(kpis)
-    st.markdown("---")
-    
-    render_metas_section(data_inicial_str, data_final_str, empreendimento_selecionado)
-    st.markdown("---")
-    
-    # Gráfico de evolução mensal removido conforme solicitado
-    # render_timeline(timeline_data)
-    # st.markdown("---")
-    
-    render_top_empreendimentos(top_empreendimentos)
-    st.markdown("---")
-    
-    render_house_analysis(data_inicial_str, data_final_str, midia_selecionada, tipovenda_selecionada, empreendimento_selecionado, corretor_selecionado, imobiliaria_selecionada)
-    st.markdown("---")
-    
-    render_empreendimentos_estratificados(data_inicial_str, data_final_str, midia_selecionada, tipovenda_selecionada, empreendimento_selecionado, corretor_selecionado, imobiliaria_selecionada)
-    st.markdown("---")
-    
-    # Quadros Analíticos
-    render_analytics_corretor(data_inicial_str, data_final_str, midia_selecionada, tipovenda_selecionada, empreendimento_selecionado, corretor_selecionado, imobiliaria_selecionada)
-    st.markdown("---")
-    
-    render_analytics_imobiliaria(data_inicial_str, data_final_str, midia_selecionada, tipovenda_selecionada, empreendimento_selecionado, corretor_selecionado, imobiliaria_selecionada)
-    
+
+    try:
+        meta_total_periodo = get_metas_periodo(data_inicial_str, data_final_str, empreendimento_selecionado)
+    except Exception as e:
+        st.error(f"❌ Erro ao calcular metas: {str(e)}")
+        meta_total_periodo = 0.0
+
+    imobiliarias_internas, imobiliarias_externas = split_imobiliarias_por_origem(imobiliarias_disponiveis)
+
+    tab_geral, tab_interna, tab_externa = st.tabs(["Vendas Geral", "Vendas Internas", "Vendas Externas"])
+
+    with tab_geral:
+        render_vendas_tab(
+            "Vendas Geral",
+            data_inicial_str, data_final_str,
+            midia_selecionada, tipovenda_selecionada,
+            empreendimento_selecionado, corretor_selecionado,
+            imobiliaria_selecionada,
+            meta_total_periodo,
+            meta_ratio=1.0
+        )
+
+    with tab_interna:
+        render_vendas_tab(
+            "Vendas Internas",
+            data_inicial_str, data_final_str,
+            midia_selecionada, tipovenda_selecionada,
+            empreendimento_selecionado, corretor_selecionado,
+            imobiliaria_selecionada,
+            meta_total_periodo,
+            imobiliarias_override=imobiliarias_internas,
+            meta_ratio=0.3
+        )
+
+    with tab_externa:
+        render_vendas_tab(
+            "Vendas Externas",
+            data_inicial_str, data_final_str,
+            midia_selecionada, tipovenda_selecionada,
+            empreendimento_selecionado, corretor_selecionado,
+            imobiliaria_selecionada,
+            meta_total_periodo,
+            imobiliarias_override=imobiliarias_externas,
+            meta_ratio=0.7
+        )
+
     # Footer
     st.markdown("---")
     st.markdown("""
