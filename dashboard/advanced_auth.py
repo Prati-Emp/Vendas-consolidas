@@ -88,6 +88,16 @@ USERS_DATABASE = {
         "last_login": None,
         "active": True,
         "subpages": ["operacoes.jira"]  # Apenas acesso ao Jira
+    },
+    "italo.peres@grupoprati.com": {
+        "password": "Pr@ti2024!Italo",
+        "role": "manager",
+        "name": "Ítalo Peres",
+        "department": "Vendas",
+        "created": "2025-11-26",
+        "last_login": None,
+        "active": True,
+        "subpages": ["operacoes.jira", "operacoes.compras", "operacoes.evolucao_obra"]
     }
 }
 
@@ -398,6 +408,7 @@ def setup_auth_environment():
             <li>Odair Santos (admin) - odair.santos@grupoprati.com</li>
             <li>Gustavo Sordi (manager) - gustavo.sordi@grupoprati.com</li>
             <li>Lucas Follmann (manager) - lucas.follmann@grupoprati.com</li>
+            <li>Ítalo Peres (manager) - italo.peres@grupoprati.com</li>
             <li>José Aquino (analyst) - jose.aquino@grupoprati.com</li>
             <li>Evelyn Padilha (analyst) - evelyn.padilha@grupoprati.com</li>
         </ul>

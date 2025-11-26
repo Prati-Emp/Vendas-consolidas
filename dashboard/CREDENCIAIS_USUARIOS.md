@@ -12,6 +12,7 @@
 |------|-------|-------|--------|
 | Gustavo Sordi | gustavo.sordi@grupoprati.com | `Pr@ti2024!Gustavo` | Manager |
 | Lucas Follmann | lucas.follmann@grupoprati.com | `Pr@ti2024!Lucas` | Manager |
+| Ítalo Peres | italo.peres@grupoprati.com | `Pr@ti2024!Italo` | Manager |
 
 ### **Analistas**
 | Nome | Email | Senha | Função |

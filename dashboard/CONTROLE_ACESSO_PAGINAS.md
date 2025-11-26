@@ -10,6 +10,7 @@ O sistema implementa **controle de acesso granular** baseado no **role do usuár
 - **Odair Santos (odair.santos@grupoprati.com)** - Admin
 - **Gustavo Sordi (gustavo.sordi@grupoprati.com)** - Manager
 - **Lucas Follmann (lucas.follmann@grupoprati.com)** - Manager
+- **Ítalo Peres (italo.peres@grupoprati.com)** - Manager
 - **José Aquino (jose.aquino@grupoprati.com)** - Analyst
 - **Evelyn Padilha (evelyn.padilha@grupoprati.com)** - Analyst
 - ✅ **Acesso total**: Todas as páginas
