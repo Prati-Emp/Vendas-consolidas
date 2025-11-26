@@ -38,7 +38,8 @@ from utils.md_conn import (
     get_metas_periodo,
     get_analytics_by_dimension,
     get_analytics_corretor,
-    get_analytics_imobiliaria
+    get_analytics_imobiliaria,
+    build_optional_filters,
 )
 from utils.formatters import (
     format_currency, 
@@ -498,6 +499,8 @@ def render_vendas_tab(
     imobiliarias_override: Optional[List[str]] = None,
     meta_ratio: float = 1.0,
     mostrar_analise_imobiliaria: bool = True,
+    mostrar_house_analysis: bool = True,
+    mostrar_vpl_imobiliaria: bool = True,
 ):
     """Renderiza o conteúdo completo de uma aba (geral, interna ou externa)."""
     imobiliaria_filter = resolve_imobiliaria_filter(imobiliaria_selecionada, imobiliarias_override)
@@ -541,13 +544,14 @@ def render_vendas_tab(
 
     imobiliaria_list = imobiliaria_param if isinstance(imobiliaria_param, list) else []
 
-    render_house_analysis(
-        data_inicial, data_final,
-        midia_selecionada, tipovenda_selecionada,
-        empreendimento_selecionado, corretor_selecionado,
-        imobiliaria_list
-    )
-    st.markdown("---")
+    if mostrar_house_analysis:
+        render_house_analysis(
+            data_inicial, data_final,
+            midia_selecionada, tipovenda_selecionada,
+            empreendimento_selecionado, corretor_selecionado,
+            imobiliaria_list
+        )
+        st.markdown("---")
 
     render_empreendimentos_estratificados(
         data_inicial, data_final,
@@ -561,7 +565,8 @@ def render_vendas_tab(
         data_inicial, data_final,
         midia_selecionada, tipovenda_selecionada,
         empreendimento_selecionado, corretor_selecionado,
-        imobiliaria_list
+        imobiliaria_list,
+        mostrar_vpl_imobiliaria=mostrar_vpl_imobiliaria
     )
     st.markdown("---")
 
@@ -708,7 +713,9 @@ def main():
             meta_total_periodo,
             imobiliarias_override=imobiliarias_internas,
             meta_ratio=0.3,
-            mostrar_analise_imobiliaria=False
+            mostrar_analise_imobiliaria=False,
+            mostrar_house_analysis=False,
+            mostrar_vpl_imobiliaria=False
         )
 
     with tab_externa:
@@ -720,7 +727,8 @@ def main():
             imobiliaria_selecionada,
             meta_total_periodo,
             imobiliarias_override=imobiliarias_externas,
-            meta_ratio=0.7
+            meta_ratio=0.7,
+            mostrar_house_analysis=False
         )
 
     # Footer
@@ -736,9 +744,18 @@ def main():
 def render_analytics_corretor(data_inicial: str, data_final: str, 
                              midia_selecionada: List[str], tipovenda_selecionada: List[str],
                              empreendimento_selecionado: str, corretor_selecionado: List[str],
-                             imobiliaria_selecionada: List[str]):
+                             imobiliaria_selecionada: List[str],
+                             mostrar_vpl_imobiliaria: bool = True):
     """Renderiza quadro analítico por corretor."""
     st.subheader("👨‍💼 Análise por Corretor")
+    
+    filtro_sql, filtro_params = build_optional_filters(
+        midia_selecionada,
+        tipovenda_selecionada,
+        empreendimento_selecionado,
+        corretor_selecionado,
+        imobiliaria_selecionada
+    )
     
     # Obter dados
     try:
@@ -935,11 +952,21 @@ def render_analytics_corretor(data_inicial: str, data_final: str,
             try:
                 # Carregar dados de vendas
                 conn = get_md_connection()
-                vendas_df = conn.run_query("""
-                    SELECT corretor, vpl_reserva, vpl_tabela
+                sql_vpl_corretor = """
+                    SELECT 
+                        COALESCE(NULLIF(TRIM(corretor), ''), '—') AS corretor,
+                        COALESCE(NULLIF(TRIM(imobiliaria), ''), '—') AS imobiliaria,
+                        vpl_reserva,
+                        vpl_tabela
                     FROM informacoes_consolidadas.sienge_vendas_consolidadas
                     WHERE contractDate >= ? AND contractDate <= ?
-                """, [data_inicial, data_final])
+                """
+                params_vpl = [data_inicial, data_final]
+                if filtro_sql:
+                    sql_vpl_corretor += f" AND {filtro_sql}"
+                    params_vpl.extend(filtro_params)
+
+                vendas_df = conn.run_query(sql_vpl_corretor, params_vpl)
                 
                 if not vendas_df.empty:
                     vpl_corretor = calcular_vpl_por_corretor(vendas_df)
@@ -960,35 +987,45 @@ def render_analytics_corretor(data_inicial: str, data_final: str,
             except Exception as e:
                 st.error(f"❌ Erro ao carregar VPL por corretor: {str(e)}")
 
-        # Expander 2: VPL por Imobiliária
-        with st.expander("📊 Ver Detalhes do VPL por Imobiliária", expanded=False):
-            try:
-                # Carregar dados de vendas
-                conn = get_md_connection()
-                vendas_df = conn.run_query("""
-                    SELECT imobiliaria, vpl_reserva, vpl_tabela
-                    FROM informacoes_consolidadas.sienge_vendas_consolidadas
-                    WHERE contractDate >= ? AND contractDate <= ?
-                """, [data_inicial, data_final])
-                
-                if not vendas_df.empty:
-                    vpl_imobiliaria = calcular_vpl_por_imobiliaria(vendas_df)
+        if mostrar_vpl_imobiliaria:
+            # Expander 2: VPL por Imobiliária
+            with st.expander("📊 Ver Detalhes do VPL por Imobiliária", expanded=False):
+                try:
+                    # Carregar dados de vendas
+                    conn = get_md_connection()
+                    sql_vpl_imob = """
+                        SELECT 
+                            COALESCE(NULLIF(TRIM(imobiliaria), ''), '—') AS imobiliaria,
+                            vpl_reserva,
+                            vpl_tabela
+                        FROM informacoes_consolidadas.sienge_vendas_consolidadas
+                        WHERE contractDate >= ? AND contractDate <= ?
+                    """
+                    params_vpl_imob = [data_inicial, data_final]
+                    if filtro_sql:
+                        sql_vpl_imob += f" AND {filtro_sql}"
+                        params_vpl_imob.extend(filtro_params)
+
+                    vendas_df = conn.run_query(sql_vpl_imob, params_vpl_imob)
                     
-                    if not vpl_imobiliaria.empty:
-                        st.subheader("📈 VPL por Imobiliária")
-                        st.write("💡 **Dica:** A primeira coluna (índice) ordena automaticamente pelo VPL Tabela do maior para o menor.")
-                        st.dataframe(
-                            vpl_imobiliaria,
-                            use_container_width=True,
-                            hide_index=True
-                        )
+                    if not vendas_df.empty:
+                        vpl_imobiliaria = calcular_vpl_por_imobiliaria(vendas_df)
+                        
+                        if not vpl_imobiliaria.empty:
+                            st.subheader("📈 VPL por Imobiliária")
+                            st.write("💡 **Dica:** A primeira coluna (índice) ordena automaticamente pelo VPL Tabela do maior para o menor.")
+                            st.dataframe(
+                                vpl_imobiliaria,
+                                use_container_width=True,
+                                hide_index=True
+                            )
+                        else:
+                            st.info("ℹ️ Nenhum dado de VPL encontrado para imobiliárias no período selecionado.")
                     else:
-                        st.info("ℹ️ Nenhum dado de VPL encontrado para imobiliárias no período selecionado.")
-                else:
-                    st.warning("⚠️ Nenhum dado de vendas encontrado no período selecionado.")
-                    
-            except Exception as e:
-                st.error(f"❌ Erro ao carregar VPL por imobiliária: {str(e)}")
+                        st.warning("⚠️ Nenhum dado de vendas encontrado no período selecionado.")
+                        
+                except Exception as e:
+                    st.error(f"❌ Erro ao carregar VPL por imobiliária: {str(e)}")
         
     except Exception as e:
         st.error(f"❌ Erro ao carregar análise por corretor: {str(e)}")
