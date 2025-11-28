@@ -39,3 +39,7 @@ chrome_profile_*/
 # Backup files
 *_backup/
 backup_*/
+
+# Arquivos temporários problemáticos
+ersOdair_SantosDesktopCursorVendas_Consolidadas
+UsersOdair_SantosDesktopCursorVendas_Consolidadas*
