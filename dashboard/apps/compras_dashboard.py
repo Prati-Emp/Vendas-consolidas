@@ -231,19 +231,20 @@ def render_compras_dashboard(
         
         # Filtro de período
         st.subheader("Período")
-        col1, col2 = st.columns(2)
-        with col1:
-            data_inicio = st.date_input(
-                "Data Inicial",
-                value=datetime.now() - timedelta(days=90),
-                key="compras_data_inicio"
-            )
-        with col2:
-            data_fim = st.date_input(
-                "Data Final",
-                value=datetime.now(),
-                key="compras_data_fim"
-            )
+        default_inicio = datetime(2025, 1, 1)
+        default_fim = datetime.now()
+
+        data_inicio = st.date_input(
+            "Data Inicial",
+            value=default_inicio,
+            key="compras_data_inicio"
+        )
+
+        data_fim = st.date_input(
+            "Data Final",
+            value=default_fim,
+            key="compras_data_fim"
+        )
         
         # Filtro de comprador
         st.subheader("Comprador")
