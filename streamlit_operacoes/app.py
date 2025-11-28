@@ -9,8 +9,10 @@ import streamlit as st
 APP_DIR = Path(__file__).resolve().parent
 ROOT_DIR = APP_DIR.parent
 DASHBOARD_DIR = ROOT_DIR / "dashboard"
-if str(DASHBOARD_DIR) not in sys.path:
-    sys.path.append(str(DASHBOARD_DIR))
+
+for path in (ROOT_DIR, DASHBOARD_DIR):
+    if str(path) not in sys.path:
+        sys.path.append(str(path))
 
 from advanced_auth import require_auth, require_page_access  # noqa: E402
 from navigation import ensure_operacoes_access  # noqa: E402

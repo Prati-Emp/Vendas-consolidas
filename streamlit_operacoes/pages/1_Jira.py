@@ -11,7 +11,7 @@ APP_DIR = PAGES_DIR.parent
 ROOT_DIR = APP_DIR.parent
 DASHBOARD_DIR = ROOT_DIR / "dashboard"
 
-for path in (APP_DIR, DASHBOARD_DIR):
+for path in (ROOT_DIR, DASHBOARD_DIR, APP_DIR):
     if str(path) not in sys.path:
         sys.path.append(str(path))
 
