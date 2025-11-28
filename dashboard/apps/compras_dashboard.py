@@ -420,7 +420,7 @@ def render_compras_dashboard(
                 title='Top 10 Compradores por Valor Total',
                 labels={'Valor_Total': 'Valor Total (R$)', 'Comprador': 'Comprador'}
             )
-            fig.update_yaxis(tickformat='$,.2f')
+            fig.update_yaxes(tickformat='$,.2f')
             st.plotly_chart(fig, use_container_width=True)
         else:
             st.info("Dados de comprador não disponíveis.")
@@ -462,7 +462,7 @@ def render_compras_dashboard(
                 title='Top 10 Empreendimentos por Valor Total',
                 labels={'Valor_Total': 'Valor Total (R$)', 'Empreendimento': 'Empreendimento'}
             )
-            fig.update_yaxis(tickformat='$,.2f')
+            fig.update_yaxes(tickformat='$,.2f')
             st.plotly_chart(fig, use_container_width=True)
         else:
             st.info("Dados de empreendimento não disponíveis.")
