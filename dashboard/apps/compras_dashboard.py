@@ -483,6 +483,11 @@ def render_compras_dashboard(
             
             timeline_agg.columns = ['Mes', 'Valor_Total', 'Total_Desconto', 'Qtd_Pedidos']
             timeline_agg = timeline_agg.sort_values('Mes')
+            timeline_agg['Percentual_Desconto'] = timeline_agg.apply(
+                lambda row: (row['Total_Desconto'] / row['Valor_Total'] * 100)
+                if row['Valor_Total'] else 0.0,
+                axis=1
+            )
             
             # Gráfico de linha
             fig = go.Figure()
@@ -513,6 +518,7 @@ def render_compras_dashboard(
             # Tabela
             timeline_agg['Valor_Total'] = timeline_agg['Valor_Total'].apply(formatar_moeda)
             timeline_agg['Total_Desconto'] = timeline_agg['Total_Desconto'].apply(formatar_moeda)
+            timeline_agg['Percentual_Desconto'] = timeline_agg['Percentual_Desconto'].apply(formatar_percentual)
             
             st.dataframe(
                 timeline_agg,
