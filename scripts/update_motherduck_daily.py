@@ -33,8 +33,6 @@ async def sistema_diario():
         from scripts.cv_leads_workflow_tempo_api import obter_dados_cv_leads_workflow_tempo
         from scripts.cv_repasses_workflow_api import obter_dados_cv_repasses_workflow
         from scripts.cv_vgv_empreendimentos_api import obter_dados_vgv_empreendimentos
-        from scripts.cv_sienge_contratos_suprimentos_api import obter_dados_sienge_contratos_suprimentos
-        from scripts.cv_sienge_pedidos_compras_api import obter_dados_sienge_pedidos_compras
         import duckdb
         import pandas as pd
         
@@ -105,28 +103,8 @@ async def sistema_diario():
             df_vgv_empreendimentos = pd.DataFrame()
             print(f"AVISO: Falha ao coletar VGV Empreendimentos: {e}")
         
-        # 4.2 Coletar Sienge Contratos Suprimentos
-        print("\n4.2. Coletando dados Sienge Contratos Suprimentos...")
-        try:
-            from scripts.cv_sienge_contratos_suprimentos_api import obter_dados_sienge_contratos_suprimentos
-            df_sienge_contratos_suprimentos = await obter_dados_sienge_contratos_suprimentos("2020-01-01")
-            print(f"OK: Sienge Contratos Suprimentos: {len(df_sienge_contratos_suprimentos)} registros")
-        except Exception as e:
-            df_sienge_contratos_suprimentos = pd.DataFrame()
-            print(f"AVISO: Falha ao coletar Sienge Contratos Suprimentos: {e}")
-        
-        # 4.3 Coletar Sienge Pedidos Compras
-        print("\n4.3. Coletando dados Sienge Pedidos Compras...")
-        try:
-            from scripts.cv_sienge_pedidos_compras_api import obter_dados_sienge_pedidos_compras
-            df_sienge_pedidos_compras = await obter_dados_sienge_pedidos_compras("2020-01-01")
-            print(f"OK: Sienge Pedidos Compras: {len(df_sienge_pedidos_compras)} registros")
-        except Exception as e:
-            df_sienge_pedidos_compras = pd.DataFrame()
-            print(f"AVISO: Falha ao coletar Sienge Pedidos Compras: {e}")
-        
-        # 4.4 Coletar Relatórios (Download Automático)
-        print("\n4.4. Coletando dados de Relatórios...")
+        # 4.2 Coletar Relatórios (Download Automático)
+        print("\n4.2. Coletando dados de Relatórios...")
         try:
             from scripts.relatorio_download_api import obter_dados_relatorio_download
             
@@ -229,20 +207,6 @@ async def sistema_diario():
             count_vgv = conn.sql("SELECT COUNT(*) FROM main.cv_vgv_empreendimentos").fetchone()[0]
             print(f"OK: VGV Empreendimentos upload: {count_vgv:,} registros")
         
-        # Upload Sienge Contratos Suprimentos
-        if df_sienge_contratos_suprimentos is not None and not df_sienge_contratos_suprimentos.empty:
-            conn.register("df_sienge_contratos_suprimentos", df_sienge_contratos_suprimentos)
-            conn.execute("CREATE OR REPLACE TABLE main.sienge_contratos_suprimentos AS SELECT * FROM df_sienge_contratos_suprimentos")
-            count_contratos = conn.sql("SELECT COUNT(*) FROM main.sienge_contratos_suprimentos").fetchone()[0]
-            print(f"OK: Sienge Contratos Suprimentos upload: {count_contratos:,} registros")
-        
-        # Upload Sienge Pedidos Compras
-        if df_sienge_pedidos_compras is not None and not df_sienge_pedidos_compras.empty:
-            conn.register("df_sienge_pedidos_compras", df_sienge_pedidos_compras)
-            conn.execute("CREATE OR REPLACE TABLE main.sienge_pedidos_compras AS SELECT * FROM df_sienge_pedidos_compras")
-            count_pedidos = conn.sql("SELECT COUNT(*) FROM main.sienge_pedidos_compras").fetchone()[0]
-            print(f"OK: Sienge Pedidos Compras upload: {count_pedidos:,} registros")
-        
         # Upload Relatório
         if df_relatorio is not None and not df_relatorio.empty:
             conn.register("df_relatorio", df_relatorio)
@@ -265,8 +229,6 @@ async def sistema_diario():
         print(f"   - CV Leads Workflow Tempo: {len(df_cv_leads_workflow_tempo):,} registros")
         print(f"   - CV Repasses Workflow: {len(df_cv_repasses_workflow):,} registros")
         print(f"   - VGV Empreendimentos: {len(df_vgv_empreendimentos):,} registros")
-        print(f"   - Sienge Contratos Suprimentos: {len(df_sienge_contratos_suprimentos):,} registros")
-        print(f"   - Sienge Pedidos Compras: {len(df_sienge_pedidos_compras):,} registros")
         print(f"   - Relatório Download: {len(df_relatorio):,} registros")
         print("   - Sienge Vendas: Pausado (execucao 2x/semana)")
         
