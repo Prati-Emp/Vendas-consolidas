@@ -9,6 +9,7 @@ from typing import Optional
 
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 import streamlit as st
 
 # Garantir acesso aos módulos utilitários quando importado fora do diretório dashboard
@@ -414,27 +415,26 @@ def render_project_calendar(df: pd.DataFrame):
 def render_responsavel_section(df: pd.DataFrame):
     """Mostra desempenho e carga por responsável."""
     st.subheader("Responsáveis monitorados")
-    import plotly.graph_objects as go
 
-    # Calcular métricas por responsável
     resumo = (
         df.groupby("responsavel")
         .agg(
             tarefas=("chave", "count"),
             atrasadas=("esta_atrasada", "sum"),
+            proximas=("critica_proxima", "sum"),
         )
         .reset_index()
     )
-    
-    # Calcular tarefas "No prazo" (Total - Atrasadas)
+
     resumo["no_prazo"] = resumo["tarefas"] - resumo["atrasadas"]
-    
-    # Ordenar por total de tarefas e pegar top 10
     top10 = resumo.sort_values("tarefas", ascending=False).head(10)
 
     if top10.empty:
         st.info("Não há responsáveis com tarefas no filtro atual.")
         return
+
+    chart_data = top10.copy()
+    max_total = max(chart_data["tarefas"].max(), 1)
 
     # Criar gráfico de barras empilhadas
     fig = go.Figure()
@@ -466,9 +466,9 @@ def render_responsavel_section(df: pd.DataFrame):
     ))
 
     # Adicionar totais ao lado direito das barras
-    for _, row in top10.iterrows():
+    for _, row in chart_data.iterrows():
         fig.add_annotation(
-            x=row["tarefas"],
+            x=row["tarefas"] + max_total * 0.02,
             y=row["responsavel"],
             text=str(row["tarefas"]),
             xanchor="left",
@@ -483,7 +483,7 @@ def render_responsavel_section(df: pd.DataFrame):
             title=None,  # Remove título do eixo Y conforme solicitado
             autorange="reversed",  # Maior no topo
         ),
-        xaxis=dict(visible=False),  # Remove eixo X
+        xaxis=dict(visible=False, range=[0, max_total * 1.15]),  # Remove eixo X e garante espaço para o total
         plot_bgcolor="rgba(0,0,0,0)",
         paper_bgcolor="rgba(0,0,0,0)",
         legend=dict(
@@ -493,11 +493,21 @@ def render_responsavel_section(df: pd.DataFrame):
             xanchor="right",
             x=1
         ),
-        margin=dict(r=50, l=0),  # Margem direita para os totais
+        margin=dict(r=50, l=0),
         height=400
     )
 
     st.plotly_chart(fig, use_container_width=True)
+
+    st.dataframe(
+        chart_data.assign(
+            atraso_pct=lambda d: (d["atrasadas"] / d["tarefas"])
+            .fillna(0)
+            .map(lambda v: f"{v:.0%}")
+        )[["responsavel", "tarefas", "atrasadas", "no_prazo", "proximas", "atraso_pct"]],
+        hide_index=True,
+        use_container_width=True,
+    )
 
 
 def render_alerts(df: pd.DataFrame):
