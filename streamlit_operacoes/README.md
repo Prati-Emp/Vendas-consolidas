@@ -6,8 +6,7 @@ Aplicativo independente do dashboard **Operações** baseado na view `informacoe
 
 - `app.py`: roteador principal que autentica o usuário e redireciona para a primeira página liberada.
 - `pages/1_Jira.py`: monitoramento completo das tarefas do Jira.
-- `pages/2_Compras.py`: área de compras (placeholder em desenvolvimento).
-- `pages/3_Evolucao_de_Obra.py`: módulo físico-financeiro do Horizont.
+- `pages/2_Compras.py`: área de compras.
 - `navigation.py`: navegação horizontal entre as páginas, respeitando permissões do `advanced_auth`.
 
 ## 🚀 Executar localmente
@@ -21,7 +20,7 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
-Após iniciar, escolha a página desejada pela navegação superior (Jira, Compras ou Evolução de Obra). Cada página roda isoladamente, com filtros exclusivos.
+Após iniciar, escolha a página desejada pela navegação superior (Jira ou Compras). Cada página roda isoladamente, com filtros exclusivos.
 
 > Configure o token do MotherDuck no `.env` do projeto raiz (`MOTHERDUCK_TOKEN`) antes de executar.
 

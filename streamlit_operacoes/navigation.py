@@ -31,12 +31,6 @@ TAB_DEFINITIONS = [
         "page_path": "pages/2_Compras.py",
         "key": "compras",
     },
-    {
-        "label": "🏗️ Evolução de Obra",
-        "permission": "operacoes.evolucao_obra",
-        "page_path": "pages/3_Evolucao_de_Obra.py",
-        "key": "evolucao_obra",
-    },
 ]
 
 

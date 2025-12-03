@@ -27,7 +27,7 @@ USERS_DATABASE = {
         "created": "2024-10-21",
         "last_login": None,
         "active": True,
-        "subpages": ["operacoes.jira", "operacoes.compras", "operacoes.evolucao_obra"]  # Páginas subordinadas permitidas
+        "subpages": ["operacoes.jira", "operacoes.compras"]  # Páginas subordinadas permitidas
     },
     "gustavo.sordi@grupoprati.com": {
         "password": "Pr@ti2024!Gustavo",
