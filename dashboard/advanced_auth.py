@@ -37,7 +37,7 @@ USERS_DATABASE = {
         "created": "2024-10-21",
         "last_login": None,
         "active": True,
-        "subpages": ["operacoes.jira", "operacoes.compras", "operacoes.evolucao_obra"]  # Acesso a todas as subpáginas
+        "subpages": ["operacoes.jira", "operacoes.compras"]  # Acesso a todas as subpáginas
     },
     "lucas.follmann@grupoprati.com": {
         "password": "Pr@ti2024!Lucas",
