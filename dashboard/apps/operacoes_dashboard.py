@@ -414,46 +414,90 @@ def render_project_calendar(df: pd.DataFrame):
 def render_responsavel_section(df: pd.DataFrame):
     """Mostra desempenho e carga por responsável."""
     st.subheader("Responsáveis monitorados")
+    import plotly.graph_objects as go
 
+    # Calcular métricas por responsável
     resumo = (
         df.groupby("responsavel")
         .agg(
             tarefas=("chave", "count"),
             atrasadas=("esta_atrasada", "sum"),
-            proximas=("critica_proxima", "sum"),
         )
         .reset_index()
-        .sort_values("tarefas", ascending=False)
     )
+    
+    # Calcular tarefas "No prazo" (Total - Atrasadas)
+    resumo["no_prazo"] = resumo["tarefas"] - resumo["atrasadas"]
+    
+    # Ordenar por total de tarefas e pegar top 10
+    top10 = resumo.sort_values("tarefas", ascending=False).head(10)
 
-    top10 = resumo.head(10)
-
-    if resumo.empty:
+    if top10.empty:
         st.info("Não há responsáveis com tarefas no filtro atual.")
         return
 
-    col1, col2 = st.columns([1.2, 1])
-    with col1:
-        fig_resp = px.bar(
-            top10,
-            y="responsavel",
-            x="tarefas",
-            color="atrasadas",
-            orientation="h",
-            color_continuous_scale="Reds",
-            labels={"tarefas": "Tarefas", "responsavel": "Responsável", "atrasadas": "Atrasadas"},
-        )
-        fig_resp.update_layout(coloraxis_colorbar=dict(title="Atrasadas"))
-        st.plotly_chart(fig_resp, use_container_width=True)
+    # Criar gráfico de barras empilhadas
+    fig = go.Figure()
 
-    with col2:
-        st.dataframe(
-            top10.assign(
-                atraso_pct=lambda d: (d["atrasadas"] / d["tarefas"]).fillna(0).map(lambda v: f"{v:.0%}")
-            ),
-            hide_index=True,
-            use_container_width=True,
+    # Barra de Atrasadas (Vermelho)
+    fig.add_trace(go.Bar(
+        name="Atrasadas",
+        y=top10["responsavel"],
+        x=top10["atrasadas"],
+        orientation="h",
+        marker_color="#dc2626",  # Vermelho
+        text=top10["atrasadas"].apply(lambda x: str(x) if x > 0 else ""), # Só mostra número se > 0
+        textposition="auto",
+        insidetextanchor="middle",
+        textfont=dict(color="white")
+    ))
+
+    # Barra No Prazo (Azul Escuro)
+    fig.add_trace(go.Bar(
+        name="No prazo",
+        y=top10["responsavel"],
+        x=top10["no_prazo"],
+        orientation="h",
+        marker_color="#1e3a8a",  # Azul escuro
+        text=top10["no_prazo"].apply(lambda x: str(x) if x > 0 else ""),
+        textposition="auto",
+        insidetextanchor="middle",
+        textfont=dict(color="white")
+    ))
+
+    # Adicionar totais ao lado direito das barras
+    for _, row in top10.iterrows():
+        fig.add_annotation(
+            x=row["tarefas"],
+            y=row["responsavel"],
+            text=str(row["tarefas"]),
+            xanchor="left",
+            yanchor="middle",
+            showarrow=False,
+            xshift=5,
         )
+
+    fig.update_layout(
+        barmode="stack",
+        yaxis=dict(
+            title=None,  # Remove título do eixo Y conforme solicitado
+            autorange="reversed",  # Maior no topo
+        ),
+        xaxis=dict(visible=False),  # Remove eixo X
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)",
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1
+        ),
+        margin=dict(r=50, l=0),  # Margem direita para os totais
+        height=400
+    )
+
+    st.plotly_chart(fig, use_container_width=True)
 
 
 def render_alerts(df: pd.DataFrame):
