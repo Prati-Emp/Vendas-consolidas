@@ -237,9 +237,9 @@ def render_kpis(df: pd.DataFrame):
     atrasadas = int(df["esta_atrasada"].sum())
     criticas = int(df["critica_proxima"].sum())
 
-    atraso_pct = f"{(atrasadas / abertas * 100):.1f}%" if abertas else "0%"
+    atraso_pct = f"{(atrasadas / total * 100):.1f}% do total" if total else "0%"
     andamento_pct = f"{(em_andamento / total * 100):.1f}% do total" if total else "0%"
-    criticas_pct = f"{(criticas / max(abertas, 1) * 100):.1f}%" if abertas else "0%"
+    criticas_pct = f"{(criticas / total * 100):.1f}% do total" if total else "0%"
 
     col1, col2, col3, col4, col5 = st.columns(5)
     tooltip_monitoradas = (
@@ -250,8 +250,8 @@ def render_kpis(df: pd.DataFrame):
     col1.metric("Tarefas monitoradas", total, help=tooltip_monitoradas)
     col2.metric("A iniciar", a_iniciar, delta=f"{(a_iniciar / total * 100):.1f}% do total" if total else "0%")
     col3.metric("Em andamento", em_andamento, delta=andamento_pct)
-    col4.metric("Atrasadas", atrasadas, delta=f"{atraso_pct} das abertas")
-    col5.metric("Próximas do prazo (≤7 dias)", criticas, delta=f"{criticas_pct} das abertas")
+    col4.metric("Atrasadas", atrasadas, delta=atraso_pct)
+    col5.metric("Próximas do prazo (≤7 dias)", criticas, delta=criticas_pct)
 
 
 def render_status_section(df: pd.DataFrame):
