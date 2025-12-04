@@ -280,6 +280,24 @@ def _default_period(df: pd.DataFrame) -> Tuple[date, date]:
     return start, max_date
 
 
+def _safe_unique_sorted(df: pd.DataFrame, column: str) -> List:
+    """Retorna valores únicos ordenados de uma coluna, de forma resiliente a erros."""
+    if column not in df.columns:
+        return []
+    try:
+        series = df[column]
+        # Preferir API pandas quando disponível
+        if hasattr(series, "dropna"):
+            values = series.dropna().unique()
+        else:
+            values = pd.unique([v for v in series if v is not None])
+        cleaned = [v for v in values if not pd.isna(v)]
+        return sorted(cleaned)
+    except Exception:
+        # Em caso de qualquer erro inesperado, evita quebrar a página
+        return []
+
+
 def apply_filters(
     df: pd.DataFrame,
     *,
@@ -562,41 +580,25 @@ def render_solicitacoes_dashboard(*, show_title: bool = True, show_caption: bool
             placeholder="Digite parte do código...",
         )
 
-        status_options = (
-            sorted(prepared_df["status"].dropna().unique())
-            if "status" in prepared_df.columns
-            else []
-        )
+        status_options = _safe_unique_sorted(prepared_df, "status")
         status_selected = st.multiselect(
             "Status",
             options=status_options,
         )
 
-        solicitante_options = (
-            sorted(prepared_df["solicitante"].dropna().unique())
-            if "solicitante" in prepared_df.columns
-            else []
-        )
+        solicitante_options = _safe_unique_sorted(prepared_df, "solicitante")
         solicitante_selected = st.multiselect(
             "Solicitante",
             options=solicitante_options,
         )
 
-        obra_options = (
-            sorted(prepared_df["obra"].dropna().unique())
-            if "obra" in prepared_df.columns
-            else []
-        )
+        obra_options = _safe_unique_sorted(prepared_df, "obra")
         obra_selected = st.multiselect(
             "Empreendimento / Área",
             options=obra_options,
         )
 
-        categoria_options = (
-            sorted(prepared_df["categoria"].dropna().unique())
-            if "categoria" in prepared_df.columns
-            else []
-        )
+        categoria_options = _safe_unique_sorted(prepared_df, "categoria")
         categoria_selected = st.multiselect(
             "Categoria",
             options=categoria_options,
