@@ -108,6 +108,13 @@ COLUMN_ALIASES: Dict[str, List[str]] = {
         "descricao_insumo",
         "descricao_item",
     ],
+    "codigo_insumo": [
+        "codigo_insumo",
+        "cod_insumo",
+        "c_d_insumo",
+        "id_insumo",
+        "codigo_item",
+    ],
     "insumos": [
         "qtd_insumos",
         "qtde_insumos",
@@ -300,6 +307,26 @@ def prepare_dataset(df: pd.DataFrame) -> Tuple[pd.DataFrame, DatasetMeta]:
             return val
 
         prepared["obra"] = prepared["obra"].apply(normalize_obra)
+
+    # Combinar código + descrição do insumo para exibição
+    if "codigo_insumo" in prepared.columns and "item" in prepared.columns:
+        def combine_codigo_descricao(row):
+            codigo = str(row["codigo_insumo"]) if pd.notna(row.get("codigo_insumo")) else ""
+            descricao = str(row["item"]) if pd.notna(row.get("item")) else ""
+            if codigo and descricao:
+                return f"{codigo} - {descricao}"
+            elif descricao:
+                return descricao
+            elif codigo:
+                return codigo
+            return "Sem informação"
+        prepared["item_completo"] = prepared.apply(combine_codigo_descricao, axis=1)
+    elif "item" in prepared.columns:
+        prepared["item_completo"] = prepared["item"].fillna("Sem informação")
+    elif "codigo_insumo" in prepared.columns:
+        prepared["item_completo"] = prepared["codigo_insumo"].astype(str).fillna("Sem informação")
+    else:
+        prepared["item_completo"] = "Sem informação"
 
     if "status" in prepared.columns:
         prepared["status_bucket"] = prepared["status"].apply(classify_status)
@@ -614,7 +641,7 @@ def render_distributions(df: pd.DataFrame) -> None:
                     lead_time=("lead_time_dias", "mean"),
                 )
                 .reset_index()
-                .sort_values("solicitacoes", ascending=False)
+                .sort_values("obra", ascending=True)  # Ordenar alfabeticamente por nome do empreendimento
             )
             st.dataframe(
                 obras_df.rename(
@@ -627,43 +654,97 @@ def render_distributions(df: pd.DataFrame) -> None:
                 ),
                 hide_index=True,
                 use_container_width=True,
+                column_config={
+                    "Empreendimento / Área": st.column_config.TextColumn(
+                        "Empreendimento / Área",
+                        width="large"
+                    ),
+                    "Solicitações Únicas": st.column_config.NumberColumn(
+                        "Solicitações Únicas",
+                        format="%d"
+                    ),
+                    "Abertas": st.column_config.NumberColumn(
+                        "Abertas",
+                        format="%d"
+                    ),
+                    "Lead time médio (dias)": st.column_config.NumberColumn(
+                        "Lead time médio (dias)",
+                        format="%.1f"
+                    ),
+                }
             )
         else:
             st.info("Informações de empreendimento não encontradas.")
 
     with tab3:
-        if "item" in df.columns:
-            # Agrupar por item normalizado
+        if "item_completo" in df.columns:
+            # Agrupar por item completo (código + descrição)
             top_itens = (
-                df.groupby("item")
+                df.groupby("item_completo")
                 .agg(
-                    ocorrencias=("item", "count"),
+                    ocorrencias=("item_completo", "count"),
                     total_insumos=("insumos", "sum")
                 )
                 .reset_index()
                 .sort_values("ocorrencias", ascending=False)
-                .head(20)
+                .head(30)
             )
             
-            col_a, col_b = st.columns([2, 1])
-            with col_a:
+            st.subheader("Top 30 Insumos mais solicitados")
+            st.dataframe(
+                top_itens.rename(columns={
+                    "item_completo": "Código - Descrição",
+                    "ocorrencias": "Frequência",
+                    "total_insumos": "Qtd. Total"
+                }),
+                hide_index=True,
+                use_container_width=True,
+                column_config={
+                    "Código - Descrição": st.column_config.TextColumn(
+                        "Código - Descrição",
+                        width="large"
+                    ),
+                    "Frequência": st.column_config.NumberColumn(
+                        "Frequência",
+                        format="%d"
+                    ),
+                    "Qtd. Total": st.column_config.NumberColumn(
+                        "Qtd. Total",
+                        format="%.1f"
+                    ),
+                }
+            )
+            
+            # Gráfico simplificado apenas se houver muitos itens
+            if len(top_itens) > 10:
+                st.subheader("Visualização por Frequência")
+                # Criar labels mais curtos para o gráfico (apenas código se disponível)
+                top_itens_plot = top_itens.copy()
+                if "codigo_insumo" in df.columns:
+                    # Tentar extrair código do item_completo para labels mais curtos
+                    top_itens_plot["label_curto"] = top_itens_plot["item_completo"].apply(
+                        lambda x: x.split(" - ")[0] if " - " in str(x) else str(x)[:30]
+                    )
+                else:
+                    top_itens_plot["label_curto"] = top_itens_plot["item_completo"].apply(
+                        lambda x: str(x)[:40] + "..." if len(str(x)) > 40 else str(x)
+                    )
+                
                 fig_itens = px.bar(
-                    top_itens,
+                    top_itens_plot.head(15),
                     x="ocorrencias",
-                    y="item",
+                    y="label_curto",
                     orientation="h",
                     text="ocorrencias",
-                    title="Top 20 Itens mais solicitados (frequência)"
+                    labels={"ocorrencias": "Frequência", "label_curto": "Insumo"}
                 )
-                fig_itens.update_layout(yaxis=dict(autorange="reversed"))
+                fig_itens.update_layout(
+                    yaxis=dict(autorange="reversed"),
+                    height=600,
+                    showlegend=False
+                )
+                fig_itens.update_traces(textposition="outside")
                 st.plotly_chart(fig_itens, use_container_width=True)
-            
-            with col_b:
-                st.dataframe(
-                    top_itens.rename(columns={"item": "Insumo / Serviço", "ocorrencias": "Freq.", "total_insumos": "Qtd. Total"}),
-                    hide_index=True,
-                    use_container_width=True
-                )
         else:
             st.info("Coluna de itens/insumos não identificada para gerar ranking.")
 
