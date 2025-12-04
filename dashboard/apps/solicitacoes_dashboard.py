@@ -724,23 +724,51 @@ def render_distributions(df: pd.DataFrame) -> None:
 
     with tab3:
         if "item_completo" in df.columns:
-            # Agrupar por item completo (código + descrição)
-            top_itens = (
-                df.groupby("item_completo")
-                .agg(
-                    ocorrencias=("item_completo", "count"),
-                    total_insumos=("insumos", "sum")
-                )
-                .reset_index()
-                .sort_values("ocorrencias", ascending=False)
-                .head(30)
-            )
+            # Agrupar por item completo (código + descrição) e contar status
+            # Precisamos contar solicitações únicas, não linhas
+            solicitacao_col = "solicitacao" if "solicitacao" in df.columns else None
             
-            # Gráfico primeiro (em cima)
+            if solicitacao_col and "status_bucket" in df.columns:
+                # Agrupar por item e solicitação para contar únicos
+                df_items = df.groupby(["item_completo", solicitacao_col]).agg(
+                    status_bucket=("status_bucket", "first")
+                ).reset_index()
+                
+                top_itens = (
+                    df_items.groupby("item_completo")
+                    .agg(
+                        total_solicitacoes=(solicitacao_col, "nunique"),
+                        abertas=("status_bucket", lambda s: (s == "aberta").sum())
+                    )
+                    .reset_index()
+                    .assign(
+                        atendidas=lambda x: x["total_solicitacoes"] - x["abertas"]
+                    )
+                    .sort_values("total_solicitacoes", ascending=False)
+                    .head(30)
+                )
+            else:
+                # Fallback: contar linhas se não tiver status_bucket ou solicitacao
+                top_itens = (
+                    df.groupby("item_completo")
+                    .agg(
+                        total_solicitacoes=("item_completo", "count"),
+                        abertas=("status_bucket", lambda s: (s == "aberta").sum()) if "status_bucket" in df.columns else ("item_completo", lambda x: 0)
+                    )
+                    .reset_index()
+                    .assign(
+                        atendidas=lambda x: x["total_solicitacoes"] - x["abertas"]
+                    )
+                    .sort_values("total_solicitacoes", ascending=False)
+                    .head(30)
+                )
+            
+            # Gráfico primeiro (em cima) - Barras empilhadas
             if len(top_itens) > 10:
-                st.subheader("Visualização por Frequência")
-                # Criar labels mais curtos para o gráfico
-                top_itens_plot = top_itens.copy()
+                st.subheader("Top Insumos por Status de Solicitação")
+                
+                # Preparar dados para gráfico empilhado
+                top_itens_plot = top_itens.head(15).copy()
                 
                 # Função para truncar texto mantendo informação relevante
                 def make_label(val):
@@ -751,28 +779,70 @@ def render_distributions(df: pd.DataFrame) -> None:
 
                 top_itens_plot["label_curto"] = top_itens_plot["item_completo"].apply(make_label)
                 
-                fig_itens = px.bar(
-                    top_itens_plot.head(15),
-                    x="ocorrencias",
-                    y="label_curto",
+                # Criar gráfico de barras empilhadas
+                fig_itens = go.Figure()
+                
+                # Barra de atendidas (verde/azul claro)
+                fig_itens.add_trace(go.Bar(
+                    name="Atendidas",
+                    x=top_itens_plot["atendidas"],
+                    y=top_itens_plot["label_curto"],
                     orientation="h",
-                    text="ocorrencias",
-                    labels={"ocorrencias": "Frequência", "label_curto": "Insumo"}
-                )
+                    marker=dict(color="#22c55e"),  # Verde
+                    text=top_itens_plot["atendidas"],
+                    textposition="inside",
+                    hovertemplate="<b>%{y}</b><br>Atendidas: %{x}<extra></extra>"
+                ))
+                
+                # Barra de abertas (vermelho/laranja)
+                fig_itens.add_trace(go.Bar(
+                    name="Abertas",
+                    x=top_itens_plot["abertas"],
+                    y=top_itens_plot["label_curto"],
+                    orientation="h",
+                    marker=dict(color="#f97316"),  # Laranja
+                    text=top_itens_plot["abertas"],
+                    textposition="inside",
+                    hovertemplate="<b>%{y}</b><br>Abertas: %{x}<extra></extra>"
+                ))
+                
+                # Adicionar texto com total no final da barra
+                fig_itens.add_trace(go.Scatter(
+                    x=top_itens_plot["total_solicitacoes"],
+                    y=top_itens_plot["label_curto"],
+                    mode="text",
+                    text=top_itens_plot["total_solicitacoes"].astype(str),
+                    textposition="middle right",
+                    textfont=dict(color="white", size=12),
+                    showlegend=False,
+                    hoverinfo="skip"
+                ))
+                
                 fig_itens.update_layout(
+                    barmode="stack",
                     yaxis=dict(autorange="reversed", type="category"),
+                    xaxis_title="Quantidade de Solicitações",
+                    yaxis_title="Insumo",
                     height=600,
-                    showlegend=False
+                    legend=dict(
+                        orientation="h",
+                        yanchor="bottom",
+                        y=1.02,
+                        xanchor="right",
+                        x=1
+                    ),
+                    hovermode="y unified"
                 )
-                fig_itens.update_traces(textposition="outside")
+                
                 st.plotly_chart(fig_itens, use_container_width=True)
             
-            # Tabela depois (embaixo) - apenas Código - Descrição e Frequência
+            # Tabela depois (embaixo) - Código - Descrição, Total e Abertas
             st.subheader("Top 30 Insumos mais solicitados")
             st.dataframe(
-                top_itens[["item_completo", "ocorrencias"]].rename(columns={
+                top_itens[["item_completo", "total_solicitacoes", "abertas"]].rename(columns={
                     "item_completo": "Código - Descrição",
-                    "ocorrencias": "Frequência"
+                    "total_solicitacoes": "Total Solicitações",
+                    "abertas": "Abertas"
                 }),
                 hide_index=True,
                 use_container_width=True,
@@ -781,8 +851,12 @@ def render_distributions(df: pd.DataFrame) -> None:
                         "Código - Descrição",
                         width="large"
                     ),
-                    "Frequência": st.column_config.NumberColumn(
-                        "Frequência",
+                    "Total Solicitações": st.column_config.NumberColumn(
+                        "Total Solicitações",
+                        format="%d"
+                    ),
+                    "Abertas": st.column_config.NumberColumn(
+                        "Abertas",
                         format="%d"
                     ),
                 }
