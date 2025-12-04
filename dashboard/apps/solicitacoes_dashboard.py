@@ -596,7 +596,7 @@ def render_distributions(df: pd.DataFrame) -> None:
     )
 
     with tab1:
-        # Gráfico de Status - Barras empilhadas horizontais
+        # Gráfico de Status - Gráfico de Rosca (Donut Chart)
         if "status_bucket" in df_unique.columns:
             st.subheader("Distribuição de Status das Solicitações")
             status_counts = (
@@ -616,12 +616,6 @@ def render_distributions(df: pd.DataFrame) -> None:
             }
             status_counts["Status_Label"] = status_counts["Status"].map(status_map).fillna(status_counts["Status"])
             
-            # Ordenar por quantidade (maior para menor)
-            status_counts = status_counts.sort_values("Quantidade", ascending=True)
-            
-            # Criar gráfico de barras empilhadas horizontal
-            fig_status = go.Figure()
-            
             total = status_counts["Quantidade"].sum()
             
             # Mapeamento de cores
@@ -633,55 +627,52 @@ def render_distributions(df: pd.DataFrame) -> None:
                 "desconhecido": "#94a3b8",
             }
             
-            # Ordenar para empilhar corretamente (atendidas primeiro, depois abertas, etc.)
+            # Ordenar para melhor visualização (atendidas primeiro, depois abertas, etc.)
             order = ["atendida", "aberta", "cancelada", "outros", "desconhecido"]
             status_counts_ordered = status_counts.set_index("Status").reindex([s for s in order if s in status_counts["Status"].values])
             status_counts_ordered = status_counts_ordered.dropna().reset_index()
             
-            # Criar barra única empilhada
-            for _, row in status_counts_ordered.iterrows():
-                status = row["Status"]
-                qtd = row["Quantidade"]
-                label = status_map.get(status, status)
-                color = colors_map.get(status, "#64748b")
-                
-                fig_status.add_trace(go.Bar(
-                    name=label,
-                    x=[qtd],
-                    y=["Total"],
-                    orientation="h",
-                    marker=dict(color=color),
-                    text=f"{label}: {qtd} ({qtd/total*100:.1f}%)",
-                    textposition="inside",
-                    hovertemplate=f"<b>{label}</b><br>Quantidade: {qtd}<br>Percentual: {qtd/total*100:.1f}%<extra></extra>"
-                ))
+            # Preparar dados para o gráfico de rosca
+            labels = status_counts_ordered["Status_Label"].tolist()
+            values = status_counts_ordered["Quantidade"].tolist()
+            colors = [colors_map.get(status, "#64748b") for status in status_counts_ordered["Status"].tolist()]
             
-            # Adicionar total no final
-            fig_status.add_trace(go.Scatter(
-                x=[total],
-                y=["Total"],
-                mode="text",
-                text=str(total),
-                textposition="middle right",
-                textfont=dict(color="white", size=14, weight="bold"),
-                showlegend=False,
-                hoverinfo="skip"
-            ))
+            # Criar gráfico de rosca
+            fig_status = go.Figure(data=[go.Pie(
+                labels=labels,
+                values=values,
+                hole=0.5,  # Cria o efeito de rosca (donut)
+                marker=dict(colors=colors, line=dict(color='#1e1e1e', width=2)),
+                textinfo='label+percent',
+                textposition='outside',
+                hovertemplate='<b>%{label}</b><br>Quantidade: %{value}<br>Percentual: %{percent}<extra></extra>',
+                sort=False
+            )])
+            
+            # Adicionar total no centro
+            fig_status.add_annotation(
+                text=f"<b>Total</b><br>{total:,}",
+                x=0.5,
+                y=0.5,
+                font_size=20,
+                font_color="white",
+                showarrow=False,
+                xref="paper",
+                yref="paper"
+            )
             
             fig_status.update_layout(
-                barmode="stack",
-                yaxis=dict(visible=False),
-                xaxis_title="Quantidade de Solicitações",
-                height=150,
+                height=500,
+                margin=dict(t=30, b=30, l=30, r=30),
                 legend=dict(
-                    orientation="h",
-                    yanchor="bottom",
-                    y=1.02,
+                    orientation="v",
+                    yanchor="middle",
+                    y=0.5,
                     xanchor="right",
-                    x=1
+                    x=1.15,
+                    font=dict(size=12)
                 ),
-                margin=dict(t=50, b=20, l=20, r=20),
-                hovermode="y unified"
+                showlegend=True
             )
             st.plotly_chart(fig_status, use_container_width=True)
         else:
