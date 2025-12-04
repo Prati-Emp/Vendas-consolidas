@@ -653,24 +653,63 @@ def render_distributions(df: pd.DataFrame) -> None:
         if "solicitante" in df_unique.columns and "solicitacao" in df_unique.columns:
             top_solicitantes = (
                 df_unique.groupby("solicitante")
-                .agg(qtd=("solicitacao", "count"), atendidas=("status_bucket", lambda s: (s == "atendida").sum()))
+                .agg(
+                    total_solicitacoes=("solicitacao", "nunique"),
+                    abertas=("status_bucket", lambda s: (s == "aberta").sum()),
+                )
                 .reset_index()
-                .sort_values("qtd", ascending=False)
+                .assign(
+                    atendidas=lambda x: x["total_solicitacoes"] - x["abertas"]
+                )
+                .sort_values("total_solicitacoes", ascending=False)
                 .head(10)
             )
-            fig_bar = px.bar(
-                top_solicitantes,
-                x="qtd",
-                y="solicitante",
+            
+            # Gráfico de barras empilhadas para solicitantes
+            fig_bar = go.Figure()
+            fig_bar.add_trace(go.Bar(
+                name="Atendidas",
+                x=top_solicitantes["atendidas"],
+                y=top_solicitantes["solicitante"],
                 orientation="h",
-                text="qtd",
-                color="atendidas",
-                color_continuous_scale="Blues",
-            )
+                marker=dict(color="#22c55e"),
+                text=top_solicitantes["atendidas"],
+                textposition="inside",
+                hovertemplate="<b>%{y}</b><br>Atendidas: %{x}<extra></extra>"
+            ))
+            fig_bar.add_trace(go.Bar(
+                name="Abertas",
+                x=top_solicitantes["abertas"],
+                y=top_solicitantes["solicitante"],
+                orientation="h",
+                marker=dict(color="#f97316"),
+                text=top_solicitantes["abertas"],
+                textposition="inside",
+                hovertemplate="<b>%{y}</b><br>Abertas: %{x}<extra></extra>"
+            ))
+            fig_bar.add_trace(go.Scatter(
+                x=top_solicitantes["total_solicitacoes"],
+                y=top_solicitantes["solicitante"],
+                mode="text",
+                text=top_solicitantes["total_solicitacoes"].astype(str),
+                textposition="middle right",
+                textfont=dict(color="white", size=12),
+                showlegend=False,
+                hoverinfo="skip"
+            ))
             fig_bar.update_layout(
-                yaxis_title="Solicitante",
+                barmode="stack",
+                yaxis=dict(autorange="reversed", type="category"),
                 xaxis_title="Qtd. Solicitações Únicas",
-                coloraxis_colorbar=dict(title="Atendidas"),
+                yaxis_title="Solicitante",
+                legend=dict(
+                    orientation="h",
+                    yanchor="bottom",
+                    y=1.02,
+                    xanchor="right",
+                    x=1
+                ),
+                hovermode="y unified"
             )
             st.plotly_chart(fig_bar, use_container_width=True)
         elif "solicitante" not in df_unique.columns:
@@ -678,23 +717,95 @@ def render_distributions(df: pd.DataFrame) -> None:
         else:
             st.info("Coluna de número da solicitação não encontrada para gerar ranking.")
 
-        if "obra" in df_unique.columns:
+        # Gráfico de barras empilhadas para obras/empreendimentos
+        if "obra" in df_unique.columns or "obra_completa" in df_unique.columns:
+            obra_col = "obra_completa" if "obra_completa" in df_unique.columns else "obra"
+            
             obras_df = (
-                df_unique.groupby("obra")
+                df_unique.groupby(obra_col)
                 .agg(
-                    solicitacoes=("solicitacao", "count"),
-                    em_aberto=("status_bucket", lambda s: (s == "aberta").sum()),
+                    total_solicitacoes=("solicitacao", "nunique"),
+                    abertas=("status_bucket", lambda s: (s == "aberta").sum()),
                     lead_time=("lead_time_dias", "mean"),
                 )
                 .reset_index()
-                .sort_values("obra", ascending=True)  # Ordenar alfabeticamente por nome do empreendimento
+                .assign(
+                    atendidas=lambda x: x["total_solicitacoes"] - x["abertas"]
+                )
+                .sort_values("total_solicitacoes", ascending=False)
             )
+            
+            # Gráfico de barras empilhadas
+            st.subheader("Empreendimentos / Áreas por Status de Solicitação")
+            
+            # Preparar dados para gráfico (top 20 para melhor visualização)
+            obras_plot = obras_df.head(20).copy()
+            
+            # Função para truncar texto se necessário
+            def make_label_obra(val):
+                s = str(val)
+                if len(s) > 60:
+                    return s[:57] + "..."
+                return s
+            
+            obras_plot["label_curto"] = obras_plot[obra_col].apply(make_label_obra)
+            
+            fig_obras = go.Figure()
+            fig_obras.add_trace(go.Bar(
+                name="Atendidas",
+                x=obras_plot["atendidas"],
+                y=obras_plot["label_curto"],
+                orientation="h",
+                marker=dict(color="#22c55e"),
+                text=obras_plot["atendidas"],
+                textposition="inside",
+                hovertemplate="<b>%{y}</b><br>Atendidas: %{x}<extra></extra>"
+            ))
+            fig_obras.add_trace(go.Bar(
+                name="Abertas",
+                x=obras_plot["abertas"],
+                y=obras_plot["label_curto"],
+                orientation="h",
+                marker=dict(color="#f97316"),
+                text=obras_plot["abertas"],
+                textposition="inside",
+                hovertemplate="<b>%{y}</b><br>Abertas: %{x}<extra></extra>"
+            ))
+            fig_obras.add_trace(go.Scatter(
+                x=obras_plot["total_solicitacoes"],
+                y=obras_plot["label_curto"],
+                mode="text",
+                text=obras_plot["total_solicitacoes"].astype(str),
+                textposition="middle right",
+                textfont=dict(color="white", size=12),
+                showlegend=False,
+                hoverinfo="skip"
+            ))
+            fig_obras.update_layout(
+                barmode="stack",
+                yaxis=dict(autorange="reversed", type="category"),
+                xaxis_title="Quantidade de Solicitações",
+                yaxis_title="Empreendimento / Área",
+                height=800,
+                legend=dict(
+                    orientation="h",
+                    yanchor="bottom",
+                    y=1.02,
+                    xanchor="right",
+                    x=1
+                ),
+                hovermode="y unified"
+            )
+            st.plotly_chart(fig_obras, use_container_width=True)
+            
+            # Tabela completa abaixo do gráfico
+            st.subheader("Detalhamento Completo")
             st.dataframe(
                 obras_df.rename(
                     columns={
-                        "obra": "Empreendimento / Área",
-                        "solicitacoes": "Solicitações Únicas",
-                        "em_aberto": "Abertas",
+                        obra_col: "Empreendimento / Área",
+                        "total_solicitacoes": "Solicitações Únicas",
+                        "abertas": "Abertas",
                         "lead_time": "Lead time médio (dias)",
                     }
                 ),
