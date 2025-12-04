@@ -517,8 +517,9 @@ def compute_kpis(df: pd.DataFrame) -> Dict[str, float]:
             "abertas": 0,
             "atendidas": 0,
             "insumos": 0,
-            "idade_media_abertas": 0.0,
             "lead_time_medio": 0.0,
+            "tempo_aprovacao": 0.0,
+            "tempo_compra": 0.0,
         }
 
     today = datetime.now()
@@ -544,11 +545,6 @@ def compute_kpis(df: pd.DataFrame) -> Dict[str, float]:
     # Insumos continua sendo a soma de tudo (linhas ou qtd declarada)
     insumos_total = df["insumos"].sum() if "insumos" in df.columns else 0
 
-    idade_media = (
-        df_unique.loc[df_unique["status_bucket"] == "aberta", "dias_em_aberto"].mean()
-        if "dias_em_aberto" in df_unique.columns
-        else None
-    )
     lead_time_medio = (
         df_unique.loc[df_unique["status_bucket"] == "atendida", "lead_time_dias"].mean()
         if "lead_time_dias" in df_unique.columns
@@ -571,7 +567,6 @@ def compute_kpis(df: pd.DataFrame) -> Dict[str, float]:
         "abertas": int(abertas),
         "atendidas": int(atendidas),
         "insumos": float(insumos_total),
-        "idade_media_abertas": idade_media or 0.0,
         "lead_time_medio": lead_time_medio or 0.0,
         "tempo_aprovacao": tempo_aprovacao_medio or 0.0,
         "tempo_compra": tempo_compra_medio or 0.0,
@@ -1208,26 +1203,21 @@ def render_solicitacoes_dashboard(*, show_title: bool = True, show_caption: bool
     col3.metric("Solicitações atendidas", _format_int(kpis["atendidas"]))
     col4.metric("Qtd. de insumos", _format_int(kpis["insumos"]))
 
-    col5, col6, col7, col8 = st.columns(4)
+    col5, col6, col7 = st.columns(3)
     col5.metric(
-        "Idade média abertas (dias)",
-        _format_float(kpis["idade_media_abertas"]),
-        help="Dias em aberto considerando apenas solicitações ainda sem atendimento.",
-    )
-    col6.metric(
         "Tempo Aprovação (dias)",
         _format_float(kpis["tempo_aprovacao"]),
         help="Tempo médio entre Solicitação e Autorização.",
     )
-    col7.metric(
+    col6.metric(
         "Tempo Compra (dias)",
         _format_float(kpis["tempo_compra"]),
         help="Tempo médio entre Autorização e Atendimento/Entrega.",
     )
-    col8.metric(
+    col7.metric(
         "Lead time Total (dias)",
         _format_float(kpis["lead_time_medio"]),
-        help="Tempo total médio (Solicitação até Atendimento).",
+        help="Tempo total médio (Solicitação até Atendimento). Considera apenas solicitações atendidas.",
     )
 
     st.markdown("---")
