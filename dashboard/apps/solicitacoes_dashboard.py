@@ -596,57 +596,174 @@ def render_distributions(df: pd.DataFrame) -> None:
     )
 
     with tab1:
-        col1, col2 = st.columns(2)
-        with col1:
-            if "status_bucket" in df_unique.columns:
-                status_counts = (
-                    df_unique["status_bucket"]
-                    .value_counts()
-                    .rename_axis("Status")
-                    .reset_index(name="Quantidade")
-                )
-                fig = px.pie(
-                    status_counts,
-                    names="Status",
-                    values="Quantidade",
-                    color="Status",
-                    color_discrete_map={
-                        "aberta": "#f97316",
-                        "atendida": "#22c55e",
-                        "cancelada": "#ef4444",
-                        "outros": "#64748b",
-                        "desconhecido": "#94a3b8",
-                    },
-                )
-                fig.update_traces(textposition="inside", textinfo="percent+label")
-                fig.update_layout(margin=dict(t=30, b=0))
-                st.plotly_chart(fig, use_container_width=True)
-            else:
-                st.info("Coluna de status não encontrada para gerar o gráfico.")
+        # Gráfico de Status - Barras empilhadas horizontais
+        if "status_bucket" in df_unique.columns:
+            st.subheader("Distribuição de Status das Solicitações")
+            status_counts = (
+                df_unique["status_bucket"]
+                .value_counts()
+                .rename_axis("Status")
+                .reset_index(name="Quantidade")
+            )
+            
+            # Mapear nomes de status para português
+            status_map = {
+                "aberta": "Abertas",
+                "atendida": "Atendidas",
+                "cancelada": "Canceladas",
+                "outros": "Outros",
+                "desconhecido": "Desconhecido",
+            }
+            status_counts["Status_Label"] = status_counts["Status"].map(status_map).fillna(status_counts["Status"])
+            
+            # Ordenar por quantidade (maior para menor)
+            status_counts = status_counts.sort_values("Quantidade", ascending=True)
+            
+            # Criar gráfico de barras empilhadas horizontal
+            fig_status = go.Figure()
+            
+            total = status_counts["Quantidade"].sum()
+            
+            # Mapeamento de cores
+            colors_map = {
+                "aberta": "#f97316",
+                "atendida": "#22c55e",
+                "cancelada": "#ef4444",
+                "outros": "#64748b",
+                "desconhecido": "#94a3b8",
+            }
+            
+            # Ordenar para empilhar corretamente (atendidas primeiro, depois abertas, etc.)
+            order = ["atendida", "aberta", "cancelada", "outros", "desconhecido"]
+            status_counts_ordered = status_counts.set_index("Status").reindex([s for s in order if s in status_counts["Status"].values])
+            status_counts_ordered = status_counts_ordered.dropna().reset_index()
+            
+            # Criar barra única empilhada
+            for _, row in status_counts_ordered.iterrows():
+                status = row["Status"]
+                qtd = row["Quantidade"]
+                label = status_map.get(status, status)
+                color = colors_map.get(status, "#64748b")
+                
+                fig_status.add_trace(go.Bar(
+                    name=label,
+                    x=[qtd],
+                    y=["Total"],
+                    orientation="h",
+                    marker=dict(color=color),
+                    text=f"{label}: {qtd} ({qtd/total*100:.1f}%)",
+                    textposition="inside",
+                    hovertemplate=f"<b>{label}</b><br>Quantidade: {qtd}<br>Percentual: {qtd/total*100:.1f}%<extra></extra>"
+                ))
+            
+            # Adicionar total no final
+            fig_status.add_trace(go.Scatter(
+                x=[total],
+                y=["Total"],
+                mode="text",
+                text=str(total),
+                textposition="middle right",
+                textfont=dict(color="white", size=14, weight="bold"),
+                showlegend=False,
+                hoverinfo="skip"
+            ))
+            
+            fig_status.update_layout(
+                barmode="stack",
+                yaxis=dict(visible=False),
+                xaxis_title="Quantidade de Solicitações",
+                height=150,
+                legend=dict(
+                    orientation="h",
+                    yanchor="bottom",
+                    y=1.02,
+                    xanchor="right",
+                    x=1
+                ),
+                margin=dict(t=50, b=20, l=20, r=20),
+                hovermode="y unified"
+            )
+            st.plotly_chart(fig_status, use_container_width=True)
+        else:
+            st.info("Coluna de status não encontrada para gerar o gráfico.")
 
-        with col2:
-            if "data_solicitacao" in df_unique.columns:
-                timeline = (
-                    df_unique.dropna(subset=["data_solicitacao"])
-                    .assign(mes=lambda d: d["data_solicitacao"].dt.to_period("M").dt.to_timestamp())
-                    .groupby("mes")
-                    .size()
-                    .reset_index(name="Solicitações")
+        # Gráfico de Tendência Temporal
+        st.subheader("Tendência de Solicitações ao Longo do Tempo")
+        if "data_solicitacao" in df_unique.columns:
+            timeline = (
+                df_unique.dropna(subset=["data_solicitacao"])
+                .assign(mes=lambda d: d["data_solicitacao"].dt.to_period("M").dt.to_timestamp())
+                .groupby("mes")
+                .agg(
+                    total=("solicitacao", "nunique") if "solicitacao" in df_unique.columns else ("data_solicitacao", "count"),
+                    abertas=("status_bucket", lambda s: (s == "aberta").sum()) if "status_bucket" in df_unique.columns else None
                 )
-                fig_line = px.line(
-                    timeline,
-                    x="mes",
-                    y="Solicitações",
-                    markers=True,
-                )
-                fig_line.update_layout(
+                .reset_index()
+            )
+            
+            if "abertas" in timeline.columns and timeline["abertas"].notna().any():
+                timeline["atendidas"] = timeline["total"] - timeline["abertas"]
+                
+                # Gráfico de área empilhada
+                fig_timeline = go.Figure()
+                
+                fig_timeline.add_trace(go.Scatter(
+                    name="Atendidas",
+                    x=timeline["mes"],
+                    y=timeline["atendidas"],
+                    mode="lines+markers",
+                    fill="tozeroy",
+                    marker=dict(color="#22c55e", size=8),
+                    line=dict(color="#22c55e", width=2),
+                    hovertemplate="<b>%{x|%b %Y}</b><br>Atendidas: %{y}<extra></extra>"
+                ))
+                
+                fig_timeline.add_trace(go.Scatter(
+                    name="Abertas",
+                    x=timeline["mes"],
+                    y=timeline["abertas"],
+                    mode="lines+markers",
+                    fill="tonexty",
+                    marker=dict(color="#f97316", size=8),
+                    line=dict(color="#f97316", width=2),
+                    hovertemplate="<b>%{x|%b %Y}</b><br>Abertas: %{y}<extra></extra>"
+                ))
+                
+                fig_timeline.update_layout(
                     xaxis_title="Mês",
                     yaxis_title="Qtd. Solicitações Únicas",
                     hovermode="x unified",
+                    legend=dict(
+                        orientation="h",
+                        yanchor="bottom",
+                        y=1.02,
+                        xanchor="right",
+                        x=1
+                    ),
+                    height=400
                 )
-                st.plotly_chart(fig_line, use_container_width=True)
             else:
-                st.info("Não foi possível gerar a linha do tempo (coluna de data ausente).")
+                # Fallback: gráfico de linha simples
+                fig_timeline = px.line(
+                    timeline,
+                    x="mes",
+                    y="total",
+                    markers=True,
+                )
+                fig_timeline.update_traces(
+                    line=dict(color="#3b82f6", width=3),
+                    marker=dict(color="#3b82f6", size=8)
+                )
+                fig_timeline.update_layout(
+                    xaxis_title="Mês",
+                    yaxis_title="Qtd. Solicitações Únicas",
+                    hovermode="x unified",
+                    height=400
+                )
+            
+            st.plotly_chart(fig_timeline, use_container_width=True)
+        else:
+            st.info("Não foi possível gerar a linha do tempo (coluna de data ausente).")
 
     with tab2:
         col1, col2 = st.columns(2)
