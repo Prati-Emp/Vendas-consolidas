@@ -13,6 +13,7 @@ O sistema implementa **controle de acesso granular** baseado no **role do usuár
 - **Ítalo Peres (italo.peres@grupoprati.com)** - Manager
 - **José Aquino (jose.aquino@grupoprati.com)** - Analyst
 - **Evelyn Padilha (evelyn.padilha@grupoprati.com)** - Analyst
+- **João Fantinel (joao.fantinel@grupoprati.com)** - Analyst (Vendas + Operações)
 - ✅ **Acesso total**: Todas as páginas
 - 📄 **Páginas disponíveis**: Vendas, Leads, Reservas, Motivo Fora do Prazo
 

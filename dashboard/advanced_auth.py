@@ -77,7 +77,8 @@ USERS_DATABASE = {
         "created": "2025-01-23",
         "last_login": None,
         "active": True,
-        "subpages": ["operacoes.jira"]  # Apenas acesso ao Jira
+        "subpages": ["operacoes.jira"],  # Apenas acesso ao Jira no Operações
+        "pages": ["vendas", "operacoes"]  # Liberado para Vendas e Operações
     },
     "andre.pozza@grupoprati.com": {
         "password": "EcwSG52eL&qk",
@@ -286,7 +287,15 @@ def get_user_permissions(user_data: Dict) -> List[str]:
 
 def get_user_pages(user_data: Dict) -> List[str]:
     """Retorna páginas que o usuário pode acessar baseado no role"""
-    # Todos os usuários cadastrados têm acesso total
+    if not user_data:
+        return ['vendas']
+
+    # Permite configuração específica por usuário quando "pages" estiver definido
+    custom_pages = user_data.get("pages")
+    if custom_pages:
+        return custom_pages
+
+    # Usuários cadastrados têm acesso total por padrão
     if user_data.get('email') in USERS_DATABASE:
         return ['vendas', 'leads', 'reservas', 'operacoes', 'motivo_fora_prazo']
     
@@ -411,6 +420,7 @@ def setup_auth_environment():
             <li>Ítalo Peres (manager) - italo.peres@grupoprati.com</li>
             <li>José Aquino (analyst) - jose.aquino@grupoprati.com</li>
             <li>Evelyn Padilha (analyst) - evelyn.padilha@grupoprati.com</li>
+            <li>João Fantinel (analyst) - joao.fantinel@grupoprati.com</li>
         </ul>
         <p><strong>⚠️ Importante:</strong> Senhas são fornecidas individualmente por segurança!</p>
     </div>
