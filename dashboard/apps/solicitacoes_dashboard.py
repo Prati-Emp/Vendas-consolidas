@@ -392,23 +392,34 @@ def compute_kpis(df: pd.DataFrame) -> Dict[str, float]:
     today = datetime.now()
     ninety_days_ago = today - timedelta(days=90)
     solicitacao_col = "solicitacao" if "solicitacao" in df.columns else None
-    if "data_solicitacao" in df.columns and solicitacao_col:
-        ultimos_90 = df[df["data_solicitacao"] >= ninety_days_ago][solicitacao_col].count()
+    
+    # Para KPIs de volume, precisamos desduplicar por número da solicitação
+    if solicitacao_col:
+        # Criar um dataframe de solicitações únicas para contagem correta
+        # Assumimos que status/datas são consistentes por solicitação ou pegamos o primeiro
+        df_unique = df.drop_duplicates(subset=[solicitacao_col])
+    else:
+        df_unique = df
+
+    if "data_solicitacao" in df_unique.columns and solicitacao_col:
+        ultimos_90 = df_unique[df_unique["data_solicitacao"] >= ninety_days_ago][solicitacao_col].nunique()
     else:
         ultimos_90 = 0
 
-    abertas = (df["status_bucket"] == "aberta").sum()
-    atendidas = (df["status_bucket"] == "atendida").sum()
+    abertas = (df_unique["status_bucket"] == "aberta").sum()
+    atendidas = (df_unique["status_bucket"] == "atendida").sum()
+    
+    # Insumos continua sendo a soma de tudo (linhas ou qtd declarada)
     insumos_total = df["insumos"].sum() if "insumos" in df.columns else 0
 
     idade_media = (
-        df.loc[df["status_bucket"] == "aberta", "dias_em_aberto"].mean()
-        if "dias_em_aberto" in df.columns
+        df_unique.loc[df_unique["status_bucket"] == "aberta", "dias_em_aberto"].mean()
+        if "dias_em_aberto" in df_unique.columns
         else None
     )
     lead_time_medio = (
-        df.loc[df["status_bucket"] == "atendida", "lead_time_dias"].mean()
-        if "lead_time_dias" in df.columns
+        df_unique.loc[df_unique["status_bucket"] == "atendida", "lead_time_dias"].mean()
+        if "lead_time_dias" in df_unique.columns
         else None
     )
 
@@ -423,6 +434,13 @@ def compute_kpis(df: pd.DataFrame) -> Dict[str, float]:
 
 
 def render_distributions(df: pd.DataFrame) -> None:
+    # Para gráficos de contagem, usar dataframe único por solicitação
+    solicitacao_col = "solicitacao" if "solicitacao" in df.columns else None
+    if solicitacao_col:
+        df_unique = df.drop_duplicates(subset=[solicitacao_col])
+    else:
+        df_unique = df
+
     tab1, tab2, tab3 = st.tabs(
         [
             "Status e Tendência",
@@ -434,9 +452,9 @@ def render_distributions(df: pd.DataFrame) -> None:
     with tab1:
         col1, col2 = st.columns(2)
         with col1:
-            if "status_bucket" in df.columns:
+            if "status_bucket" in df_unique.columns:
                 status_counts = (
-                    df["status_bucket"]
+                    df_unique["status_bucket"]
                     .value_counts()
                     .rename_axis("Status")
                     .reset_index(name="Quantidade")
@@ -461,9 +479,9 @@ def render_distributions(df: pd.DataFrame) -> None:
                 st.info("Coluna de status não encontrada para gerar o gráfico.")
 
         with col2:
-            if "data_solicitacao" in df.columns:
+            if "data_solicitacao" in df_unique.columns:
                 timeline = (
-                    df.dropna(subset=["data_solicitacao"])
+                    df_unique.dropna(subset=["data_solicitacao"])
                     .assign(mes=lambda d: d["data_solicitacao"].dt.to_period("M").dt.to_timestamp())
                     .groupby("mes")
                     .size()
@@ -477,7 +495,7 @@ def render_distributions(df: pd.DataFrame) -> None:
                 )
                 fig_line.update_layout(
                     xaxis_title="Mês",
-                    yaxis_title="Qtd. Solicitações",
+                    yaxis_title="Qtd. Solicitações Únicas",
                     hovermode="x unified",
                 )
                 st.plotly_chart(fig_line, use_container_width=True)
@@ -486,9 +504,9 @@ def render_distributions(df: pd.DataFrame) -> None:
 
     with tab2:
         col1, col2 = st.columns(2)
-        if "solicitante" in df.columns and "solicitacao" in df.columns:
+        if "solicitante" in df_unique.columns and "solicitacao" in df_unique.columns:
             top_solicitantes = (
-                df.groupby("solicitante")
+                df_unique.groupby("solicitante")
                 .agg(qtd=("solicitacao", "count"), atendidas=("status_bucket", lambda s: (s == "atendida").sum()))
                 .reset_index()
                 .sort_values("qtd", ascending=False)
@@ -505,18 +523,18 @@ def render_distributions(df: pd.DataFrame) -> None:
             )
             fig_bar.update_layout(
                 yaxis_title="Solicitante",
-                xaxis_title="Qtd. Solicitações",
+                xaxis_title="Qtd. Solicitações Únicas",
                 coloraxis_colorbar=dict(title="Atendidas"),
             )
             st.plotly_chart(fig_bar, use_container_width=True)
-        elif "solicitante" not in df.columns:
+        elif "solicitante" not in df_unique.columns:
             st.info("Não há coluna de solicitante para gerar ranking.")
         else:
             st.info("Coluna de número da solicitação não encontrada para gerar ranking.")
 
-        if "obra" in df.columns:
+        if "obra" in df_unique.columns:
             obras_df = (
-                df.groupby("obra")
+                df_unique.groupby("obra")
                 .agg(
                     solicitacoes=("solicitacao", "count"),
                     em_aberto=("status_bucket", lambda s: (s == "aberta").sum()),
@@ -529,7 +547,7 @@ def render_distributions(df: pd.DataFrame) -> None:
                 obras_df.rename(
                     columns={
                         "obra": "Empreendimento / Área",
-                        "solicitacoes": "Solicitações",
+                        "solicitacoes": "Solicitações Únicas",
                         "em_aberto": "Abertas",
                         "lead_time": "Lead time médio (dias)",
                     }
