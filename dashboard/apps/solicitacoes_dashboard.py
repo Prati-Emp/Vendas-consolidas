@@ -1,0 +1,655 @@
+"""
+Dashboard de Solicitações de Compras (dados provenientes de planilhas semanais).
+"""
+
+from __future__ import annotations
+
+import unicodedata
+from dataclasses import dataclass
+from datetime import date, datetime, timedelta
+from typing import Dict, List, Optional, Tuple
+
+import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
+import streamlit as st
+
+from dashboard.utils.md_conn import get_md_connection
+
+# Mapeamento de possíveis nomes das colunas na planilha para nomes canônicos.
+COLUMN_ALIASES: Dict[str, List[str]] = {
+    "solicitacao": [
+        "solicitacao",
+        "solicitação",
+        "numero_da_solicitacao",
+        "numero_solicitacao",
+        "n_solicitacao",
+        "n_da_solicita_o",
+        "id_solicitacao",
+        "id",
+        "codigo",
+    ],
+    "status": [
+        "status",
+        "situacao",
+        "situação",
+        "situa_o",
+        "andamento",
+        "status_solicitacao",
+        "status_da_solicitacao",
+    ],
+    "data_solicitacao": [
+        "data",
+        "data_solicitacao",
+        "data_da_solicitacao",
+        "dt_solicitacao",
+        "data_solicita_o",
+        "data_criacao",
+        "data_abertura",
+        "data_solicitação",
+        "data_solicitante",
+        "data_pedido",
+    ],
+    "data_atendimento": [
+        "data_atendimento",
+        "data_atendida",
+        "data_finalizacao",
+        "data_finalização",
+        "data_conclusao",
+        "data_conclusão",
+        "data_entrega",
+        "data_resolucao",
+    ],
+    "solicitante": [
+        "solicitante",
+        "requisitante",
+        "responsavel",
+        "responsável",
+        "solicitado_por",
+        "solicitante_nome",
+        "demandante",
+    ],
+    "obra": [
+        "empreendimento",
+        "obra",
+        "projeto",
+        "pasta",
+        "area_demandante",
+    ],
+    "categoria": [
+        "categoria",
+        "grupo",
+        "tipo_demanda",
+        "natureza",
+    ],
+    "descricao": [
+        "descricao",
+        "descrição",
+        "descricao_da_demanda",
+        "descricao_solicitacao",
+        "descricao_material",
+        "observacao",
+        "observa_o_da_solicita_o",
+    ],
+    "insumos": [
+        "qtd_insumos",
+        "qtde_insumos",
+        "quantidade_insumos",
+        "quantidade_itens",
+        "qtd_itens",
+        "total_insumos",
+        "quantidade_total",
+    ],
+    "valor_total": [
+        "valor_total",
+        "valor",
+        "valor_previsto",
+        "custo_estimado",
+    ],
+    "prioridade": [
+        "prioridade",
+        "criticidade",
+        "grau",
+    ],
+    "_ingested_at": [
+        "_ingested_at",
+        "_atualizado_em",
+        "_ingestao",
+        "ingest_timestamp",
+    ],
+}
+
+STATUS_KEYWORDS = {
+    "aberta": ["abert", "penden", "aguard", "andamento", "analise", "aprova"],
+    "atendida": ["atend", "conclu", "finaliz", "aprovad", "liberad", "entreg"],
+    "cancelada": ["cancel", "recus", "negad"],
+}
+
+
+@dataclass(frozen=True)
+class DatasetMeta:
+    mapping: Dict[str, str]
+    last_update: Optional[datetime]
+
+
+def _normalize_text(value: str) -> str:
+    """Remove acentos e deixa em minúsculas para comparação."""
+    if not isinstance(value, str):
+        return ""
+    normalized = unicodedata.normalize("NFKD", value)
+    normalized = "".join(ch for ch in normalized if not unicodedata.combining(ch))
+    return normalized.strip().lower()
+
+
+def _detect_columns(columns: List[str]) -> Dict[str, str]:
+    """Detecta quais colunas estão presentes usando aliases."""
+    mapping: Dict[str, str] = {}
+    used_columns: set[str] = set()
+    normalized_aliases = {
+        key: [_normalize_text(alias) for alias in aliases]
+        for key, aliases in COLUMN_ALIASES.items()
+    }
+
+    for col in columns:
+        normalized_col = _normalize_text(col)
+        for canonical, candidates in normalized_aliases.items():
+            if canonical in mapping:
+                continue
+            if normalized_col in candidates or any(
+                normalized_col.startswith(candidate) or candidate in normalized_col
+                for candidate in candidates
+            ):
+                if col not in used_columns:
+                    mapping[canonical] = col
+                    used_columns.add(col)
+                break
+    return mapping
+
+
+@st.cache_data(ttl=600)
+def load_solicitacoes_raw() -> pd.DataFrame:
+    """Carrega os dados crus da tabela de solicitações no MotherDuck."""
+    md_conn = get_md_connection()
+    sql = "SELECT * FROM planilhas.relacao_de_solicitacoes_de_compras"
+    return md_conn.run_query(sql)
+
+
+def prepare_dataset(df: pd.DataFrame) -> Tuple[pd.DataFrame, DatasetMeta]:
+    """Renomeia colunas para o padrão esperado e calcula campos auxiliares."""
+    if df.empty:
+        return df, DatasetMeta(mapping={}, last_update=None)
+
+    mapping = _detect_columns(df.columns.tolist())
+    canonical_names = {actual: canonical for canonical, actual in mapping.items()}
+    prepared = df.rename(columns=canonical_names).copy()
+
+    if "data_solicitacao" in prepared.columns:
+        prepared["data_solicitacao"] = pd.to_datetime(
+            prepared["data_solicitacao"], errors="coerce"
+        )
+    if "data_atendimento" in prepared.columns:
+        prepared["data_atendimento"] = pd.to_datetime(
+            prepared["data_atendimento"], errors="coerce"
+        )
+    # Quantidade de insumos: tenta coluna explícita, senão deriva de quantidades
+    if "insumos" in prepared.columns:
+        prepared["insumos"] = (
+            pd.to_numeric(prepared["insumos"], errors="coerce").fillna(0).astype(float)
+        )
+    else:
+        # Tabela de solicitações atual: usar quant_cotada_reservada_dispon_vel se existir,
+        # senão somar quant_pendente + quant_atendida como proxy de quantidade de itens.
+        if "quant_cotada_reservada_dispon_vel" in df.columns:
+            prepared["insumos"] = (
+                pd.to_numeric(df["quant_cotada_reservada_dispon_vel"], errors="coerce")
+                .fillna(0)
+                .astype(float)
+            )
+        else:
+            qty_cols = [c for c in ["quant_pendente", "quant_atendida"] if c in df.columns]
+            if qty_cols:
+                prepared["insumos"] = (
+                    df[qty_cols]
+                    .apply(pd.to_numeric, errors="coerce")
+                    .fillna(0)
+                    .sum(axis=1)
+                    .astype(float)
+                )
+    if "valor_total" in prepared.columns:
+        prepared["valor_total"] = pd.to_numeric(
+            prepared["valor_total"], errors="coerce"
+        )
+
+    if "status" in prepared.columns:
+        prepared["status_bucket"] = prepared["status"].apply(classify_status)
+    else:
+        prepared["status_bucket"] = "desconhecido"
+
+    if "data_solicitacao" in prepared.columns and "data_atendimento" in prepared.columns:
+        prepared["lead_time_dias"] = (
+            prepared["data_atendimento"] - prepared["data_solicitacao"]
+        ).dt.days
+    else:
+        prepared["lead_time_dias"] = None
+
+    if "data_solicitacao" in prepared.columns:
+        prepared["dias_em_aberto"] = (
+            datetime.now() - prepared["data_solicitacao"]
+        ).dt.days
+
+    last_update_col = mapping.get("_ingested_at") or (
+        "_ingested_at" if "_ingested_at" in df.columns else None
+    )
+    last_update = None
+    if last_update_col and last_update_col in prepared.columns:
+        last_update = pd.to_datetime(prepared[last_update_col], errors="coerce").max()
+
+    return prepared, DatasetMeta(mapping=mapping, last_update=last_update)
+
+
+def classify_status(value: Optional[str]) -> str:
+    """Classifica o status em buckets open/attended/cancelled/outros."""
+    normalized = _normalize_text(value) if value is not None else ""
+    if not normalized:
+        return "desconhecido"
+    for bucket, keywords in STATUS_KEYWORDS.items():
+        if any(keyword in normalized for keyword in keywords):
+            return bucket
+    return "outros"
+
+
+def _format_int(value: Optional[float]) -> str:
+    if value is None or pd.isna(value):
+        return "0"
+    return f"{int(value):,}".replace(",", ".")
+
+
+def _format_float(value: Optional[float]) -> str:
+    if value is None or pd.isna(value):
+        return "0,0"
+    return f"{value:,.1f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+
+def _default_period(df: pd.DataFrame) -> Tuple[date, date]:
+    today = datetime.now().date()
+    if "data_solicitacao" not in df.columns or df["data_solicitacao"].dropna().empty:
+        return today - timedelta(days=90), today
+    min_date = df["data_solicitacao"].dropna().min().date()
+    max_date = df["data_solicitacao"].dropna().max().date()
+    start = max(max_date - timedelta(days=180), min_date)
+    return start, max_date
+
+
+def apply_filters(
+    df: pd.DataFrame,
+    *,
+    data_inicio: Optional[date],
+    data_fim: Optional[date],
+    status: List[str],
+    solicitantes: List[str],
+    obras: List[str],
+    categorias: List[str],
+    search: str,
+) -> pd.DataFrame:
+    if df.empty:
+        return df
+
+    filtered = df.copy()
+
+    if data_inicio and "data_solicitacao" in filtered.columns:
+        filtered = filtered[
+            filtered["data_solicitacao"].dt.date >= pd.to_datetime(data_inicio).date()
+        ]
+    if data_fim and "data_solicitacao" in filtered.columns:
+        filtered = filtered[
+            filtered["data_solicitacao"].dt.date <= pd.to_datetime(data_fim).date()
+        ]
+    if status and "status" in filtered.columns:
+        filtered = filtered[filtered["status"].isin(status)]
+    if status and "status" not in filtered.columns:
+        st.warning("Filtro de status ignorado — coluna não encontrada.")
+    if solicitantes and "solicitante" in filtered.columns:
+        filtered = filtered[filtered["solicitante"].isin(solicitantes)]
+    if obras and "obra" in filtered.columns:
+        filtered = filtered[filtered["obra"].isin(obras)]
+    if categorias and "categoria" in filtered.columns:
+        filtered = filtered[filtered["categoria"].isin(categorias)]
+    if search and "solicitacao" in filtered.columns:
+        search_lower = search.lower().strip()
+        filtered = filtered[
+            filtered["solicitacao"].astype(str).str.lower().str.contains(search_lower)
+        ]
+
+    return filtered
+
+
+def compute_kpis(df: pd.DataFrame) -> Dict[str, float]:
+    if df.empty:
+        return {
+            "ultimos_90": 0,
+            "abertas": 0,
+            "atendidas": 0,
+            "insumos": 0,
+            "idade_media_abertas": 0.0,
+            "lead_time_medio": 0.0,
+        }
+
+    today = datetime.now()
+    ninety_days_ago = today - timedelta(days=90)
+    solicitacao_col = "solicitacao" if "solicitacao" in df.columns else None
+    if "data_solicitacao" in df.columns and solicitacao_col:
+        ultimos_90 = df[df["data_solicitacao"] >= ninety_days_ago][solicitacao_col].count()
+    else:
+        ultimos_90 = 0
+
+    abertas = (df["status_bucket"] == "aberta").sum()
+    atendidas = (df["status_bucket"] == "atendida").sum()
+    insumos_total = df["insumos"].sum() if "insumos" in df.columns else 0
+
+    idade_media = (
+        df.loc[df["status_bucket"] == "aberta", "dias_em_aberto"].mean()
+        if "dias_em_aberto" in df.columns
+        else None
+    )
+    lead_time_medio = (
+        df.loc[df["status_bucket"] == "atendida", "lead_time_dias"].mean()
+        if "lead_time_dias" in df.columns
+        else None
+    )
+
+    return {
+        "ultimos_90": int(ultimos_90),
+        "abertas": int(abertas),
+        "atendidas": int(atendidas),
+        "insumos": float(insumos_total),
+        "idade_media_abertas": idade_media or 0.0,
+        "lead_time_medio": lead_time_medio or 0.0,
+    }
+
+
+def render_distributions(df: pd.DataFrame) -> None:
+    tab1, tab2, tab3 = st.tabs(
+        [
+            "Status e Tendência",
+            "Solicitantes e Obras",
+            "Tabela Detalhada",
+        ]
+    )
+
+    with tab1:
+        col1, col2 = st.columns(2)
+        with col1:
+            if "status_bucket" in df.columns:
+                status_counts = (
+                    df["status_bucket"]
+                    .value_counts()
+                    .rename_axis("Status")
+                    .reset_index(name="Quantidade")
+                )
+                fig = px.pie(
+                    status_counts,
+                    names="Status",
+                    values="Quantidade",
+                    color="Status",
+                    color_discrete_map={
+                        "aberta": "#f97316",
+                        "atendida": "#22c55e",
+                        "cancelada": "#ef4444",
+                        "outros": "#64748b",
+                        "desconhecido": "#94a3b8",
+                    },
+                )
+                fig.update_traces(textposition="inside", textinfo="percent+label")
+                fig.update_layout(margin=dict(t=30, b=0))
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.info("Coluna de status não encontrada para gerar o gráfico.")
+
+        with col2:
+            if "data_solicitacao" in df.columns:
+                timeline = (
+                    df.dropna(subset=["data_solicitacao"])
+                    .assign(mes=lambda d: d["data_solicitacao"].dt.to_period("M").dt.to_timestamp())
+                    .groupby("mes")
+                    .size()
+                    .reset_index(name="Solicitações")
+                )
+                fig_line = px.line(
+                    timeline,
+                    x="mes",
+                    y="Solicitações",
+                    markers=True,
+                )
+                fig_line.update_layout(
+                    xaxis_title="Mês",
+                    yaxis_title="Qtd. Solicitações",
+                    hovermode="x unified",
+                )
+                st.plotly_chart(fig_line, use_container_width=True)
+            else:
+                st.info("Não foi possível gerar a linha do tempo (coluna de data ausente).")
+
+    with tab2:
+        col1, col2 = st.columns(2)
+        if "solicitante" in df.columns and "solicitacao" in df.columns:
+            top_solicitantes = (
+                df.groupby("solicitante")
+                .agg(qtd=("solicitacao", "count"), atendidas=("status_bucket", lambda s: (s == "atendida").sum()))
+                .reset_index()
+                .sort_values("qtd", ascending=False)
+                .head(10)
+            )
+            fig_bar = px.bar(
+                top_solicitantes,
+                x="qtd",
+                y="solicitante",
+                orientation="h",
+                text="qtd",
+                color="atendidas",
+                color_continuous_scale="Blues",
+            )
+            fig_bar.update_layout(
+                yaxis_title="Solicitante",
+                xaxis_title="Qtd. Solicitações",
+                coloraxis_colorbar=dict(title="Atendidas"),
+            )
+            st.plotly_chart(fig_bar, use_container_width=True)
+        elif "solicitante" not in df.columns:
+            st.info("Não há coluna de solicitante para gerar ranking.")
+        else:
+            st.info("Coluna de número da solicitação não encontrada para gerar ranking.")
+
+        if "obra" in df.columns:
+            obras_df = (
+                df.groupby("obra")
+                .agg(
+                    solicitacoes=("solicitacao", "count"),
+                    em_aberto=("status_bucket", lambda s: (s == "aberta").sum()),
+                    lead_time=("lead_time_dias", "mean"),
+                )
+                .reset_index()
+                .sort_values("solicitacoes", ascending=False)
+            )
+            st.dataframe(
+                obras_df.rename(
+                    columns={
+                        "obra": "Empreendimento / Área",
+                        "solicitacoes": "Solicitações",
+                        "em_aberto": "Abertas",
+                        "lead_time": "Lead time médio (dias)",
+                    }
+                ),
+                hide_index=True,
+                use_container_width=True,
+            )
+        else:
+            st.info("Informações de empreendimento não encontradas.")
+
+    with tab3:
+        display_columns = [
+            col
+            for col in ["solicitacao", "status", "data_solicitacao", "data_atendimento", "solicitante", "obra", "categoria", "insumos", "valor_total"]
+            if col in df.columns
+        ]
+        if not display_columns:
+            display_columns = df.columns.tolist()
+        st.dataframe(
+            df[display_columns].sort_values(
+                "data_solicitacao", ascending=False
+            )
+            if "data_solicitacao" in display_columns
+            else df[display_columns],
+            hide_index=True,
+            use_container_width=True,
+        )
+        csv = df.to_csv(index=False).encode("utf-8")
+        st.download_button(
+            "Baixar CSV filtrado",
+            data=csv,
+            file_name="solicitacoes_de_compras.csv",
+            mime="text/csv",
+        )
+
+
+def render_solicitacoes_dashboard(*, show_title: bool = True, show_caption: bool = True) -> None:
+    """Renderiza toda a página de Solicitação de Compras."""
+    with st.spinner("Carregando solicitações..."):
+        raw_df = load_solicitacoes_raw()
+
+    prepared_df, meta = prepare_dataset(raw_df)
+
+    if prepared_df.empty:
+        st.warning("Nenhuma solicitação disponível no momento.")
+        return
+
+    if show_title:
+        st.title("📝 Solicitações de Compras")
+        if show_caption:
+            st.caption("Monitoramento semanal das demandas enviadas ao time de Compras")
+
+    last_update_label = (
+        meta.last_update.strftime("%d/%m/%Y %H:%M") if isinstance(meta.last_update, (datetime, pd.Timestamp)) else "sem registro"
+    )
+    st.info(
+        f"Esta página é atualizada **semanalmente**. "
+        f"Última carga conhecida: **{last_update_label}**."
+    )
+
+    start_default, end_default = _default_period(prepared_df)
+    with st.sidebar:
+        st.header("Filtros - Solicitação de Compras")
+        st.caption("Filtros independentes desta página.")
+
+        if "data_solicitacao" in prepared_df.columns:
+            data_inicio = st.date_input(
+                "Data inicial",
+                value=start_default,
+                min_value=prepared_df["data_solicitacao"].min().date()
+                if prepared_df["data_solicitacao"].notna().any()
+                else start_default,
+            )
+            data_fim = st.date_input(
+                "Data final",
+                value=end_default,
+                max_value=end_default,
+            )
+        else:
+            data_inicio = data_fim = None
+            st.warning("Coluna de data não encontrada — filtro temporal desativado.")
+
+        search = st.text_input(
+            "Filtrar por Nº solicitação",
+            placeholder="Digite parte do código...",
+        )
+
+        status_options = (
+            sorted(prepared_df["status"].dropna().unique())
+            if "status" in prepared_df.columns
+            else []
+        )
+        status_selected = st.multiselect(
+            "Status",
+            options=status_options,
+        )
+
+        solicitante_options = (
+            sorted(prepared_df["solicitante"].dropna().unique())
+            if "solicitante" in prepared_df.columns
+            else []
+        )
+        solicitante_selected = st.multiselect(
+            "Solicitante",
+            options=solicitante_options,
+        )
+
+        obra_options = (
+            sorted(prepared_df["obra"].dropna().unique())
+            if "obra" in prepared_df.columns
+            else []
+        )
+        obra_selected = st.multiselect(
+            "Empreendimento / Área",
+            options=obra_options,
+        )
+
+        categoria_options = (
+            sorted(prepared_df["categoria"].dropna().unique())
+            if "categoria" in prepared_df.columns
+            else []
+        )
+        categoria_selected = st.multiselect(
+            "Categoria",
+            options=categoria_options,
+        )
+
+    filtered_df = apply_filters(
+        prepared_df,
+        data_inicio=data_inicio,
+        data_fim=data_fim,
+        status=status_selected,
+        solicitantes=solicitante_selected,
+        obras=obra_selected,
+        categorias=categoria_selected,
+        search=search,
+    )
+
+    if filtered_df.empty:
+        st.warning("Nenhuma solicitação encontrada para os filtros aplicados.")
+        return
+
+    st.markdown("### 📌 Indicadores Principais")
+    kpis = compute_kpis(filtered_df)
+
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("Solicitações (últ. 90 dias)", _format_int(kpis["ultimos_90"]))
+    col2.metric("Solicitações abertas", _format_int(kpis["abertas"]))
+    col3.metric("Solicitações atendidas", _format_int(kpis["atendidas"]))
+    col4.metric("Qtd. de insumos", _format_int(kpis["insumos"]))
+
+    col5, col6 = st.columns(2)
+    col5.metric(
+        "Idade média das abertas (dias)",
+        _format_float(kpis["idade_media_abertas"]),
+        help="Dias em aberto considerando apenas solicitações ainda sem atendimento.",
+    )
+    col6.metric(
+        "Lead time médio (dias)",
+        _format_float(kpis["lead_time_medio"]),
+        help="Tempo médio entre abertura e atendimento das solicitações concluídas.",
+    )
+
+    st.markdown("---")
+    st.subheader("🔎 Principais insights")
+    insights = [
+        f"{_format_int(kpis['abertas'])} solicitações aguardam atendimento.",
+        f"{_format_int(kpis['atendidas'])} solicitações foram concluídas no período filtrado.",
+        f"Média de {_format_float(kpis['idade_media_abertas'])} dias em aberto para solicitações pendentes."
+        if kpis["idade_media_abertas"]
+        else "Sem dados suficientes para calcular idade média.",
+    ]
+    st.markdown("\n".join(f"- {item}" for item in insights))
+
+    st.markdown("---")
+    render_distributions(filtered_df)
+
+

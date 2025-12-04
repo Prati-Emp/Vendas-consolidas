@@ -6,7 +6,7 @@ Aplicativo independente do dashboard **Operações** baseado na view `informacoe
 
 - `app.py`: roteador principal que autentica o usuário e redireciona para a primeira página liberada.
 - `pages/1_Jira.py`: monitoramento completo das tarefas do Jira.
-- `pages/2_Solicitacao_de_Compras.py`: hub para solicitações de compras (em construção).
+- `pages/2_Solicitacao_de_Compras.py`: visão semanal das solicitações de compras (KPIs, filtros e detalhamento).
 - `pages/3_Pedidos_de_Compras.py`: indicadores consolidados de pedidos de compras.
 - `navigation.py`: navegação horizontal entre as páginas, respeitando permissões do `advanced_auth`.
 

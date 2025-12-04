@@ -15,6 +15,9 @@ for path in (ROOT_DIR, DASHBOARD_DIR, APP_DIR):
         sys.path.append(str(path))
 
 from advanced_auth import require_auth, require_page_access  # noqa: E402
+from dashboard.apps.solicitacoes_dashboard import (  # noqa: E402
+    render_solicitacoes_dashboard,
+)
 from navigation import render_operacoes_navigation  # noqa: E402
 
 st.set_page_config(
@@ -34,27 +37,8 @@ render_operacoes_navigation(current_key="solicitacao_compras")
 st.markdown("---")
 st.subheader("📝 Solicitação de Compras")
 
-st.info(
-    "Esta página será utilizada para acompanhar solicitações de compras. "
-    "Em breve conectaremos os indicadores e tabelas necessários."
+render_solicitacoes_dashboard(
+    show_title=False,
+    show_caption=False,
 )
-
-col1, col2 = st.columns(2)
-with col1:
-    st.metric("Solicitações abertas", "—")
-    st.metric("Ticket médio", "—")
-with col2:
-    st.metric("Tempo médio de aprovação", "—")
-    st.metric("Alçadas envolvidas", "—")
-
-st.markdown("### ⏳ Próximos passos")
-st.markdown(
-    """
-- Integrar tabela de solicitações ao MotherDuck
-- Definir indicadores prioritários com o time de Compras
-- Publicar cronograma de atualização automática
-    """
-)
-
-st.caption("Atualize a página assim que os dados estiverem prontos para visualização.")
 
