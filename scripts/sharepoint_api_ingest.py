@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
 """
-Rotina para ingestão de planilhas do SharePoint via API (Client Credentials ou User/Pass).
-Ideal para execução em CI/CD (GitHub Actions) onde não há sincronização de pasta local.
+Rotina para ingestão de planilhas do SharePoint via Microsoft Graph API.
+Substitui a versão anterior que usava CSOM/REST legado.
 
 Requer:
-    pip install Office365-REST-Python-Client pandas openpyxl duckdb
+    pip install requests pandas openpyxl duckdb python-dotenv
 
 Configuração (.env ou Secrets):
-    SHAREPOINT_SITE_URL=https://seu.sharepoint.com/sites/NomeSite
-    SHAREPOINT_CLIENT_ID=...       (Opção A: App Principal)
-    SHAREPOINT_CLIENT_SECRET=...   (Opção A: App Principal)
-    SHAREPOINT_USERNAME=...        (Opção B: Usuário comum - sem MFA)
-    SHAREPOINT_PASSWORD=...        (Opção B: Usuário comum - sem MFA)
-    SHAREPOINT_FOLDER_REL_URL=/sites/NomeSite/Documentos Compartilhados/PastaAlvo
+    SHAREPOINT_TENANT_ID=...
+    SHAREPOINT_CLIENT_ID=...
+    SHAREPOINT_CLIENT_SECRET=...
+    SHAREPOINT_SITE_HOSTNAME=pratiemp318.sharepoint.com
+    SHAREPOINT_SITE_PATH=/sites/Materialatualizaodiria
+    SHAREPOINT_FOLDER_PATH=arquivosatualizacao
     MOTHERDUCK_TOKEN=...
 """
 
@@ -21,19 +21,15 @@ import logging
 import os
 import re
 import sys
-import tempfile
+import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
 import duckdb
 import pandas as pd
+import requests
 from dotenv import load_dotenv
-from office365.runtime.auth.client_credential import ClientCredential
-from office365.runtime.auth.user_credential import UserCredential
-from office365.sharepoint.client_context import ClientContext
-from office365.sharepoint.files.file import File
 
 # Configuração de Logging
 logging.basicConfig(
@@ -41,24 +37,24 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(message)s",
     handlers=[logging.StreamHandler(sys.stdout)]
 )
-logger = logging.getLogger("sharepoint_api")
+logger = logging.getLogger("sharepoint_graph_ingest")
 
 METADATA_TABLE = "main.__planilhas_sharepoint_log"
 DEFAULT_EXTENSIONS = {".xlsx", ".xls", ".xlsm", ".csv"}
 
 @dataclass
-class SPFile:
-    """Representa um arquivo no SharePoint"""
+class GraphFile:
+    id: str
     name: str
-    server_relative_url: str
-    time_last_modified: datetime
-    length: int
+    size: int
+    last_modified: datetime
+    download_url: str
     extension: str
 
     @property
     def table_name(self) -> str:
         """Gera nome de tabela sanitizado a partir do nome do arquivo"""
-        stem = Path(self.name).stem
+        stem = os.path.splitext(self.name)[0]
         normalized = re.sub(r"[^0-9a-zA-Z_]+", "_", stem.strip().lower())
         normalized = normalized.strip("_")
         if not normalized:
@@ -67,82 +63,131 @@ class SPFile:
             normalized = f"t_{normalized}"
         return normalized[:60]
 
-def get_sharepoint_context() -> ClientContext:
-    """Autentica e retorna o contexto do SharePoint"""
-    site_url = os.environ.get("SHAREPOINT_SITE_URL")
-    client_id = os.environ.get("SHAREPOINT_CLIENT_ID")
-    client_secret = os.environ.get("SHAREPOINT_CLIENT_SECRET")
-    username = os.environ.get("SHAREPOINT_USERNAME")
-    password = os.environ.get("SHAREPOINT_PASSWORD")
-
-    if not site_url:
-        raise ValueError("SHAREPOINT_SITE_URL não definido.")
-
-    if client_id and client_secret:
-        logger.info("Autenticando via Client ID / Secret...")
-        creds = ClientCredential(client_id, client_secret)
-        ctx = ClientContext(site_url).with_credentials(creds)
-    elif username and password:
-        logger.info("Autenticando via Usuário / Senha...")
-        creds = UserCredential(username, password)
-        ctx = ClientContext(site_url).with_credentials(creds)
-    else:
-        raise ValueError("Credenciais do SharePoint não encontradas (CLIENT_ID/SECRET ou USERNAME/PASSWORD).")
-
-    return ctx
-
-def list_files_recursive(ctx: ClientContext, relative_url: str) -> List[SPFile]:
-    """Lista arquivos recursivamente na pasta do SharePoint"""
-    logger.info(f"Listando arquivos em: {relative_url}")
-    
-    try:
-        # Garante que a URL relativa não comece com barra dupla se já tiver no site
-        folder = ctx.web.get_folder_by_server_relative_url(relative_url)
+class GraphAPIClient:
+    def __init__(self):
+        self.tenant_id = os.environ.get("SHAREPOINT_TENANT_ID", "f6e5f47f-eb3e-4de3-a4e3-648d931a2eb9")
+        self.client_id = os.environ.get("SHAREPOINT_CLIENT_ID")
+        self.client_secret = os.environ.get("SHAREPOINT_CLIENT_SECRET")
         
-        # Carrega arquivos e subpastas
-        files = folder.files
-        folders = folder.folders
-        ctx.load(files)
-        ctx.load(folders)
-        ctx.execute_query()
+        if not self.client_id or not self.client_secret:
+            raise ValueError("Credenciais (CLIENT_ID/SECRET) não encontradas.")
+            
+        self.token = None
+        self.headers = {}
+        self._authenticate()
         
-        results = []
+    def _authenticate(self):
+        logger.info("Autenticando na Microsoft Graph API...")
+        url = f"https://login.microsoftonline.com/{self.tenant_id}/oauth2/v2.0/token"
+        data = {
+            'grant_type': 'client_credentials',
+            'client_id': self.client_id,
+            'client_secret': self.client_secret,
+            'scope': 'https://graph.microsoft.com/.default'
+        }
+        resp = requests.post(url, data=data)
+        resp.raise_for_status()
+        self.token = resp.json().get('access_token')
+        self.headers = {
+            'Authorization': f'Bearer {self.token}',
+            'Accept': 'application/json'
+        }
         
-        # Processa arquivos
-        for f in files:
-            name = f.name
-            ext = Path(name).suffix.lower()
+    def get_site_id(self, hostname: str, site_path: str) -> str:
+        """Busca ID do site dado hostname e path"""
+        url = f"https://graph.microsoft.com/v1.0/sites/{hostname}:{site_path}"
+        resp = requests.get(url, headers=self.headers)
+        if resp.status_code == 404:
+            # Tenta busca
+            logger.info("Site não encontrado por path direto, tentando busca...")
+            query = site_path.split('/')[-1]
+            url = f"https://graph.microsoft.com/v1.0/sites?search={query}"
+            resp = requests.get(url, headers=self.headers)
+            resp.raise_for_status()
+            data = resp.json()
+            if not data.get('value'):
+                raise ValueError(f"Site não encontrado: {site_path}")
+            return data['value'][0]['id']
+            
+        resp.raise_for_status()
+        return resp.json()['id']
+
+    def get_drive_id(self, site_id: str, drive_name: str = "Documentos") -> str:
+        """Busca ID da biblioteca de documentos"""
+        url = f"https://graph.microsoft.com/v1.0/sites/{site_id}/drives"
+        resp = requests.get(url, headers=self.headers)
+        resp.raise_for_status()
+        drives = resp.json().get('value', [])
+        
+        for d in drives:
+            # Tenta nomes comuns
+            if d['name'] == drive_name or d['name'] == "Documents" or d['name'] == "Shared Documents":
+                return d['id']
+        
+        if drives:
+            logger.warning(f"Drive '{drive_name}' não achado exato. Usando o primeiro: {drives[0]['name']}")
+            return drives[0]['id']
+            
+        raise ValueError(f"Nenhum drive encontrado no site {site_id}")
+
+    def list_files(self, drive_id: str, folder_path: str) -> List[GraphFile]:
+        """Lista arquivos em uma pasta específica do drive"""
+        # Endpoint para listar filhos de um caminho: /drives/{id}/root:/{path}:/children
+        if folder_path and folder_path != "/":
+            clean_path = folder_path.strip("/")
+            url = f"https://graph.microsoft.com/v1.0/drives/{drive_id}/root:/{clean_path}:/children"
+        else:
+            url = f"https://graph.microsoft.com/v1.0/drives/{drive_id}/root/children"
+            
+        logger.info(f"Listando arquivos: {url}")
+        resp = requests.get(url, headers=self.headers)
+        
+        # Se 404, tenta listar raiz para debug
+        if resp.status_code == 404:
+             logger.error(f"Pasta não encontrada: {folder_path}")
+             return []
+             
+        resp.raise_for_status()
+        items = resp.json().get('value', [])
+        
+        files = []
+        for item in items:
+            if 'file' not in item: # Pula pastas
+                continue
+                
+            name = item['name']
+            ext = os.path.splitext(name)[1].lower()
             if name.startswith("~$") or ext not in DEFAULT_EXTENSIONS:
                 continue
                 
-            # Converter timestamp do SharePoint para datetime
-            # Formato comum: 2023-10-25T14:30:00Z
-            modified_str = str(f.time_last_modified)
-            try:
-                # Tenta parse genérico ISO
-                modified_dt = datetime.fromisoformat(modified_str.replace("Z", "+00:00"))
-            except ValueError:
-                modified_dt = datetime.now(timezone.utc) # Fallback
-
-            results.append(SPFile(
+            last_mod_str = item['lastModifiedDateTime'] # ISO 8601
+            last_mod = datetime.fromisoformat(last_mod_str.replace("Z", "+00:00"))
+            
+            files.append(GraphFile(
+                id=item['id'],
                 name=name,
-                server_relative_url=f.server_relative_url,
-                time_last_modified=modified_dt,
-                length=int(f.length),
+                size=item['size'],
+                last_modified=last_mod,
+                download_url=item['@microsoft.graph.downloadUrl'],
                 extension=ext
             ))
             
-        # Processa subpastas (recursão)
-        for subfolder in folders:
-            if subfolder.name in ["Forms", "_t", "_w"]: # Pastas de sistema ocultas
-                continue
-            results.extend(list_files_recursive(ctx, subfolder.server_relative_url))
-            
-        return results
+        return files
+
+    def download_file(self, file_obj: GraphFile) -> pd.DataFrame:
+        """Baixa arquivo e converte para DataFrame"""
+        logger.info(f"Baixando {file_obj.name}...")
+        resp = requests.get(file_obj.download_url)
+        resp.raise_for_status()
         
-    except Exception as e:
-        logger.error(f"Erro ao listar pasta {relative_url}: {e}")
-        raise
+        content = io.BytesIO(resp.content)
+        
+        if file_obj.extension in [".xlsx", ".xls", ".xlsm"]:
+            return pd.read_excel(content)
+        elif file_obj.extension == ".csv":
+            return pd.read_csv(content)
+            
+        return pd.DataFrame()
 
 def connect_motherduck(database: str = "planilhas"):
     token = os.environ.get("MOTHERDUCK_TOKEN", "").strip()
@@ -157,7 +202,8 @@ def connect_motherduck(database: str = "planilhas"):
 def ensure_metadata_table(conn: duckdb.DuckDBPyConnection):
     conn.execute(f"""
         CREATE TABLE IF NOT EXISTS {METADATA_TABLE} (
-            file_url TEXT PRIMARY KEY,
+            file_id TEXT PRIMARY KEY,
+            file_name TEXT,
             table_name TEXT,
             file_modified TIMESTAMP,
             file_size BIGINT,
@@ -168,119 +214,98 @@ def ensure_metadata_table(conn: duckdb.DuckDBPyConnection):
 
 def get_stored_metadata(conn: duckdb.DuckDBPyConnection) -> Dict[str, datetime]:
     ensure_metadata_table(conn)
-    rows = conn.execute(f"SELECT file_url, file_modified FROM {METADATA_TABLE}").fetchall()
-    return {row[0]: row[1] for row in rows}
+    try:
+        rows = conn.execute(f"SELECT file_id, file_modified FROM {METADATA_TABLE}").fetchall()
+        return {row[0]: row[1] for row in rows}
+    except Exception:
+        return {}
 
-def download_and_read(ctx: ClientContext, sp_file: SPFile) -> pd.DataFrame:
-    """Baixa arquivo para memória e lê com Pandas"""
-    logger.info(f"Baixando: {sp_file.name} ({sp_file.length / 1024:.1f} KB)")
-    
-    response = File.open_binary(ctx, sp_file.server_relative_url)
-    
-    # Grava em buffer de bytes
-    file_content = io.BytesIO(response.content)
-    
-    if sp_file.extension in [".xlsx", ".xls", ".xlsm"]:
-        return pd.read_excel(file_content)
-    elif sp_file.extension == ".csv":
-        # Tenta detectar separador
-        return pd.read_csv(file_content, sep=None, engine='python')
-    
-    return pd.DataFrame()
-
-def ingest_file(conn: duckdb.DuckDBPyConnection, ctx: ClientContext, sp_file: SPFile) -> int:
-    df = download_and_read(ctx, sp_file)
+def ingest_file(conn: duckdb.DuckDBPyConnection, client: GraphAPIClient, file_obj: GraphFile) -> int:
+    df = client.download_file(file_obj)
     
     if df.empty:
-        logger.warning(f"Arquivo vazio ou inválido: {sp_file.name}")
+        logger.warning(f"Arquivo vazio: {file_obj.name}")
         return 0
         
-    # Normalização básica de colunas
+    # Normalização de colunas
     df.columns = [
         re.sub(r"[^0-9a-zA-Z_]+", "_", str(c).strip().lower()).strip("_") 
         for c in df.columns
     ]
     
-    # Adiciona colunas de metadados
-    df["_source_file"] = sp_file.name
+    df["_source_file"] = file_obj.name
     df["_ingested_at"] = datetime.now()
     
-    # Upload para MotherDuck
+    # Upload MotherDuck
     conn.register("df_temp", df)
-    conn.execute(f"CREATE OR REPLACE TABLE {sp_file.table_name} AS SELECT * FROM df_temp")
+    conn.execute(f"CREATE OR REPLACE TABLE {file_obj.table_name} AS SELECT * FROM df_temp")
     conn.unregister("df_temp")
     
     count = len(df)
     
-    # Atualiza log
+    # Log
     conn.execute(f"""
         INSERT OR REPLACE INTO {METADATA_TABLE} 
-        (file_url, table_name, file_modified, file_size, row_count, last_ingested)
-        VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-    """, (sp_file.server_relative_url, sp_file.table_name, sp_file.time_last_modified, sp_file.length, count))
+        (file_id, file_name, table_name, file_modified, file_size, row_count, last_ingested)
+        VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+    """, (file_obj.id, file_obj.name, file_obj.table_name, file_obj.last_modified, file_obj.size, count))
     
     return count
 
 def main():
     load_dotenv()
     
-    # Parâmetros
-    folder_rel_url = os.environ.get("SHAREPOINT_FOLDER_REL_URL")
-    if not folder_rel_url:
-        # Tenta inferir da URL completa se fornecida, ou erro
-        logger.error("SHAREPOINT_FOLDER_REL_URL não definido (ex: /sites/NomeSite/Shared Documents/Pasta)")
-        sys.exit(1)
-        
-    force_update = "--force" in sys.argv
+    # Configuração via ENV ou Hardcoded (fallback)
+    hostname = os.environ.get("SHAREPOINT_SITE_HOSTNAME", "pratiemp318.sharepoint.com")
+    site_path = os.environ.get("SHAREPOINT_SITE_PATH", "/sites/Materialatualizaodiria")
+    folder_path = os.environ.get("SHAREPOINT_FOLDER_PATH", "arquivosatualizacao")
     
     try:
-        # Conexões
-        ctx = get_sharepoint_context()
-        conn = connect_motherduck()
+        # 1. Conectar Graph API
+        client = GraphAPIClient()
+        site_id = client.get_site_id(hostname, site_path)
+        drive_id = client.get_drive_id(site_id)
+        files = client.list_files(drive_id, folder_path)
         
-        # Listar arquivos
-        files = list_files_recursive(ctx, folder_rel_url)
         if not files:
-            logger.warning("Nenhum arquivo encontrado na pasta especificada.")
+            logger.warning("Nenhum arquivo encontrado.")
             return
 
-        # Verificar metadados (incremental)
+        # 2. Conectar MotherDuck
+        conn = connect_motherduck()
         stored_meta = get_stored_metadata(conn)
         
         processed = 0
         errors = 0
+        force = "--force" in sys.argv
         
-        for sp_file in files:
-            stored_mod = stored_meta.get(sp_file.server_relative_url)
+        for f in files:
+            stored_mod = stored_meta.get(f.id)
             
-            # Lógica incremental: se modificado no SP > modificado no Banco
-            # SP retorna com timezone, stored pode não ter. Ajustar comparação.
-            should_process = force_update
-            
+            # Lógica incremental
+            should_process = force
             if not should_process:
                 if not stored_mod:
                     should_process = True
                 else:
-                    # Converter stored para UTC se naive
                     if stored_mod.tzinfo is None:
                         stored_mod = stored_mod.replace(tzinfo=timezone.utc)
-                    if sp_file.time_last_modified > stored_mod:
+                    if f.last_modified > stored_mod:
                         should_process = True
             
             if should_process:
                 try:
-                    logger.info(f"Processando atualização: {sp_file.name}")
-                    rows = ingest_file(conn, ctx, sp_file)
-                    logger.info(f"Sucesso: {sp_file.table_name} ({rows} linhas)")
+                    logger.info(f"Processando: {f.name}")
+                    rows = ingest_file(conn, client, f)
+                    logger.info(f"✅ Sucesso: {f.table_name} ({rows} linhas)")
                     processed += 1
                 except Exception as e:
-                    logger.error(f"Falha ao processar {sp_file.name}: {e}")
+                    logger.error(f"❌ Falha em {f.name}: {e}")
                     errors += 1
             else:
-                logger.info(f"Pulo (sem alteração): {sp_file.name}")
+                logger.info(f"⏭️ Pulo (sem alteração): {f.name}")
                 
-        logger.info(f"Resumo: {processed} processados, {len(files) - processed - errors} pulados, {errors} erros.")
-        
+        logger.info(f"RESUMO: {processed} processados, {len(files)-processed-errors} pulados, {errors} erros.")
         if errors > 0:
             sys.exit(1)
             
@@ -290,5 +315,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
