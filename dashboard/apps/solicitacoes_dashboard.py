@@ -514,7 +514,11 @@ def compute_kpis(df: pd.DataFrame) -> Dict[str, float]:
     if df.empty:
         return {
             "ultimos_90": 0,
+            "abertas_ultimos_30": 0,
+            "abertas_ultimos_60": 0,
             "abertas": 0,
+            "aprovadas": 0,
+            "canceladas": 0,
             "atendidas": 0,
             "insumos": 0,
             "lead_time_medio": 0.0,
@@ -524,6 +528,8 @@ def compute_kpis(df: pd.DataFrame) -> Dict[str, float]:
 
     today = datetime.now()
     ninety_days_ago = today - timedelta(days=90)
+    sixty_days_ago = today - timedelta(days=60)
+    thirty_days_ago = today - timedelta(days=30)
     solicitacao_col = "solicitacao" if "solicitacao" in df.columns else None
     
     # Para KPIs de volume, precisamos desduplicar por número da solicitação
@@ -539,15 +545,42 @@ def compute_kpis(df: pd.DataFrame) -> Dict[str, float]:
     else:
         ultimos_90 = 0
 
-    abertas = (df_unique["status_bucket"] == "aberta").sum()
-    atendidas = (df_unique["status_bucket"] == "atendida").sum()
+    # Abertas total
+    abertas = (df_unique["status_bucket"] == "aberta").sum() if "status_bucket" in df_unique.columns else 0
+    
+    # Abertas nos últimos 30 e 60 dias
+    if "data_solicitacao" in df_unique.columns and "status_bucket" in df_unique.columns and solicitacao_col:
+        abertas_ultimos_30 = df_unique[
+            (df_unique["status_bucket"] == "aberta") & 
+            (df_unique["data_solicitacao"] >= thirty_days_ago)
+        ][solicitacao_col].nunique()
+        
+        abertas_ultimos_60 = df_unique[
+            (df_unique["status_bucket"] == "aberta") & 
+            (df_unique["data_solicitacao"] >= sixty_days_ago)
+        ][solicitacao_col].nunique()
+    else:
+        abertas_ultimos_30 = 0
+        abertas_ultimos_60 = 0
+    
+    # Aprovadas (solicitações com data_autorizacao preenchida)
+    if "data_autorizacao" in df_unique.columns and solicitacao_col:
+        aprovadas = df_unique[df_unique["data_autorizacao"].notna()][solicitacao_col].nunique()
+    else:
+        aprovadas = 0
+    
+    # Canceladas
+    canceladas = (df_unique["status_bucket"] == "cancelada").sum() if "status_bucket" in df_unique.columns else 0
+    
+    # Atendidas
+    atendidas = (df_unique["status_bucket"] == "atendida").sum() if "status_bucket" in df_unique.columns else 0
     
     # Insumos continua sendo a soma de tudo (linhas ou qtd declarada)
     insumos_total = df["insumos"].sum() if "insumos" in df.columns else 0
 
     lead_time_medio = (
         df_unique.loc[df_unique["status_bucket"] == "atendida", "lead_time_dias"].mean()
-        if "lead_time_dias" in df_unique.columns
+        if "lead_time_dias" in df_unique.columns and "status_bucket" in df_unique.columns
         else None
     )
     
@@ -558,13 +591,17 @@ def compute_kpis(df: pd.DataFrame) -> Dict[str, float]:
     )
     tempo_compra_medio = (
         df_unique.loc[df_unique["status_bucket"] == "atendida", "tempo_compra_dias"].mean()
-        if "tempo_compra_dias" in df_unique.columns
+        if "tempo_compra_dias" in df_unique.columns and "status_bucket" in df_unique.columns
         else None
     )
 
     return {
         "ultimos_90": int(ultimos_90),
+        "abertas_ultimos_30": int(abertas_ultimos_30),
+        "abertas_ultimos_60": int(abertas_ultimos_60),
         "abertas": int(abertas),
+        "aprovadas": int(aprovadas),
+        "canceladas": int(canceladas),
         "atendidas": int(atendidas),
         "insumos": float(insumos_total),
         "lead_time_medio": lead_time_medio or 0.0,
@@ -1197,24 +1234,33 @@ def render_solicitacoes_dashboard(*, show_title: bool = True, show_caption: bool
     st.markdown("### 📌 Indicadores Principais")
     kpis = compute_kpis(filtered_df)
 
+    # Primeira linha: Entrada e abertas (jornada temporal)
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("Solicitações (últ. 90 dias)", _format_int(kpis["ultimos_90"]))
-    col2.metric("Solicitações abertas", _format_int(kpis["abertas"]))
-    col3.metric("Solicitações atendidas", _format_int(kpis["atendidas"]))
-    col4.metric("Qtd. de insumos", _format_int(kpis["insumos"]))
+    col2.metric("Abertas (últ. 30 dias)", _format_int(kpis["abertas_ultimos_30"]))
+    col3.metric("Abertas (últ. 60 dias)", _format_int(kpis["abertas_ultimos_60"]))
+    col4.metric("Abertas (total)", _format_int(kpis["abertas"]))
 
-    col5, col6, col7 = st.columns(3)
-    col5.metric(
+    # Segunda linha: Status intermediários e finais (jornada de status)
+    col5, col6, col7, col8 = st.columns(4)
+    col5.metric("Aprovadas", _format_int(kpis["aprovadas"]))
+    col6.metric("Canceladas", _format_int(kpis["canceladas"]))
+    col7.metric("Atendidas", _format_int(kpis["atendidas"]))
+    col8.metric("Qtd. de insumos", _format_int(kpis["insumos"]))
+
+    # Terceira linha: Tempos (métricas de performance)
+    col9, col10, col11 = st.columns(3)
+    col9.metric(
         "Tempo Aprovação (dias)",
         _format_float(kpis["tempo_aprovacao"]),
         help="Tempo médio entre Solicitação e Autorização.",
     )
-    col6.metric(
+    col10.metric(
         "Tempo Compra (dias)",
         _format_float(kpis["tempo_compra"]),
         help="Tempo médio entre Autorização e Atendimento/Entrega.",
     )
-    col7.metric(
+    col11.metric(
         "Lead time Total (dias)",
         _format_float(kpis["lead_time_medio"]),
         help="Tempo total médio (Solicitação até Atendimento). Considera apenas solicitações atendidas.",
