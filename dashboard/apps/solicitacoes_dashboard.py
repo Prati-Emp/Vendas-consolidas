@@ -257,6 +257,28 @@ def prepare_dataset(df: pd.DataFrame) -> Tuple[pd.DataFrame, DatasetMeta]:
             prepared["valor_total"], errors="coerce"
         )
 
+    # Normalização de Obra/Empreendimento
+    # Regra: Tentar extrair nome após o hífen se existir, removendo códigos numéricos iniciais.
+    if "obra" in prepared.columns:
+        def normalize_obra(val):
+            if not isinstance(val, str):
+                return str(val) if val is not None else "Desconhecido"
+            val = val.strip()
+            # Caso 1: Padrão "32 - Nome" ou "32-Nome"
+            if "-" in val:
+                parts = val.split("-", 1)
+                # Se a primeira parte for numérica ou curta (código), pega o resto
+                if len(parts) > 1:
+                     candidate = parts[1].strip()
+                     if candidate:
+                         return candidate
+            # Caso 2: Padrão "31 Nome" (espaço simples após número)
+            # Mas cuidado para não quebrar nomes que começam com número legítimo.
+            # Vamos focar no pedido: "trazer o nome do empreendimento que está depois do travessão"
+            return val
+
+        prepared["obra"] = prepared["obra"].apply(normalize_obra)
+
     if "status" in prepared.columns:
         prepared["status_bucket"] = prepared["status"].apply(classify_status)
     else:
