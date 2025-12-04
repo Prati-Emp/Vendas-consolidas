@@ -309,22 +309,42 @@ def prepare_dataset(df: pd.DataFrame) -> Tuple[pd.DataFrame, DatasetMeta]:
         prepared["obra"] = prepared["obra"].apply(normalize_obra)
 
     # Combinar código + descrição do insumo para exibição
-    if "codigo_insumo" in prepared.columns and "item" in prepared.columns:
+    desc_col = None
+    if "item" in prepared.columns:
+        desc_col = "item"
+    elif "descricao" in prepared.columns:
+        desc_col = "descricao"
+
+    if "codigo_insumo" in prepared.columns:
         def combine_codigo_descricao(row):
-            codigo = str(row["codigo_insumo"]) if pd.notna(row.get("codigo_insumo")) else ""
-            descricao = str(row["item"]) if pd.notna(row.get("item")) else ""
+            val_code = row.get("codigo_insumo")
+            if pd.notna(val_code):
+                # Trata floats que parecem ints (ex: 837.0 -> "837")
+                if isinstance(val_code, float) and val_code.is_integer():
+                    codigo = str(int(val_code))
+                else:
+                    codigo = str(val_code).strip()
+            else:
+                codigo = ""
+
+            descricao = ""
+            if desc_col and pd.notna(row.get(desc_col)):
+                descricao = str(row.get(desc_col)).strip()
+
             if codigo and descricao:
+                # Se a descrição for muito parecida com o código, usa só um
+                if codigo in descricao or descricao in codigo:
+                    return descricao if len(descricao) > len(codigo) else codigo
                 return f"{codigo} - {descricao}"
             elif descricao:
                 return descricao
             elif codigo:
                 return codigo
             return "Sem informação"
+
         prepared["item_completo"] = prepared.apply(combine_codigo_descricao, axis=1)
-    elif "item" in prepared.columns:
-        prepared["item_completo"] = prepared["item"].fillna("Sem informação")
-    elif "codigo_insumo" in prepared.columns:
-        prepared["item_completo"] = prepared["codigo_insumo"].astype(str).fillna("Sem informação")
+    elif desc_col:
+        prepared["item_completo"] = prepared[desc_col].fillna("Sem informação").astype(str)
     else:
         prepared["item_completo"] = "Sem informação"
 
@@ -718,17 +738,17 @@ def render_distributions(df: pd.DataFrame) -> None:
             # Gráfico simplificado apenas se houver muitos itens
             if len(top_itens) > 10:
                 st.subheader("Visualização por Frequência")
-                # Criar labels mais curtos para o gráfico (apenas código se disponível)
+                # Criar labels mais curtos para o gráfico
                 top_itens_plot = top_itens.copy()
-                if "codigo_insumo" in df.columns:
-                    # Tentar extrair código do item_completo para labels mais curtos
-                    top_itens_plot["label_curto"] = top_itens_plot["item_completo"].apply(
-                        lambda x: x.split(" - ")[0] if " - " in str(x) else str(x)[:30]
-                    )
-                else:
-                    top_itens_plot["label_curto"] = top_itens_plot["item_completo"].apply(
-                        lambda x: str(x)[:40] + "..." if len(str(x)) > 40 else str(x)
-                    )
+                
+                # Função para truncar texto mantendo informação relevante
+                def make_label(val):
+                    s = str(val)
+                    if len(s) > 50:
+                        return s[:47] + "..."
+                    return s
+
+                top_itens_plot["label_curto"] = top_itens_plot["item_completo"].apply(make_label)
                 
                 fig_itens = px.bar(
                     top_itens_plot.head(15),
@@ -739,7 +759,7 @@ def render_distributions(df: pd.DataFrame) -> None:
                     labels={"ocorrencias": "Frequência", "label_curto": "Insumo"}
                 )
                 fig_itens.update_layout(
-                    yaxis=dict(autorange="reversed"),
+                    yaxis=dict(autorange="reversed", type="category"),
                     height=600,
                     showlegend=False
                 )
