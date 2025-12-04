@@ -26,10 +26,16 @@ TAB_DEFINITIONS = [
         "key": "jira",
     },
     {
-        "label": "🛒 Compras",
+        "label": "📝 Solicitação de compras",
+        "permission": "operacoes.solicitacoes",
+        "page_path": "pages/2_Solicitacao_de_Compras.py",
+        "key": "solicitacao_compras",
+    },
+    {
+        "label": "📦 Pedidos de compras",
         "permission": "operacoes.compras",
-        "page_path": "pages/2_Compras.py",
-        "key": "compras",
+        "page_path": "pages/3_Pedidos_de_Compras.py",
+        "key": "pedidos_compras",
     },
 ]
 
