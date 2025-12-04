@@ -60,6 +60,13 @@ COLUMN_ALIASES: Dict[str, List[str]] = {
         "data_entrega",
         "data_resolucao",
     ],
+    "data_autorizacao": [
+        "data_autorizacao",
+        "data_autorização",
+        "data_autoriza_o",
+        "dt_autorizacao",
+        "data_aprovacao",
+    ],
     "solicitante": [
         "solicitante",
         "requisitante",
@@ -90,6 +97,16 @@ COLUMN_ALIASES: Dict[str, List[str]] = {
         "descricao_material",
         "observacao",
         "observa_o_da_solicita_o",
+    ],
+    "item": [
+        "item",
+        "insumo",
+        "material",
+        "produto",
+        "servico",
+        "descri_o_insumo",
+        "descricao_insumo",
+        "descricao_item",
     ],
     "insumos": [
         "qtd_insumos",
@@ -228,6 +245,11 @@ def prepare_dataset(df: pd.DataFrame) -> Tuple[pd.DataFrame, DatasetMeta]:
         prepared["data_atendimento"] = pd.to_datetime(
             prepared["data_atendimento"], errors="coerce", dayfirst=True
         )
+    if "data_autorizacao" in prepared.columns:
+        prepared["data_autorizacao"] = pd.to_datetime(
+            prepared["data_autorizacao"], errors="coerce", dayfirst=True
+        )
+
     # Quantidade de insumos: tenta coluna explícita, senão deriva de quantidades
     if "insumos" in prepared.columns:
         prepared["insumos"] = (
@@ -290,6 +312,21 @@ def prepare_dataset(df: pd.DataFrame) -> Tuple[pd.DataFrame, DatasetMeta]:
         ).dt.days
     else:
         prepared["lead_time_dias"] = None
+        
+    # Novos tempos de ciclo
+    if "data_solicitacao" in prepared.columns and "data_autorizacao" in prepared.columns:
+        prepared["tempo_aprovacao_dias"] = (
+            prepared["data_autorizacao"] - prepared["data_solicitacao"]
+        ).dt.days
+    else:
+        prepared["tempo_aprovacao_dias"] = None
+        
+    if "data_autorizacao" in prepared.columns and "data_atendimento" in prepared.columns:
+        prepared["tempo_compra_dias"] = (
+            prepared["data_atendimento"] - prepared["data_autorizacao"]
+        ).dt.days
+    else:
+        prepared["tempo_compra_dias"] = None
 
     if "data_solicitacao" in prepared.columns:
         prepared["dias_em_aberto"] = (
@@ -444,6 +481,17 @@ def compute_kpis(df: pd.DataFrame) -> Dict[str, float]:
         if "lead_time_dias" in df_unique.columns
         else None
     )
+    
+    tempo_aprovacao_medio = (
+        df_unique["tempo_aprovacao_dias"].mean()
+        if "tempo_aprovacao_dias" in df_unique.columns
+        else None
+    )
+    tempo_compra_medio = (
+        df_unique.loc[df_unique["status_bucket"] == "atendida", "tempo_compra_dias"].mean()
+        if "tempo_compra_dias" in df_unique.columns
+        else None
+    )
 
     return {
         "ultimos_90": int(ultimos_90),
@@ -452,6 +500,8 @@ def compute_kpis(df: pd.DataFrame) -> Dict[str, float]:
         "insumos": float(insumos_total),
         "idade_media_abertas": idade_media or 0.0,
         "lead_time_medio": lead_time_medio or 0.0,
+        "tempo_aprovacao": tempo_aprovacao_medio or 0.0,
+        "tempo_compra": tempo_compra_medio or 0.0,
     }
 
 
@@ -463,10 +513,11 @@ def render_distributions(df: pd.DataFrame) -> None:
     else:
         df_unique = df
 
-    tab1, tab2, tab3 = st.tabs(
+    tab1, tab2, tab3, tab4 = st.tabs(
         [
             "Status e Tendência",
             "Solicitantes e Obras",
+            "Top Insumos",
             "Tabela Detalhada",
         ]
     )
@@ -581,9 +632,45 @@ def render_distributions(df: pd.DataFrame) -> None:
             st.info("Informações de empreendimento não encontradas.")
 
     with tab3:
+        if "item" in df.columns:
+            # Agrupar por item normalizado
+            top_itens = (
+                df.groupby("item")
+                .agg(
+                    ocorrencias=("item", "count"),
+                    total_insumos=("insumos", "sum")
+                )
+                .reset_index()
+                .sort_values("ocorrencias", ascending=False)
+                .head(20)
+            )
+            
+            col_a, col_b = st.columns([2, 1])
+            with col_a:
+                fig_itens = px.bar(
+                    top_itens,
+                    x="ocorrencias",
+                    y="item",
+                    orientation="h",
+                    text="ocorrencias",
+                    title="Top 20 Itens mais solicitados (frequência)"
+                )
+                fig_itens.update_layout(yaxis=dict(autorange="reversed"))
+                st.plotly_chart(fig_itens, use_container_width=True)
+            
+            with col_b:
+                st.dataframe(
+                    top_itens.rename(columns={"item": "Insumo / Serviço", "ocorrencias": "Freq.", "total_insumos": "Qtd. Total"}),
+                    hide_index=True,
+                    use_container_width=True
+                )
+        else:
+            st.info("Coluna de itens/insumos não identificada para gerar ranking.")
+
+    with tab4:
         display_columns = [
             col
-            for col in ["solicitacao", "status", "data_solicitacao", "data_atendimento", "solicitante", "obra", "categoria", "insumos", "valor_total"]
+            for col in ["solicitacao", "status", "data_solicitacao", "data_atendimento", "solicitante", "obra", "categoria", "item", "insumos", "valor_total"]
             if col in df.columns
         ]
         if not display_columns:
@@ -705,16 +792,26 @@ def render_solicitacoes_dashboard(*, show_title: bool = True, show_caption: bool
     col3.metric("Solicitações atendidas", _format_int(kpis["atendidas"]))
     col4.metric("Qtd. de insumos", _format_int(kpis["insumos"]))
 
-    col5, col6 = st.columns(2)
+    col5, col6, col7, col8 = st.columns(4)
     col5.metric(
-        "Idade média das abertas (dias)",
+        "Idade média abertas (dias)",
         _format_float(kpis["idade_media_abertas"]),
         help="Dias em aberto considerando apenas solicitações ainda sem atendimento.",
     )
     col6.metric(
-        "Lead time médio (dias)",
+        "Tempo Aprovação (dias)",
+        _format_float(kpis["tempo_aprovacao"]),
+        help="Tempo médio entre Solicitação e Autorização.",
+    )
+    col7.metric(
+        "Tempo Compra (dias)",
+        _format_float(kpis["tempo_compra"]),
+        help="Tempo médio entre Autorização e Atendimento/Entrega.",
+    )
+    col8.metric(
+        "Lead time Total (dias)",
         _format_float(kpis["lead_time_medio"]),
-        help="Tempo médio entre abertura e atendimento das solicitações concluídas.",
+        help="Tempo total médio (Solicitação até Atendimento).",
     )
 
     st.markdown("---")
@@ -722,9 +819,8 @@ def render_solicitacoes_dashboard(*, show_title: bool = True, show_caption: bool
     insights = [
         f"{_format_int(kpis['abertas'])} solicitações aguardam atendimento.",
         f"{_format_int(kpis['atendidas'])} solicitações foram concluídas no período filtrado.",
-        f"Média de {_format_float(kpis['idade_media_abertas'])} dias em aberto para solicitações pendentes."
-        if kpis["idade_media_abertas"]
-        else "Sem dados suficientes para calcular idade média.",
+        f"Tempo médio de aprovação: {_format_float(kpis['tempo_aprovacao'])} dias." if kpis["tempo_aprovacao"] > 0 else "Sem dados de aprovação.",
+        f"Tempo médio de compra: {_format_float(kpis['tempo_compra'])} dias." if kpis["tempo_compra"] > 0 else "Sem dados de compra.",
     ]
     st.markdown("\n".join(f"- {item}" for item in insights))
 
