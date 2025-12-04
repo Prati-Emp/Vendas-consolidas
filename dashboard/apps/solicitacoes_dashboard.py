@@ -542,26 +542,16 @@ def compute_kpis(df: pd.DataFrame) -> Dict[str, float]:
 
     if "data_solicitacao" in df_unique.columns and solicitacao_col:
         ultimos_90 = df_unique[df_unique["data_solicitacao"] >= ninety_days_ago][solicitacao_col].nunique()
+        # Solicitações criadas nos últimos 30 e 60 dias (independente do status)
+        abertas_ultimos_30 = df_unique[df_unique["data_solicitacao"] >= thirty_days_ago][solicitacao_col].nunique()
+        abertas_ultimos_60 = df_unique[df_unique["data_solicitacao"] >= sixty_days_ago][solicitacao_col].nunique()
     else:
         ultimos_90 = 0
-
-    # Abertas total
-    abertas = (df_unique["status_bucket"] == "aberta").sum() if "status_bucket" in df_unique.columns else 0
-    
-    # Abertas nos últimos 30 e 60 dias
-    if "data_solicitacao" in df_unique.columns and "status_bucket" in df_unique.columns and solicitacao_col:
-        abertas_ultimos_30 = df_unique[
-            (df_unique["status_bucket"] == "aberta") & 
-            (df_unique["data_solicitacao"] >= thirty_days_ago)
-        ][solicitacao_col].nunique()
-        
-        abertas_ultimos_60 = df_unique[
-            (df_unique["status_bucket"] == "aberta") & 
-            (df_unique["data_solicitacao"] >= sixty_days_ago)
-        ][solicitacao_col].nunique()
-    else:
         abertas_ultimos_30 = 0
         abertas_ultimos_60 = 0
+
+    # Abertas total (todas as que estão com status "aberta" atualmente)
+    abertas = (df_unique["status_bucket"] == "aberta").sum() if "status_bucket" in df_unique.columns else 0
     
     # Aprovadas (solicitações com data_autorizacao preenchida)
     if "data_autorizacao" in df_unique.columns and solicitacao_col:
@@ -1237,8 +1227,8 @@ def render_solicitacoes_dashboard(*, show_title: bool = True, show_caption: bool
     # Primeira linha: Entrada e abertas (jornada temporal)
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("Solicitações (últ. 90 dias)", _format_int(kpis["ultimos_90"]))
-    col2.metric("Abertas (últ. 30 dias)", _format_int(kpis["abertas_ultimos_30"]))
-    col3.metric("Abertas (últ. 60 dias)", _format_int(kpis["abertas_ultimos_60"]))
+    col2.metric("Solicitações (últ. 30 dias)", _format_int(kpis["abertas_ultimos_30"]))
+    col3.metric("Solicitações (últ. 60 dias)", _format_int(kpis["abertas_ultimos_60"]))
     col4.metric("Abertas (total)", _format_int(kpis["abertas"]))
 
     # Segunda linha: Status intermediários e finais (jornada de status)
