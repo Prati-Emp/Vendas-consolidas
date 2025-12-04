@@ -76,6 +76,13 @@ COLUMN_ALIASES: Dict[str, List[str]] = {
         "solicitante_nome",
         "demandante",
     ],
+    "codigo_obra": [
+        "codigo_obra",
+        "cod_obra",
+        "c_d_obra",
+        "id_obra",
+        "id_empreendimento",
+    ],
     "obra": [
         "empreendimento",
         "obra",
@@ -287,26 +294,45 @@ def prepare_dataset(df: pd.DataFrame) -> Tuple[pd.DataFrame, DatasetMeta]:
         )
 
     # Normalização de Obra/Empreendimento
-    # Regra: Tentar extrair nome após o hífen se existir, removendo códigos numéricos iniciais.
-    if "obra" in prepared.columns:
-        def normalize_obra(val):
-            if not isinstance(val, str):
-                return str(val) if val is not None else "Desconhecido"
-            val = val.strip()
-            # Caso 1: Padrão "32 - Nome" ou "32-Nome"
-            if "-" in val:
-                parts = val.split("-", 1)
-                # Se a primeira parte for numérica ou curta (código), pega o resto
-                if len(parts) > 1:
-                     candidate = parts[1].strip()
-                     if candidate:
-                         return candidate
-            # Caso 2: Padrão "31 Nome" (espaço simples após número)
-            # Mas cuidado para não quebrar nomes que começam com número legítimo.
-            # Vamos focar no pedido: "trazer o nome do empreendimento que está depois do travessão"
-            return val
+    # Combinar código + nome para exibição, priorizando "Código - Nome"
+    
+    # 1. Tentar identificar colunas de código e nome separadamente
+    code_col = "codigo_obra" if "codigo_obra" in prepared.columns else None
+    name_col = "obra" if "obra" in prepared.columns else None
+    
+    if code_col and name_col:
+        def combine_obra_name(row):
+            c = str(row[code_col]).strip() if pd.notna(row[code_col]) else ""
+            # Remove .0 de floats
+            if c.endswith(".0"):
+                c = c[:-2]
+            
+            n = str(row[name_col]).strip() if pd.notna(row[name_col]) else ""
+            
+            if c and n:
+                # Se o nome já começa com o código (ex: "32 - Obra"), não duplica
+                if n.startswith(c):
+                    return n
+                return f"{c} - {n}"
+            elif n:
+                return n
+            elif c:
+                return c
+            return "Desconhecido"
+            
+        prepared["obra"] = prepared.apply(combine_obra_name, axis=1)
+        
+    elif code_col and not name_col:
+        # Só tem código, usa ele como obra
+        prepared["obra"] = prepared[code_col].fillna("Desconhecido").astype(str).apply(lambda x: x[:-2] if x.endswith(".0") else x)
 
-        prepared["obra"] = prepared["obra"].apply(normalize_obra)
+    elif name_col:
+         # Só tem nome, mantém (aplica normalização antiga se necessário, mas vamos simplificar)
+         pass
+
+    # Garantir que 'obra' seja string para evitar erros de groupby
+    if "obra" in prepared.columns:
+        prepared["obra"] = prepared["obra"].fillna("Desconhecido").astype(str)
 
     # Combinar código + descrição do insumo para exibição
     desc_col = None
