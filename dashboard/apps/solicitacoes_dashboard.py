@@ -180,16 +180,53 @@ def prepare_dataset(df: pd.DataFrame) -> Tuple[pd.DataFrame, DatasetMeta]:
         return df, DatasetMeta(mapping={}, last_update=None)
 
     mapping = _detect_columns(df.columns.tolist())
-    canonical_names = {actual: canonical for canonical, actual in mapping.items()}
-    prepared = df.rename(columns=canonical_names).copy()
+    # Inverter mapeamento para renomear (atenção a duplicatas)
+    canonical_names = {}
+    for canonical, actual in mapping.items():
+        if actual not in canonical_names:
+             canonical_names[actual] = canonical
+        # Se uma coluna 'actual' mapeia para múltiplos canônicos (não deve acontecer pela lógica de _detect_columns)
+        # ou se múltiplos 'actual' mapeiam para o mesmo 'canonical' -> isso gera colunas duplicadas no rename.
+        
+    # Para evitar colunas duplicadas no destino (ex: c_d_obra -> obra E obra -> obra),
+    # precisamos garantir que apenas uma coluna original mapeie para cada nome canônico.
+    # A prioridade será dada à coluna que tiver o nome mais próximo ou simplesmente a primeira encontrada.
+    
+    used_canonicals = set()
+    final_rename_map = {}
+    
+    # Ordenar itens para determinismo? O _detect_columns já varre colunas na ordem.
+    # Vamos inverter mapping: {canonical: actual}. Se houver conflito, o _detect_columns já resolveu?
+    # Não, _detect_columns retorna {canonical: actual}. 
+    # Se tivermos canonical="obra" -> actual="c_d_obra" E canonical="outra_coisa" -> actual="obra"...
+    # O problema é se tivermos colunas originais "c_d_obra" e "obra".
+    # _detect_columns vai varrer colunas.
+    # 1. c_d_obra: matches "obra" alias? Sim (se c_d_obra estiver na lista ou regex).
+    # 2. obra: matches "obra" alias? Sim.
+    # Se _detect_columns atribui mapping["obra"] = "c_d_obra", depois vê "obra", 
+    # ele verifica `if canonical in mapping: continue`. 
+    # Então se "c_d_obra" pegou o slot "obra", a coluna "obra" original NÃO entra no mapping para "obra".
+    # MAS, a coluna "obra" original continua existindo no dataframe.
+    # Ao fazer df.rename(columns={"c_d_obra": "obra"}), teremos duas colunas "obra": a renomeada e a original.
+    
+    canonical_to_actual = mapping
+    
+    # Rename apenas das colunas que foram mapeadas
+    rename_dict = {actual: canonical for canonical, actual in canonical_to_actual.items()}
+    
+    prepared = df.rename(columns=rename_dict).copy()
+    
+    # Remover colunas duplicadas resultantes do rename
+    # (ex: se existia 'obra' e 'c_d_obra' -> 'obra', agora temos duas 'obra')
+    prepared = prepared.loc[:, ~prepared.columns.duplicated()]
 
     if "data_solicitacao" in prepared.columns:
         prepared["data_solicitacao"] = pd.to_datetime(
-            prepared["data_solicitacao"], errors="coerce"
+            prepared["data_solicitacao"], errors="coerce", dayfirst=True
         )
     if "data_atendimento" in prepared.columns:
         prepared["data_atendimento"] = pd.to_datetime(
-            prepared["data_atendimento"], errors="coerce"
+            prepared["data_atendimento"], errors="coerce", dayfirst=True
         )
     # Quantidade de insumos: tenta coluna explícita, senão deriva de quantidades
     if "insumos" in prepared.columns:
