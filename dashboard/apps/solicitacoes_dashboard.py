@@ -736,32 +736,7 @@ def render_distributions(df: pd.DataFrame) -> None:
                 .head(30)
             )
             
-            st.subheader("Top 30 Insumos mais solicitados")
-            st.dataframe(
-                top_itens.rename(columns={
-                    "item_completo": "Código - Descrição",
-                    "ocorrencias": "Frequência",
-                    "total_insumos": "Qtd. Total"
-                }),
-                hide_index=True,
-                use_container_width=True,
-                column_config={
-                    "Código - Descrição": st.column_config.TextColumn(
-                        "Código - Descrição",
-                        width="large"
-                    ),
-                    "Frequência": st.column_config.NumberColumn(
-                        "Frequência",
-                        format="%d"
-                    ),
-                    "Qtd. Total": st.column_config.NumberColumn(
-                        "Qtd. Total",
-                        format="%.1f"
-                    ),
-                }
-            )
-            
-            # Gráfico simplificado apenas se houver muitos itens
+            # Gráfico primeiro (em cima)
             if len(top_itens) > 10:
                 st.subheader("Visualização por Frequência")
                 # Criar labels mais curtos para o gráfico
@@ -791,6 +766,27 @@ def render_distributions(df: pd.DataFrame) -> None:
                 )
                 fig_itens.update_traces(textposition="outside")
                 st.plotly_chart(fig_itens, use_container_width=True)
+            
+            # Tabela depois (embaixo) - apenas Código - Descrição e Frequência
+            st.subheader("Top 30 Insumos mais solicitados")
+            st.dataframe(
+                top_itens[["item_completo", "ocorrencias"]].rename(columns={
+                    "item_completo": "Código - Descrição",
+                    "ocorrencias": "Frequência"
+                }),
+                hide_index=True,
+                use_container_width=True,
+                column_config={
+                    "Código - Descrição": st.column_config.TextColumn(
+                        "Código - Descrição",
+                        width="large"
+                    ),
+                    "Frequência": st.column_config.NumberColumn(
+                        "Frequência",
+                        format="%d"
+                    ),
+                }
+            )
         else:
             st.info("Coluna de itens/insumos não identificada para gerar ranking.")
 
