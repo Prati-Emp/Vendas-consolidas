@@ -98,6 +98,13 @@ COLUMN_ALIASES: Dict[str, List[str]] = {
         "observacao",
         "observa_o_da_solicita_o",
     ],
+    "codigo_insumo": [
+        "codigo_insumo",
+        "cod_insumo",
+        "c_d_insumo",
+        "id_insumo",
+        "codigo_item",
+    ],
     "item": [
         "item",
         "insumo",
@@ -107,13 +114,6 @@ COLUMN_ALIASES: Dict[str, List[str]] = {
         "descri_o_insumo",
         "descricao_insumo",
         "descricao_item",
-    ],
-    "codigo_insumo": [
-        "codigo_insumo",
-        "cod_insumo",
-        "c_d_insumo",
-        "id_insumo",
-        "codigo_item",
     ],
     "insumos": [
         "qtd_insumos",
