@@ -179,10 +179,17 @@ def calcular_indicadores(df: pd.DataFrame) -> Dict[str, Any]:
     # % desconto = (Valor_Descontos / Valor_Pedidos_Compra) * 100
     percentual_desconto = (valor_descontos / valor_pedidos * 100) if valor_pedidos > 0 else 0.0
     
-    total_pedidos = len(df)
+    # Contar pedidos únicos se a coluna existir, senão contar linhas
+    if 'ID_Pedido' in df.columns:
+        total_pedidos = df['ID_Pedido'].nunique()
+    elif 'n_do_pedido' in df.columns:
+        total_pedidos = df['n_do_pedido'].nunique()
+    else:
+        total_pedidos = len(df)
+        
     pedidos_atrasados = int(df['Atrasado'].sum()) if 'Atrasado' in df.columns else 0
-    percentual_atrasados = (pedidos_atrasados / total_pedidos * 100) if total_pedidos > 0 else 0.0
-    valor_medio_pedido = float(df['Valor_Total'].mean()) if not df.empty else 0.0
+    percentual_atrasados = (pedidos_atrasados / len(df) * 100) if len(df) > 0 else 0.0
+    valor_medio_pedido = (valor_pedidos / total_pedidos) if total_pedidos > 0 else 0.0
     
     return {
         'valor_descontos': valor_descontos,
@@ -370,6 +377,9 @@ def calcular_indicadores_leadtime(df: pd.DataFrame) -> Dict[str, Any]:
             'pedidos_atrasados': 0,
         }
     
+    # Identificar coluna de ID do pedido
+    id_col = 'n_do_pedido' if 'n_do_pedido' in df.columns else None
+    
     # Filtrar apenas registros com data_entregue preenchida
     df_com_entrega = df[df['data_entregue'].notna()].copy()
     
@@ -379,44 +389,62 @@ def calcular_indicadores_leadtime(df: pd.DataFrame) -> Dict[str, Any]:
             'lead_time_comum': 0.0,
             'lead_time_ponderado': 0.0,
             'tempo_atraso_medio': 0.0,
-            'total_pedidos': len(df),
+            'total_pedidos': df[id_col].nunique() if id_col else len(df),
             'pedidos_no_prazo': 0,
             'pedidos_atrasados': 0,
         }
     
+    # Agrupar por Pedido para análise de Lead Time (se houver ID)
+    if id_col:
+        # Agregação por pedido:
+        # - data_pedido: min (data de criação)
+        # - data_entregue: max (data da última entrega)
+        # - data_prevista: max (data prevista mais distante)
+        # - total_l_quido_insumo: sum (valor total do pedido)
+        
+        agg_dict = {
+            'data_pedido': 'min',
+            'data_entregue': 'max',
+            'data_prevista': 'max'
+        }
+        
+        col_valor = 'total_l_quido_insumo' if 'total_l_quido_insumo' in df_com_entrega.columns else \
+                   ('total_liquido_insumo' if 'total_liquido_insumo' in df_com_entrega.columns else None)
+                   
+        if col_valor:
+            agg_dict[col_valor] = 'sum'
+            
+        df_analise = df_com_entrega.groupby(id_col).agg(agg_dict).reset_index()
+        total_pedidos_entregues = len(df_analise)
+        total_pedidos_geral = df[id_col].nunique()
+    else:
+        # Fallback para análise por item se não tiver ID
+        df_analise = df_com_entrega
+        col_valor = 'total_l_quido_insumo' if 'total_l_quido_insumo' in df_com_entrega.columns else None
+        total_pedidos_entregues = len(df_com_entrega)
+        total_pedidos_geral = len(df)
+    
     # 1. % Comprado no Prazo (-2 dias)
     # Descontar 2 dias da data_entregue para considerar tempo de lançamento
-    df_com_entrega['data_entregue_ajustada'] = df_com_entrega['data_entregue'] - timedelta(days=2)
-    df_com_entrega['entregue_no_prazo'] = df_com_entrega['data_entregue_ajustada'] <= df_com_entrega['data_prevista']
+    df_analise['data_entregue_ajustada'] = df_analise['data_entregue'] - timedelta(days=2)
+    df_analise['entregue_no_prazo'] = df_analise['data_entregue_ajustada'] <= df_analise['data_prevista']
     
-    pedidos_no_prazo = df_com_entrega['entregue_no_prazo'].sum()
-    total_pedidos_entregues = len(df_com_entrega)
+    pedidos_no_prazo = df_analise['entregue_no_prazo'].sum()
     percentual_no_prazo = (pedidos_no_prazo / total_pedidos_entregues * 100) if total_pedidos_entregues > 0 else 0.0
     
     # 2. Lead Time Comum
     # Diferença entre data_pedido e data_entregue
-    df_com_entrega['lead_time_comum'] = (df_com_entrega['data_entregue'] - df_com_entrega['data_pedido']).dt.days
-    lead_time_comum_medio = df_com_entrega['lead_time_comum'].mean() if not df_com_entrega.empty else 0.0
+    df_analise['lead_time_comum'] = (df_analise['data_entregue'] - df_analise['data_pedido']).dt.days
+    lead_time_comum_medio = df_analise['lead_time_comum'].mean() if not df_analise.empty else 0.0
     
     # 3. Lead Time Ponderado
     # Fórmula: SUMX(Total líquido insumo * Lead time Simples) / SUM(Total líquido insumo)
-    # Coluna correta identificada: total_l_quido_insumo
-    col_valor_insumo = 'total_l_quido_insumo'
-    
-    if col_valor_insumo in df_com_entrega.columns:
-        df_com_entrega['lead_time_ponderado_calc'] = (
-            df_com_entrega[col_valor_insumo] * df_com_entrega['lead_time_comum']
+    if col_valor and col_valor in df_analise.columns:
+        df_analise['lead_time_ponderado_calc'] = (
+            df_analise[col_valor] * df_analise['lead_time_comum']
         )
-        soma_numerador = df_com_entrega['lead_time_ponderado_calc'].sum()
-        soma_denominador = df_com_entrega[col_valor_insumo].sum()
-        lead_time_ponderado = (soma_numerador / soma_denominador) if soma_denominador > 0 else 0.0
-    elif 'total_liquido_insumo' in df_com_entrega.columns:
-        # Fallback para nome antigo caso exista
-        df_com_entrega['lead_time_ponderado_calc'] = (
-            df_com_entrega['total_liquido_insumo'] * df_com_entrega['lead_time_comum']
-        )
-        soma_numerador = df_com_entrega['lead_time_ponderado_calc'].sum()
-        soma_denominador = df_com_entrega['total_liquido_insumo'].sum()
+        soma_numerador = df_analise['lead_time_ponderado_calc'].sum()
+        soma_denominador = df_analise[col_valor].sum()
         lead_time_ponderado = (soma_numerador / soma_denominador) if soma_denominador > 0 else 0.0
     else:
         # Se não tiver a coluna, usar lead time comum como fallback
@@ -424,7 +452,7 @@ def calcular_indicadores_leadtime(df: pd.DataFrame) -> Dict[str, Any]:
     
     # 4. Tempo de Atraso
     # Se não entregue no prazo: data_entregue - data_prevista
-    df_atrasados = df_com_entrega[~df_com_entrega['entregue_no_prazo']].copy()
+    df_atrasados = df_analise[~df_analise['entregue_no_prazo']].copy()
     if not df_atrasados.empty:
         df_atrasados['tempo_atraso'] = (df_atrasados['data_entregue'] - df_atrasados['data_prevista']).dt.days
         tempo_atraso_medio = df_atrasados['tempo_atraso'].mean()
@@ -436,11 +464,11 @@ def calcular_indicadores_leadtime(df: pd.DataFrame) -> Dict[str, Any]:
         'lead_time_comum': lead_time_comum_medio,
         'lead_time_ponderado': lead_time_ponderado,
         'tempo_atraso_medio': tempo_atraso_medio,
-        'total_pedidos': len(df),
+        'total_pedidos': total_pedidos_geral,
         'pedidos_no_prazo': int(pedidos_no_prazo),
         'pedidos_atrasados': int(total_pedidos_entregues - pedidos_no_prazo),
         'total_pedidos_entregues': total_pedidos_entregues,
-        'df_com_entrega': df_com_entrega,  # Retornar também para visualizações
+        'df_com_entrega': df_analise,  # Retornar DataFrame analisado (agrupado)
     }
 
 
