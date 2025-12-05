@@ -230,6 +230,8 @@ def get_md_connection_planilhas():
 def load_pedidos_compras_leadtime(
     data_inicio: Optional[str] = None,
     data_fim: Optional[str] = None,
+    comprador: Optional[List[str]] = None,
+    empreendimento: Optional[List[str]] = None,
 ) -> pd.DataFrame:
     """
     Carrega dados de pedidos de compras do banco planilhas.
@@ -237,6 +239,8 @@ def load_pedidos_compras_leadtime(
     Args:
         data_inicio: Data inicial (YYYY-MM-DD)
         data_fim: Data final (YYYY-MM-DD)
+        comprador: Lista de compradores para filtrar
+        empreendimento: Lista de nomes de empreendimentos para filtrar
         
     Returns:
         DataFrame com dados de pedidos de compras
@@ -244,17 +248,52 @@ def load_pedidos_compras_leadtime(
     try:
         conn = get_md_connection_planilhas()
         
-        # Construir filtros
+        # Na tabela planilhas, as datas estao como STRING DD/MM/YYYY
+        # Filtros de data serao aplicados no pandas apos conversao correta
+        
+        # Construir filtros SQL para campos de texto
         filters = []
         params = []
         
-        if data_inicio:
-            filters.append("data_pedido >= ?")
-            params.append(data_inicio)
-        
-        if data_fim:
-            filters.append("data_pedido <= ?")
-            params.append(data_fim)
+        if comprador and len(comprador) > 0:
+            placeholders = ','.join(['?' for _ in comprador])
+            filters.append(f"comprador IN ({placeholders})")
+            params.extend(comprador)
+            
+        if empreendimento and len(empreendimento) > 0:
+            # Mapear ID para Nome ou usar filtro de nome se ja vier como nome
+            # O filtro principal retorna lista de strings "Nome (ID: X)"
+            # Precisamos extrair o nome ou filtrar pelo ID se a tabela tiver ID
+            # A tabela tem 'c_d_obra' (double) e 'obra' (varchar)
+            
+            ids = []
+            nomes = []
+            for emp in empreendimento:
+                if isinstance(emp, str) and "ID:" in emp:
+                    try:
+                        # Extrair ID se estiver no formato "Nome (ID: X)"
+                        id_val = emp.split("ID: ")[1].rstrip(")")
+                        ids.append(int(id_val))
+                    except:
+                        nomes.append(emp)
+                elif isinstance(emp, int) or (isinstance(emp, str) and emp.isdigit()):
+                    ids.append(int(emp))
+                else:
+                    nomes.append(emp)
+            
+            conditions = []
+            if ids:
+                placeholders = ','.join(['?' for _ in ids])
+                conditions.append(f"CAST(c_d_obra AS INTEGER) IN ({placeholders})")
+                params.extend(ids)
+            
+            if nomes:
+                placeholders = ','.join(['?' for _ in nomes])
+                conditions.append(f"obra IN ({placeholders})")
+                params.extend(nomes)
+                
+            if conditions:
+                filters.append(f"({' OR '.join(conditions)})")
         
         filter_sql = " AND ".join(filters) if filters else "1=1"
         
@@ -263,23 +302,34 @@ def load_pedidos_compras_leadtime(
         SELECT *
         FROM planilhas.main.relacao_de_pedidos_de_compras
         WHERE {filter_sql}
-        ORDER BY data_pedido DESC
         """
         
         if params:
             df = conn.execute(sql, params).df()
         else:
             df = conn.execute(sql).df()
+            
         conn.close()
         
-        # Converter colunas de data se existirem
+        # Converter colunas de data
         date_columns = ['data_pedido', 'data_prevista', 'data_entregue']
         for col in date_columns:
             if col in df.columns:
                 # Tentar converter com dayfirst=True para formato DD/MM/YYYY
                 df[col] = pd.to_datetime(df[col], dayfirst=True, errors='coerce')
         
-        return df
+        # Aplicar filtro de data no pandas (garantido)
+        if data_inicio and not df.empty and 'data_pedido' in df.columns:
+            dt_inicio = pd.to_datetime(data_inicio)
+            df = df[df['data_pedido'] >= dt_inicio]
+            
+        if data_fim and not df.empty and 'data_pedido' in df.columns:
+            dt_fim = pd.to_datetime(data_fim)
+            # Ajustar para final do dia
+            dt_fim = dt_fim + pd.Timedelta(days=1) - pd.Timedelta(seconds=1)
+            df = df[df['data_pedido'] <= dt_fim]
+        
+        return df.sort_values('data_pedido', ascending=False)
     except Exception as e:
         st.error(f"❌ Erro ao carregar dados: {str(e)}")
         return pd.DataFrame()
@@ -399,7 +449,12 @@ def formatar_dias(valor: float) -> str:
     return f"{valor:.1f} dias"
 
 
-def render_leadtime_tab(data_inicio: Optional[datetime], data_fim: Optional[datetime]):
+def render_leadtime_tab(
+    data_inicio: Optional[datetime], 
+    data_fim: Optional[datetime],
+    comprador: Optional[List[str]] = None,
+    empreendimento: Optional[List[str]] = None
+):
     """Renderiza a aba de Lead Time."""
     st.subheader("⏱️ Indicadores de Lead Time")
     st.caption("Análise de lead time, tempo de atraso e % comprado no prazo | Fonte: planilhas.relacao_de_pedidos_de_compras")
@@ -409,6 +464,8 @@ def render_leadtime_tab(data_inicio: Optional[datetime], data_fim: Optional[date
         df_leadtime = load_pedidos_compras_leadtime(
             data_inicio=data_inicio.strftime('%Y-%m-%d') if data_inicio else None,
             data_fim=data_fim.strftime('%Y-%m-%d') if data_fim else None,
+            comprador=comprador,
+            empreendimento=empreendimento
         )
     
     if df_leadtime.empty:
@@ -897,7 +954,7 @@ def render_compras_dashboard(
     
     with tab5:
         try:
-            render_leadtime_tab(data_inicio, data_fim)
+            render_leadtime_tab(data_inicio, data_fim, comprador_selecionado, empreendimento_selecionado)
         except Exception as e:
             st.error(f"❌ Erro ao carregar dados de Lead Time: {str(e)}")
             st.info("💡 Verifique se a tabela 'planilhas.main.relacao_de_pedidos_de_compras' existe e possui dados.")
