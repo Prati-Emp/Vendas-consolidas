@@ -276,7 +276,8 @@ def load_pedidos_compras_leadtime(
         date_columns = ['data_pedido', 'data_prevista', 'data_entregue']
         for col in date_columns:
             if col in df.columns:
-                df[col] = pd.to_datetime(df[col], errors='coerce')
+                # Tentar converter com dayfirst=True para formato DD/MM/YYYY
+                df[col] = pd.to_datetime(df[col], dayfirst=True, errors='coerce')
         
         return df
     except Exception as e:
@@ -349,7 +350,18 @@ def calcular_indicadores_leadtime(df: pd.DataFrame) -> Dict[str, Any]:
     
     # 3. Lead Time Ponderado
     # Fórmula: SUMX(Total líquido insumo * Lead time Simples) / SUM(Total líquido insumo)
-    if 'total_liquido_insumo' in df_com_entrega.columns:
+    # Coluna correta identificada: total_l_quido_insumo
+    col_valor_insumo = 'total_l_quido_insumo'
+    
+    if col_valor_insumo in df_com_entrega.columns:
+        df_com_entrega['lead_time_ponderado_calc'] = (
+            df_com_entrega[col_valor_insumo] * df_com_entrega['lead_time_comum']
+        )
+        soma_numerador = df_com_entrega['lead_time_ponderado_calc'].sum()
+        soma_denominador = df_com_entrega[col_valor_insumo].sum()
+        lead_time_ponderado = (soma_numerador / soma_denominador) if soma_denominador > 0 else 0.0
+    elif 'total_liquido_insumo' in df_com_entrega.columns:
+        # Fallback para nome antigo caso exista
         df_com_entrega['lead_time_ponderado_calc'] = (
             df_com_entrega['total_liquido_insumo'] * df_com_entrega['lead_time_comum']
         )
