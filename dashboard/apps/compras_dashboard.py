@@ -394,43 +394,24 @@ def calcular_indicadores_leadtime(df: pd.DataFrame) -> Dict[str, Any]:
             'pedidos_atrasados': 0,
         }
     
-    # Agrupar por Pedido para análise de Lead Time (se houver ID)
-    if id_col:
-        # Agregação por pedido:
-        # - data_pedido: min (data de criação)
-        # - data_entregue: max (data da última entrega)
-        # - data_prevista: max (data prevista mais distante)
-        # - total_l_quido_insumo: sum (valor total do pedido)
-        
-        agg_dict = {
-            'data_pedido': 'min',
-            'data_entregue': 'max',
-            'data_prevista': 'max'
-        }
-        
-        col_valor = 'total_l_quido_insumo' if 'total_l_quido_insumo' in df_com_entrega.columns else \
-                   ('total_liquido_insumo' if 'total_liquido_insumo' in df_com_entrega.columns else None)
-                   
-        if col_valor:
-            agg_dict[col_valor] = 'sum'
-            
-        df_analise = df_com_entrega.groupby(id_col).agg(agg_dict).reset_index()
-        total_pedidos_entregues = len(df_analise)
-        total_pedidos_geral = df[id_col].nunique()
-    else:
-        # Fallback para análise por item se não tiver ID
-        df_analise = df_com_entrega
-        col_valor = 'total_l_quido_insumo' if 'total_l_quido_insumo' in df_com_entrega.columns else None
-        total_pedidos_entregues = len(df_com_entrega)
-        total_pedidos_geral = len(df)
+    # Agrupar por Pedido APENAS para contagem de pedidos unicos
+    total_pedidos_geral = df[id_col].nunique() if id_col else len(df)
+    
+    # Analise de Lead Time e Prazo deve ser LINHA A LINHA (por item)
+    # Motivo: Cada item pode ter data de entrega diferente
+    df_analise = df_com_entrega
+    col_valor = 'total_l_quido_insumo' if 'total_l_quido_insumo' in df_analise.columns else \
+               ('total_liquido_insumo' if 'total_liquido_insumo' in df_analise.columns else None)
+               
+    total_itens_entregues = len(df_analise)
     
     # 1. % Comprado no Prazo (-2 dias)
     # Descontar 2 dias da data_entregue para considerar tempo de lançamento
     df_analise['data_entregue_ajustada'] = df_analise['data_entregue'] - timedelta(days=2)
     df_analise['entregue_no_prazo'] = df_analise['data_entregue_ajustada'] <= df_analise['data_prevista']
     
-    pedidos_no_prazo = df_analise['entregue_no_prazo'].sum()
-    percentual_no_prazo = (pedidos_no_prazo / total_pedidos_entregues * 100) if total_pedidos_entregues > 0 else 0.0
+    itens_no_prazo = df_analise['entregue_no_prazo'].sum()
+    percentual_no_prazo = (itens_no_prazo / total_itens_entregues * 100) if total_itens_entregues > 0 else 0.0
     
     # 2. Lead Time Comum
     # Diferença entre data_pedido e data_entregue
@@ -459,16 +440,21 @@ def calcular_indicadores_leadtime(df: pd.DataFrame) -> Dict[str, Any]:
     else:
         tempo_atraso_medio = 0.0
     
+    # Pedidos no prazo vs atrasados (baseado em itens)
+    # Se a metrica eh "Pedidos no Prazo", deveriamos olhar por pedido?
+    # O usuario pediu "medidas de tempo e atraso contando linha a linha"
+    # Entao vamos exibir itens nas metricas de quantidade tambem para consistencia com a %
+    
     return {
         'percentual_no_prazo': percentual_no_prazo,
         'lead_time_comum': lead_time_comum_medio,
         'lead_time_ponderado': lead_time_ponderado,
         'tempo_atraso_medio': tempo_atraso_medio,
         'total_pedidos': total_pedidos_geral,
-        'pedidos_no_prazo': int(pedidos_no_prazo),
-        'pedidos_atrasados': int(total_pedidos_entregues - pedidos_no_prazo),
-        'total_pedidos_entregues': total_pedidos_entregues,
-        'df_com_entrega': df_analise,  # Retornar DataFrame analisado (agrupado)
+        'pedidos_no_prazo': int(itens_no_prazo),
+        'pedidos_atrasados': int(total_itens_entregues - itens_no_prazo),
+        'total_pedidos_entregues': total_itens_entregues,
+        'df_com_entrega': df_analise,
     }
 
 
@@ -548,16 +534,16 @@ def render_leadtime_tab(
     
     with col2:
         st.metric(
-            "Pedidos no Prazo",
+            "Itens no Prazo",
             f"{indicadores['pedidos_no_prazo']:,}",
-            help="Quantidade de pedidos entregues no prazo"
+            help="Quantidade de itens entregues no prazo"
         )
     
     with col3:
         st.metric(
-            "Pedidos Atrasados",
+            "Itens Atrasados",
             f"{indicadores['pedidos_atrasados']:,}",
-            help="Quantidade de pedidos entregues fora do prazo"
+            help="Quantidade de itens entregues fora do prazo"
         )
     
     # Visualizações
