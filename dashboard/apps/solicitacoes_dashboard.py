@@ -1193,7 +1193,7 @@ def render_solicitacoes_dashboard(*, show_title: bool = True, show_caption: bool
     col5, col6, col7, col8, col9, col10 = st.columns(6)
     col5.metric("Qtd. de insumos", _format_int(kpis["insumos"]), help="Soma da quantidade de insumos nas solicitações.")
     col6.metric("Solicitações (últ. 30 dias)", _format_int(kpis["abertas_ultimos_30"]), help="Solicitações criadas nos últimos 30 dias.")
-    col7.metric("Solicitações (últ. 60 dias)", _format_int(kpis["abertas_ultimos_60"]), help="Solicitações criadas nos últimos 60 dias.")
+    col7.metric("Solicitações (últ. 90 dias)", _format_int(kpis["ultimos_90"]), help="Solicitações criadas nos últimos 90 dias.")
     col8.metric(
         "Tempo Aprovação (dias)",
         _format_float(kpis["tempo_aprovacao"]),
