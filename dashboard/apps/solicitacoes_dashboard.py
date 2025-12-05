@@ -517,7 +517,7 @@ def compute_kpis(df: pd.DataFrame) -> Dict[str, float]:
             "abertas_ultimos_30": 0,
             "abertas_ultimos_60": 0,
             "abertas": 0,
-            "aprovadas": 0,
+            "total_solicitacoes": 0,
             "canceladas": 0,
             "atendidas": 0,
             "insumos": 0,
@@ -553,11 +553,11 @@ def compute_kpis(df: pd.DataFrame) -> Dict[str, float]:
     # Abertas total (todas as que estão com status "aberta" atualmente)
     abertas = (df_unique["status_bucket"] == "aberta").sum() if "status_bucket" in df_unique.columns else 0
     
-    # Aprovadas (solicitações com data_autorizacao preenchida)
-    if "data_autorizacao" in df_unique.columns and solicitacao_col:
-        aprovadas = df_unique[df_unique["data_autorizacao"].notna()][solicitacao_col].nunique()
+    # Total de solicitações (todas as solicitações únicas)
+    if solicitacao_col:
+        total_solicitacoes = df_unique[solicitacao_col].nunique()
     else:
-        aprovadas = 0
+        total_solicitacoes = len(df_unique) if df_unique is not None else 0
     
     # Canceladas
     canceladas = (df_unique["status_bucket"] == "cancelada").sum() if "status_bucket" in df_unique.columns else 0
@@ -590,7 +590,7 @@ def compute_kpis(df: pd.DataFrame) -> Dict[str, float]:
         "abertas_ultimos_30": int(abertas_ultimos_30),
         "abertas_ultimos_60": int(abertas_ultimos_60),
         "abertas": int(abertas),
-        "aprovadas": int(aprovadas),
+        "total_solicitacoes": int(total_solicitacoes),
         "canceladas": int(canceladas),
         "atendidas": int(atendidas),
         "insumos": float(insumos_total),
@@ -1233,7 +1233,7 @@ def render_solicitacoes_dashboard(*, show_title: bool = True, show_caption: bool
 
     # Segunda linha: Status intermediários e finais (jornada de status)
     col5, col6, col7, col8 = st.columns(4)
-    col5.metric("Aprovadas", _format_int(kpis["aprovadas"]))
+    col5.metric("Total de solicitações", _format_int(kpis["total_solicitacoes"]))
     col6.metric("Canceladas", _format_int(kpis["canceladas"]))
     col7.metric("Atendidas", _format_int(kpis["atendidas"]))
     col8.metric("Qtd. de insumos", _format_int(kpis["insumos"]))
