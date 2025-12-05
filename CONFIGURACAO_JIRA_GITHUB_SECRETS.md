@@ -82,3 +82,14 @@ A tabela `main.jira_issues` conterá todas as colunas do exportar_issues_jira.py
 - Mantenha o token seguro e atualize se necessário
 - O workflow tem timeout de 90 minutos (Jira pode ser demorado)
 
+
+
+
+
+
+
+
+
+
+
+

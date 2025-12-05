@@ -297,7 +297,7 @@ def get_user_pages(user_data: Dict) -> List[str]:
 
     # Usuários cadastrados têm acesso total por padrão
     if user_data.get('email') in USERS_DATABASE:
-        return ['vendas', 'leads', 'reservas', 'operacoes', 'motivo_fora_prazo', 'lead_time']
+        return ['vendas', 'leads', 'reservas', 'operacoes', 'motivo_fora_prazo']
     
     # Usuários não cadastrados veem apenas Vendas
     return ['vendas']

@@ -96,3 +96,12 @@ def load_project_keys_from_sheet(
     logger.info("Projetos carregados do Sheets: %d entradas únicas", len(chaves))
     return chaves
 
+
+
+
+
+
+
+
+
+

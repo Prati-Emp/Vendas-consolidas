@@ -1,3 +1,12 @@
 """Utilitários compartilhados entre scripts."""
 
 
+
+
+
+
+
+
+
+
+

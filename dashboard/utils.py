@@ -57,8 +57,7 @@ def display_navigation():
             ("Vendas", "vendas", "pages/1_Vendas.py"),
             ("Leads", "leads", "pages/2_Leads.py"),
             ("Reservas", "reservas", "pages/3_Reservas.py"),
-            ("Motivo Fora do Prazo", "motivo_fora_prazo", "pages/4_Motivo_fora_do_prazo.py"),
-            ("Lead Time", "lead_time", "pages/Lead_Time.py")
+            ("Motivo Fora do Prazo", "motivo_fora_prazo", "pages/4_Motivo_fora_do_prazo.py")
         ]
         
         # Calculate number of accessible items
