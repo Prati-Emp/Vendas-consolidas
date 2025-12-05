@@ -262,6 +262,11 @@ def load_pedidos_compras_leadtime(
         filters = []
         params = []
         
+        # Filtro de data via SQL tambem para otimizar (se o formato permitir)
+        # Como o formato eh DD/MM/YYYY string, melhor filtrar no pandas apos conversao
+        # Mas podemos adicionar filtro se a coluna data_entregue nao for nula
+        filters.append("data_entregue IS NOT NULL")
+        
         if comprador and len(comprador) > 0:
             placeholders = ','.join(['?' for _ in comprador])
             filters.append(f"comprador IN ({placeholders})")
@@ -326,16 +331,22 @@ def load_pedidos_compras_leadtime(
                 df[col] = pd.to_datetime(df[col], dayfirst=True, errors='coerce')
         
         # Aplicar filtro de data no pandas (garantido)
-        if data_inicio and not df.empty and 'data_pedido' in df.columns:
+        # Usar data_entregue como referencia principal para Lead Time
+        col_ref_data = 'data_entregue'
+        
+        if data_inicio and not df.empty and col_ref_data in df.columns:
             dt_inicio = pd.to_datetime(data_inicio)
-            df = df[df['data_pedido'] >= dt_inicio]
+            df = df[df[col_ref_data] >= dt_inicio]
             
-        if data_fim and not df.empty and 'data_pedido' in df.columns:
+        if data_fim and not df.empty and col_ref_data in df.columns:
             dt_fim = pd.to_datetime(data_fim)
             # Ajustar para final do dia
             dt_fim = dt_fim + pd.Timedelta(days=1) - pd.Timedelta(seconds=1)
-            df = df[df['data_pedido'] <= dt_fim]
+            df = df[df[col_ref_data] <= dt_fim]
         
+        # Ordenar pela data de entrega
+        if col_ref_data in df.columns:
+            return df.sort_values(col_ref_data, ascending=False)
         return df.sort_values('data_pedido', ascending=False)
     except Exception as e:
         st.error(f"❌ Erro ao carregar dados: {str(e)}")
