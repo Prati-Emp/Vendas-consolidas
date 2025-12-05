@@ -509,14 +509,14 @@ def render_leadtime_tab(
         st.metric(
             "% Comprado no Prazo",
             formatar_percentual(indicadores['percentual_no_prazo']),
-            help="Percentual de pedidos entregues no prazo (considerando -2 dias para lançamento)"
+            help="Percentual de itens entregues no prazo (considerando -2 dias para lançamento)"
         )
     
     with col2:
         st.metric(
             "Lead Time Comum",
             formatar_dias(indicadores['lead_time_comum']),
-            help="Média de dias entre data_pedido e data_entregue"
+            help="Média de dias entre data_pedido e data_entregue (considerando itens individuais)"
         )
     
     with col3:
@@ -530,7 +530,7 @@ def render_leadtime_tab(
         st.metric(
             "Tempo de Atraso Médio",
             formatar_dias(indicadores['tempo_atraso_medio']),
-            help="Média de dias de atraso para pedidos entregues fora do prazo"
+            help="Média de dias de atraso para itens entregues fora do prazo"
         )
     
     # KPIs Secundários
