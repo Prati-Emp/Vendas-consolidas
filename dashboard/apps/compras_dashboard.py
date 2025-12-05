@@ -751,67 +751,6 @@ def render_leadtime_tab(
     else:
         st.info("ℹ️ Nenhum dado por comprador disponível para os filtros selecionados.")
 
-    # Visualizações
-    if 'df_com_entrega' in indicadores and not indicadores['df_com_entrega'].empty:
-        df_viz = indicadores['df_com_entrega'].copy()
-        
-        st.markdown("---")
-        st.subheader("📊 Visualizações")
-        
-        # Sub-tabs para diferentes análises
-        viz_tab1, viz_tab2 = st.tabs(["📊 Distribuição Lead Time", "⏰ Análise de Atrasos"])
-        
-        with viz_tab1:
-            if 'lead_time_comum' in df_viz.columns:
-                # Histograma de lead time
-                fig = px.histogram(
-                    df_viz,
-                    x='lead_time_comum',
-                    nbins=30,
-                    title='Distribuição de Lead Time (dias)',
-                    labels={'lead_time_comum': 'Lead Time (dias)', 'count': 'Quantidade'}
-                )
-                fig.update_layout(showlegend=False)
-                st.plotly_chart(fig, use_container_width=True)
-                
-                # Box plot
-                fig2 = px.box(
-                    df_viz,
-                    y='lead_time_comum',
-                    title='Box Plot - Lead Time',
-                    labels={'lead_time_comum': 'Lead Time (dias)'}
-                )
-                st.plotly_chart(fig2, use_container_width=True)
-        
-        with viz_tab2:
-            if 'entregue_no_prazo' in df_viz.columns:
-                # Gráfico de pizza: no prazo vs atrasado
-                status_counts = df_viz['entregue_no_prazo'].value_counts()
-                fig = px.pie(
-                    values=status_counts.values,
-                    names=['No Prazo' if idx else 'Atrasado' for idx in status_counts.index],
-                    title='Distribuição: No Prazo vs Atrasado'
-                )
-                st.plotly_chart(fig, use_container_width=True)
-                
-                # Gráfico de tempo de atraso
-                if 'entregue_no_prazo' in df_viz.columns:
-                    # Calcular tempo de atraso usando a data ajustada para consistência
-                    df_viz['tempo_atraso'] = df_viz.apply(
-                        lambda row: (row['data_entregue_ajustada'] - row['data_prevista']).days 
-                        if not row['entregue_no_prazo'] else 0,
-                        axis=1
-                    )
-                    df_atrasos = df_viz[df_viz['tempo_atraso'] > 0]
-                    if not df_atrasos.empty:
-                        fig2 = px.histogram(
-                            df_atrasos,
-                            x='tempo_atraso',
-                            nbins=20,
-                            title='Distribuição de Tempo de Atraso (dias)',
-                            labels={'tempo_atraso': 'Dias de Atraso', 'count': 'Quantidade'}
-                        )
-                        st.plotly_chart(fig2, use_container_width=True)
 
 
 def render_compras_dashboard(
