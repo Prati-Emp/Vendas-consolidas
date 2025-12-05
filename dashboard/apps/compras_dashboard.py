@@ -443,10 +443,11 @@ def calcular_indicadores_leadtime(df: pd.DataFrame) -> Dict[str, Any]:
         lead_time_ponderado = lead_time_comum_medio
     
     # 4. Tempo de Atraso
-    # Se não entregue no prazo: data_entregue - data_prevista
+    # Se não entregue no prazo: (data_entregue - 2 dias) - data_prevista
     df_atrasados = df_analise[~df_analise['entregue_no_prazo']].copy()
     if not df_atrasados.empty:
-        df_atrasados['tempo_atraso'] = (df_atrasados['data_entregue'] - df_atrasados['data_prevista']).dt.days
+        # Usar data_entregue_ajustada (-2 dias) para calcular o atraso real considerando a regra de negocio
+        df_atrasados['tempo_atraso'] = (df_atrasados['data_entregue_ajustada'] - df_atrasados['data_prevista']).dt.days
         tempo_atraso_medio = df_atrasados['tempo_atraso'].mean()
     else:
         tempo_atraso_medio = 0.0
@@ -602,8 +603,9 @@ def render_leadtime_tab(
                 
                 # Gráfico de tempo de atraso
                 if 'entregue_no_prazo' in df_viz.columns:
+                    # Calcular tempo de atraso usando a data ajustada para consistência
                     df_viz['tempo_atraso'] = df_viz.apply(
-                        lambda row: (row['data_entregue'] - row['data_prevista']).dt.days 
+                        lambda row: (row['data_entregue_ajustada'] - row['data_prevista']).days 
                         if not row['entregue_no_prazo'] else 0,
                         axis=1
                     )
