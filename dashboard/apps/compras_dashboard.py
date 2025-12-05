@@ -526,31 +526,6 @@ def render_leadtime_tab(
             help="Média de dias de atraso para itens entregues fora do prazo"
         )
     
-    # KPIs Secundários
-    st.markdown("---")
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        st.metric(
-            "Total de Pedidos",
-            f"{indicadores['total_pedidos']:,}",
-            help="Total de pedidos no período"
-        )
-    
-    with col2:
-        st.metric(
-            "Itens no Prazo",
-            f"{indicadores['pedidos_no_prazo']:,}",
-            help="Quantidade de itens entregues no prazo"
-        )
-    
-    with col3:
-        st.metric(
-            "Itens Atrasados",
-            f"{indicadores['pedidos_atrasados']:,}",
-            help="Quantidade de itens entregues fora do prazo"
-        )
-    
     # Visualizações
     if 'df_com_entrega' in indicadores and not indicadores['df_com_entrega'].empty:
         df_viz = indicadores['df_com_entrega'].copy()
