@@ -470,6 +470,98 @@ def calcular_indicadores_leadtime(df: pd.DataFrame) -> Dict[str, Any]:
     }
 
 
+def calcular_indicadores_leadtime_mensal(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Calcula indicadores de lead time agrupados por mês.
+    
+    Args:
+        df: DataFrame com dados de pedidos de compras
+        
+    Returns:
+        DataFrame com colunas: Mês, % Comprado no Prazo, Lead Time Ponderado, Tempo de Atraso Médio
+    """
+    if df.empty:
+        return pd.DataFrame(columns=['Mês', '% Comprado no Prazo', 'Lead Time Ponderado', 'Tempo de Atraso Médio'])
+    
+    # Garantir que temos data_entregue
+    if 'data_entregue' not in df.columns:
+        return pd.DataFrame(columns=['Mês', '% Comprado no Prazo', 'Lead Time Ponderado', 'Tempo de Atraso Médio'])
+    
+    # Filtrar apenas itens com data_entregue preenchida
+    df_com_entrega = df[df['data_entregue'].notna()].copy()
+    
+    if df_com_entrega.empty:
+        return pd.DataFrame(columns=['Mês', '% Comprado no Prazo', 'Lead Time Ponderado', 'Tempo de Atraso Médio'])
+    
+    # Criar coluna de mês/ano baseada em data_entregue
+    df_com_entrega['mes_ano'] = df_com_entrega['data_entregue'].dt.to_period('M')
+    df_com_entrega['mes_nome'] = df_com_entrega['data_entregue'].dt.strftime('%Y-%m')
+    
+    # Preparar cálculos
+    df_com_entrega['data_entregue_ajustada'] = df_com_entrega['data_entregue'] - timedelta(days=2)
+    df_com_entrega['entregue_no_prazo'] = df_com_entrega['data_entregue_ajustada'] <= df_com_entrega['data_prevista']
+    df_com_entrega['lead_time_comum'] = (df_com_entrega['data_entregue'] - df_com_entrega['data_pedido']).dt.days
+    
+    col_valor = 'total_l_quido_insumo' if 'total_l_quido_insumo' in df_com_entrega.columns else \
+               ('total_liquido_insumo' if 'total_liquido_insumo' in df_com_entrega.columns else None)
+    
+    # Calcular indicadores por mês
+    resultados = []
+    
+    for mes_period in sorted(df_com_entrega['mes_ano'].unique()):
+        df_mes = df_com_entrega[df_com_entrega['mes_ano'] == mes_period].copy()
+        
+        if df_mes.empty:
+            continue
+        
+        # 1. % Comprado no Prazo
+        total_itens = len(df_mes)
+        itens_no_prazo = df_mes['entregue_no_prazo'].sum()
+        percentual_no_prazo = (itens_no_prazo / total_itens * 100) if total_itens > 0 else 0.0
+        
+        # 2. Lead Time Ponderado
+        if col_valor and col_valor in df_mes.columns:
+            df_mes['lead_time_ponderado_calc'] = df_mes[col_valor] * df_mes['lead_time_comum']
+            soma_numerador = df_mes['lead_time_ponderado_calc'].sum()
+            soma_denominador = df_mes[col_valor].sum()
+            lead_time_ponderado = (soma_numerador / soma_denominador) if soma_denominador > 0 else 0.0
+        else:
+            lead_time_ponderado = df_mes['lead_time_comum'].mean() if not df_mes.empty else 0.0
+        
+        # 3. Tempo de Atraso Médio
+        df_atrasados_mes = df_mes[~df_mes['entregue_no_prazo']].copy()
+        if not df_atrasados_mes.empty:
+            df_atrasados_mes['tempo_atraso'] = (df_atrasados_mes['data_entregue_ajustada'] - df_atrasados_mes['data_prevista']).dt.days
+            tempo_atraso_medio = df_atrasados_mes['tempo_atraso'].mean()
+        else:
+            tempo_atraso_medio = 0.0
+        
+        # Nome do mês em português
+        data_ref = df_mes['data_entregue'].iloc[0]
+        meses_pt = [
+            'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+            'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+        ]
+        mes_nome_pt = f"{meses_pt[data_ref.month - 1]} {data_ref.year}"
+        
+        resultados.append({
+            'Mês': mes_nome_pt,
+            '% Comprado no Prazo': percentual_no_prazo,
+            'Lead Time Ponderado': lead_time_ponderado,
+            'Tempo de Atraso Médio': tempo_atraso_medio
+        })
+    
+    df_resultado = pd.DataFrame(resultados)
+    
+    # Ordenar por data (usando o primeiro dia do mês para ordenação)
+    if not df_resultado.empty:
+        df_resultado['_ordem'] = pd.to_datetime(df_resultado['Mês'], format='%B %Y', errors='coerce')
+        df_resultado = df_resultado.sort_values('_ordem').drop(columns=['_ordem'])
+        df_resultado = df_resultado.reset_index(drop=True)
+    
+    return df_resultado
+
+
 def formatar_dias(valor: float) -> str:
     """Formata valor como dias."""
     return f"{valor:.1f} dias"
@@ -525,6 +617,33 @@ def render_leadtime_tab(
             formatar_dias(indicadores['tempo_atraso_medio']),
             help="Média de dias de atraso para itens entregues fora do prazo"
         )
+    
+    # Tabela Mensal
+    st.markdown("---")
+    st.subheader("📅 Indicadores por Mês")
+    
+    df_mensal = calcular_indicadores_leadtime_mensal(df_leadtime)
+    
+    if not df_mensal.empty:
+        # Formatar valores para exibição
+        df_exibicao = df_mensal.copy()
+        df_exibicao['% Comprado no Prazo'] = df_exibicao['% Comprado no Prazo'].apply(lambda x: f"{x:.2f}%")
+        df_exibicao['Lead Time Ponderado'] = df_exibicao['Lead Time Ponderado'].apply(lambda x: f"{x:.1f} dias")
+        df_exibicao['Tempo de Atraso Médio'] = df_exibicao['Tempo de Atraso Médio'].apply(lambda x: f"{x:.2f} dias" if x > 0 else "-")
+        
+        st.dataframe(
+            df_exibicao,
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "Mês": st.column_config.TextColumn("Mês", width="medium"),
+                "% Comprado no Prazo": st.column_config.TextColumn("% Comprado no Prazo", width="medium"),
+                "Lead Time Ponderado": st.column_config.TextColumn("Lead Time Ponderado", width="medium"),
+                "Tempo de Atraso Médio": st.column_config.TextColumn("Tempo de Atraso Médio", width="medium"),
+            }
+        )
+    else:
+        st.info("ℹ️ Nenhum dado mensal disponível para os filtros selecionados.")
     
     # Visualizações
     if 'df_com_entrega' in indicadores and not indicadores['df_com_entrega'].empty:
