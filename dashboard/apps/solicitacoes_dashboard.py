@@ -524,6 +524,9 @@ def compute_kpis(df: pd.DataFrame) -> Dict[str, float]:
             "lead_time_medio": 0.0,
             "tempo_aprovacao": 0.0,
             "tempo_compra": 0.0,
+            "pct_atendidas": 0.0,
+            "pct_canceladas": 0.0,
+            "pct_abertas": 0.0,
         }
 
     today = datetime.now()
@@ -568,6 +571,16 @@ def compute_kpis(df: pd.DataFrame) -> Dict[str, float]:
     # Insumos continua sendo a soma de tudo (linhas ou qtd declarada)
     insumos_total = df["insumos"].sum() if "insumos" in df.columns else 0
 
+    # Percentuais por status em relação ao total
+    def _pct(part: float, total: float) -> float:
+        if not total:
+            return 0.0
+        return round((part / total) * 100, 1)
+
+    pct_atendidas = _pct(atendidas, total_solicitacoes)
+    pct_canceladas = _pct(canceladas, total_solicitacoes)
+    pct_abertas = _pct(abertas, total_solicitacoes)
+
     lead_time_medio = (
         df_unique.loc[df_unique["status_bucket"] == "atendida", "lead_time_dias"].mean()
         if "lead_time_dias" in df_unique.columns and "status_bucket" in df_unique.columns
@@ -597,6 +610,9 @@ def compute_kpis(df: pd.DataFrame) -> Dict[str, float]:
         "lead_time_medio": lead_time_medio or 0.0,
         "tempo_aprovacao": tempo_aprovacao_medio or 0.0,
         "tempo_compra": tempo_compra_medio or 0.0,
+        "pct_atendidas": pct_atendidas,
+        "pct_canceladas": pct_canceladas,
+        "pct_abertas": pct_abertas,
     }
 
 
@@ -618,87 +634,7 @@ def render_distributions(df: pd.DataFrame) -> None:
     )
 
     with tab1:
-        # Gráfico de Status - Gráfico de Rosca (Donut Chart)
-        if "status_bucket" in df_unique.columns:
-            st.subheader("Distribuição de Status das Solicitações")
-            status_counts = (
-                df_unique["status_bucket"]
-                .value_counts()
-                .rename_axis("Status")
-                .reset_index(name="Quantidade")
-            )
-            
-            # Mapear nomes de status para português
-            status_map = {
-                "aberta": "Abertas",
-                "atendida": "Atendidas",
-                "cancelada": "Canceladas",
-                "outros": "Outros",
-                "desconhecido": "Desconhecido",
-            }
-            status_counts["Status_Label"] = status_counts["Status"].map(status_map).fillna(status_counts["Status"])
-            
-            total = status_counts["Quantidade"].sum()
-            
-            # Mapeamento de cores
-            colors_map = {
-                "aberta": "#f97316",
-                "atendida": "#22c55e",
-                "cancelada": "#ef4444",
-                "outros": "#64748b",
-                "desconhecido": "#94a3b8",
-            }
-            
-            # Ordenar para melhor visualização (atendidas primeiro, depois abertas, etc.)
-            order = ["atendida", "aberta", "cancelada", "outros", "desconhecido"]
-            status_counts_ordered = status_counts.set_index("Status").reindex([s for s in order if s in status_counts["Status"].values])
-            status_counts_ordered = status_counts_ordered.dropna().reset_index()
-            
-            # Preparar dados para o gráfico de rosca
-            labels = status_counts_ordered["Status_Label"].tolist()
-            values = status_counts_ordered["Quantidade"].tolist()
-            colors = [colors_map.get(status, "#64748b") for status in status_counts_ordered["Status"].tolist()]
-            
-            # Criar gráfico de rosca
-            fig_status = go.Figure(data=[go.Pie(
-                labels=labels,
-                values=values,
-                hole=0.5,  # Cria o efeito de rosca (donut)
-                marker=dict(colors=colors, line=dict(color='#1e1e1e', width=2)),
-                textinfo='label+percent',
-                textposition='outside',
-                hovertemplate='<b>%{label}</b><br>Quantidade: %{value}<br>Percentual: %{percent}<extra></extra>',
-                sort=False
-            )])
-            
-            # Adicionar total no centro
-            fig_status.add_annotation(
-                text=f"<b>Total</b><br>{total:,}",
-                x=0.5,
-                y=0.5,
-                font_size=20,
-                font_color="white",
-                showarrow=False,
-                xref="paper",
-                yref="paper"
-            )
-            
-            fig_status.update_layout(
-                height=500,
-                margin=dict(t=30, b=30, l=30, r=30),
-                legend=dict(
-                    orientation="v",
-                    yanchor="middle",
-                    y=0.5,
-                    xanchor="right",
-                    x=1.15,
-                    font=dict(size=12)
-                ),
-                showlegend=True
-            )
-            st.plotly_chart(fig_status, use_container_width=True)
-        else:
-            st.info("Coluna de status não encontrada para gerar o gráfico.")
+        # Gráfico de status removido (informação já coberta pelos cards)
 
         # Gráfico de Tendência Temporal
         st.subheader("Tendência de Solicitações ao Longo do Tempo")
@@ -1224,33 +1160,51 @@ def render_solicitacoes_dashboard(*, show_title: bool = True, show_caption: bool
     st.markdown("### 📌 Indicadores Principais")
     kpis = compute_kpis(filtered_df)
 
-    # Primeira linha: Entrada e abertas (jornada temporal)
+    total = kpis.get("total_solicitacoes", 0)
+
+    def _pct_delta(pct: float) -> str:
+        if not total:
+            return "0% do total"
+        return f"{pct:.1f}% do total"
+
+    # Linha 1: Status principais com % do total
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Solicitações (últ. 90 dias)", _format_int(kpis["ultimos_90"]))
-    col2.metric("Solicitações (últ. 30 dias)", _format_int(kpis["abertas_ultimos_30"]))
-    col3.metric("Solicitações (últ. 60 dias)", _format_int(kpis["abertas_ultimos_60"]))
-    col4.metric("Abertas (total)", _format_int(kpis["abertas"]))
+    col1.metric("Total de solicitações", _format_int(total), help="Solicitações únicas no conjunto filtrado.")
+    col2.metric(
+        "Atendidas",
+        _format_int(kpis["atendidas"]),
+        delta=_pct_delta(kpis["pct_atendidas"]),
+        help="Solicitações concluídas (status 'atendida').",
+    )
+    col3.metric(
+        "Canceladas",
+        _format_int(kpis["canceladas"]),
+        delta=_pct_delta(kpis["pct_canceladas"]),
+        help="Solicitações canceladas.",
+    )
+    col4.metric(
+        "Abertas (total)",
+        _format_int(kpis["abertas"]),
+        delta=_pct_delta(kpis["pct_abertas"]),
+        help="Solicitações que ainda não foram atendidas.",
+    )
 
-    # Segunda linha: Status intermediários e finais (jornada de status)
-    col5, col6, col7, col8 = st.columns(4)
-    col5.metric("Total de solicitações", _format_int(kpis["total_solicitacoes"]))
-    col6.metric("Canceladas", _format_int(kpis["canceladas"]))
-    col7.metric("Atendidas", _format_int(kpis["atendidas"]))
-    col8.metric("Qtd. de insumos", _format_int(kpis["insumos"]))
-
-    # Terceira linha: Tempos (métricas de performance)
-    col9, col10, col11 = st.columns(3)
-    col9.metric(
+    # Linha 2: Estoque, recentes e tempos
+    col5, col6, col7, col8, col9, col10 = st.columns(6)
+    col5.metric("Qtd. de insumos", _format_int(kpis["insumos"]), help="Soma da quantidade de insumos nas solicitações.")
+    col6.metric("Solicitações (últ. 30 dias)", _format_int(kpis["abertas_ultimos_30"]), help="Solicitações criadas nos últimos 30 dias.")
+    col7.metric("Solicitações (últ. 60 dias)", _format_int(kpis["abertas_ultimos_60"]), help="Solicitações criadas nos últimos 60 dias.")
+    col8.metric(
         "Tempo Aprovação (dias)",
         _format_float(kpis["tempo_aprovacao"]),
         help="Tempo médio entre Solicitação e Autorização.",
     )
-    col10.metric(
+    col9.metric(
         "Tempo Compra (dias)",
         _format_float(kpis["tempo_compra"]),
         help="Tempo médio entre Autorização e Atendimento/Entrega.",
     )
-    col11.metric(
+    col10.metric(
         "Lead time Total (dias)",
         _format_float(kpis["lead_time_medio"]),
         help="Tempo total médio (Solicitação até Atendimento). Considera apenas solicitações atendidas.",
