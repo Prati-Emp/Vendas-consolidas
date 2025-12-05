@@ -503,7 +503,7 @@ def render_leadtime_tab(
     indicadores = calcular_indicadores_leadtime(df_leadtime)
     
     # KPIs Principais
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2, col3 = st.columns(3)
     
     with col1:
         st.metric(
@@ -514,19 +514,12 @@ def render_leadtime_tab(
     
     with col2:
         st.metric(
-            "Lead Time Comum",
-            formatar_dias(indicadores['lead_time_comum']),
-            help="Média de dias entre data_pedido e data_entregue (considerando itens individuais)"
-        )
-    
-    with col3:
-        st.metric(
             "Lead Time Ponderado",
             formatar_dias(indicadores['lead_time_ponderado']),
             help="Lead time ponderado pelo total líquido insumo"
         )
     
-    with col4:
+    with col3:
         st.metric(
             "Tempo de Atraso Médio",
             formatar_dias(indicadores['tempo_atraso_medio']),
