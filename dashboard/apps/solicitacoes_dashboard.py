@@ -1219,6 +1219,10 @@ def render_solicitacoes_dashboard(*, show_title: bool = True, show_caption: bool
     )
 
     st.markdown("---")
+    render_distributions(filtered_df)
+
+    # Bloco de insights no final da página
+    st.markdown("---")
     st.subheader("🔎 Principais insights")
     insights = [
         f"{_format_int(kpis['abertas'])} solicitações aguardam atendimento.",
@@ -1227,8 +1231,5 @@ def render_solicitacoes_dashboard(*, show_title: bool = True, show_caption: bool
         f"Tempo médio de compra: {_format_float(kpis['tempo_compra'])} dias." if kpis["tempo_compra"] > 0 else "Sem dados de compra.",
     ]
     st.markdown("\n".join(f"- {item}" for item in insights))
-
-    st.markdown("---")
-    render_distributions(filtered_df)
 
 
