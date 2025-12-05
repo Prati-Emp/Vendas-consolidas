@@ -1167,8 +1167,8 @@ def render_solicitacoes_dashboard(*, show_title: bool = True, show_caption: bool
             return "0% do total"
         return f"{pct:.1f}% do total"
 
-    # Linha 1: Status principais com % do total
-    col1, col2, col3, col4 = st.columns(4)
+    # Linha 1: Status principais com % do total + insumos
+    col1, col2, col3, col4, col5 = st.columns(5)
     col1.metric("Total de solicitações", _format_int(total), help="Solicitações únicas no conjunto filtrado.")
     col2.metric(
         "Atendidas",
@@ -1188,12 +1188,12 @@ def render_solicitacoes_dashboard(*, show_title: bool = True, show_caption: bool
         delta=_pct_delta(kpis["pct_abertas"]),
         help="Solicitações que ainda não foram atendidas.",
     )
-
-    # Linha 2: Estoque, recentes e tempos
-    col5, col6, col7, col8, col9, col10 = st.columns(6)
     col5.metric("Qtd. de insumos", _format_int(kpis["insumos"]), help="Soma da quantidade de insumos nas solicitações.")
-    col6.metric("Solicitações (últ. 30 dias)", _format_int(kpis["abertas_ultimos_30"]), help="Solicitações criadas nos últimos 30 dias.")
-    col7.metric("Solicitações (últ. 90 dias)", _format_int(kpis["ultimos_90"]), help="Solicitações criadas nos últimos 90 dias.")
+
+    # Linha 2: Volumes recentes e tempos
+    col6, col7, col8, col9, col10 = st.columns(5)
+    col6.metric("Solicitações (últ. 90 dias)", _format_int(kpis["ultimos_90"]), help="Solicitações criadas nos últimos 90 dias.")
+    col7.metric("Solicitações (últ. 30 dias)", _format_int(kpis["abertas_ultimos_30"]), help="Solicitações criadas nos últimos 30 dias.")
     col8.metric(
         "Tempo Aprovação (dias)",
         _format_float(kpis["tempo_aprovacao"]),
