@@ -1100,7 +1100,7 @@ def render_solicitacoes_dashboard(*, show_title: bool = True, show_caption: bool
             st.caption("Monitoramento semanal das demandas enviadas ao time de Compras")
 
     last_update_label = (
-        meta.last_update.strftime("%d/%m/%Y %H:%M") if isinstance(meta.last_update, (datetime, pd.Timestamp)) else "sem registro"
+        meta.last_update.strftime("%d/%m/%Y") if isinstance(meta.last_update, (datetime, pd.Timestamp)) else "sem registro"
     )
     st.info(
         f"Esta página é atualizada **semanalmente**. "
