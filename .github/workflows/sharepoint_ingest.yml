@@ -2,9 +2,9 @@ name: Update MotherDuck - Planilhas SharePoint
 
 on:
   schedule:
-    # Executa às 06:00 e 18:00 BRT (09:00 e 21:00 UTC)
-    # Ajuste o UTC conforme horário de verão se necessário
-    - cron: '0 9,21 * * *'
+    # Executa às 12:30 e 20:00 BRT (15:30 e 23:00 UTC)
+    - cron: '30 15 * * *'
+    - cron: '0 23 * * *'
   workflow_dispatch: # Permite execução manual
 
 jobs:
@@ -23,15 +23,16 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install pandas openpyxl duckdb Office365-REST-Python-Client python-dotenv
+        pip install -r requirements.txt
         
     - name: Run SharePoint Ingestion
       env:
-        # Variáveis de Ambiente
-        SHAREPOINT_SITE_URL: 'https://pratiemp318.sharepoint.com/sites/Materialatualizaodiria'
+        # Variáveis de Ambiente para Microsoft Graph
+        SHAREPOINT_TENANT_ID: 'f6e5f47f-eb3e-4de3-a4e3-648d931a2eb9'
         SHAREPOINT_CLIENT_ID: '87298303-83fe-464f-a246-a968a3d2d651'
-        # Caminho da pasta (ajustável se descobrirmos que é outro nome)
-        SHAREPOINT_FOLDER_REL_URL: '/sites/Materialatualizaodiria/Shared Documents/arquivosatualizacao'
+        SHAREPOINT_SITE_HOSTNAME: 'pratiemp318.sharepoint.com'
+        SHAREPOINT_SITE_PATH: '/sites/Materialatualizaodiria'
+        SHAREPOINT_FOLDER_PATH: 'arquivosatualizacao'
         
         # Secrets (Cadastrar no GitHub)
         SHAREPOINT_CLIENT_SECRET: ${{ secrets.SHAREPOINT_CLIENT_SECRET }}
