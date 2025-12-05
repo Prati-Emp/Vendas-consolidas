@@ -1219,17 +1219,17 @@ def render_solicitacoes_dashboard(*, show_title: bool = True, show_caption: bool
     col8.metric("Solicitações (últ. 60 dias)", _format_int(kpis["abertas_ultimos_60"]), help="Solicitações criadas nos últimos 60 dias.")
     col9.metric("Solicitações (últ. 30 dias)", _format_int(kpis["abertas_ultimos_30"]), help="Solicitações criadas nos últimos 30 dias.")
     col10.metric(
-        "Tempo Aprovação (médio, dias)",
+        "Tempo Aprovação (dias)",
         _format_float(kpis["tempo_aprovacao"]),
         help="Tempo médio entre Solicitação e Autorização.",
     )
     col11.metric(
-        "Tempo Compra (médio, dias)",
+        "Tempo Compra (dias)",
         _format_float(kpis["tempo_compra"]),
         help="Tempo médio entre Autorização e Atendimento/Entrega.",
     )
     col12.metric(
-        "Lead time Total (médio, dias)",
+        "Lead time Total (dias)",
         _format_float(kpis["lead_time_medio"]),
         help="Tempo total médio (Solicitação até Atendimento). Considera apenas solicitações atendidas.",
     )
