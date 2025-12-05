@@ -30,11 +30,11 @@ def display_navigation():
     # Create navigation container
     with st.container():
         st.markdown('<div class="nav-container">', unsafe_allow_html=True)
-        cols = st.columns([1, 1, 1, 1, 0.5])  # 4 navigation items + logo space
+        cols = st.columns([1, 1, 1, 1, 1, 0.5])  # 5 navigation items + logo space
         
         # Get current page name
         current_page = os.path.basename(st.session_state.get('current_page', 'Home.py'))
-        # Navigation buttons - Nova ordem: Vendas (1º), Reservas (2º), Leads (3º), Motivos fora do prazo (4º)
+        # Navigation buttons - Nova ordem: Vendas (1º), Reservas (2º), Leads (3º), Motivos fora do prazo (4º), Lead Time (5º)
         with cols[0]:
             if st.button("Vendas", use_container_width=True):
                 st.switch_page("pages/Vendas.py")
@@ -47,6 +47,9 @@ def display_navigation():
         with cols[3]:
             if st.button("Motivos fora do prazo", use_container_width=True):
                 st.switch_page("pages/Motivo_fora_do_prazo.py")
+        with cols[4]:
+            if st.button("Lead Time", use_container_width=True):
+                st.switch_page("pages/Lead_Time.py")
         
         # Logo in the last column
         with cols[4]:
