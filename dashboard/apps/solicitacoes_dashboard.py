@@ -1184,25 +1184,26 @@ def render_solicitacoes_dashboard(*, show_title: bool = True, show_caption: bool
         return f"{pct:.1f}% do total"
 
     # Linha 1: Status principais com % do total + insumos e parciais
+    # Ordem: Total, Canceladas, Atendidas, Parciais, Abertas, Insumos
     col1, col2, col3, col4, col5, col6 = st.columns(6)
     col1.metric("Total de solicitações", _format_int(total), help="Solicitações únicas no conjunto filtrado.")
     col2.metric(
+        "Canceladas",
+        _format_int(kpis["canceladas"]),
+        delta=_pct_delta(kpis["pct_canceladas"]),
+        help="Solicitações canceladas.",
+    )
+    col3.metric(
         "Atendidas",
         _format_int(kpis["atendidas"]),
         delta=_pct_delta(kpis["pct_atendidas"]),
         help="Solicitações concluídas (status 'atendida').",
     )
-    col3.metric(
+    col4.metric(
         "Parcialmente atendidas",
         _format_int(kpis["parciais"]),
         delta=_pct_delta(kpis["pct_parciais"]),
         help="Solicitações com atendimento parcial.",
-    )
-    col4.metric(
-        "Canceladas",
-        _format_int(kpis["canceladas"]),
-        delta=_pct_delta(kpis["pct_canceladas"]),
-        help="Solicitações canceladas.",
     )
     col5.metric(
         "Abertas (total)",
@@ -1218,17 +1219,17 @@ def render_solicitacoes_dashboard(*, show_title: bool = True, show_caption: bool
     col8.metric("Solicitações (últ. 60 dias)", _format_int(kpis["abertas_ultimos_60"]), help="Solicitações criadas nos últimos 60 dias.")
     col9.metric("Solicitações (últ. 30 dias)", _format_int(kpis["abertas_ultimos_30"]), help="Solicitações criadas nos últimos 30 dias.")
     col10.metric(
-        "Tempo Aprovação (dias)",
+        "Tempo Aprovação (médio, dias)",
         _format_float(kpis["tempo_aprovacao"]),
         help="Tempo médio entre Solicitação e Autorização.",
     )
     col11.metric(
-        "Tempo Compra (dias)",
+        "Tempo Compra (médio, dias)",
         _format_float(kpis["tempo_compra"]),
         help="Tempo médio entre Autorização e Atendimento/Entrega.",
     )
     col12.metric(
-        "Lead time Total (dias)",
+        "Lead time Total (médio, dias)",
         _format_float(kpis["lead_time_medio"]),
         help="Tempo total médio (Solicitação até Atendimento). Considera apenas solicitações atendidas.",
     )
