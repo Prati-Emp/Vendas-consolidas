@@ -562,6 +562,62 @@ def calcular_indicadores_leadtime_mensal(df: pd.DataFrame) -> pd.DataFrame:
     return df_resultado
 
 
+def calcular_indicadores_leadtime_por(df: pd.DataFrame, group_col: str, col_label: str) -> pd.DataFrame:
+    """
+    Calcula indicadores de lead time agrupados por uma dimensão (ex.: obra, comprador).
+    """
+    if df.empty or group_col not in df.columns:
+        return pd.DataFrame(columns=[col_label, '% Comprado no Prazo', 'Lead Time Ponderado', 'Tempo de Atraso Médio'])
+
+    df_com_entrega = df[df['data_entregue'].notna()].copy()
+    if df_com_entrega.empty:
+        return pd.DataFrame(columns=[col_label, '% Comprado no Prazo', 'Lead Time Ponderado', 'Tempo de Atraso Médio'])
+
+    # Preparar colunas auxiliares
+    df_com_entrega['data_entregue_ajustada'] = df_com_entrega['data_entregue'] - timedelta(days=2)
+    df_com_entrega['entregue_no_prazo'] = df_com_entrega['data_entregue_ajustada'] <= df_com_entrega['data_prevista']
+    df_com_entrega['lead_time_comum'] = (df_com_entrega['data_entregue'] - df_com_entrega['data_pedido']).dt.days
+
+    col_valor = 'total_l_quido_insumo' if 'total_l_quido_insumo' in df_com_entrega.columns else \
+               ('total_liquido_insumo' if 'total_liquido_insumo' in df_com_entrega.columns else None)
+
+    resultados = []
+    for grupo, df_grupo in df_com_entrega.groupby(group_col):
+        if df_grupo.empty:
+            continue
+
+        total_itens = len(df_grupo)
+        itens_no_prazo = df_grupo['entregue_no_prazo'].sum()
+        percentual_no_prazo = (itens_no_prazo / total_itens * 100) if total_itens > 0 else 0.0
+
+        if col_valor and col_valor in df_grupo.columns:
+            df_grupo['lead_time_ponderado_calc'] = df_grupo[col_valor] * df_grupo['lead_time_comum']
+            soma_numerador = df_grupo['lead_time_ponderado_calc'].sum()
+            soma_denominador = df_grupo[col_valor].sum()
+            lead_time_ponderado = (soma_numerador / soma_denominador) if soma_denominador > 0 else 0.0
+        else:
+            lead_time_ponderado = df_grupo['lead_time_comum'].mean() if not df_grupo.empty else 0.0
+
+        df_atrasados = df_grupo[~df_grupo['entregue_no_prazo']].copy()
+        if not df_atrasados.empty:
+            df_atrasados['tempo_atraso'] = (df_atrasados['data_entregue_ajustada'] - df_atrasados['data_prevista']).dt.days
+            tempo_atraso_medio = df_atrasados['tempo_atraso'].mean()
+        else:
+            tempo_atraso_medio = 0.0
+
+        resultados.append({
+            col_label: grupo,
+            '% Comprado no Prazo': percentual_no_prazo,
+            'Lead Time Ponderado': lead_time_ponderado,
+            'Tempo de Atraso Médio': tempo_atraso_medio
+        })
+
+    df_resultado = pd.DataFrame(resultados)
+    if not df_resultado.empty:
+        df_resultado = df_resultado.sort_values(col_label).reset_index(drop=True)
+    return df_resultado
+
+
 def formatar_dias(valor: float) -> str:
     """Formata valor como dias."""
     return f"{valor:.1f} dias"
@@ -645,6 +701,56 @@ def render_leadtime_tab(
     else:
         st.info("ℹ️ Nenhum dado mensal disponível para os filtros selecionados.")
     
+    # Tabela por Obra
+    st.markdown("---")
+    st.subheader("🏗️ Indicadores por Obra")
+
+    df_obra = calcular_indicadores_leadtime_por(df_leadtime, group_col='obra', col_label='Obra')
+    if not df_obra.empty:
+        df_exib_obra = df_obra.copy()
+        df_exib_obra['% Comprado no Prazo'] = df_exib_obra['% Comprado no Prazo'].apply(lambda x: f"{x:.2f}%")
+        df_exib_obra['Lead Time Ponderado'] = df_exib_obra['Lead Time Ponderado'].apply(lambda x: f"{x:.1f} dias")
+        df_exib_obra['Tempo de Atraso Médio'] = df_exib_obra['Tempo de Atraso Médio'].apply(lambda x: f"{x:.2f} dias" if x > 0 else "-")
+
+        st.dataframe(
+            df_exib_obra,
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "Obra": st.column_config.TextColumn("Obra", width="medium"),
+                "% Comprado no Prazo": st.column_config.TextColumn("% Comprado no Prazo", width="medium"),
+                "Lead Time Ponderado": st.column_config.TextColumn("Lead Time Ponderado", width="medium"),
+                "Tempo de Atraso Médio": st.column_config.TextColumn("Tempo de Atraso Médio", width="medium"),
+            }
+        )
+    else:
+        st.info("ℹ️ Nenhum dado por obra disponível para os filtros selecionados.")
+
+    # Tabela por Comprador
+    st.markdown("---")
+    st.subheader("🛒 Indicadores por Comprador")
+
+    df_comprador = calcular_indicadores_leadtime_por(df_leadtime, group_col='comprador', col_label='Comprador')
+    if not df_comprador.empty:
+        df_exib_comp = df_comprador.copy()
+        df_exib_comp['% Comprado no Prazo'] = df_exib_comp['% Comprado no Prazo'].apply(lambda x: f"{x:.2f}%")
+        df_exib_comp['Lead Time Ponderado'] = df_exib_comp['Lead Time Ponderado'].apply(lambda x: f"{x:.1f} dias")
+        df_exib_comp['Tempo de Atraso Médio'] = df_exib_comp['Tempo de Atraso Médio'].apply(lambda x: f"{x:.2f} dias" if x > 0 else "-")
+
+        st.dataframe(
+            df_exib_comp,
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "Comprador": st.column_config.TextColumn("Comprador", width="medium"),
+                "% Comprado no Prazo": st.column_config.TextColumn("% Comprado no Prazo", width="medium"),
+                "Lead Time Ponderado": st.column_config.TextColumn("Lead Time Ponderado", width="medium"),
+                "Tempo de Atraso Médio": st.column_config.TextColumn("Tempo de Atraso Médio", width="medium"),
+            }
+        )
+    else:
+        st.info("ℹ️ Nenhum dado por comprador disponível para os filtros selecionados.")
+
     # Visualizações
     if 'df_com_entrega' in indicadores and not indicadores['df_com_entrega'].empty:
         df_viz = indicadores['df_com_entrega'].copy()
