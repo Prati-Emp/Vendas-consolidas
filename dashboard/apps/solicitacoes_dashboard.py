@@ -151,6 +151,8 @@ COLUMN_ALIASES: Dict[str, List[str]] = {
 }
 
 STATUS_KEYWORDS = {
+    # Avaliado antes de "atendida" para capturar casos como "atendimento parcial"
+    "parcial": ["parcial", "parc"],
     "aberta": ["abert", "penden", "aguard", "andamento", "analise", "aprova"],
     "atendida": ["atend", "conclu", "finaliz", "aprovad", "liberad", "entreg"],
     "cancelada": ["cancel", "recus", "negad"],
@@ -525,6 +527,7 @@ def compute_kpis(df: pd.DataFrame) -> Dict[str, float]:
             "abertas_ultimos_30": 0,
             "abertas_ultimos_60": 0,
             "abertas": 0,
+            "parciais": 0,
             "total_solicitacoes": 0,
             "canceladas": 0,
             "atendidas": 0,
@@ -532,6 +535,7 @@ def compute_kpis(df: pd.DataFrame) -> Dict[str, float]:
             "lead_time_medio": 0.0,
             "tempo_aprovacao": 0.0,
             "tempo_compra": 0.0,
+            "pct_parciais": 0.0,
             "pct_atendidas": 0.0,
             "pct_canceladas": 0.0,
             "pct_abertas": 0.0,
@@ -563,6 +567,7 @@ def compute_kpis(df: pd.DataFrame) -> Dict[str, float]:
 
     # Abertas total (todas as que estão com status "aberta" atualmente)
     abertas = (df_unique["status_bucket"] == "aberta").sum() if "status_bucket" in df_unique.columns else 0
+    parciais = (df_unique["status_bucket"] == "parcial").sum() if "status_bucket" in df_unique.columns else 0
     
     # Total de solicitações (todas as solicitações únicas)
     if solicitacao_col:
@@ -585,6 +590,7 @@ def compute_kpis(df: pd.DataFrame) -> Dict[str, float]:
             return 0.0
         return round((part / total) * 100, 1)
 
+    pct_parciais = _pct(parciais, total_solicitacoes)
     pct_atendidas = _pct(atendidas, total_solicitacoes)
     pct_canceladas = _pct(canceladas, total_solicitacoes)
     pct_abertas = _pct(abertas, total_solicitacoes)
@@ -611,6 +617,7 @@ def compute_kpis(df: pd.DataFrame) -> Dict[str, float]:
         "abertas_ultimos_30": int(abertas_ultimos_30),
         "abertas_ultimos_60": int(abertas_ultimos_60),
         "abertas": int(abertas),
+        "parciais": int(parciais),
         "total_solicitacoes": int(total_solicitacoes),
         "canceladas": int(canceladas),
         "atendidas": int(atendidas),
@@ -618,6 +625,7 @@ def compute_kpis(df: pd.DataFrame) -> Dict[str, float]:
         "lead_time_medio": lead_time_medio or 0.0,
         "tempo_aprovacao": tempo_aprovacao_medio or 0.0,
         "tempo_compra": tempo_compra_medio or 0.0,
+        "pct_parciais": pct_parciais,
         "pct_atendidas": pct_atendidas,
         "pct_canceladas": pct_canceladas,
         "pct_abertas": pct_abertas,
@@ -1175,8 +1183,8 @@ def render_solicitacoes_dashboard(*, show_title: bool = True, show_caption: bool
             return "0% do total"
         return f"{pct:.1f}% do total"
 
-    # Linha 1: Status principais com % do total + insumos
-    col1, col2, col3, col4, col5 = st.columns(5)
+    # Linha 1: Status principais com % do total + insumos e parciais
+    col1, col2, col3, col4, col5, col6 = st.columns(6)
     col1.metric("Total de solicitações", _format_int(total), help="Solicitações únicas no conjunto filtrado.")
     col2.metric(
         "Atendidas",
@@ -1185,34 +1193,41 @@ def render_solicitacoes_dashboard(*, show_title: bool = True, show_caption: bool
         help="Solicitações concluídas (status 'atendida').",
     )
     col3.metric(
+        "Parcialmente atendidas",
+        _format_int(kpis["parciais"]),
+        delta=_pct_delta(kpis["pct_parciais"]),
+        help="Solicitações com atendimento parcial.",
+    )
+    col4.metric(
         "Canceladas",
         _format_int(kpis["canceladas"]),
         delta=_pct_delta(kpis["pct_canceladas"]),
         help="Solicitações canceladas.",
     )
-    col4.metric(
+    col5.metric(
         "Abertas (total)",
         _format_int(kpis["abertas"]),
         delta=_pct_delta(kpis["pct_abertas"]),
         help="Solicitações que ainda não foram atendidas.",
     )
-    col5.metric("Qtd. de insumos", _format_int(kpis["insumos"]), help="Soma da quantidade de insumos nas solicitações.")
+    col6.metric("Qtd. de insumos", _format_int(kpis["insumos"]), help="Soma da quantidade de insumos nas solicitações.")
 
     # Linha 2: Volumes recentes e tempos
-    col6, col7, col8, col9, col10 = st.columns(5)
-    col6.metric("Solicitações (últ. 90 dias)", _format_int(kpis["ultimos_90"]), help="Solicitações criadas nos últimos 90 dias.")
-    col7.metric("Solicitações (últ. 30 dias)", _format_int(kpis["abertas_ultimos_30"]), help="Solicitações criadas nos últimos 30 dias.")
-    col8.metric(
+    col7, col8, col9, col10, col11, col12 = st.columns(6)
+    col7.metric("Solicitações (últ. 90 dias)", _format_int(kpis["ultimos_90"]), help="Solicitações criadas nos últimos 90 dias.")
+    col8.metric("Solicitações (últ. 60 dias)", _format_int(kpis["abertas_ultimos_60"]), help="Solicitações criadas nos últimos 60 dias.")
+    col9.metric("Solicitações (últ. 30 dias)", _format_int(kpis["abertas_ultimos_30"]), help="Solicitações criadas nos últimos 30 dias.")
+    col10.metric(
         "Tempo Aprovação (dias)",
         _format_float(kpis["tempo_aprovacao"]),
         help="Tempo médio entre Solicitação e Autorização.",
     )
-    col9.metric(
+    col11.metric(
         "Tempo Compra (dias)",
         _format_float(kpis["tempo_compra"]),
         help="Tempo médio entre Autorização e Atendimento/Entrega.",
     )
-    col10.metric(
+    col12.metric(
         "Lead time Total (dias)",
         _format_float(kpis["lead_time_medio"]),
         help="Tempo total médio (Solicitação até Atendimento). Considera apenas solicitações atendidas.",
