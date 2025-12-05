@@ -226,7 +226,7 @@ def get_md_connection_planilhas():
     return duckdb.connect("md:planilhas")
 
 
-@st.cache_data(ttl=3600)  # Cache por 1 hora (dados atualizados semanalmente)
+@st.cache_data(ttl=3600, show_spinner=True)  # Cache por 1 hora (dados atualizados semanalmente)
 def load_pedidos_compras_leadtime(
     data_inicio: Optional[str] = None,
     data_fim: Optional[str] = None,
@@ -884,4 +884,11 @@ def render_compras_dashboard(
         )
     
     with tab5:
-        render_leadtime_tab(data_inicio, data_fim)
+        try:
+            render_leadtime_tab(data_inicio, data_fim)
+        except Exception as e:
+            st.error(f"❌ Erro ao carregar dados de Lead Time: {str(e)}")
+            st.info("💡 Verifique se a tabela 'planilhas.main.relacao_de_pedidos_de_compras' existe e possui dados.")
+            import traceback
+            with st.expander("Detalhes do erro"):
+                st.code(traceback.format_exc())
