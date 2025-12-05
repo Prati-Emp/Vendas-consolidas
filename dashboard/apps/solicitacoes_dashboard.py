@@ -441,16 +441,16 @@ def _format_float(value: Optional[float]) -> str:
 
 def _default_period(df: pd.DataFrame) -> Tuple[date, date]:
     today = datetime.now().date()
-    first_day_current_month = date(today.year, today.month, 1)
+    first_day_current_year = date(today.year, 1, 1)
 
     if "data_solicitacao" not in df.columns or df["data_solicitacao"].dropna().empty:
-        return first_day_current_month, today
+        return first_day_current_year, today
 
     min_date = df["data_solicitacao"].dropna().min().date()
     max_date = df["data_solicitacao"].dropna().max().date()
 
-    # Começar no primeiro dia do mês corrente, respeitando o intervalo de dados
-    start = max(min_date, first_day_current_month)
+    # Começar no primeiro dia do ano corrente, respeitando o intervalo de dados
+    start = max(min_date, first_day_current_year)
     if start > max_date:
         start = max_date
 
