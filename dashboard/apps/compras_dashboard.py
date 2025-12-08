@@ -850,23 +850,43 @@ def render_leadtime_tab(
 
     df_obra_mes = calcular_indicadores_leadtime_por_obra_mes(df_leadtime)
     if not df_obra_mes.empty:
-        df_exib_obra_mes = df_obra_mes.copy()
-        df_exib_obra_mes['% Comprado no Prazo'] = df_exib_obra_mes['% Comprado no Prazo'].apply(lambda x: f"{x:.2f}%")
-        df_exib_obra_mes['Lead Time Ponderado'] = df_exib_obra_mes['Lead Time Ponderado'].apply(lambda x: f"{x:.1f} dias")
-        df_exib_obra_mes['Tempo de Atraso Médio'] = df_exib_obra_mes['Tempo de Atraso Médio'].apply(lambda x: f"{x:.2f} dias" if x > 0 else "-")
-
-        st.dataframe(
-            df_exib_obra_mes,
-            use_container_width=True,
-            hide_index=True,
-            column_config={
-                "Obra": st.column_config.TextColumn("Obra", width="medium"),
-                "Mês": st.column_config.TextColumn("Mês", width="medium"),
-                "% Comprado no Prazo": st.column_config.TextColumn("% Comprado no Prazo", width="medium"),
-                "Lead Time Ponderado": st.column_config.TextColumn("Lead Time Ponderado", width="medium"),
-                "Tempo de Atraso Médio": st.column_config.TextColumn("Tempo de Atraso Médio", width="medium"),
-            }
+        # Obter lista de obras únicas para o filtro
+        obras_disponiveis = sorted(df_obra_mes['Obra'].unique().tolist())
+        
+        # Filtro de obra (apenas para esta tabela)
+        obras_selecionadas = st.multiselect(
+            "Filtrar por Obra:",
+            options=obras_disponiveis,
+            default=obras_disponiveis,  # Por padrão, todas selecionadas
+            key="leadtime_filtro_obra_mes"
         )
+        
+        # Aplicar filtro se houver seleção
+        if obras_selecionadas:
+            df_obra_mes_filtrado = df_obra_mes[df_obra_mes['Obra'].isin(obras_selecionadas)].copy()
+        else:
+            df_obra_mes_filtrado = pd.DataFrame()  # Se nenhuma selecionada, mostrar vazio
+        
+        if not df_obra_mes_filtrado.empty:
+            df_exib_obra_mes = df_obra_mes_filtrado.copy()
+            df_exib_obra_mes['% Comprado no Prazo'] = df_exib_obra_mes['% Comprado no Prazo'].apply(lambda x: f"{x:.2f}%")
+            df_exib_obra_mes['Lead Time Ponderado'] = df_exib_obra_mes['Lead Time Ponderado'].apply(lambda x: f"{x:.1f} dias")
+            df_exib_obra_mes['Tempo de Atraso Médio'] = df_exib_obra_mes['Tempo de Atraso Médio'].apply(lambda x: f"{x:.2f} dias" if x > 0 else "-")
+
+            st.dataframe(
+                df_exib_obra_mes,
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "Obra": st.column_config.TextColumn("Obra", width="medium"),
+                    "Mês": st.column_config.TextColumn("Mês", width="medium"),
+                    "% Comprado no Prazo": st.column_config.TextColumn("% Comprado no Prazo", width="medium"),
+                    "Lead Time Ponderado": st.column_config.TextColumn("Lead Time Ponderado", width="medium"),
+                    "Tempo de Atraso Médio": st.column_config.TextColumn("Tempo de Atraso Médio", width="medium"),
+                }
+            )
+        else:
+            st.info("ℹ️ Selecione pelo menos uma obra para visualizar os dados.")
     else:
         st.info("ℹ️ Nenhum dado por obra e mês disponível para os filtros selecionados.")
 
