@@ -92,7 +92,7 @@ def load_pedidos_compras(
         COALESCE(pc.Total_Frete, 0) AS Total_Frete
     FROM reservas.main.sienge_pedidos_compras pc
     LEFT JOIN planilhas.main.relacao_empreendimentos_pedidos_de_compras re
-        ON TRIM(CAST(pc.ID_Empreendimento AS VARCHAR)) = TRIM(CAST(re.codigo_da_obra AS VARCHAR))
+        ON pc.ID_Empreendimento = CAST(re.codigo_da_obra AS INT)
     WHERE {filter_sql}
     ORDER BY pc.Data_Pedido DESC
     """
