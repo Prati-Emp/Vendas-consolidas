@@ -37,6 +37,12 @@ TAB_DEFINITIONS = [
         "page_path": "pages/3_Pedidos_de_Compras.py",
         "key": "pedidos_compras",
     },
+    {
+        "label": "📋 Contratos",
+        "permission": "operacoes.contratos",
+        "page_path": "pages/4_Contratos.py",
+        "key": "contratos",
+    },
 ]
 
 
