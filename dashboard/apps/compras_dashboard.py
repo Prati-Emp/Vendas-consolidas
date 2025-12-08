@@ -111,16 +111,30 @@ def load_pedidos_compras(
 
 
 @st.cache_data(ttl=300)
-def get_unique_compradores() -> List[str]:
-    """Obtém lista única de compradores."""
+def get_unique_compradores(data_inicio: Optional[str] = None, data_fim: Optional[str] = None) -> List[str]:
+    """Obtém lista única de compradores, opcionalmente filtrada por data."""
     md_conn = get_md_connection()
-    sql = """
+    
+    filters = ["Comprador IS NOT NULL"]
+    params = []
+    
+    if data_inicio:
+        filters.append("Data_Pedido >= ?")
+        params.append(data_inicio)
+        
+    if data_fim:
+        filters.append("Data_Pedido <= ?")
+        params.append(data_fim)
+    
+    filter_sql = " AND ".join(filters)
+    
+    sql = f"""
     SELECT DISTINCT Comprador
     FROM reservas.main.sienge_pedidos_compras
-    WHERE Comprador IS NOT NULL
+    WHERE {filter_sql}
     ORDER BY Comprador
     """
-    df = md_conn.run_query(sql)
+    df = md_conn.run_query(sql, params)
     return df['Comprador'].tolist() if not df.empty else []
 
 
@@ -877,7 +891,11 @@ def render_compras_dashboard(
         
         # Filtro de comprador
         st.subheader("Comprador")
-        compradores_disponiveis = get_unique_compradores()
+        # Filtrar compradores com base no periodo selecionado
+        data_ini_str = data_inicio.strftime('%Y-%m-%d') if data_inicio else None
+        data_fim_str = data_fim.strftime('%Y-%m-%d') if data_fim else None
+        
+        compradores_disponiveis = get_unique_compradores(data_ini_str, data_fim_str)
         comprador_selecionado = st.multiselect(
             "Selecione o(s) comprador(es)",
             options=compradores_disponiveis,
