@@ -1033,8 +1033,9 @@ def render_compras_dashboard(
     st.subheader("📈 Análises Detalhadas")
     
     # Tabs para diferentes análises
-    tab1, tab2, tab3 = st.tabs([
+    tab1, tab2, tab3, tab4 = st.tabs([
         "📊 Análises Detalhadas",
+        "⚠️ Pedidos Atrasados",
         "⏱️ Lead Time",
         "📋 Detalhamento"
     ])
@@ -1184,7 +1185,119 @@ def render_compras_dashboard(
         else:
             st.info("Dados de comprador não disponíveis.")
     
-    with tab3:
+    with tab2:
+        st.subheader("⚠️ Pedidos Atrasados")
+        st.caption("Análise detalhada de pedidos com atraso na entrega")
+        
+        # Filtrar apenas pedidos atrasados
+        if 'Atrasado' in df.columns:
+            df_atrasados = df[df['Atrasado'] == True].copy() if df['Atrasado'].dtype == bool else df[df['Atrasado'] == 1].copy()
+        else:
+            df_atrasados = pd.DataFrame()
+        
+        if df_atrasados.empty:
+            st.info("ℹ️ Nenhum pedido atrasado encontrado para os filtros selecionados.")
+        else:
+            # KPIs de Pedidos Atrasados
+            total_atrasados = len(df_atrasados)
+            valor_atrasados = df_atrasados['Valor_Total'].sum() if 'Valor_Total' in df_atrasados.columns else 0
+            percentual_atrasados = (total_atrasados / len(df) * 100) if len(df) > 0 else 0
+            
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric(
+                    "Total de Pedidos Atrasados",
+                    f"{total_atrasados:,}",
+                    help="Quantidade de pedidos com status atrasado"
+                )
+            with col2:
+                st.metric(
+                    "Valor Total Atrasado",
+                    formatar_moeda(valor_atrasados),
+                    help="Soma do valor de todos os pedidos atrasados"
+                )
+            with col3:
+                st.metric(
+                    "% do Total",
+                    formatar_percentual(percentual_atrasados),
+                    help="Percentual de pedidos atrasados em relação ao total"
+                )
+            
+            st.markdown("---")
+            
+            # Análise por Empreendimento
+            st.subheader("🏗️ Atrasados por Empreendimento")
+            
+            if 'Empreendimento' in df_atrasados.columns:
+                atrasados_empreendimento = df_atrasados.groupby('Empreendimento').agg({
+                    'ID_Pedido': 'count',
+                    'Valor_Total': 'sum'
+                }).reset_index()
+                atrasados_empreendimento.columns = ['Empreendimento', 'Qtd_Atrasados', 'Valor_Total']
+                atrasados_empreendimento = atrasados_empreendimento.sort_values('Qtd_Atrasados', ascending=False)
+                
+                # Formatação para exibição
+                atrasados_emp_display = atrasados_empreendimento.copy()
+                atrasados_emp_display['Valor_Total'] = atrasados_emp_display['Valor_Total'].apply(formatar_moeda)
+                
+                st.dataframe(
+                    atrasados_emp_display,
+                    use_container_width=True,
+                    hide_index=True
+                )
+                
+                # Gráfico
+                fig = px.bar(
+                    atrasados_empreendimento.head(10),
+                    x='Empreendimento',
+                    y='Qtd_Atrasados',
+                    title='Top 10 Empreendimentos com Mais Pedidos Atrasados',
+                    labels={'Qtd_Atrasados': 'Quantidade de Pedidos', 'Empreendimento': 'Empreendimento'},
+                    color='Qtd_Atrasados',
+                    color_continuous_scale='Reds'
+                )
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.info("Dados de empreendimento não disponíveis.")
+            
+            st.markdown("---")
+            
+            # Análise por Comprador
+            st.subheader("🛒 Atrasados por Comprador")
+            
+            if 'Comprador' in df_atrasados.columns:
+                atrasados_comprador = df_atrasados.groupby('Comprador').agg({
+                    'ID_Pedido': 'count',
+                    'Valor_Total': 'sum'
+                }).reset_index()
+                atrasados_comprador.columns = ['Comprador', 'Qtd_Atrasados', 'Valor_Total']
+                atrasados_comprador = atrasados_comprador.sort_values('Qtd_Atrasados', ascending=False)
+                
+                # Formatação para exibição
+                atrasados_comp_display = atrasados_comprador.copy()
+                atrasados_comp_display['Valor_Total'] = atrasados_comp_display['Valor_Total'].apply(formatar_moeda)
+                
+                st.dataframe(
+                    atrasados_comp_display,
+                    use_container_width=True,
+                    hide_index=True
+                )
+                
+                # Gráfico
+                fig = px.bar(
+                    atrasados_comprador.head(10),
+                    x='Comprador',
+                    y='Qtd_Atrasados',
+                    title='Top 10 Compradores com Mais Pedidos Atrasados',
+                    labels={'Qtd_Atrasados': 'Quantidade de Pedidos', 'Comprador': 'Comprador'},
+                    color='Qtd_Atrasados',
+                    color_continuous_scale='Reds'
+                )
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.info("Dados de comprador não disponíveis.")
+    
+    with tab4:
         st.subheader("Detalhamento de Pedidos")
         
         # Colunas para exibir
@@ -1220,7 +1333,7 @@ def render_compras_dashboard(
             mime="text/csv"
         )
     
-    with tab2:
+    with tab3:
         try:
             render_leadtime_tab(data_inicio, data_fim, comprador_selecionado, empreendimento_selecionado)
         except Exception as e:
