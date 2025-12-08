@@ -5,7 +5,7 @@ Dashboard Compras - Monitoramento de compras e fornecedores.
 import streamlit as st
 import pandas as pd
 from typing import Optional, List, Dict, Any
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 import plotly.express as px
 import plotly.graph_objects as go
 
@@ -919,12 +919,14 @@ def render_compras_dashboard(
         data_inicio = st.date_input(
             "Data Inicial",
             value=default_inicio,
+            max_value=date.today(),
             key="compras_data_inicio"
         )
 
         data_fim = st.date_input(
             "Data Final",
             value=default_fim,
+            max_value=date.today(),
             key="compras_data_fim"
         )
         
