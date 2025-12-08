@@ -843,7 +843,37 @@ def render_contratos_dashboard(
             
             # Resumo por faixa de dias
             st.markdown("#### 📊 Resumo por Faixa de Dias Restantes")
-            st.caption("Quantidade de contratos e valores totais agrupados por faixas de dias até o vencimento")
+            
+            # Explicação didática sobre as faixas
+            with st.expander("ℹ️ Como interpretar esta tabela?", expanded=False):
+                st.markdown("""
+                **📋 O que esta tabela mostra:**
+                
+                Esta tabela agrupa os contratos que vencem no período selecionado acima em faixas de tempo:
+                
+                - **0-15 dias**: Contratos que vencem entre hoje e os próximos 15 dias
+                - **16-30 dias**: Contratos que vencem entre 16 e 30 dias a partir de hoje
+                - **31-60 dias**: Contratos que vencem entre 31 e 60 dias a partir de hoje
+                - **61-90 dias**: Contratos que vencem entre 61 e 90 dias a partir de hoje
+                
+                **💡 Entendendo o período selecionado:**
+                
+                O filtro acima (30, 60 ou 90 dias) é **cumulativo**:
+                - Se você selecionar **"Próximos 30 dias"**, verá todos os contratos que vencem em até 30 dias
+                - Se você selecionar **"Próximos 60 dias"**, verá todos os contratos que vencem em até 60 dias 
+                  (inclui os de 0-30 dias + os de 31-60 dias)
+                - Se você selecionar **"Próximos 90 dias"**, verá todos os contratos que vencem em até 90 dias
+                  (inclui os de 0-30 dias + os de 31-60 dias + os de 61-90 dias)
+                
+                **📊 Na tabela:**
+                
+                Cada linha mostra apenas os contratos daquela faixa específica. Por exemplo:
+                - A linha "0-15 dias" mostra apenas contratos que vencem nos próximos 15 dias
+                - A linha "16-30 dias" mostra apenas contratos que vencem entre 16 e 30 dias
+                
+                Isso permite identificar rapidamente quais contratos precisam de atenção imediata!
+                """)
+            
             df_resumo = df_proximos.copy()
             df_resumo['Faixa'] = pd.cut(
                 df_resumo['Dias_Restantes'],
