@@ -853,19 +853,19 @@ def render_leadtime_tab(
         # Obter lista de obras únicas para o filtro
         obras_disponiveis = sorted(df_obra_mes['Obra'].unique().tolist())
         
-        # Filtro de obra (apenas para esta tabela)
-        obras_selecionadas = st.multiselect(
-            "Filtrar por Obra:",
-            options=obras_disponiveis,
-            default=obras_disponiveis,  # Por padrão, todas selecionadas
+        # Filtro de obra (apenas para esta tabela) - estilo sutil como no Jira
+        obras_opcoes = ["Todas"] + obras_disponiveis
+        obra_selecionada = st.selectbox(
+            "Obra:",
+            options=obras_opcoes,
             key="leadtime_filtro_obra_mes"
         )
         
         # Aplicar filtro se houver seleção
-        if obras_selecionadas:
-            df_obra_mes_filtrado = df_obra_mes[df_obra_mes['Obra'].isin(obras_selecionadas)].copy()
+        if obra_selecionada and obra_selecionada != "Todas":
+            df_obra_mes_filtrado = df_obra_mes[df_obra_mes['Obra'] == obra_selecionada].copy()
         else:
-            df_obra_mes_filtrado = pd.DataFrame()  # Se nenhuma selecionada, mostrar vazio
+            df_obra_mes_filtrado = df_obra_mes.copy()  # Se "Todas" ou vazio, mostrar todas
         
         if not df_obra_mes_filtrado.empty:
             df_exib_obra_mes = df_obra_mes_filtrado.copy()
@@ -885,8 +885,6 @@ def render_leadtime_tab(
                     "Tempo de Atraso Médio": st.column_config.TextColumn("Tempo de Atraso Médio", width="medium"),
                 }
             )
-        else:
-            st.info("ℹ️ Selecione pelo menos uma obra para visualizar os dados.")
     else:
         st.info("ℹ️ Nenhum dado por obra e mês disponível para os filtros selecionados.")
 
