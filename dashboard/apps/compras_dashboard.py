@@ -695,6 +695,22 @@ def formatar_dias(valor: float) -> str:
     return f"{valor:.1f} dias"
 
 
+@st.cache_data(ttl=3600)
+def get_last_update_leadtime() -> Optional[str]:
+    """Obtém data da última carga de lead time."""
+    try:
+        md_conn = get_md_connection_planilhas()
+        # Tentar obter a maior data de ingestão se existir a coluna _ingested_at
+        sql = "SELECT MAX(_ingested_at) as last_update FROM planilhas.main.relacao_de_pedidos_de_compras"
+        df = md_conn.execute(sql).df()
+        if not df.empty and df['last_update'].iloc[0]:
+             dt = pd.to_datetime(df['last_update'].iloc[0])
+             return dt.strftime("%d/%m/%Y")
+    except:
+        pass
+    return None
+
+
 def render_leadtime_tab(
     data_inicio: Optional[datetime], 
     data_fim: Optional[datetime],
@@ -703,6 +719,11 @@ def render_leadtime_tab(
 ):
     """Renderiza a aba de Lead Time."""
     st.subheader("⏱️ Indicadores de Lead Time")
+    
+    last_update = get_last_update_leadtime()
+    last_update_msg = f" Última carga conhecida: **{last_update}**." if last_update else ""
+    st.info(f"Esta página é atualizada **semanalmente**.{last_update_msg}")
+    
     st.caption("Análise de lead time, tempo de atraso e % comprado no prazo | Fonte: planilhas.relacao_de_pedidos_de_compras")
     
     # Carregar dados
