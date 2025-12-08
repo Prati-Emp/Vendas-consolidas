@@ -1035,8 +1035,8 @@ def render_compras_dashboard(
     # Tabs para diferentes análises
     tab1, tab2, tab3 = st.tabs([
         "📊 Análises Detalhadas",
-        "📋 Detalhamento",
-        "⏱️ Lead Time"
+        "⏱️ Lead Time",
+        "📋 Detalhamento"
     ])
     
     with tab1:
@@ -1184,7 +1184,7 @@ def render_compras_dashboard(
         else:
             st.info("Dados de comprador não disponíveis.")
     
-    with tab2:
+    with tab3:
         st.subheader("Detalhamento de Pedidos")
         
         # Colunas para exibir
@@ -1220,7 +1220,7 @@ def render_compras_dashboard(
             mime="text/csv"
         )
     
-    with tab3:
+    with tab2:
         try:
             render_leadtime_tab(data_inicio, data_fim, comprador_selecionado, empreendimento_selecionado)
         except Exception as e:
