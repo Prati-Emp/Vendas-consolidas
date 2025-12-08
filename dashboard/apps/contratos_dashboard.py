@@ -601,15 +601,66 @@ def render_contratos_dashboard(
             # Gráfico de barras horizontais - Top 10 fornecedores por valor
             st.markdown("#### Top 10 Fornecedores por Valor Total")
             df_top10 = df_fornecedor.head(10).sort_values('Valor_Total', ascending=True)
-            fig = px.bar(
-                df_top10,
-                x='Valor_Total',
-                y='Fornecedor',
+            
+            # Calcular percentual do valor total
+            valor_total_geral = df_fornecedor['Valor_Total'].sum()
+            df_top10['Percentual'] = (df_top10['Valor_Total'] / valor_total_geral * 100).round(2)
+            
+            fig = go.Figure()
+            
+            # Adicionar barras com percentual dentro
+            max_x = df_top10['Valor_Total'].max()
+            
+            fig.add_trace(go.Bar(
+                y=df_top10['Fornecedor'],
+                x=df_top10['Valor_Total'],
                 orientation='h',
+                marker_color='#1f77b4',
+                marker_line_width=0,
+                text=[f"{p:.2f}%" for p in df_top10['Percentual']],
+                textposition='inside',
+                textfont=dict(color='white', size=12, weight='bold'),
+                name='Valor Total',
+                hovertemplate='<b>%{y}</b><br>Valor: %{x:,.2f}<br>Percentual: %{text}<extra></extra>',
+                width=0.7  # Largura das barras
+            ))
+            
+            # Criar anotações com valores monetários
+            annotations = []
+            for idx, row in df_top10.iterrows():
+                annotations.append(
+                    dict(
+                        xref='x',
+                        yref='y',
+                        x=row['Valor_Total'],
+                        y=row['Fornecedor'],
+                        text=formatar_moeda(row['Valor_Total']),
+                        showarrow=False,
+                        xanchor='left',
+                        xshift=15,
+                        font=dict(color='white', size=11, weight='bold'),
+                        bgcolor='rgba(0,0,0,0.7)',
+                        bordercolor='rgba(255,255,255,0.4)',
+                        borderwidth=1.5,
+                        borderpad=6
+                    )
+                )
+            
+            fig.update_layout(
                 title="Top 10 Fornecedores por Valor Total",
-                labels={'Valor_Total': 'Valor Total (R$)', 'Fornecedor': 'Fornecedor'},
+                xaxis_title="Valor Total (R$)",
+                yaxis_title="Fornecedor",
+                height=450,
+                showlegend=False,
+                margin=dict(l=200, r=250, t=50, b=50),
+                bargap=0.3,  # Espaçamento entre barras
+                xaxis=dict(range=[0, max_x * 1.5]),  # Expandir eixo X para acomodar os valores
+                yaxis={'categoryorder': 'total ascending'},
+                annotations=annotations,
+                plot_bgcolor='rgba(0,0,0,0)',
+                paper_bgcolor='rgba(0,0,0,0)'
             )
-            fig.update_layout(height=400, yaxis={'categoryorder': 'total ascending'})
+            
             st.plotly_chart(fig, use_container_width=True)
         else:
             st.info("Nenhum dado disponível para análise por fornecedor.")
