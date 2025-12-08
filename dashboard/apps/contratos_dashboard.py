@@ -842,7 +842,8 @@ def render_contratos_dashboard(
             )
             
             # Resumo por faixa de dias
-            st.markdown("#### 📊 Resumo por Faixa de Dias")
+            st.markdown("#### 📊 Resumo por Faixa de Dias Restantes")
+            st.caption("Quantidade de contratos e valores totais agrupados por faixas de dias até o vencimento")
             df_resumo = df_proximos.copy()
             df_resumo['Faixa'] = pd.cut(
                 df_resumo['Dias_Restantes'],
