@@ -1033,15 +1033,56 @@ def render_compras_dashboard(
     st.subheader("📈 Análises Detalhadas")
     
     # Tabs para diferentes análises
-    tab1, tab2, tab3, tab4, tab5 = st.tabs([
-        "📊 Por Comprador",
-        "🏢 Por Empreendimento",
-        "📅 Timeline",
+    tab1, tab2, tab3, tab4 = st.tabs([
+        "📊 Análises Detalhadas",
+        "🗓️ Timeline",
         "📋 Detalhamento",
         "⏱️ Lead Time"
     ])
     
     with tab1:
+        st.subheader("Análise por Empreendimento")
+        
+        if 'Empreendimento' in df.columns:
+            analise_empreendimento = df.groupby('Empreendimento').agg({
+                'Valor_Total': ['sum', 'mean', 'count'],
+                'Desconto': 'sum',
+            }).reset_index()
+            
+            analise_empreendimento.columns = ['Empreendimento', 'Valor_Total', 'Valor_Medio', 'Qtd_Pedidos', 'Total_Desconto']
+            analise_empreendimento['%_Desconto'] = (analise_empreendimento['Total_Desconto'] / analise_empreendimento['Valor_Total'] * 100).fillna(0)
+            analise_empreendimento = analise_empreendimento.sort_values('Valor_Total', ascending=False)
+            
+            # Formatação
+            analise_empreendimento_display = analise_empreendimento.copy()
+            analise_empreendimento_display['Valor_Total'] = analise_empreendimento_display['Valor_Total'].apply(formatar_moeda)
+            analise_empreendimento_display['Valor_Medio'] = analise_empreendimento_display['Valor_Medio'].apply(formatar_moeda)
+            analise_empreendimento_display['Total_Desconto'] = analise_empreendimento_display['Total_Desconto'].apply(formatar_moeda)
+            analise_empreendimento_display['%_Desconto'] = analise_empreendimento_display['%_Desconto'].apply(formatar_percentual)
+            
+            st.dataframe(
+                analise_empreendimento_display,
+                use_container_width=True,
+                hide_index=True
+            )
+            
+            # Gráfico (usar valores numéricos antes da formatação)
+            analise_empreendimento_num = analise_empreendimento.head(10)
+            
+            fig = px.bar(
+                analise_empreendimento_num,
+                x='Empreendimento',
+                y='Valor_Total',
+                title='Top 10 Empreendimentos por Valor Total',
+                labels={'Valor_Total': 'Valor Total (R$)', 'Empreendimento': 'Empreendimento'}
+            )
+            fig.update_yaxes(tickformat='$,.2f')
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("Dados de empreendimento não disponíveis.")
+
+        st.markdown("---")
+
         st.subheader("Análise por Comprador")
         
         if 'Comprador' in df.columns:
@@ -1055,21 +1096,20 @@ def render_compras_dashboard(
             analise_comprador = analise_comprador.sort_values('Valor_Total', ascending=False)
             
             # Formatação
-            analise_comprador['Valor_Total'] = analise_comprador['Valor_Total'].apply(formatar_moeda)
-            analise_comprador['Valor_Medio'] = analise_comprador['Valor_Medio'].apply(formatar_moeda)
-            analise_comprador['Total_Desconto'] = analise_comprador['Total_Desconto'].apply(formatar_moeda)
-            analise_comprador['%_Desconto'] = analise_comprador['%_Desconto'].apply(formatar_percentual)
+            analise_comprador_display = analise_comprador.copy()
+            analise_comprador_display['Valor_Total'] = analise_comprador_display['Valor_Total'].apply(formatar_moeda)
+            analise_comprador_display['Valor_Medio'] = analise_comprador_display['Valor_Medio'].apply(formatar_moeda)
+            analise_comprador_display['Total_Desconto'] = analise_comprador_display['Total_Desconto'].apply(formatar_moeda)
+            analise_comprador_display['%_Desconto'] = analise_comprador_display['%_Desconto'].apply(formatar_percentual)
             
             st.dataframe(
-                analise_comprador,
+                analise_comprador_display,
                 use_container_width=True,
                 hide_index=True
             )
             
             # Gráfico (usar valores numéricos antes da formatação)
-            analise_comprador_num = df.groupby('Comprador').agg({
-                'Valor_Total': 'sum',
-            }).reset_index().sort_values('Valor_Total', ascending=False).head(10)
+            analise_comprador_num = analise_comprador.head(10)
             
             fig = px.bar(
                 analise_comprador_num,
@@ -1084,48 +1124,6 @@ def render_compras_dashboard(
             st.info("Dados de comprador não disponíveis.")
     
     with tab2:
-        st.subheader("Análise por Empreendimento")
-        
-        if 'Empreendimento' in df.columns:
-            analise_empreendimento = df.groupby('Empreendimento').agg({
-                'Valor_Total': ['sum', 'mean', 'count'],
-                'Desconto': 'sum',
-            }).reset_index()
-            
-            analise_empreendimento.columns = ['Empreendimento', 'Valor_Total', 'Valor_Medio', 'Qtd_Pedidos', 'Total_Desconto']
-            analise_empreendimento['%_Desconto'] = (analise_empreendimento['Total_Desconto'] / analise_empreendimento['Valor_Total'] * 100).fillna(0)
-            analise_empreendimento = analise_empreendimento.sort_values('Valor_Total', ascending=False)
-            
-            # Formatação
-            analise_empreendimento['Valor_Total'] = analise_empreendimento['Valor_Total'].apply(formatar_moeda)
-            analise_empreendimento['Valor_Medio'] = analise_empreendimento['Valor_Medio'].apply(formatar_moeda)
-            analise_empreendimento['Total_Desconto'] = analise_empreendimento['Total_Desconto'].apply(formatar_moeda)
-            analise_empreendimento['%_Desconto'] = analise_empreendimento['%_Desconto'].apply(formatar_percentual)
-            
-            st.dataframe(
-                analise_empreendimento,
-                use_container_width=True,
-                hide_index=True
-            )
-            
-            # Gráfico (usar valores numéricos antes da formatação)
-            analise_empreendimento_num = df.groupby('Empreendimento').agg({
-                'Valor_Total': 'sum',
-            }).reset_index().sort_values('Valor_Total', ascending=False).head(10)
-            
-            fig = px.bar(
-                analise_empreendimento_num,
-                x='Empreendimento',
-                y='Valor_Total',
-                title='Top 10 Empreendimentos por Valor Total',
-                labels={'Valor_Total': 'Valor Total (R$)', 'Empreendimento': 'Empreendimento'}
-            )
-            fig.update_yaxes(tickformat='$,.2f')
-            st.plotly_chart(fig, use_container_width=True)
-        else:
-            st.info("Dados de empreendimento não disponíveis.")
-    
-    with tab3:
         st.subheader("Timeline de Compras")
         
         if 'Data_Pedido' in df.columns and not df.empty:
@@ -1186,7 +1184,7 @@ def render_compras_dashboard(
         else:
             st.info("Dados de data não disponíveis.")
     
-    with tab4:
+    with tab3:
         st.subheader("Detalhamento de Pedidos")
         
         # Colunas para exibir
@@ -1222,7 +1220,7 @@ def render_compras_dashboard(
             mime="text/csv"
         )
     
-    with tab5:
+    with tab4:
         try:
             render_leadtime_tab(data_inicio, data_fim, comprador_selecionado, empreendimento_selecionado)
         except Exception as e:
