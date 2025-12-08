@@ -196,7 +196,52 @@ def calcular_indicadores(df: pd.DataFrame) -> Dict[str, Any]:
             'contratos_autorizados': 0,
             'contratos_ativos': 0,
             'contratos_rescindidos': 0,
+            'prazo_medio_dias': 0,
+            'contratos_proximos_termino_30': 0,
+            'contratos_proximos_termino_60': 0,
+            'contratos_proximos_termino_90': 0,
         }
+    
+    # Calcular prazo médio (diferença entre data final e data início)
+    df_prazo = df.copy()
+    if 'Data_Final_Contrato' in df_prazo.columns and 'Data_Inicio_Contrato' in df_prazo.columns:
+        df_prazo['Prazo_Dias'] = (df_prazo['Data_Final_Contrato'] - df_prazo['Data_Inicio_Contrato']).dt.days
+        prazo_medio = df_prazo['Prazo_Dias'].mean()
+        prazo_medio = prazo_medio if pd.notna(prazo_medio) else 0
+    else:
+        prazo_medio = 0
+    
+    # Calcular contratos próximos de terminar
+    hoje = pd.Timestamp.now().normalize()
+    contratos_30 = 0
+    contratos_60 = 0
+    contratos_90 = 0
+    
+    if 'Data_Final_Contrato' in df.columns:
+        # Filtrar apenas contratos ativos (não concluídos nem rescindidos)
+        df_ativos = df[df['Status'].isin(['PARTIALLY_MEASURED', 'PENDING', 'FULLY_MEASURED'])]
+        
+        if not df_ativos.empty:
+            # Contratos que terminam nos próximos 30 dias
+            data_30 = hoje + timedelta(days=30)
+            contratos_30 = len(df_ativos[
+                (df_ativos['Data_Final_Contrato'] >= hoje) & 
+                (df_ativos['Data_Final_Contrato'] <= data_30)
+            ])
+            
+            # Contratos que terminam nos próximos 60 dias
+            data_60 = hoje + timedelta(days=60)
+            contratos_60 = len(df_ativos[
+                (df_ativos['Data_Final_Contrato'] >= hoje) & 
+                (df_ativos['Data_Final_Contrato'] <= data_60)
+            ])
+            
+            # Contratos que terminam nos próximos 90 dias
+            data_90 = hoje + timedelta(days=90)
+            contratos_90 = len(df_ativos[
+                (df_ativos['Data_Final_Contrato'] >= hoje) & 
+                (df_ativos['Data_Final_Contrato'] <= data_90)
+            ])
     
     return {
         'total_contratos': len(df),
@@ -209,6 +254,10 @@ def calcular_indicadores(df: pd.DataFrame) -> Dict[str, Any]:
         'contratos_autorizados': len(df[df['Autorizacao'] == True]),
         'contratos_ativos': len(df[df['Status'].isin(['PARTIALLY_MEASURED', 'PENDING', 'FULLY_MEASURED'])]),
         'contratos_rescindidos': len(df[df['Status'] == 'RESCINDED']),
+        'prazo_medio_dias': int(prazo_medio),
+        'contratos_proximos_termino_30': contratos_30,
+        'contratos_proximos_termino_60': contratos_60,
+        'contratos_proximos_termino_90': contratos_90,
     }
 
 
@@ -249,6 +298,35 @@ def calcular_indicadores_por_periodo(df: pd.DataFrame) -> pd.DataFrame:
     df_grouped = df_grouped.sort_values('Período')
     
     return df_grouped
+
+
+def obter_contratos_proximos_termino(df: pd.DataFrame, dias: int = 30) -> pd.DataFrame:
+    """Retorna contratos que estão próximos de terminar."""
+    if df.empty or 'Data_Final_Contrato' not in df.columns:
+        return pd.DataFrame()
+    
+    hoje = pd.Timestamp.now().normalize()
+    data_limite = hoje + timedelta(days=dias)
+    
+    # Filtrar apenas contratos ativos
+    df_ativos = df[df['Status'].isin(['PARTIALLY_MEASURED', 'PENDING', 'FULLY_MEASURED'])]
+    
+    # Filtrar contratos que terminam no período
+    df_proximos = df_ativos[
+        (df_ativos['Data_Final_Contrato'] >= hoje) & 
+        (df_ativos['Data_Final_Contrato'] <= data_limite)
+    ].copy()
+    
+    if df_proximos.empty:
+        return pd.DataFrame()
+    
+    # Calcular dias restantes
+    df_proximos['Dias_Restantes'] = (df_proximos['Data_Final_Contrato'] - hoje).dt.days
+    
+    # Ordenar por data final (mais próximos primeiro)
+    df_proximos = df_proximos.sort_values('Data_Final_Contrato')
+    
+    return df_proximos
 
 
 def calcular_indicadores_por_status(df: pd.DataFrame) -> pd.DataFrame:
@@ -448,15 +526,51 @@ def render_contratos_dashboard(
             help="Contratos em andamento (não concluídos nem rescindidos)"
         )
     
+    # Terceira linha de KPIs - Prazos
+    st.markdown("---")
+    st.subheader("⏱️ Análise de Prazos")
+    
+    col9, col10, col11, col12 = st.columns(4)
+    
+    with col9:
+        prazo_medio_meses = indicadores['prazo_medio_dias'] / 30.0 if indicadores['prazo_medio_dias'] > 0 else 0
+        st.metric(
+            "Prazo Médio",
+            f"{indicadores['prazo_medio_dias']:,} dias",
+            help=f"Prazo médio dos contratos ({prazo_medio_meses:.1f} meses)"
+        )
+    
+    with col10:
+        st.metric(
+            "Próximos 30 dias",
+            f"{indicadores['contratos_proximos_termino_30']:,}",
+            help="Contratos ativos que terminam nos próximos 30 dias"
+        )
+    
+    with col11:
+        st.metric(
+            "Próximos 60 dias",
+            f"{indicadores['contratos_proximos_termino_60']:,}",
+            help="Contratos ativos que terminam nos próximos 60 dias"
+        )
+    
+    with col12:
+        st.metric(
+            "Próximos 90 dias",
+            f"{indicadores['contratos_proximos_termino_90']:,}",
+            help="Contratos ativos que terminam nos próximos 90 dias"
+        )
+    
     # Seção 2: Análises Detalhadas
     st.markdown("---")
     st.subheader("📈 Análises Detalhadas")
     
     # Tabs para diferentes análises
-    tab1, tab2, tab3, tab4 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5 = st.tabs([
         "📊 Por Fornecedor",
         "📅 Por Período",
         "📋 Por Status",
+        "⏰ Próximos de Terminar",
         "🔍 Detalhamento"
     ])
     
@@ -656,6 +770,108 @@ def render_contratos_dashboard(
             st.info("Nenhum dado disponível para análise por status.")
     
     with tab4:
+        st.markdown("### ⏰ Contratos Próximos de Terminar")
+        
+        # Selecionar período
+        periodo_selecionado = st.selectbox(
+            "Selecione o período:",
+            options=[30, 60, 90],
+            format_func=lambda x: f"Próximos {x} dias",
+            key="periodo_termino"
+        )
+        
+        # Obter contratos próximos de terminar
+        df_proximos = obter_contratos_proximos_termino(df, periodo_selecionado)
+        
+        if not df_proximos.empty:
+            st.info(f"📊 Encontrados **{len(df_proximos)}** contratos que terminam nos próximos **{periodo_selecionado} dias**")
+            
+            # Preparar dados para exibição
+            df_exib = df_proximos[[
+                'Numero_Contrato',
+                'Fornecedor',
+                'Responsavel',
+                'Status',
+                'Data_Final_Contrato',
+                'Dias_Restantes',
+                'Valor_Total',
+                'Total_MaoObra',
+                'Total_Material',
+                'Objeto'
+            ]].copy()
+            
+            # Formatar datas
+            df_exib['Data_Final_Contrato'] = pd.to_datetime(df_exib['Data_Final_Contrato']).dt.strftime('%d/%m/%Y')
+            
+            # Formatar valores
+            df_exib['Valor_Total'] = df_exib['Valor_Total'].apply(formatar_moeda)
+            df_exib['Total_MaoObra'] = df_exib['Total_MaoObra'].apply(formatar_moeda)
+            df_exib['Total_Material'] = df_exib['Total_Material'].apply(formatar_moeda)
+            
+            # Mapear status
+            status_map = {
+                'PARTIALLY_MEASURED': 'Parcialmente Medido',
+                'COMPLETED': 'Concluído',
+                'RESCINDED': 'Rescindido',
+                'PENDING': 'Pendente',
+                'FULLY_MEASURED': 'Totalmente Medido',
+            }
+            df_exib['Status'] = df_exib['Status'].map(status_map).fillna(df_exib['Status'])
+            
+            # Renomear colunas
+            df_exib.columns = [
+                'Número do Contrato',
+                'Fornecedor',
+                'Responsável',
+                'Status',
+                'Data Final',
+                'Dias Restantes',
+                'Valor Total',
+                'Valor Mão de Obra',
+                'Valor Material',
+                'Objeto'
+            ]
+            
+            # Ordenar por dias restantes
+            df_exib = df_exib.sort_values('Dias Restantes')
+            
+            st.dataframe(
+                df_exib,
+                use_container_width=True,
+                hide_index=True,
+            )
+            
+            # Resumo por faixa de dias
+            st.markdown("#### 📊 Resumo por Faixa de Dias")
+            df_resumo = df_proximos.copy()
+            df_resumo['Faixa'] = pd.cut(
+                df_resumo['Dias_Restantes'],
+                bins=[0, 15, 30, 60, 90],
+                labels=['0-15 dias', '16-30 dias', '31-60 dias', '61-90 dias'],
+                include_lowest=True
+            )
+            
+            df_faixa = df_resumo.groupby('Faixa').agg({
+                'Numero_Contrato': 'nunique',
+                'Valor_Total': 'sum'
+            }).reset_index()
+            df_faixa.columns = ['Faixa de Dias', 'Quantidade', 'Valor Total']
+            df_faixa['Valor Total'] = df_faixa['Valor Total'].apply(formatar_moeda)
+            
+            st.dataframe(
+                df_faixa,
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "Faixa de Dias": st.column_config.TextColumn("Faixa de Dias", width="medium"),
+                    "Quantidade": st.column_config.NumberColumn("Quantidade", format="%d"),
+                    "Valor Total": st.column_config.TextColumn("Valor Total"),
+                }
+            )
+        else:
+            st.info(f"✅ Nenhum contrato ativo termina nos próximos {periodo_selecionado} dias.")
+    
+    with tab5:
         st.markdown("### 🔍 Detalhamento dos Contratos")
         
         # Preparar dados para exibição
