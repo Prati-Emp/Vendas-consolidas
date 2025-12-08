@@ -44,6 +44,9 @@ def load_contratos(
     filters = []
     params = []
     
+    # Sempre excluir fornecedores Pozza e Marlós
+    filters.append("UPPER(Fornecedor) NOT LIKE '%POZZA%' AND UPPER(Fornecedor) NOT LIKE '%MARLOS%'")
+    
     if data_inicio:
         filters.append("Data_Contrato >= ?")
         params.append(data_inicio)
@@ -67,7 +70,7 @@ def load_contratos(
         filters.append(f"Status IN ({placeholders})")
         params.extend(status)
     
-    where_clause = f"WHERE {' AND '.join(filters)}" if filters else ""
+    where_clause = f"WHERE {' AND '.join(filters)}"
     
     query = f"""
         SELECT 
@@ -117,6 +120,9 @@ def get_unique_fornecedores(data_inicio: Optional[str] = None, data_fim: Optiona
     filters = []
     params = []
     
+    # Sempre excluir fornecedores Pozza e Marlós
+    filters.append("UPPER(Fornecedor) NOT LIKE '%POZZA%' AND UPPER(Fornecedor) NOT LIKE '%MARLOS%'")
+    
     if data_inicio:
         filters.append("Data_Contrato >= ?")
         params.append(data_inicio)
@@ -125,7 +131,7 @@ def get_unique_fornecedores(data_inicio: Optional[str] = None, data_fim: Optiona
         filters.append("Data_Contrato <= ?")
         params.append(data_fim)
     
-    where_clause = f"WHERE {' AND '.join(filters)}" if filters else ""
+    where_clause = f"WHERE {' AND '.join(filters)}"
     
     query = f"""
         SELECT DISTINCT Fornecedor
