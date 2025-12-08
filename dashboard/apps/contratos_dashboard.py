@@ -592,15 +592,65 @@ def render_contratos_dashboard(
                 }
             )
             
-            # Gráfico de pizza - Distribuição por status
+            # Gráfico de barras - Distribuição por status
             st.markdown("#### Distribuição de Contratos por Status")
-            fig = px.pie(
-                df_status,
-                values='Qtd_Contratos',
-                names='Status_PT',
+            
+            # Calcular percentual
+            total_contratos = df_status['Qtd_Contratos'].sum()
+            df_status['Percentual'] = (df_status['Qtd_Contratos'] / total_contratos * 100).round(2)
+            
+            # Ordenar por quantidade
+            df_status_sorted = df_status.sort_values('Qtd_Contratos', ascending=True)
+            
+            fig = go.Figure()
+            
+            # Adicionar barras com percentual dentro
+            max_x = df_status_sorted['Qtd_Contratos'].max()
+            
+            fig.add_trace(go.Bar(
+                y=df_status_sorted['Status_PT'],
+                x=df_status_sorted['Qtd_Contratos'],
+                orientation='h',
+                marker_color='#1f77b4',
+                text=[f"{p:.2f}%" for p in df_status_sorted['Percentual']],
+                textposition='inside',
+                textfont=dict(color='white', size=12, weight='bold'),
+                name='Quantidade',
+                hovertemplate='<b>%{y}</b><br>Quantidade: %{x}<br>Percentual: %{text}<extra></extra>'
+            ))
+            
+            # Criar anotações com valores monetários
+            annotations = []
+            for idx, row in df_status_sorted.iterrows():
+                annotations.append(
+                    dict(
+                        xref='x',
+                        yref='y',
+                        x=row['Qtd_Contratos'],
+                        y=row['Status_PT'],
+                        text=formatar_moeda(row['Valor_Total']),
+                        showarrow=False,
+                        xanchor='left',
+                        xshift=10,
+                        font=dict(color='white', size=11),
+                        bgcolor='rgba(0,0,0,0.6)',
+                        bordercolor='rgba(255,255,255,0.3)',
+                        borderwidth=1,
+                        borderpad=4
+                    )
+                )
+            
+            fig.update_layout(
                 title="Distribuição de Contratos por Status",
+                xaxis_title="Quantidade de Contratos",
+                yaxis_title="Status",
+                height=400,
+                showlegend=False,
+                margin=dict(l=150, r=200, t=50, b=50),
+                xaxis=dict(range=[0, max_x * 1.4]),  # Expandir eixo X para acomodar os valores
+                annotations=annotations
             )
-            fig.update_layout(height=400)
+            
             st.plotly_chart(fig, use_container_width=True)
         else:
             st.info("Nenhum dado disponível para análise por status.")
