@@ -95,10 +95,7 @@ def load_contratos(
     """
     
     try:
-        if params:
-            df = md_conn.execute(query, params).df()
-        else:
-            df = md_conn.execute(query).df()
+        df = md_conn.run_query(query, params if params else None)
         
         # Converter datas
         date_columns = ['Data_Contrato', 'Data_Inicio_Contrato', 'Data_Final_Contrato']
@@ -138,10 +135,7 @@ def get_unique_fornecedores(data_inicio: Optional[str] = None, data_fim: Optiona
     """
     
     try:
-        if params:
-            df = md_conn.execute(query, params).df()
-        else:
-            df = md_conn.execute(query).df()
+        df = md_conn.run_query(query, params if params else None)
         return df['Fornecedor'].dropna().unique().tolist()
     except Exception as e:
         st.error(f"Erro ao carregar fornecedores: {str(e)}")
@@ -174,10 +168,7 @@ def get_unique_responsaveis(data_inicio: Optional[str] = None, data_fim: Optiona
     """
     
     try:
-        if params:
-            df = md_conn.execute(query, params).df()
-        else:
-            df = md_conn.execute(query).df()
+        df = md_conn.run_query(query, params if params else None)
         return df['Responsavel'].dropna().unique().tolist()
     except Exception as e:
         st.error(f"Erro ao carregar responsáveis: {str(e)}")
@@ -311,7 +302,9 @@ def render_contratos_dashboard(
         
         # Filtro de período
         st.subheader("Período")
-        default_inicio = datetime(2024, 1, 1)
+        # Data inicial: 1º de janeiro do ano corrente
+        ano_corrente = datetime.now().year
+        default_inicio = datetime(ano_corrente, 1, 1)
         default_fim = datetime.now()
 
         data_inicio = st.date_input(
