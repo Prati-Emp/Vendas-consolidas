@@ -632,7 +632,7 @@ def calcular_indicadores_leadtime_por_obra_mes(df: pd.DataFrame) -> pd.DataFrame
     # Colunas auxiliares
     df_com_entrega['data_entregue_ajustada'] = df_com_entrega['data_entregue'] - timedelta(days=2)
     df_com_entrega['entregue_no_prazo'] = df_com_entrega['data_entregue_ajustada'] <= df_com_entrega['data_prevista']
-    df_com_entrega['lead_time_comum'] = (df_com_entrega['data_entregue'] - df_com_entregue['data_pedido']).dt.days
+    df_com_entrega['lead_time_comum'] = (df_com_entrega['data_entregue'] - df_com_entrega['data_pedido']).dt.days
     df_com_entrega['mes_ano'] = df_com_entrega['data_entregue'].dt.to_period('M')
 
     col_valor = 'total_l_quido_insumo' if 'total_l_quido_insumo' in df_com_entrega.columns else \
