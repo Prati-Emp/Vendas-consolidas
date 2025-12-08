@@ -92,7 +92,7 @@ def load_pedidos_compras(
         COALESCE(pc.Total_Frete, 0) AS Total_Frete
     FROM reservas.main.sienge_pedidos_compras pc
     LEFT JOIN planilhas.main.relacao_empreendimentos_pedidos_de_compras re
-        ON CAST(pc.ID_Empreendimento AS VARCHAR) = CAST(re.codigo_da_obra AS VARCHAR)
+        ON TRIM(CAST(pc.ID_Empreendimento AS VARCHAR)) = TRIM(CAST(re.codigo_da_obra AS VARCHAR))
     WHERE {filter_sql}
     ORDER BY pc.Data_Pedido DESC
     """
@@ -126,26 +126,19 @@ def get_unique_compradores() -> List[str]:
 
 @st.cache_data(ttl=300)
 def get_unique_empreendimentos() -> List[Dict[str, Any]]:
-    """Obtém lista única de empreendimentos com ID e nome."""
+    """Obtém lista única de empreendimentos (nomes) a partir da view de mapeamento."""
     md_conn = get_md_connection()
     sql = """
     SELECT DISTINCT 
-        CAST(re.codigo_da_obra AS INT) AS ID_Empreendimento,
         re.obra AS Empreendimento
     FROM planilhas.main.relacao_empreendimentos_pedidos_de_compras re
-    WHERE re.codigo_da_obra IS NOT NULL
-      AND re.obra IS NOT NULL
+    WHERE re.obra IS NOT NULL
     ORDER BY re.obra
     """
     df = md_conn.run_query(sql)
-    
     if df.empty:
         return []
-    
-    return [
-        {"id": int(row['ID_Empreendimento']), "nome": str(row['Empreendimento'])}
-        for _, row in df.iterrows()
-    ]
+    return df['Empreendimento'].astype(str).tolist()
 
 
 def calcular_indicadores(df: pd.DataFrame) -> Dict[str, Any]:
@@ -892,23 +885,11 @@ def render_compras_dashboard(
         # Filtro de empreendimento
         st.subheader("Empreendimento")
         empreendimentos_disponiveis = get_unique_empreendimentos()
-        empreendimento_opcoes = [f"{e['nome']} (ID: {e['id']})" for e in empreendimentos_disponiveis]
         empreendimento_selecionado = st.multiselect(
             "Selecione o(s) empreendimento(s)",
-            options=empreendimento_opcoes,
+            options=empreendimentos_disponiveis,
             key="compras_empreendimento"
         )
-        
-        # Extrair IDs dos empreendimentos selecionados
-        empreendimento_ids = []
-        if empreendimento_selecionado:
-            for sel in empreendimento_selecionado:
-                # Extrair ID do formato "Nome (ID: X)"
-                try:
-                    id_str = sel.split("ID: ")[1].rstrip(")")
-                    empreendimento_ids.append(int(id_str))
-                except:
-                    pass
         
         # Filtro de título (Notas)
         st.subheader("Título")
@@ -924,7 +905,7 @@ def render_compras_dashboard(
             data_inicio=data_inicio.strftime('%Y-%m-%d') if data_inicio else None,
             data_fim=data_fim.strftime('%Y-%m-%d') if data_fim else None,
             comprador=comprador_selecionado if comprador_selecionado else None,
-            empreendimento=empreendimento_ids if empreendimento_ids else None,
+            empreendimento=empreendimento_selecionado if empreendimento_selecionado else None,
         )
         
         # Aplicar filtro de título se fornecido
