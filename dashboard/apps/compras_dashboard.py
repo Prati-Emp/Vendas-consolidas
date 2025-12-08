@@ -618,6 +618,72 @@ def calcular_indicadores_leadtime_por(df: pd.DataFrame, group_col: str, col_labe
     return df_resultado
 
 
+def calcular_indicadores_leadtime_por_obra_mes(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Calcula indicadores de lead time agrupados por Obra e Mês.
+    """
+    if df.empty or 'obra' not in df.columns or 'data_entregue' not in df.columns:
+        return pd.DataFrame(columns=['Obra', 'Mês', '% Comprado no Prazo', 'Lead Time Ponderado', 'Tempo de Atraso Médio'])
+
+    df_com_entrega = df[df['data_entregue'].notna()].copy()
+    if df_com_entrega.empty:
+        return pd.DataFrame(columns=['Obra', 'Mês', '% Comprado no Prazo', 'Lead Time Ponderado', 'Tempo de Atraso Médio'])
+
+    # Colunas auxiliares
+    df_com_entrega['data_entregue_ajustada'] = df_com_entrega['data_entregue'] - timedelta(days=2)
+    df_com_entrega['entregue_no_prazo'] = df_com_entrega['data_entregue_ajustada'] <= df_com_entrega['data_prevista']
+    df_com_entrega['lead_time_comum'] = (df_com_entrega['data_entregue'] - df_com_entregue['data_pedido']).dt.days
+    df_com_entrega['mes_ano'] = df_com_entrega['data_entregue'].dt.to_period('M')
+
+    col_valor = 'total_l_quido_insumo' if 'total_l_quido_insumo' in df_com_entrega.columns else \
+               ('total_liquido_insumo' if 'total_liquido_insumo' in df_com_entrega.columns else None)
+
+    resultados = []
+    for (obra, mes_period), df_g in df_com_entrega.groupby(['obra', 'mes_ano']):
+        if df_g.empty:
+            continue
+
+        total_itens = len(df_g)
+        itens_no_prazo = df_g['entregue_no_prazo'].sum()
+        percentual_no_prazo = (itens_no_prazo / total_itens * 100) if total_itens > 0 else 0.0
+
+        if col_valor and col_valor in df_g.columns:
+            df_g['lead_time_ponderado_calc'] = df_g[col_valor] * df_g['lead_time_comum']
+            soma_numerador = df_g['lead_time_ponderado_calc'].sum()
+            soma_denominador = df_g[col_valor].sum()
+            lead_time_ponderado = (soma_numerador / soma_denominador) if soma_denominador > 0 else 0.0
+        else:
+            lead_time_ponderado = df_g['lead_time_comum'].mean() if not df_g.empty else 0.0
+
+        df_atras = df_g[~df_g['entregue_no_prazo']].copy()
+        if not df_atras.empty:
+            df_atras['tempo_atraso'] = (df_atras['data_entregue_ajustada'] - df_atras['data_prevista']).dt.days
+            tempo_atraso_medio = df_atras['tempo_atraso'].mean()
+        else:
+            tempo_atraso_medio = 0.0
+
+        # Nome do mês em português
+        data_ref = df_g['data_entregue'].iloc[0]
+        meses_pt = [
+            'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+            'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+        ]
+        mes_nome_pt = f"{meses_pt[data_ref.month - 1]} {data_ref.year}"
+
+        resultados.append({
+            'Obra': obra,
+            'Mês': mes_nome_pt,
+            '% Comprado no Prazo': percentual_no_prazo,
+            'Lead Time Ponderado': lead_time_ponderado,
+            'Tempo de Atraso Médio': tempo_atraso_medio
+        })
+
+    df_resultado = pd.DataFrame(resultados)
+    if not df_resultado.empty:
+        df_resultado['_ordem'] = pd.to_datetime(df_resultado['Mês'], format='%B %Y', errors='coerce')
+        df_resultado = df_resultado.sort_values(['Obra', '_ordem']).drop(columns=['_ordem']).reset_index(drop=True)
+    return df_resultado
+
 def formatar_dias(valor: float) -> str:
     """Formata valor como dias."""
     return f"{valor:.1f} dias"
@@ -750,6 +816,32 @@ def render_leadtime_tab(
         )
     else:
         st.info("ℹ️ Nenhum dado por comprador disponível para os filtros selecionados.")
+
+    # Tabela por Obra e Mês
+    st.markdown("---")
+    st.subheader("🏗️ Indicadores por Obra e Mês")
+
+    df_obra_mes = calcular_indicadores_leadtime_por_obra_mes(df_leadtime)
+    if not df_obra_mes.empty:
+        df_exib_obra_mes = df_obra_mes.copy()
+        df_exib_obra_mes['% Comprado no Prazo'] = df_exib_obra_mes['% Comprado no Prazo'].apply(lambda x: f"{x:.2f}%")
+        df_exib_obra_mes['Lead Time Ponderado'] = df_exib_obra_mes['Lead Time Ponderado'].apply(lambda x: f"{x:.1f} dias")
+        df_exib_obra_mes['Tempo de Atraso Médio'] = df_exib_obra_mes['Tempo de Atraso Médio'].apply(lambda x: f"{x:.2f} dias" if x > 0 else "-")
+
+        st.dataframe(
+            df_exib_obra_mes,
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "Obra": st.column_config.TextColumn("Obra", width="medium"),
+                "Mês": st.column_config.TextColumn("Mês", width="medium"),
+                "% Comprado no Prazo": st.column_config.TextColumn("% Comprado no Prazo", width="medium"),
+                "Lead Time Ponderado": st.column_config.TextColumn("Lead Time Ponderado", width="medium"),
+                "Tempo de Atraso Médio": st.column_config.TextColumn("Tempo de Atraso Médio", width="medium"),
+            }
+        )
+    else:
+        st.info("ℹ️ Nenhum dado por obra e mês disponível para os filtros selecionados.")
 
 
 
