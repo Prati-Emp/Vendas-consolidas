@@ -598,18 +598,18 @@ def render_contratos_dashboard(
                 }
             )
             
-            # Gráfico de barras - Top 10 fornecedores por valor
+            # Gráfico de barras horizontais - Top 10 fornecedores por valor
             st.markdown("#### Top 10 Fornecedores por Valor Total")
-            df_top10 = df_fornecedor.head(10)
+            df_top10 = df_fornecedor.head(10).sort_values('Valor_Total', ascending=True)
             fig = px.bar(
                 df_top10,
-                x='Fornecedor',
-                y='Valor_Total',
+                x='Valor_Total',
+                y='Fornecedor',
+                orientation='h',
                 title="Top 10 Fornecedores por Valor Total",
                 labels={'Valor_Total': 'Valor Total (R$)', 'Fornecedor': 'Fornecedor'},
             )
-            fig.update_xaxes(tickangle=-45)
-            fig.update_layout(height=400)
+            fig.update_layout(height=400, yaxis={'categoryorder': 'total ascending'})
             st.plotly_chart(fig, use_container_width=True)
         else:
             st.info("Nenhum dado disponível para análise por fornecedor.")
