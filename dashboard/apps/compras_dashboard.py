@@ -1245,18 +1245,6 @@ def render_compras_dashboard(
                     use_container_width=True,
                     hide_index=True
                 )
-                
-                # Gráfico
-                fig = px.bar(
-                    atrasados_empreendimento.head(10),
-                    x='Empreendimento',
-                    y='Qtd_Atrasados',
-                    title='Top 10 Empreendimentos com Mais Pedidos Atrasados',
-                    labels={'Qtd_Atrasados': 'Quantidade de Pedidos', 'Empreendimento': 'Empreendimento'},
-                    color='Qtd_Atrasados',
-                    color_continuous_scale='Reds'
-                )
-                st.plotly_chart(fig, use_container_width=True)
             else:
                 st.info("Dados de empreendimento não disponíveis.")
             
@@ -1282,20 +1270,33 @@ def render_compras_dashboard(
                     use_container_width=True,
                     hide_index=True
                 )
-                
-                # Gráfico
-                fig = px.bar(
-                    atrasados_comprador.head(10),
-                    x='Comprador',
-                    y='Qtd_Atrasados',
-                    title='Top 10 Compradores com Mais Pedidos Atrasados',
-                    labels={'Qtd_Atrasados': 'Quantidade de Pedidos', 'Comprador': 'Comprador'},
-                    color='Qtd_Atrasados',
-                    color_continuous_scale='Reds'
-                )
-                st.plotly_chart(fig, use_container_width=True)
             else:
                 st.info("Dados de comprador não disponíveis.")
+            
+            st.markdown("---")
+            
+            # Tabela detalhada dos pedidos atrasados
+            st.subheader("📋 Detalhamento dos Pedidos Atrasados")
+            
+            # Selecionar colunas relevantes
+            colunas_atrasados = ['ID_Pedido', 'Empreendimento', 'Comprador', 'Valor_Total']
+            colunas_disponiveis_atrasados = [col for col in colunas_atrasados if col in df_atrasados.columns]
+            
+            if colunas_disponiveis_atrasados:
+                df_atrasados_display = df_atrasados[colunas_disponiveis_atrasados].copy()
+                df_atrasados_display = df_atrasados_display.sort_values('Valor_Total', ascending=False)
+                
+                # Formatação
+                if 'Valor_Total' in df_atrasados_display.columns:
+                    df_atrasados_display['Valor_Total'] = df_atrasados_display['Valor_Total'].apply(formatar_moeda)
+                
+                st.dataframe(
+                    df_atrasados_display,
+                    use_container_width=True,
+                    hide_index=True
+                )
+            else:
+                st.info("Dados detalhados não disponíveis.")
     
     with tab4:
         st.subheader("Detalhamento de Pedidos")
