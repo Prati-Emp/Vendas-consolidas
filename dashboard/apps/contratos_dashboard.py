@@ -841,7 +841,7 @@ def render_contratos_dashboard(
                 hide_index=True,
             )
             
-            # Resumo por faixa de dias
+            # Resumo por faixa de dias (sempre usa 90 dias, independente do filtro)
             st.markdown("#### 📊 Resumo por Faixa de Dias Restantes")
             
             # Explicação didática sobre as faixas
@@ -849,21 +849,18 @@ def render_contratos_dashboard(
                 st.markdown("""
                 **📋 O que esta tabela mostra:**
                 
-                Esta tabela agrupa os contratos que vencem no período selecionado acima em faixas de tempo:
+                Esta tabela agrupa **todos os contratos que vencem nos próximos 90 dias** em faixas de tempo:
                 
                 - **0-15 dias**: Contratos que vencem entre hoje e os próximos 15 dias
                 - **16-30 dias**: Contratos que vencem entre 16 e 30 dias a partir de hoje
                 - **31-60 dias**: Contratos que vencem entre 31 e 60 dias a partir de hoje
                 - **61-90 dias**: Contratos que vencem entre 61 e 90 dias a partir de hoje
                 
-                **💡 Entendendo o período selecionado:**
+                **💡 Importante:**
                 
-                O filtro acima (30, 60 ou 90 dias) é **cumulativo**:
-                - Se você selecionar **"Próximos 30 dias"**, verá todos os contratos que vencem em até 30 dias
-                - Se você selecionar **"Próximos 60 dias"**, verá todos os contratos que vencem em até 60 dias 
-                  (inclui os de 0-30 dias + os de 31-60 dias)
-                - Se você selecionar **"Próximos 90 dias"**, verá todos os contratos que vencem em até 90 dias
-                  (inclui os de 0-30 dias + os de 31-60 dias + os de 61-90 dias)
+                Esta tabela **não é afetada pelo filtro acima**. Ela sempre mostra todos os contratos 
+                que vencem nos próximos 90 dias, agrupados por faixas. Isso permite ter uma visão 
+                completa de todos os vencimentos, independente do período selecionado na tabela acima.
                 
                 **📊 Na tabela:**
                 
@@ -874,7 +871,9 @@ def render_contratos_dashboard(
                 Isso permite identificar rapidamente quais contratos precisam de atenção imediata!
                 """)
             
-            df_resumo = df_proximos.copy()
+            # Obter todos os contratos de até 90 dias para o resumo (independente do filtro)
+            df_resumo_completo = obter_contratos_proximos_termino(df, dias=90)
+            df_resumo = df_resumo_completo.copy()
             df_resumo['Faixa'] = pd.cut(
                 df_resumo['Dias_Restantes'],
                 bins=[0, 15, 30, 60, 90],
