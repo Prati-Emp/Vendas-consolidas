@@ -259,8 +259,9 @@ def load_pedidos_compras_leadtime(
         
         if comprador and len(comprador) > 0:
             # Usar UPPER para garantir case-insensitive
+            # Filtrar pela coluna c_d_comprador (login/codigo) que corresponde ao filtro lateral
             placeholders = ','.join(['UPPER(?)' for _ in comprador])
-            filters.append(f"UPPER(comprador) IN ({placeholders})")
+            filters.append(f"UPPER(c_d_comprador) IN ({placeholders})")
             params.extend(comprador)
             
         if empreendimento and len(empreendimento) > 0:
