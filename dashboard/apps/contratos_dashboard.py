@@ -622,7 +622,7 @@ def render_contratos_dashboard(
                 textfont=dict(color='white', size=12, weight='bold'),
                 name='Valor Total',
                 hovertemplate='<b>%{y}</b><br>Valor: %{x:,.2f}<br>Percentual: %{text}<extra></extra>',
-                width=0.7  # Largura das barras
+                width=0.9  # Largura das barras (aumentada)
             ))
             
             # Criar anotações com valores monetários
@@ -647,15 +647,15 @@ def render_contratos_dashboard(
                 )
             
             fig.update_layout(
-                title="Top 10 Fornecedores por Valor Total",
+                title=None,  # Remover título do gráfico
                 xaxis_title="Valor Total (R$)",
-                yaxis_title="Fornecedor",
+                yaxis_title=None,  # Remover label do eixo Y
                 height=450,
                 showlegend=False,
-                margin=dict(l=200, r=250, t=50, b=50),
-                bargap=0.3,  # Espaçamento entre barras
+                margin=dict(l=200, r=250, t=20, b=50),  # Reduzir margem superior
+                bargap=0.15,  # Reduzir espaçamento entre barras para barras mais largas
                 xaxis=dict(range=[0, max_x * 1.5]),  # Expandir eixo X para acomodar os valores
-                yaxis={'categoryorder': 'total ascending'},
+                yaxis={'categoryorder': 'total ascending', 'title': None},  # Remover título do eixo Y
                 annotations=annotations,
                 plot_bgcolor='rgba(0,0,0,0)',
                 paper_bgcolor='rgba(0,0,0,0)'
