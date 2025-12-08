@@ -258,8 +258,9 @@ def load_pedidos_compras_leadtime(
         filters.append("data_entregue IS NOT NULL")
         
         if comprador and len(comprador) > 0:
-            placeholders = ','.join(['?' for _ in comprador])
-            filters.append(f"comprador IN ({placeholders})")
+            # Usar UPPER para garantir case-insensitive
+            placeholders = ','.join(['UPPER(?)' for _ in comprador])
+            filters.append(f"UPPER(comprador) IN ({placeholders})")
             params.extend(comprador)
             
         if empreendimento and len(empreendimento) > 0:
