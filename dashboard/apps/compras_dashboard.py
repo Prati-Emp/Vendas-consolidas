@@ -1033,11 +1033,10 @@ def render_compras_dashboard(
     st.subheader("📈 Análises Detalhadas")
     
     # Tabs para diferentes análises
-    tab1, tab2, tab3, tab4 = st.tabs([
+    tab1, tab2, tab3 = st.tabs([
         "📊 Análises Detalhadas",
         "⚠️ Pedidos Atrasados",
-        "⏱️ Lead Time",
-        "📋 Detalhamento"
+        "⏱️ Lead Time"
     ])
     
     with tab1:
@@ -1184,6 +1183,44 @@ def render_compras_dashboard(
             st.plotly_chart(fig, use_container_width=True)
         else:
             st.info("Dados de comprador não disponíveis.")
+        
+        st.markdown("---")
+        
+        # Detalhamento de Pedidos
+        st.subheader("📋 Detalhamento de Pedidos")
+        
+        # Colunas para exibir
+        colunas_display = [
+            'ID_Pedido', 'Data_Pedido', 'Comprador', 'Empreendimento',
+            'Status', 'Atrasado', 'Valor_Total', 'Desconto', 'Titulo'
+        ]
+        
+        colunas_disponiveis = [col for col in colunas_display if col in df.columns]
+        
+        df_display = df[colunas_disponiveis].copy()
+        
+        # Formatação
+        if 'Valor_Total' in df_display.columns:
+            df_display['Valor_Total'] = df_display['Valor_Total'].apply(formatar_moeda)
+        if 'Desconto' in df_display.columns:
+            df_display['Desconto'] = df_display['Desconto'].apply(formatar_moeda)
+        if 'Atrasado' in df_display.columns:
+            df_display['Atrasado'] = df_display['Atrasado'].map({True: 'Sim', False: 'Não'})
+        
+        st.dataframe(
+            df_display,
+            use_container_width=True,
+            hide_index=True
+        )
+        
+        # Botão de download
+        csv = df.to_csv(index=False).encode('utf-8-sig')
+        st.download_button(
+            label="📥 Download CSV",
+            data=csv,
+            file_name=f"pedidos_compras_{datetime.now().strftime('%Y%m%d')}.csv",
+            mime="text/csv"
+        )
     
     with tab2:
         st.subheader("⚠️ Pedidos Atrasados")
@@ -1297,42 +1334,6 @@ def render_compras_dashboard(
                 )
             else:
                 st.info("Dados detalhados não disponíveis.")
-    
-    with tab4:
-        st.subheader("Detalhamento de Pedidos")
-        
-        # Colunas para exibir
-        colunas_display = [
-            'ID_Pedido', 'Data_Pedido', 'Comprador', 'Empreendimento',
-            'Status', 'Atrasado', 'Valor_Total', 'Desconto', 'Titulo'
-        ]
-        
-        colunas_disponiveis = [col for col in colunas_display if col in df.columns]
-        
-        df_display = df[colunas_disponiveis].copy()
-        
-        # Formatação
-        if 'Valor_Total' in df_display.columns:
-            df_display['Valor_Total'] = df_display['Valor_Total'].apply(formatar_moeda)
-        if 'Desconto' in df_display.columns:
-            df_display['Desconto'] = df_display['Desconto'].apply(formatar_moeda)
-        if 'Atrasado' in df_display.columns:
-            df_display['Atrasado'] = df_display['Atrasado'].map({True: 'Sim', False: 'Não'})
-        
-        st.dataframe(
-            df_display,
-            use_container_width=True,
-            hide_index=True
-        )
-        
-        # Botão de download
-        csv = df.to_csv(index=False).encode('utf-8-sig')
-        st.download_button(
-            label="📥 Download CSV",
-            data=csv,
-            file_name=f"pedidos_compras_{datetime.now().strftime('%Y%m%d')}.csv",
-            mime="text/csv"
-        )
     
     with tab3:
         try:
