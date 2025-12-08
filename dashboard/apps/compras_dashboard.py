@@ -56,15 +56,21 @@ def load_pedidos_compras(
         params.extend(comprador)
     
     if empreendimento and len(empreendimento) > 0:
-        # Se for lista de IDs, usar IN
-        if all(isinstance(e, (int, str)) and str(e).isdigit() for e in empreendimento):
-            placeholders = ','.join(['?' for _ in empreendimento])
-            filters.append(f"ID_Empreendimento IN ({placeholders})")
-            params.extend([int(e) if isinstance(e, str) and e.isdigit() else e for e in empreendimento])
-        else:
-            # Se for lista de nomes, fazer JOIN com reservas_abril
-            # Mas por enquanto, vamos usar ID_Empreendimento
-            pass
+        ids = [e for e in empreendimento if str(e).isdigit()]
+        nomes = [e for e in empreendimento if not str(e).isdigit()]
+
+        conds = []
+        if ids:
+            placeholders = ','.join(['?' for _ in ids])
+            conds.append(f"pc.ID_Empreendimento IN ({placeholders})")
+            params.extend([int(e) if isinstance(e, str) and e.isdigit() else e for e in ids])
+        if nomes:
+            placeholders = ','.join(['?' for _ in nomes])
+            conds.append(f"re.obra IN ({placeholders})")
+            params.extend(nomes)
+
+        if conds:
+            filters.append("(" + " OR ".join(conds) + ")")
     
     filter_sql = " AND ".join(filters) if filters else "1=1"
     
@@ -76,13 +82,7 @@ def load_pedidos_compras(
         pc.Atrasado,
         pc.ID_Fornecedor,
         pc.ID_Empreendimento,
-        COALESCE(
-            (SELECT DISTINCT empreendimento 
-             FROM reservas.main.reservas_abril 
-             WHERE idempreendimento = pc.ID_Empreendimento 
-             LIMIT 1),
-            CAST(pc.ID_Empreendimento AS VARCHAR)
-        ) AS Empreendimento,
+        COALESCE(re.obra, CAST(pc.ID_Empreendimento AS VARCHAR)) AS Empreendimento,
         pc.Comprador,
         pc.Data_Pedido::DATE AS Data_Pedido,
         pc.Notas AS Titulo,
@@ -91,6 +91,8 @@ def load_pedidos_compras(
         COALESCE(pc.Valor_Total, 0) AS Valor_Total,
         COALESCE(pc.Total_Frete, 0) AS Total_Frete
     FROM reservas.main.sienge_pedidos_compras pc
+    LEFT JOIN planilhas.main.relacao_empreendimentos_pedidos_de_compras re
+        ON CAST(pc.ID_Empreendimento AS VARCHAR) = CAST(re.codigo_da_obra AS VARCHAR)
     WHERE {filter_sql}
     ORDER BY pc.Data_Pedido DESC
     """
@@ -128,17 +130,12 @@ def get_unique_empreendimentos() -> List[Dict[str, Any]]:
     md_conn = get_md_connection()
     sql = """
     SELECT DISTINCT 
-        pc.ID_Empreendimento,
-        COALESCE(
-            (SELECT DISTINCT empreendimento 
-             FROM reservas.main.reservas_abril 
-             WHERE idempreendimento = pc.ID_Empreendimento 
-             LIMIT 1),
-            CAST(pc.ID_Empreendimento AS VARCHAR)
-        ) AS Empreendimento
-    FROM reservas.main.sienge_pedidos_compras pc
-    WHERE pc.ID_Empreendimento IS NOT NULL
-    ORDER BY Empreendimento
+        CAST(re.codigo_da_obra AS INT) AS ID_Empreendimento,
+        re.obra AS Empreendimento
+    FROM planilhas.main.relacao_empreendimentos_pedidos_de_compras re
+    WHERE re.codigo_da_obra IS NOT NULL
+      AND re.obra IS NOT NULL
+    ORDER BY re.obra
     """
     df = md_conn.run_query(sql)
     
