@@ -27,7 +27,7 @@ USERS_DATABASE = {
         "created": "2024-10-21",
         "last_login": None,
         "active": True,
-        "subpages": ["operacoes.jira", "operacoes.compras", "operacoes.solicitacoes"]  # Páginas subordinadas permitidas
+        "subpages": ["operacoes.jira", "operacoes.compras", "operacoes.solicitacoes", "operacoes.contratos"]  # Páginas subordinadas permitidas
     },
     "gustavo.sordi@grupoprati.com": {
         "password": "Pr@ti2024!Gustavo",
@@ -37,7 +37,7 @@ USERS_DATABASE = {
         "created": "2024-10-21",
         "last_login": None,
         "active": True,
-        "subpages": ["operacoes.jira", "operacoes.compras", "operacoes.solicitacoes"]  # Acesso a todas as subpáginas
+        "subpages": ["operacoes.jira", "operacoes.compras", "operacoes.solicitacoes", "operacoes.contratos"]  # Acesso a todas as subpáginas
     },
     "lucas.follmann@grupoprati.com": {
         "password": "Pr@ti2024!Lucas",
@@ -47,7 +47,7 @@ USERS_DATABASE = {
         "created": "2024-10-21",
         "last_login": None,
         "active": True,
-        "subpages": ["operacoes.jira", "operacoes.compras", "operacoes.solicitacoes", "operacoes.evolucao_obra"]  # Acesso a todas as subpáginas
+        "subpages": ["operacoes.jira", "operacoes.compras", "operacoes.solicitacoes", "operacoes.contratos", "operacoes.evolucao_obra"]  # Acesso a todas as subpáginas
     },
     "jose.aquino@grupoprati.com": {
         "password": "Pr@ti2024!Jose",
@@ -98,7 +98,7 @@ USERS_DATABASE = {
         "created": "2025-11-26",
         "last_login": None,
         "active": True,
-        "subpages": ["operacoes.jira", "operacoes.compras", "operacoes.solicitacoes", "operacoes.evolucao_obra"]
+        "subpages": ["operacoes.jira", "operacoes.compras", "operacoes.solicitacoes", "operacoes.contratos", "operacoes.evolucao_obra"]
     }
 }
 
