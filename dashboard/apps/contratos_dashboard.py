@@ -726,11 +726,13 @@ def render_contratos_dashboard(
                 x=df_status_sorted['Qtd_Contratos'],
                 orientation='h',
                 marker_color='#1f77b4',
+                marker_line_width=0,
                 text=[f"{p:.2f}%" for p in df_status_sorted['Percentual']],
                 textposition='inside',
-                textfont=dict(color='white', size=12, weight='bold'),
+                textfont=dict(color='white', size=13, weight='bold'),
                 name='Quantidade',
-                hovertemplate='<b>%{y}</b><br>Quantidade: %{x}<br>Percentual: %{text}<extra></extra>'
+                hovertemplate='<b>%{y}</b><br>Quantidade: %{x}<br>Percentual: %{text}<extra></extra>',
+                width=0.7  # Largura das barras (0.7 = 70% do espaço disponível)
             ))
             
             # Criar anotações com valores monetários
@@ -745,12 +747,12 @@ def render_contratos_dashboard(
                         text=formatar_moeda(row['Valor_Total']),
                         showarrow=False,
                         xanchor='left',
-                        xshift=10,
-                        font=dict(color='white', size=11),
-                        bgcolor='rgba(0,0,0,0.6)',
-                        bordercolor='rgba(255,255,255,0.3)',
-                        borderwidth=1,
-                        borderpad=4
+                        xshift=15,
+                        font=dict(color='white', size=12, weight='bold'),
+                        bgcolor='rgba(0,0,0,0.7)',
+                        bordercolor='rgba(255,255,255,0.4)',
+                        borderwidth=1.5,
+                        borderpad=6
                     )
                 )
             
@@ -758,11 +760,14 @@ def render_contratos_dashboard(
                 title="Distribuição de Contratos por Status",
                 xaxis_title="Quantidade de Contratos",
                 yaxis_title="Status",
-                height=400,
+                height=450,
                 showlegend=False,
-                margin=dict(l=150, r=200, t=50, b=50),
-                xaxis=dict(range=[0, max_x * 1.4]),  # Expandir eixo X para acomodar os valores
-                annotations=annotations
+                margin=dict(l=150, r=250, t=50, b=50),
+                bargap=0.3,  # Espaçamento entre barras (menor = barras mais próximas)
+                xaxis=dict(range=[0, max_x * 1.5]),  # Expandir eixo X para acomodar os valores
+                annotations=annotations,
+                plot_bgcolor='rgba(0,0,0,0)',
+                paper_bgcolor='rgba(0,0,0,0)'
             )
             
             st.plotly_chart(fig, use_container_width=True)
