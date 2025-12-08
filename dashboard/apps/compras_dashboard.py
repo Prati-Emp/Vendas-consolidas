@@ -1033,14 +1033,75 @@ def render_compras_dashboard(
     st.subheader("📈 Análises Detalhadas")
     
     # Tabs para diferentes análises
-    tab1, tab2, tab3, tab4 = st.tabs([
+    tab1, tab2, tab3 = st.tabs([
         "📊 Análises Detalhadas",
-        "🗓️ Timeline",
         "📋 Detalhamento",
         "⏱️ Lead Time"
     ])
     
     with tab1:
+        st.subheader("Timeline de Compras")
+        
+        if 'Data_Pedido' in df.columns and not df.empty:
+            # Agrupar por mês
+            df_timeline = df.copy()
+            df_timeline['Mes'] = df_timeline['Data_Pedido'].dt.to_period('M').astype(str)
+            
+            timeline_agg = df_timeline.groupby('Mes').agg({
+                'Valor_Total': 'sum',
+                'Desconto': 'sum',
+                'ID_Pedido': 'count'
+            }).reset_index()
+            
+            timeline_agg.columns = ['Mes', 'Valor_Total', 'Total_Desconto', 'Qtd_Pedidos']
+            timeline_agg = timeline_agg.sort_values('Mes')
+            timeline_agg['Percentual_Desconto'] = timeline_agg.apply(
+                lambda row: (row['Total_Desconto'] / row['Valor_Total'] * 100)
+                if row['Valor_Total'] else 0.0,
+                axis=1
+            )
+            
+            # Gráfico de linha
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(
+                x=timeline_agg['Mes'],
+                y=timeline_agg['Valor_Total'],
+                mode='lines+markers',
+                name='Valor Total',
+                line=dict(color='#1f77b4', width=2)
+            ))
+            fig.add_trace(go.Scatter(
+                x=timeline_agg['Mes'],
+                y=timeline_agg['Total_Desconto'],
+                mode='lines+markers',
+                name='Total Descontos',
+                line=dict(color='#ff7f0e', width=2)
+            ))
+            
+            fig.update_layout(
+                title='Evolução de Compras ao Longo do Tempo',
+                xaxis_title='Mês',
+                yaxis_title='Valor (R$)',
+                hovermode='x unified'
+            )
+            
+            st.plotly_chart(fig, use_container_width=True)
+            
+            # Tabela
+            timeline_agg['Valor_Total'] = timeline_agg['Valor_Total'].apply(formatar_moeda)
+            timeline_agg['Total_Desconto'] = timeline_agg['Total_Desconto'].apply(formatar_moeda)
+            timeline_agg['Percentual_Desconto'] = timeline_agg['Percentual_Desconto'].apply(formatar_percentual)
+            
+            st.dataframe(
+                timeline_agg,
+                use_container_width=True,
+                hide_index=True
+            )
+        else:
+            st.info("Dados de data não disponíveis.")
+
+        st.markdown("---")
+
         st.subheader("Análise por Empreendimento")
         
         if 'Empreendimento' in df.columns:
@@ -1124,7 +1185,7 @@ def render_compras_dashboard(
             st.info("Dados de comprador não disponíveis.")
     
     with tab2:
-        st.subheader("Timeline de Compras")
+        st.subheader("Detalhamento de Pedidos")
         
         if 'Data_Pedido' in df.columns and not df.empty:
             # Agrupar por mês
