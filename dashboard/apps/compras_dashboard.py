@@ -238,6 +238,156 @@ def get_md_connection_planilhas():
 
 
 @st.cache_data(ttl=3600, show_spinner=True)  # Cache por 1 hora (dados atualizados semanalmente)
+def load_contas_pagas_pmp(
+    data_inicio: Optional[str] = None,
+    data_fim: Optional[str] = None,
+) -> pd.DataFrame:
+    """
+    Carrega dados de contas pagas para cálculo de PMP (Prazo Médio de Pagamento).
+    
+    Filtros aplicados:
+    - tipo_de_baixa IN ('ADIANTAMENTO', 'PAGAMENTO')
+    - parcela_autorizada = 'sim'
+    
+    Args:
+        data_inicio: Data inicial (YYYY-MM-DD) - filtra por data_do_pagamento
+        data_fim: Data final (YYYY-MM-DD) - filtra por data_do_pagamento
+        
+    Returns:
+        DataFrame com dados de contas pagas
+    """
+    try:
+        conn = get_md_connection_planilhas()
+        
+        # Construir filtros SQL
+        filters = []
+        params = []
+        
+        # Filtros permanentes conforme especificação
+        filters.append("UPPER(tipo_de_baixa) IN ('ADIANTAMENTO', 'PAGAMENTO')")
+        filters.append("UPPER(parcela_autorizada) = 'SIM'")
+        
+        # Filtros de data (se fornecidos)
+        # As datas estão como VARCHAR no formato DD/MM/YYYY, então vamos filtrar no pandas
+        # Mas podemos adicionar filtro SQL se necessário
+        
+        filter_sql = " AND ".join(filters) if filters else "1=1"
+        
+        # Query para obter dados
+        sql = f"""
+        SELECT 
+            data_do_pagamento,
+            data_emiss_o,
+            valor_l_quido
+        FROM planilhas.main.contas_pagas
+        WHERE {filter_sql}
+          AND data_do_pagamento IS NOT NULL
+          AND data_emiss_o IS NOT NULL
+          AND valor_l_quido IS NOT NULL
+        """
+        
+        df = conn.execute(sql, params).df()
+        conn.close()
+        
+        if df.empty:
+            return pd.DataFrame()
+        
+        # Converter colunas de data (formato DD/MM/YYYY)
+        df['data_do_pagamento'] = pd.to_datetime(df['data_do_pagamento'], dayfirst=True, errors='coerce')
+        df['data_emiss_o'] = pd.to_datetime(df['data_emiss_o'], dayfirst=True, errors='coerce')
+        
+        # Remover linhas com datas inválidas
+        df = df[df['data_do_pagamento'].notna() & df['data_emiss_o'].notna()].copy()
+        
+        # Aplicar filtros de data no pandas
+        if data_inicio and not df.empty:
+            dt_inicio = pd.to_datetime(data_inicio)
+            df = df[df['data_do_pagamento'] >= dt_inicio]
+            
+        if data_fim and not df.empty:
+            dt_fim = pd.to_datetime(data_fim)
+            # Ajustar para final do dia
+            dt_fim = dt_fim + pd.Timedelta(days=1) - pd.Timedelta(seconds=1)
+            df = df[df['data_do_pagamento'] <= dt_fim]
+        
+        # Calcular PMP simples (dias entre pagamento e emissão)
+        df['pmp_simples'] = (df['data_do_pagamento'] - df['data_emiss_o']).dt.days
+        
+        # Remover valores negativos ou muito grandes (possíveis erros de data)
+        df = df[(df['pmp_simples'] >= 0) & (df['pmp_simples'] <= 365)].copy()
+        
+        return df.sort_values('data_do_pagamento', ascending=False)
+        
+    except Exception as e:
+        st.error(f"❌ Erro ao carregar dados de contas pagas: {str(e)}")
+        import traceback
+        st.error(traceback.format_exc())
+        return pd.DataFrame()
+
+
+def calcular_pmp_ponderado_mensal(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Calcula PMP Ponderado agrupado por mês.
+    
+    Fórmula: PMP Ponderado = SUMX(PMP simples * Valor líquido) / SUM(Valor líquido)
+    
+    Args:
+        df: DataFrame com dados de contas pagas (deve ter colunas: data_do_pagamento, pmp_simples, valor_l_quido)
+        
+    Returns:
+        DataFrame com colunas: Mês, Meta (38 dias), Real (PMP Ponderado)
+    """
+    if df.empty or 'data_do_pagamento' not in df.columns:
+        return pd.DataFrame(columns=['Mês', 'Meta', 'Real'])
+    
+    # Criar coluna de mês/ano baseada em data_do_pagamento
+    df['mes_ano'] = df['data_do_pagamento'].dt.to_period('M')
+    
+    # Calcular PMP ponderado por mês
+    resultados = []
+    
+    for mes_period in sorted(df['mes_ano'].unique()):
+        df_mes = df[df['mes_ano'] == mes_period].copy()
+        
+        if df_mes.empty:
+            continue
+        
+        # Calcular PMP Ponderado
+        # PMP Ponderado = SUMX(PMP simples * Valor líquido) / SUM(Valor líquido)
+        if 'pmp_simples' in df_mes.columns and 'valor_l_quido' in df_mes.columns:
+            df_mes['pmp_ponderado_calc'] = df_mes['pmp_simples'] * df_mes['valor_l_quido']
+            soma_numerador = df_mes['pmp_ponderado_calc'].sum()
+            soma_denominador = df_mes['valor_l_quido'].sum()
+            pmp_ponderado = (soma_numerador / soma_denominador) if soma_denominador > 0 else 0.0
+        else:
+            pmp_ponderado = 0.0
+        
+        # Nome do mês em português
+        data_ref = df_mes['data_do_pagamento'].iloc[0]
+        meses_pt = [
+            'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+            'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+        ]
+        mes_nome_pt = f"{meses_pt[data_ref.month - 1]} {data_ref.year}"
+        
+        resultados.append({
+            'Mês': mes_nome_pt,
+            'Meta': 38,  # Meta fixa de 38 dias
+            'Real': round(pmp_ponderado, 2)
+        })
+    
+    df_resultado = pd.DataFrame(resultados)
+    
+    # Ordenar por data (usando o primeiro dia do mês para ordenação)
+    if not df_resultado.empty:
+        df_resultado['_ordem'] = pd.to_datetime(df_resultado['Mês'], format='%B %Y', errors='coerce')
+        df_resultado = df_resultado.sort_values('_ordem').drop(columns=['_ordem'])
+        df_resultado = df_resultado.reset_index(drop=True)
+    
+    return df_resultado
+
+
+@st.cache_data(ttl=3600, show_spinner=True)  # Cache por 1 hora (dados atualizados semanalmente)
 def load_pedidos_compras_leadtime(
     data_inicio: Optional[str] = None,
     data_fim: Optional[str] = None,
@@ -890,6 +1040,55 @@ def render_leadtime_tab(
 
 
 
+def render_pmp_tab(
+    data_inicio: Optional[datetime] = None,
+    data_fim: Optional[datetime] = None,
+):
+    """Renderiza a aba de PMP (Prazo Médio de Pagamento)."""
+    st.subheader("💰 Prazo Médio de Pagamento (PMP)")
+    
+    st.info("Esta página é atualizada **semanalmente**.")
+    st.caption("Análise de PMP ponderado por mês | Fonte: planilhas.contas_pagas")
+    
+    # Carregar dados
+    with st.spinner("Carregando dados de contas pagas..."):
+        df_pmp = load_contas_pagas_pmp(
+            data_inicio=data_inicio.strftime('%Y-%m-%d') if data_inicio else None,
+            data_fim=data_fim.strftime('%Y-%m-%d') if data_fim else None,
+        )
+    
+    if df_pmp.empty:
+        st.warning("⚠️ Nenhum dado encontrado para os filtros selecionados.")
+        st.info("💡 Verifique se a tabela 'planilhas.main.contas_pagas' existe e possui dados.")
+        return
+    
+    # Calcular PMP ponderado mensal
+    df_pmp_mensal = calcular_pmp_ponderado_mensal(df_pmp)
+    
+    if df_pmp_mensal.empty:
+        st.info("ℹ️ Nenhum dado mensal disponível para os filtros selecionados.")
+        return
+    
+    # Exibir tabela simples: Meta vs Real
+    st.subheader("PMP")
+    
+    # Formatar valores para exibição
+    df_exibicao = df_pmp_mensal.copy()
+    df_exibicao['Meta'] = df_exibicao['Meta'].astype(int)
+    df_exibicao['Real'] = df_exibicao['Real'].apply(lambda x: f"{x:.1f}" if pd.notna(x) else "-")
+    
+    st.dataframe(
+        df_exibicao,
+        use_container_width=True,
+        hide_index=True,
+        column_config={
+            "Mês": st.column_config.TextColumn("Mês", width="medium"),
+            "Meta": st.column_config.NumberColumn("Meta", width="small", format="%d"),
+            "Real": st.column_config.TextColumn("Real", width="small"),
+        }
+    )
+
+
 def render_compras_dashboard(
     *,
     show_title: bool = True,
@@ -1053,10 +1252,11 @@ def render_compras_dashboard(
     st.subheader("📈 Análises Detalhadas")
     
     # Tabs para diferentes análises
-    tab1, tab2, tab3 = st.tabs([
+    tab1, tab2, tab3, tab4 = st.tabs([
         "📊 Análises Detalhadas",
         "⚠️ Pedidos Atrasados",
-        "⏱️ Lead Time"
+        "⏱️ Lead Time",
+        "💰 PMP"
     ])
     
     with tab1:
@@ -1361,6 +1561,16 @@ def render_compras_dashboard(
         except Exception as e:
             st.error(f"❌ Erro ao carregar dados de Lead Time: {str(e)}")
             st.info("💡 Verifique se a tabela 'planilhas.main.relacao_de_pedidos_de_compras' existe e possui dados.")
+            import traceback
+            with st.expander("Detalhes do erro"):
+                st.code(traceback.format_exc())
+    
+    with tab4:
+        try:
+            render_pmp_tab(data_inicio, data_fim)
+        except Exception as e:
+            st.error(f"❌ Erro ao carregar dados de PMP: {str(e)}")
+            st.info("💡 Verifique se a tabela 'planilhas.main.contas_pagas' existe e possui dados.")
             import traceback
             with st.expander("Detalhes do erro"):
                 st.code(traceback.format_exc())
