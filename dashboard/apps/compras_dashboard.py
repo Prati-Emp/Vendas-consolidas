@@ -329,7 +329,11 @@ def calcular_pmp_ponderado_mensal(df: pd.DataFrame) -> pd.DataFrame:
     """
     Calcula PMP Ponderado agrupado por mês.
     
-    Fórmula: PMP Ponderado = SUMX(PMP simples * Valor líquido) / SUM(Valor líquido)
+    Fórmula conforme Power BI:
+    - PMP simples = Data do pagamento - Data emissão
+    - PMP Ponderado = SUMX(PMP simples * Valor líquido) / SUM(Valor líquido)
+    
+    IMPORTANTE: Agrupa por data_do_pagamento (data de pagamento), que é a referência principal.
     
     Args:
         df: DataFrame com dados de contas pagas (deve ter colunas: data_do_pagamento, pmp_simples, valor_l_quido)
@@ -340,7 +344,8 @@ def calcular_pmp_ponderado_mensal(df: pd.DataFrame) -> pd.DataFrame:
     if df.empty or 'data_do_pagamento' not in df.columns:
         return pd.DataFrame(columns=['Mês', 'Meta', 'Real'])
     
-    # Criar coluna de mês/ano baseada em data_do_pagamento
+    # Criar coluna de mês/ano baseada em data_do_pagamento (data de pagamento)
+    # Esta é a coluna de referência conforme especificado
     df['mes_ano'] = df['data_do_pagamento'].dt.to_period('M')
     
     # Calcular PMP ponderado por mês
@@ -362,7 +367,7 @@ def calcular_pmp_ponderado_mensal(df: pd.DataFrame) -> pd.DataFrame:
         else:
             pmp_ponderado = 0.0
         
-        # Nome do mês em português
+        # Nome do mês em português (baseado na data de pagamento)
         data_ref = df_mes['data_do_pagamento'].iloc[0]
         meses_pt = [
             'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -373,7 +378,7 @@ def calcular_pmp_ponderado_mensal(df: pd.DataFrame) -> pd.DataFrame:
         resultados.append({
             'Mês': mes_nome_pt,
             'Meta': 38,  # Meta fixa de 38 dias
-            'Real': round(pmp_ponderado, 2)
+            'Real': round(pmp_ponderado)  # Arredondar para inteiro como no Power BI
         })
     
     df_resultado = pd.DataFrame(resultados)
@@ -861,6 +866,22 @@ def get_last_update_leadtime() -> Optional[str]:
     return None
 
 
+@st.cache_data(ttl=3600)
+def get_last_update_pmp() -> Optional[str]:
+    """Obtém data da última carga de contas pagas."""
+    try:
+        md_conn = get_md_connection_planilhas()
+        # Tentar obter a maior data de ingestão se existir a coluna _ingested_at
+        sql = "SELECT MAX(_ingested_at) as last_update FROM planilhas.main.contas_pagas"
+        df = md_conn.execute(sql).df()
+        if not df.empty and df['last_update'].iloc[0]:
+             dt = pd.to_datetime(df['last_update'].iloc[0])
+             return dt.strftime("%d/%m/%Y")
+    except:
+        pass
+    return None
+
+
 def render_leadtime_tab(
     data_inicio: Optional[datetime], 
     data_fim: Optional[datetime],
@@ -1047,7 +1068,9 @@ def render_pmp_tab(
     """Renderiza a aba de PMP (Prazo Médio de Pagamento)."""
     st.subheader("💰 Prazo Médio de Pagamento (PMP)")
     
-    st.info("Esta página é atualizada **semanalmente**.")
+    last_update = get_last_update_pmp()
+    last_update_msg = f" Última carga conhecida: **{last_update}**." if last_update else ""
+    st.info(f"Esta página é atualizada **semanalmente**.{last_update_msg}")
     st.caption("Análise de PMP ponderado por mês | Fonte: planilhas.contas_pagas")
     
     # Carregar dados
@@ -1075,7 +1098,7 @@ def render_pmp_tab(
     # Formatar valores para exibição
     df_exibicao = df_pmp_mensal.copy()
     df_exibicao['Meta'] = df_exibicao['Meta'].astype(int)
-    df_exibicao['Real'] = df_exibicao['Real'].apply(lambda x: f"{x:.1f}" if pd.notna(x) else "-")
+    df_exibicao['Real'] = df_exibicao['Real'].apply(lambda x: f"{int(x)}" if pd.notna(x) else "-")
     
     st.dataframe(
         df_exibicao,
