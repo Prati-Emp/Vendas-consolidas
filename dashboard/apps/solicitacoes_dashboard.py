@@ -1107,6 +1107,23 @@ def render_solicitacoes_dashboard(*, show_title: bool = True, show_caption: bool
         f"Última carga conhecida: **{last_update_label}**."
     )
 
+    # Informação sobre conceitos de solicitações
+    with st.expander("ℹ️ **Entenda os conceitos utilizados neste dashboard**", expanded=True):
+        st.markdown("""
+        **📋 Solicitação Atendida:**
+        Uma solicitação é considerada **atendida** quando ela se tornou um **pedido de compras**. 
+        Isso significa que a solicitação foi processada e convertida em um pedido formal junto aos fornecedores.
+        
+        **📝 Solicitação Aberta:**
+        Uma solicitação é considerada **aberta** quando ela ainda **não se tornou um pedido de compras** 
+        ou ainda não foi convertida em pedido. Essas solicitações estão aguardando processamento ou 
+        ainda estão em análise pelo time de compras.
+        
+        **💡 Importante:**
+        Todos os gráficos e análises deste dashboard trabalham principalmente com essas duas categorias 
+        (Abertas e Atendidas) para fornecer uma visão clara do status das demandas de compras.
+        """)
+
     start_default, end_default = _default_period(prepared_df)
     with st.sidebar:
         st.header("Filtros - Solicitação de Compras")
