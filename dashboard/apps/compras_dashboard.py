@@ -706,9 +706,9 @@ def calcular_indicadores_leadtime_mensal(df: pd.DataFrame) -> pd.DataFrame:
         df: DataFrame com dados de pedidos de compras
         
     Returns:
-        DataFrame com colunas: Mês, % Comprado no Prazo, Lead Time Ponderado, Tempo Atraso Médio Ponderado, Tempo de Atraso Médio
+        DataFrame com colunas: Mês, % Comprado no Prazo, Lead Time Ponderado, Tempo de Atraso Médio, Tempo Atraso Médio Ponderado
     """
-    colunas_retorno = ['Mês', '% Comprado no Prazo', 'Lead Time Ponderado', 'Tempo Atraso Médio Ponderado', 'Tempo de Atraso Médio']
+    colunas_retorno = ['Mês', '% Comprado no Prazo', 'Lead Time Ponderado', 'Tempo de Atraso Médio', 'Tempo Atraso Médio Ponderado']
     
     if df.empty:
         return pd.DataFrame(columns=colunas_retorno)
@@ -788,8 +788,8 @@ def calcular_indicadores_leadtime_mensal(df: pd.DataFrame) -> pd.DataFrame:
             'Mês': mes_nome_pt,
             '% Comprado no Prazo': percentual_no_prazo,
             'Lead Time Ponderado': lead_time_ponderado,
-            'Tempo Atraso Médio Ponderado': tempo_atraso_medio_ponderado,
-            'Tempo de Atraso Médio': tempo_atraso_medio_simples
+            'Tempo de Atraso Médio': tempo_atraso_medio_simples,
+            'Tempo Atraso Médio Ponderado': tempo_atraso_medio_ponderado
         })
     
     df_resultado = pd.DataFrame(resultados)
@@ -1055,12 +1055,12 @@ def render_leadtime_tab(
         if 'Tempo de Atraso Médio' in df_exibicao.columns:
             df_exibicao['Tempo de Atraso Médio'] = df_exibicao['Tempo de Atraso Médio'].apply(lambda x: f"{x:.2f} dias" if x > 0 else "-")
         
-        # Ordenar colunas: Mês, % Comprado no Prazo, Lead Time Ponderado, Tempo Atraso Médio Ponderado, Tempo de Atraso Médio
+        # Ordenar colunas: Mês, % Comprado no Prazo, Lead Time Ponderado, Tempo de Atraso Médio, Tempo Atraso Médio Ponderado
         colunas_ordenadas = ['Mês', '% Comprado no Prazo', 'Lead Time Ponderado']
-        if 'Tempo Atraso Médio Ponderado' in df_exibicao.columns:
-            colunas_ordenadas.append('Tempo Atraso Médio Ponderado')
         if 'Tempo de Atraso Médio' in df_exibicao.columns:
             colunas_ordenadas.append('Tempo de Atraso Médio')
+        if 'Tempo Atraso Médio Ponderado' in df_exibicao.columns:
+            colunas_ordenadas.append('Tempo Atraso Médio Ponderado')
         
         st.dataframe(
             df_exibicao[colunas_ordenadas],
