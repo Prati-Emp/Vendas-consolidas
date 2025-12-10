@@ -207,16 +207,23 @@ def calcular_indicadores(df: pd.DataFrame) -> Dict[str, Any]:
 
 
 def formatar_moeda(valor: float) -> str:
-    """Formata valor como moeda brasileira."""
+    """Formata valor como moeda brasileira com unidades (milhões, mil, etc.)."""
     if pd.isna(valor) or valor == 0:
         return "R$ 0,00"
-    # Formatar com separador de milhares e decimais brasileiros
-    valor_str = f"{valor:,.2f}"
-    # Separar parte inteira e decimal
-    partes = valor_str.split('.')
-    parte_inteira = partes[0].replace(',', '.')
-    parte_decimal = partes[1] if len(partes) > 1 else '00'
-    return f"R$ {parte_inteira},{parte_decimal}"
+    
+    # Valores em milhões
+    if abs(valor) >= 1_000_000:
+        valor_formatado = valor / 1_000_000
+        # Formatar com 2 casas decimais, usando vírgula como separador decimal
+        return f"R$ {valor_formatado:,.2f}M".replace(",", "X").replace(".", ",").replace("X", ".")
+    # Valores em mil
+    elif abs(valor) >= 1_000:
+        valor_formatado = valor / 1_000
+        # Formatar com 2 casas decimais, usando vírgula como separador decimal
+        return f"R$ {valor_formatado:,.2f} mil".replace(",", "X").replace(".", ",").replace("X", ".")
+    # Valores menores que mil
+    else:
+        return f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 
 def formatar_percentual(valor: float) -> str:
