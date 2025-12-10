@@ -416,6 +416,9 @@ def render_responsavel_section(df: pd.DataFrame):
     """Mostra desempenho e carga por responsável."""
     st.subheader("Responsáveis monitorados")
 
+    # Filtrar apenas tarefas "Em Andamento" para calcular "no_prazo"
+    df_em_andamento = df[df["status_tarefas"] == "Em Andamento"].copy()
+    
     resumo = (
         df.groupby("responsavel")
         .agg(
@@ -425,8 +428,25 @@ def render_responsavel_section(df: pd.DataFrame):
         )
         .reset_index()
     )
-
-    resumo["no_prazo"] = resumo["tarefas"] - resumo["atrasadas"]
+    
+    # Calcular "no_prazo" apenas para tarefas "Em Andamento" que não estão atrasadas
+    resumo_em_andamento = (
+        df_em_andamento.groupby("responsavel")
+        .agg(
+            em_andamento_total=("chave", "count"),
+            em_andamento_atrasadas=("esta_atrasada", "sum"),
+        )
+        .reset_index()
+    )
+    resumo_em_andamento["no_prazo"] = resumo_em_andamento["em_andamento_total"] - resumo_em_andamento["em_andamento_atrasadas"]
+    
+    # Mesclar com o resumo principal
+    resumo = resumo.merge(
+        resumo_em_andamento[["responsavel", "no_prazo"]],
+        on="responsavel",
+        how="left"
+    )
+    resumo["no_prazo"] = resumo["no_prazo"].fillna(0).astype(int)
     top10 = resumo.sort_values("tarefas", ascending=False).head(10)
 
     if top10.empty:
@@ -434,12 +454,15 @@ def render_responsavel_section(df: pd.DataFrame):
         return
 
     chart_data = top10.copy()
-    max_total = max(chart_data["tarefas"].max(), 1)
+    # Calcular total para o gráfico: no_prazo (apenas "Em Andamento") + atrasadas (todas)
+    # Nota: "no_prazo" agora considera apenas "Em Andamento", mas "atrasadas" mantém todas as tarefas atrasadas
+    chart_data["total_grafico"] = chart_data["no_prazo"] + chart_data["atrasadas"]
+    max_total = max(chart_data["total_grafico"].max(), 1)
 
     # Criar gráfico de barras empilhadas
     fig = go.Figure()
 
-    # Barra de Atrasadas (Vermelho)
+    # Barra de Atrasadas (Vermelho) - todas as tarefas atrasadas (mantém como estava)
     fig.add_trace(go.Bar(
         name="Atrasadas",
         y=top10["responsavel"],
@@ -452,7 +475,7 @@ def render_responsavel_section(df: pd.DataFrame):
         textfont=dict(color="white")
     ))
 
-    # Barra No Prazo (Azul Escuro)
+    # Barra No Prazo (Azul Escuro) - apenas tarefas "Em Andamento" no prazo
     fig.add_trace(go.Bar(
         name="No prazo",
         y=top10["responsavel"],
@@ -467,10 +490,11 @@ def render_responsavel_section(df: pd.DataFrame):
 
     # Adicionar totais ao lado direito das barras
     for _, row in chart_data.iterrows():
+        total_grafico = row["no_prazo"] + row["atrasadas"]
         fig.add_annotation(
-            x=row["tarefas"] + max_total * 0.02,
+            x=total_grafico + max_total * 0.02,
             y=row["responsavel"],
-            text=str(row["tarefas"]),
+            text=str(total_grafico),
             xanchor="left",
             yanchor="middle",
             showarrow=False,
