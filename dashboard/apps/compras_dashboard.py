@@ -584,10 +584,9 @@ def calcular_indicadores_leadtime(df: pd.DataFrame) -> Dict[str, Any]:
                
     total_itens_entregues = len(df_analise)
     
-    # 1. % Comprado no Prazo (-2 dias)
-    # Descontar 2 dias da data_entregue para considerar tempo de lançamento
-    df_analise['data_entregue_ajustada'] = df_analise['data_entregue'] - timedelta(days=2)
-    df_analise['entregue_no_prazo'] = df_analise['data_entregue_ajustada'] <= df_analise['data_prevista']
+    # 1. % Comprado no Prazo
+    # Compara data_entregue diretamente com data_prevista (sem desconto de dias)
+    df_analise['entregue_no_prazo'] = df_analise['data_entregue'] <= df_analise['data_prevista']
     
     itens_no_prazo = df_analise['entregue_no_prazo'].sum()
     percentual_no_prazo = (itens_no_prazo / total_itens_entregues * 100) if total_itens_entregues > 0 else 0.0
@@ -611,11 +610,11 @@ def calcular_indicadores_leadtime(df: pd.DataFrame) -> Dict[str, Any]:
         lead_time_ponderado = lead_time_comum_medio
     
     # 4. Tempo de Atraso
-    # Se não entregue no prazo: (data_entregue - 2 dias) - data_prevista
+    # Se não entregue no prazo: data_entregue - data_prevista
     df_atrasados = df_analise[~df_analise['entregue_no_prazo']].copy()
     if not df_atrasados.empty:
-        # Usar data_entregue_ajustada (-2 dias) para calcular o atraso real considerando a regra de negocio
-        df_atrasados['tempo_atraso'] = (df_atrasados['data_entregue_ajustada'] - df_atrasados['data_prevista']).dt.days
+        # Calcular o atraso usando data_entregue diretamente
+        df_atrasados['tempo_atraso'] = (df_atrasados['data_entregue'] - df_atrasados['data_prevista']).dt.days
         tempo_atraso_medio = df_atrasados['tempo_atraso'].mean()
     else:
         tempo_atraso_medio = 0.0
@@ -666,8 +665,7 @@ def calcular_indicadores_leadtime_mensal(df: pd.DataFrame) -> pd.DataFrame:
     df_com_entrega['mes_nome'] = df_com_entrega['data_entregue'].dt.strftime('%Y-%m')
     
     # Preparar cálculos
-    df_com_entrega['data_entregue_ajustada'] = df_com_entrega['data_entregue'] - timedelta(days=2)
-    df_com_entrega['entregue_no_prazo'] = df_com_entrega['data_entregue_ajustada'] <= df_com_entrega['data_prevista']
+    df_com_entrega['entregue_no_prazo'] = df_com_entrega['data_entregue'] <= df_com_entrega['data_prevista']
     df_com_entrega['lead_time_comum'] = (df_com_entrega['data_entregue'] - df_com_entrega['data_pedido']).dt.days
     
     col_valor = 'total_l_quido_insumo' if 'total_l_quido_insumo' in df_com_entrega.columns else \
@@ -699,7 +697,7 @@ def calcular_indicadores_leadtime_mensal(df: pd.DataFrame) -> pd.DataFrame:
         # 3. Tempo de Atraso Médio
         df_atrasados_mes = df_mes[~df_mes['entregue_no_prazo']].copy()
         if not df_atrasados_mes.empty:
-            df_atrasados_mes['tempo_atraso'] = (df_atrasados_mes['data_entregue_ajustada'] - df_atrasados_mes['data_prevista']).dt.days
+            df_atrasados_mes['tempo_atraso'] = (df_atrasados_mes['data_entregue'] - df_atrasados_mes['data_prevista']).dt.days
             tempo_atraso_medio = df_atrasados_mes['tempo_atraso'].mean()
         else:
             tempo_atraso_medio = 0.0
@@ -742,8 +740,7 @@ def calcular_indicadores_leadtime_por(df: pd.DataFrame, group_col: str, col_labe
         return pd.DataFrame(columns=[col_label, '% Comprado no Prazo', 'Lead Time Ponderado', 'Tempo de Atraso Médio'])
 
     # Preparar colunas auxiliares
-    df_com_entrega['data_entregue_ajustada'] = df_com_entrega['data_entregue'] - timedelta(days=2)
-    df_com_entrega['entregue_no_prazo'] = df_com_entrega['data_entregue_ajustada'] <= df_com_entrega['data_prevista']
+    df_com_entrega['entregue_no_prazo'] = df_com_entrega['data_entregue'] <= df_com_entrega['data_prevista']
     df_com_entrega['lead_time_comum'] = (df_com_entrega['data_entregue'] - df_com_entrega['data_pedido']).dt.days
 
     col_valor = 'total_l_quido_insumo' if 'total_l_quido_insumo' in df_com_entrega.columns else \
@@ -768,7 +765,7 @@ def calcular_indicadores_leadtime_por(df: pd.DataFrame, group_col: str, col_labe
 
         df_atrasados = df_grupo[~df_grupo['entregue_no_prazo']].copy()
         if not df_atrasados.empty:
-            df_atrasados['tempo_atraso'] = (df_atrasados['data_entregue_ajustada'] - df_atrasados['data_prevista']).dt.days
+            df_atrasados['tempo_atraso'] = (df_atrasados['data_entregue'] - df_atrasados['data_prevista']).dt.days
             tempo_atraso_medio = df_atrasados['tempo_atraso'].mean()
         else:
             tempo_atraso_medio = 0.0
@@ -798,8 +795,7 @@ def calcular_indicadores_leadtime_por_obra_mes(df: pd.DataFrame) -> pd.DataFrame
         return pd.DataFrame(columns=['Obra', 'Mês', '% Comprado no Prazo', 'Lead Time Ponderado', 'Tempo de Atraso Médio'])
 
     # Colunas auxiliares
-    df_com_entrega['data_entregue_ajustada'] = df_com_entrega['data_entregue'] - timedelta(days=2)
-    df_com_entrega['entregue_no_prazo'] = df_com_entrega['data_entregue_ajustada'] <= df_com_entrega['data_prevista']
+    df_com_entrega['entregue_no_prazo'] = df_com_entrega['data_entregue'] <= df_com_entrega['data_prevista']
     df_com_entrega['lead_time_comum'] = (df_com_entrega['data_entregue'] - df_com_entrega['data_pedido']).dt.days
     df_com_entrega['mes_ano'] = df_com_entrega['data_entregue'].dt.to_period('M')
 
@@ -825,7 +821,7 @@ def calcular_indicadores_leadtime_por_obra_mes(df: pd.DataFrame) -> pd.DataFrame
 
         df_atras = df_g[~df_g['entregue_no_prazo']].copy()
         if not df_atras.empty:
-            df_atras['tempo_atraso'] = (df_atras['data_entregue_ajustada'] - df_atras['data_prevista']).dt.days
+            df_atras['tempo_atraso'] = (df_atras['data_entregue'] - df_atras['data_prevista']).dt.days
             tempo_atraso_medio = df_atras['tempo_atraso'].mean()
         else:
             tempo_atraso_medio = 0.0
