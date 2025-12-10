@@ -1213,6 +1213,7 @@ def render_compras_dashboard(
     st.markdown("---")
     st.subheader("📊 Indicadores Principais")
     
+    # Primeira linha: Valor de Compras, Total de Pedidos, Valor Médio por Pedido, Valor de Descontos
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
@@ -1224,44 +1225,36 @@ def render_compras_dashboard(
     
     with col2:
         st.metric(
-            "Valor de Descontos",
-            formatar_moeda(indicadores['valor_descontos']),
-            help="Soma total de descontos aplicados"
-        )
-    
-    with col3:
-        st.metric(
-            "% de Desconto",
-            formatar_percentual(indicadores['percentual_desconto']),
-            help="Percentual de desconto em relação ao valor total dos pedidos"
-        )
-    
-    with col4:
-        st.metric(
             "Total de Pedidos",
             f"{indicadores['total_pedidos']:,}",
             help="Quantidade total de pedidos de compra"
         )
     
-    # Seção 2: KPIs Secundários
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        st.metric(
-            "Pedidos Atrasados",
-            f"{indicadores['pedidos_atrasados']:,}",
-            f"{formatar_percentual(indicadores['percentual_atrasados'])}",
-            help="Quantidade e percentual de pedidos atrasados"
-        )
-    
-    with col2:
+    with col3:
         st.metric(
             "Valor Médio por Pedido",
             formatar_moeda(indicadores['valor_medio_pedido']),
             help="Valor médio de cada pedido de compra"
         )
     
-    with col3:
+    with col4:
+        st.metric(
+            "Valor de Descontos",
+            formatar_moeda(indicadores['valor_descontos']),
+            help="Soma total de descontos aplicados"
+        )
+    
+    # Segunda linha: % de Desconto, Pedidos Entregues, Pedidos Atrasados
+    col5, col6, col7 = st.columns(3)
+    
+    with col5:
+        st.metric(
+            "% de Desconto",
+            formatar_percentual(indicadores['percentual_desconto']),
+            help="Percentual de desconto em relação ao valor total dos pedidos"
+        )
+    
+    with col6:
         # Calcular % comprado no prazo (-2 dias)
         # Por enquanto, vamos usar o status para determinar
         if 'Status' in df.columns:
@@ -1276,6 +1269,14 @@ def render_compras_dashboard(
             )
         else:
             st.metric("Pedidos Entregues", "—", help="Dados não disponíveis")
+    
+    with col7:
+        st.metric(
+            "Pedidos Atrasados",
+            f"{indicadores['pedidos_atrasados']:,}",
+            f"{formatar_percentual(indicadores['percentual_atrasados'])}",
+            help="Quantidade e percentual de pedidos atrasados"
+        )
     
     # Seção 3: Análises Adicionais
     st.markdown("---")
