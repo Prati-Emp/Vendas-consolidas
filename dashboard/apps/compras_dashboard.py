@@ -924,7 +924,7 @@ def render_leadtime_tab(
         st.metric(
             "% Comprado no Prazo",
             formatar_percentual(indicadores['percentual_no_prazo']),
-            help="Percentual de itens entregues no prazo (considerando -2 dias para lançamento)"
+            help="Percentual de itens entregues no prazo (data_entregue <= data_prevista)"
         )
     
     with col2:
@@ -1251,7 +1251,7 @@ def render_compras_dashboard(
         )
     
     with col6:
-        # Calcular % comprado no prazo (-2 dias)
+        # Calcular % comprado no prazo
         # Por enquanto, vamos usar o status para determinar
         if 'Status' in df.columns:
             status_entregue = df[df['Status'].str.contains('DELIVERED', case=False, na=False)]
