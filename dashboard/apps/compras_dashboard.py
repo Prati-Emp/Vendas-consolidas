@@ -1332,7 +1332,7 @@ def render_compras_dashboard(
         st.metric(
             "Total de Pedidos",
             f"{indicadores['total_pedidos']:,}",
-            help="Quantidade total de pedidos de compra"
+            help="Quantidade total de pedidos de compra (excluindo pedidos cancelados)"
         )
     
     with col3:
@@ -1361,7 +1361,7 @@ def render_compras_dashboard(
     
     with col6:
         st.metric(
-            "Pedidos Entregues",
+            "Pedidos Totalmente Entregues",
             f"{indicadores['pedidos_entregues']:,}",
             f"{formatar_percentual(indicadores['percentual_entregues'])}",
             help="Quantidade e percentual de pedidos totalmente entregues (Status: FULLY_DELIVERED)"
