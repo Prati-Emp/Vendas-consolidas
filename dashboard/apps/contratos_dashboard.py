@@ -573,103 +573,12 @@ def render_contratos_dashboard(
     
     # Tabs para diferentes análises
     tab1, tab2, tab3 = st.tabs([
-        "📊 Por Fornecedor",
         "📅 Por Período",
-        "📋 Por Status"
+        "📋 Por Status",
+        "⏰ Próximos de Terminar"
     ])
     
     with tab1:
-        st.markdown("### 📊 Indicadores por Fornecedor")
-        df_fornecedor = calcular_indicadores_por_fornecedor(df)
-        
-        if not df_fornecedor.empty:
-            # Formatar valores para exibição
-            df_exib = df_fornecedor.copy()
-            df_exib['Valor_Total'] = df_exib['Valor_Total'].apply(formatar_moeda)
-            df_exib['Valor_MaoObra'] = df_exib['Valor_MaoObra'].apply(formatar_moeda)
-            df_exib['Valor_Material'] = df_exib['Valor_Material'].apply(formatar_moeda)
-            
-            st.dataframe(
-                df_exib,
-                use_container_width=True,
-                hide_index=True,
-                column_config={
-                    "Fornecedor": st.column_config.TextColumn("Fornecedor", width="large"),
-                    "Qtd_Contratos": st.column_config.NumberColumn("Qtd. Contratos", format="%d"),
-                    "Valor_Total": st.column_config.TextColumn("Valor Total"),
-                    "Valor_MaoObra": st.column_config.TextColumn("Valor Mão de Obra"),
-                    "Valor_Material": st.column_config.TextColumn("Valor Material"),
-                }
-            )
-            
-            # Gráfico de barras horizontais - Top 10 fornecedores por valor
-            st.markdown("#### Top 10 Fornecedores por Valor Total")
-            df_top10 = df_fornecedor.head(10).sort_values('Valor_Total', ascending=True)
-            
-            # Calcular percentual do valor total
-            valor_total_geral = df_fornecedor['Valor_Total'].sum()
-            df_top10['Percentual'] = (df_top10['Valor_Total'] / valor_total_geral * 100).round(2)
-            
-            fig = go.Figure()
-            
-            # Adicionar barras com percentual dentro
-            max_x = df_top10['Valor_Total'].max()
-            
-            fig.add_trace(go.Bar(
-                y=df_top10['Fornecedor'],
-                x=df_top10['Valor_Total'],
-                orientation='h',
-                marker_color='#1f77b4',
-                marker_line_width=0,
-                text=[f"{p:.2f}%" for p in df_top10['Percentual']],
-                textposition='inside',
-                textfont=dict(color='white', size=12, weight='bold'),
-                name='Valor Total',
-                hovertemplate='<b>%{y}</b><br>Valor: %{x:,.2f}<br>Percentual: %{text}<extra></extra>',
-                width=0.9  # Largura das barras (aumentada)
-            ))
-            
-            # Criar anotações com valores monetários
-            annotations = []
-            for idx, row in df_top10.iterrows():
-                annotations.append(
-                    dict(
-                        xref='x',
-                        yref='y',
-                        x=row['Valor_Total'],
-                        y=row['Fornecedor'],
-                        text=formatar_moeda(row['Valor_Total']),
-                        showarrow=False,
-                        xanchor='left',
-                        xshift=15,
-                        font=dict(color='white', size=11, weight='bold'),
-                        bgcolor='rgba(0,0,0,0.7)',
-                        bordercolor='rgba(255,255,255,0.4)',
-                        borderwidth=1.5,
-                        borderpad=6
-                    )
-                )
-            
-            fig.update_layout(
-                title=None,  # Remover título do gráfico
-                xaxis_title="Valor Total (R$)",
-                yaxis_title=None,  # Remover label do eixo Y
-                height=450,
-                showlegend=False,
-                margin=dict(l=200, r=250, t=20, b=50),  # Reduzir margem superior
-                bargap=0.15,  # Reduzir espaçamento entre barras para barras mais largas
-                xaxis=dict(range=[0, max_x * 1.5]),  # Expandir eixo X para acomodar os valores
-                yaxis={'categoryorder': 'total ascending', 'title': None},  # Remover título do eixo Y
-                annotations=annotations,
-                plot_bgcolor='rgba(0,0,0,0)',
-                paper_bgcolor='rgba(0,0,0,0)'
-            )
-            
-            st.plotly_chart(fig, use_container_width=True)
-        else:
-            st.info("Nenhum dado disponível para análise por fornecedor.")
-    
-    with tab2:
         st.markdown("### 📅 Indicadores por Período")
         df_periodo = calcular_indicadores_por_periodo(df)
         
@@ -736,7 +645,7 @@ def render_contratos_dashboard(
         else:
             st.info("Nenhum dado disponível para análise por período.")
     
-    with tab3:
+    with tab2:
         st.markdown("### 📋 Indicadores por Status")
         df_status = calcular_indicadores_por_status(df)
         
@@ -828,4 +737,136 @@ def render_contratos_dashboard(
             st.plotly_chart(fig, use_container_width=True)
         else:
             st.info("Nenhum dado disponível para análise por status.")
+    
+    with tab3:
+        st.markdown("### ⏰ Contratos Próximos de Terminar")
+        
+        # Selecionar período
+        periodo_selecionado = st.selectbox(
+            "Selecione o período:",
+            options=[30, 60, 90],
+            format_func=lambda x: f"Próximos {x} dias",
+            key="periodo_termino"
+        )
+        
+        # Obter contratos próximos de terminar
+        df_proximos = obter_contratos_proximos_termino(df, periodo_selecionado)
+        
+        if not df_proximos.empty:
+            st.info(f"📊 Encontrados **{len(df_proximos)}** contratos que terminam nos próximos **{periodo_selecionado} dias**")
+            
+            # Preparar dados para exibição
+            df_exib = df_proximos[[
+                'Numero_Contrato',
+                'Fornecedor',
+                'Responsavel',
+                'Status',
+                'Data_Final_Contrato',
+                'Dias_Restantes',
+                'Valor_Total',
+                'Total_MaoObra',
+                'Total_Material',
+                'Objeto'
+            ]].copy()
+            
+            # Formatar datas
+            df_exib['Data_Final_Contrato'] = pd.to_datetime(df_exib['Data_Final_Contrato']).dt.strftime('%d/%m/%Y')
+            
+            # Formatar valores
+            df_exib['Valor_Total'] = df_exib['Valor_Total'].apply(formatar_moeda)
+            df_exib['Total_MaoObra'] = df_exib['Total_MaoObra'].apply(formatar_moeda)
+            df_exib['Total_Material'] = df_exib['Total_Material'].apply(formatar_moeda)
+            
+            # Mapear status
+            status_map = {
+                'PARTIALLY_MEASURED': 'Parcialmente Medido',
+                'COMPLETED': 'Concluído',
+                'RESCINDED': 'Rescindido',
+                'PENDING': 'Pendente',
+                'FULLY_MEASURED': 'Totalmente Medido',
+            }
+            df_exib['Status'] = df_exib['Status'].map(status_map).fillna(df_exib['Status'])
+            
+            # Renomear colunas
+            df_exib.columns = [
+                'Número do Contrato',
+                'Fornecedor',
+                'Responsável',
+                'Status',
+                'Data Final',
+                'Dias Restantes',
+                'Valor Total',
+                'Valor Mão de Obra',
+                'Valor Material',
+                'Objeto'
+            ]
+            
+            # Ordenar por dias restantes
+            df_exib = df_exib.sort_values('Dias Restantes')
+            
+            st.dataframe(
+                df_exib,
+                use_container_width=True,
+                hide_index=True,
+            )
+            
+            # Resumo por faixa de dias (sempre usa 90 dias, independente do filtro)
+            st.markdown("#### 📊 Resumo por Faixa de Dias Restantes")
+            
+            # Explicação didática sobre as faixas
+            with st.expander("ℹ️ Como interpretar esta tabela?", expanded=False):
+                st.markdown("""
+                **📋 O que esta tabela mostra:**
+                
+                Esta tabela agrupa **todos os contratos que vencem nos próximos 90 dias** em faixas de tempo:
+                
+                - **0-15 dias**: Contratos que vencem entre hoje e os próximos 15 dias
+                - **16-30 dias**: Contratos que vencem entre 16 e 30 dias a partir de hoje
+                - **31-60 dias**: Contratos que vencem entre 31 e 60 dias a partir de hoje
+                - **61-90 dias**: Contratos que vencem entre 61 e 90 dias a partir de hoje
+                
+                **💡 Importante:**
+                
+                Esta tabela **não é afetada pelo filtro acima**. Ela sempre mostra todos os contratos 
+                que vencem nos próximos 90 dias, agrupados por faixas. Isso permite ter uma visão 
+                completa de todos os vencimentos, independente do período selecionado na tabela acima.
+                
+                **📊 Na tabela:**
+                
+                Cada linha mostra apenas os contratos daquela faixa específica. Por exemplo:
+                - A linha "0-15 dias" mostra apenas contratos que vencem nos próximos 15 dias
+                - A linha "16-30 dias" mostra apenas contratos que vencem entre 16 e 30 dias
+                
+                Isso permite identificar rapidamente quais contratos precisam de atenção imediata!
+                """)
+            
+            # Obter todos os contratos de até 90 dias para o resumo (independente do filtro)
+            df_resumo_completo = obter_contratos_proximos_termino(df, dias=90)
+            df_resumo = df_resumo_completo.copy()
+            df_resumo['Faixa'] = pd.cut(
+                df_resumo['Dias_Restantes'],
+                bins=[0, 15, 30, 60, 90],
+                labels=['0-15 dias', '16-30 dias', '31-60 dias', '61-90 dias'],
+                include_lowest=True
+            )
+            
+            df_faixa = df_resumo.groupby('Faixa').agg({
+                'Numero_Contrato': 'nunique',
+                'Valor_Total': 'sum'
+            }).reset_index()
+            df_faixa.columns = ['Faixa de Dias', 'Quantidade', 'Valor Total']
+            df_faixa['Valor Total'] = df_faixa['Valor Total'].apply(formatar_moeda)
+            
+            st.dataframe(
+                df_faixa,
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "Faixa de Dias": st.column_config.TextColumn("Faixa de Dias", width="medium"),
+                    "Quantidade": st.column_config.NumberColumn("Quantidade", format="%d"),
+                    "Valor Total": st.column_config.TextColumn("Valor Total"),
+                }
+            )
+        else:
+            st.info(f"✅ Nenhum contrato ativo termina nos próximos {periodo_selecionado} dias.")
 
