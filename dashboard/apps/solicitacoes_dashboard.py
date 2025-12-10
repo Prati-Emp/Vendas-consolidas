@@ -1224,14 +1224,14 @@ def render_solicitacoes_dashboard(*, show_title: bool = True, show_caption: bool
         help="Tempo médio entre Solicitação e Autorização.",
     )
     col11.metric(
-        "Tempo Compra (dias)",
+        "Tempo P. de compra (dias)",
         _format_float(kpis["tempo_compra"]),
-        help="Tempo médio entre Autorização e quando a solicitação se torna pedido de compra.",
+        help="Tempo médio entre solicitação e pedido de compra.",
     )
     col12.metric(
         "Lead time Total (dias)",
         _format_float(kpis["lead_time_medio"]),
-        help="Tempo total médio entre Solicitação e quando a solicitação se torna pedido de compra. Considera apenas solicitações atendidas.",
+        help="Tempo médio entre solicitação e pedido de compra. Considera apenas solicitações atendidas.",
     )
 
     st.markdown("---")
