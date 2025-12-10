@@ -461,8 +461,13 @@ def render_responsavel_section(df: pd.DataFrame):
     )
     resumo["no_prazo"] = resumo["no_prazo"].fillna(0).astype(int)
     
-    # Ordenar por total de tarefas e mostrar TODOS os responsáveis (não apenas top 10)
-    resumo_ordenado = resumo.sort_values("tarefas", ascending=False)
+    # Filtrar apenas responsáveis que tenham tarefas "Em Andamento" ou "Atrasada" (atividades atribuídas)
+    # Ou seja, no_prazo + atrasadas > 0
+    resumo["total_atividades_atribuidas"] = resumo["no_prazo"] + resumo["atrasadas"]
+    resumo_filtrado = resumo[resumo["total_atividades_atribuidas"] > 0].copy()
+    
+    # Ordenar por total de tarefas e mostrar TODOS os responsáveis com atividades atribuídas
+    resumo_ordenado = resumo_filtrado.sort_values("tarefas", ascending=False)
 
     if resumo_ordenado.empty:
         st.info("Não há responsáveis com tarefas no filtro atual.")
@@ -541,7 +546,7 @@ def render_responsavel_section(df: pd.DataFrame):
 
     st.plotly_chart(fig, use_container_width=True)
 
-    # Preparar dados para exibição na tabela
+    # Preparar dados para exibição na tabela (aplicar o mesmo filtro do gráfico)
     df_tabela = chart_data[["responsavel", "tarefas", "atrasadas", "no_prazo", "proximas"]].copy()
     df_tabela["total_grafico"] = df_tabela["no_prazo"] + df_tabela["atrasadas"]
     df_tabela["atraso_pct"] = (
@@ -550,6 +555,7 @@ def render_responsavel_section(df: pd.DataFrame):
         .map(lambda v: f"{v:.0%}" if v > 0 else "0%")
     )
     
+    # A tabela já está filtrada porque usa chart_data que vem de resumo_ordenado (já filtrado)
     st.dataframe(
         df_tabela[["responsavel", "tarefas", "atrasadas", "no_prazo", "proximas", "atraso_pct"]],
         hide_index=True,
