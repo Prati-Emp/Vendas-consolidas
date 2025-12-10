@@ -1275,11 +1275,10 @@ def render_compras_dashboard(
     st.subheader("📈 Análises Detalhadas")
     
     # Tabs para diferentes análises
-    tab1, tab2, tab3, tab4 = st.tabs([
+    tab1, tab2, tab3 = st.tabs([
         "📊 Análises Detalhadas",
         "⚠️ Pedidos Atrasados",
-        "⏱️ Lead Time",
-        "💰 PMP"
+        "⏱️ Lead Time"
     ])
     
     with tab1:
@@ -1584,16 +1583,6 @@ def render_compras_dashboard(
         except Exception as e:
             st.error(f"❌ Erro ao carregar dados de Lead Time: {str(e)}")
             st.info("💡 Verifique se a tabela 'planilhas.main.relacao_de_pedidos_de_compras' existe e possui dados.")
-            import traceback
-            with st.expander("Detalhes do erro"):
-                st.code(traceback.format_exc())
-    
-    with tab4:
-        try:
-            render_pmp_tab(data_inicio, data_fim)
-        except Exception as e:
-            st.error(f"❌ Erro ao carregar dados de PMP: {str(e)}")
-            st.info("💡 Verifique se a tabela 'planilhas.main.contas_pagas' existe e possui dados.")
             import traceback
             with st.expander("Detalhes do erro"):
                 st.code(traceback.format_exc())
