@@ -182,10 +182,23 @@ def get_unique_responsaveis(data_inicio: Optional[str] = None, data_fim: Optiona
 
 
 def formatar_moeda(valor: float) -> str:
-    """Formata valor como moeda brasileira."""
+    """Formata valor como moeda brasileira com unidades (milhões, mil, etc.)."""
     if pd.isna(valor) or valor == 0:
         return "R$ 0,00"
-    return f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    
+    # Valores em milhões
+    if abs(valor) >= 1_000_000:
+        valor_formatado = valor / 1_000_000
+        # Formatar com 2 casas decimais, usando vírgula como separador decimal
+        return f"R$ {valor_formatado:,.2f}M".replace(",", "X").replace(".", ",").replace("X", ".")
+    # Valores em mil
+    elif abs(valor) >= 1_000:
+        valor_formatado = valor / 1_000
+        # Formatar com 2 casas decimais, usando vírgula como separador decimal
+        return f"R$ {valor_formatado:,.2f} mil".replace(",", "X").replace(".", ",").replace("X", ".")
+    # Valores menores que mil
+    else:
+        return f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 
 def calcular_indicadores(df: pd.DataFrame) -> Dict[str, Any]:
@@ -471,6 +484,7 @@ def render_contratos_dashboard(
     st.markdown("---")
     st.subheader("📊 Indicadores Principais")
     
+    # Primeira linha: Total de Contratos e Contratos Ativos
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
@@ -482,54 +496,33 @@ def render_contratos_dashboard(
     
     with col2:
         st.metric(
+            "Contratos Ativos",
+            f"{indicadores['contratos_ativos']:,}",
+            help="Contratos em andamento (não concluídos nem rescindidos)"
+        )
+    
+    with col3:
+        st.metric(
             "Valor Total",
             formatar_moeda(indicadores['valor_total']),
             help="Soma de todos os valores (Mão de Obra + Material)"
         )
     
-    with col3:
+    with col4:
         st.metric(
             "Valor Mão de Obra",
             formatar_moeda(indicadores['valor_mao_obra']),
             help="Soma dos valores de mão de obra"
         )
     
-    with col4:
-        st.metric(
-            "Valor Material",
-            formatar_moeda(indicadores['valor_material']),
-            help="Soma dos valores de material"
-        )
-    
-    # Segunda linha de KPIs
+    # Segunda linha: Valor Material
     col5, col6, col7, col8 = st.columns(4)
     
     with col5:
         st.metric(
-            "Contratos Únicos",
-            f"{indicadores['contratos_unicos']:,}",
-            help="Quantidade de números de contrato distintos"
-        )
-    
-    with col6:
-        st.metric(
-            "Fornecedores",
-            f"{indicadores['fornecedores_unicos']:,}",
-            help="Quantidade de fornecedores distintos"
-        )
-    
-    with col7:
-        st.metric(
-            "Contratos Aprovados",
-            f"{indicadores['contratos_aprovados']:,}",
-            help="Contratos com status APPROVED"
-        )
-    
-    with col8:
-        st.metric(
-            "Contratos Ativos",
-            f"{indicadores['contratos_ativos']:,}",
-            help="Contratos em andamento (não concluídos nem rescindidos)"
+            "Valor Material",
+            formatar_moeda(indicadores['valor_material']),
+            help="Soma dos valores de material"
         )
     
     # Terceira linha de KPIs - Prazos
