@@ -484,8 +484,8 @@ def render_contratos_dashboard(
     st.markdown("---")
     st.subheader("📊 Indicadores Principais")
     
-    # Primeira linha: Total de Contratos e Contratos Ativos
-    col1, col2, col3, col4 = st.columns(4)
+    # Todos os cards na mesma linha
+    col1, col2, col3, col4, col5 = st.columns(5)
     
     with col1:
         st.metric(
@@ -514,9 +514,6 @@ def render_contratos_dashboard(
             formatar_moeda(indicadores['valor_mao_obra']),
             help="Soma dos valores de mão de obra"
         )
-    
-    # Segunda linha: Valor Material
-    col5, col6, col7, col8 = st.columns(4)
     
     with col5:
         st.metric(
