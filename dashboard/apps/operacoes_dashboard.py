@@ -416,25 +416,48 @@ def render_responsavel_section(df: pd.DataFrame):
     """Mostra desempenho e carga por responsável."""
     st.subheader("Responsáveis monitorados")
 
-    # Filtrar apenas tarefas "Em Andamento" para calcular "no_prazo"
+    # Filtrar apenas tarefas "Em Andamento" para o gráfico
     df_em_andamento = df[df["status_tarefas"] == "Em Andamento"].copy()
     
+    # Para tarefas "Em Andamento", considerar atrasadas aquelas com data_limite < hoje
+    # (não apenas pelo status "Atrasada")
+    hoje = pd.Timestamp.utcnow().tz_localize(None).normalize()
+    df_em_andamento["em_andamento_atrasada"] = (
+        (df_em_andamento["data_limite"].notna()) & 
+        (df_em_andamento["data_limite"] < hoje)
+    )
+    
+    # Garantir que responsáveis vazios ou "—" sejam tratados como "Sem responsável"
+    df_em_andamento["responsavel"] = df_em_andamento["responsavel"].replace("—", "Sem responsável")
+    df_em_andamento.loc[
+        (df_em_andamento["responsavel"].isna()) | (df_em_andamento["responsavel"].str.strip() == ""),
+        "responsavel"
+    ] = "Sem responsável"
+    
+    # Garantir que responsáveis vazios ou "—" sejam tratados como "Sem responsável" no resumo também
+    df_resumo = df.copy()
+    df_resumo["responsavel"] = df_resumo["responsavel"].replace("—", "Sem responsável")
+    df_resumo.loc[
+        (df_resumo["responsavel"].isna()) | (df_resumo["responsavel"].str.strip() == ""),
+        "responsavel"
+    ] = "Sem responsável"
+    
     resumo = (
-        df.groupby("responsavel")
+        df_resumo.groupby("responsavel")
         .agg(
             tarefas=("chave", "count"),
-            atrasadas=("esta_atrasada", "sum"),
+            atrasadas=("esta_atrasada", "sum"),  # Mantém para compatibilidade
             proximas=("critica_proxima", "sum"),
         )
         .reset_index()
     )
     
-    # Calcular "no_prazo" apenas para tarefas "Em Andamento" que não estão atrasadas
+    # Calcular métricas apenas para tarefas "Em Andamento"
     resumo_em_andamento = (
         df_em_andamento.groupby("responsavel")
         .agg(
             em_andamento_total=("chave", "count"),
-            em_andamento_atrasadas=("esta_atrasada", "sum"),
+            em_andamento_atrasadas=("em_andamento_atrasada", "sum"),
         )
         .reset_index()
     )
@@ -442,11 +465,12 @@ def render_responsavel_section(df: pd.DataFrame):
     
     # Mesclar com o resumo principal
     resumo = resumo.merge(
-        resumo_em_andamento[["responsavel", "no_prazo"]],
+        resumo_em_andamento[["responsavel", "no_prazo", "em_andamento_atrasadas"]],
         on="responsavel",
         how="left"
     )
     resumo["no_prazo"] = resumo["no_prazo"].fillna(0).astype(int)
+    resumo["em_andamento_atrasadas"] = resumo["em_andamento_atrasadas"].fillna(0).astype(int)
     top10 = resumo.sort_values("tarefas", ascending=False).head(10)
 
     if top10.empty:
@@ -454,22 +478,21 @@ def render_responsavel_section(df: pd.DataFrame):
         return
 
     chart_data = top10.copy()
-    # Calcular total para o gráfico: no_prazo (apenas "Em Andamento") + atrasadas (todas)
-    # Nota: "no_prazo" agora considera apenas "Em Andamento", mas "atrasadas" mantém todas as tarefas atrasadas
-    chart_data["total_grafico"] = chart_data["no_prazo"] + chart_data["atrasadas"]
+    # Calcular total para o gráfico: no_prazo + em_andamento_atrasadas (ambos apenas "Em Andamento")
+    chart_data["total_grafico"] = chart_data["no_prazo"] + chart_data["em_andamento_atrasadas"]
     max_total = max(chart_data["total_grafico"].max(), 1)
 
     # Criar gráfico de barras empilhadas
     fig = go.Figure()
 
-    # Barra de Atrasadas (Vermelho) - todas as tarefas atrasadas (mantém como estava)
+    # Barra de Atrasadas (Vermelho) - apenas tarefas "Em Andamento" atrasadas (por data limite)
     fig.add_trace(go.Bar(
         name="Atrasadas",
         y=top10["responsavel"],
-        x=top10["atrasadas"],
+        x=top10["em_andamento_atrasadas"],
         orientation="h",
         marker_color="#dc2626",  # Vermelho
-        text=top10["atrasadas"].apply(lambda x: str(x) if x > 0 else ""), # Só mostra número se > 0
+        text=top10["em_andamento_atrasadas"].apply(lambda x: str(x) if x > 0 else ""), # Só mostra número se > 0
         textposition="auto",
         insidetextanchor="middle",
         textfont=dict(color="white")
@@ -488,13 +511,13 @@ def render_responsavel_section(df: pd.DataFrame):
         textfont=dict(color="white")
     ))
 
-    # Adicionar totais ao lado direito das barras
+    # Adicionar totais ao lado direito das barras (total de tarefas "Em Andamento")
     for _, row in chart_data.iterrows():
-        total_grafico = row["no_prazo"] + row["atrasadas"]
+        total_em_andamento = row["no_prazo"] + row["em_andamento_atrasadas"]
         fig.add_annotation(
-            x=total_grafico + max_total * 0.02,
+            x=total_em_andamento + max_total * 0.02,
             y=row["responsavel"],
-            text=str(total_grafico),
+            text=str(total_em_andamento),
             xanchor="left",
             yanchor="middle",
             showarrow=False,
@@ -523,12 +546,18 @@ def render_responsavel_section(df: pd.DataFrame):
 
     st.plotly_chart(fig, use_container_width=True)
 
+    # Preparar dados para exibição na tabela
+    df_tabela = chart_data[["responsavel", "tarefas", "em_andamento_atrasadas", "no_prazo", "proximas"]].copy()
+    df_tabela = df_tabela.rename(columns={"em_andamento_atrasadas": "atrasadas"})
+    df_tabela["total_em_andamento"] = df_tabela["no_prazo"] + df_tabela["atrasadas"]
+    df_tabela["atraso_pct"] = (
+        (df_tabela["atrasadas"] / df_tabela["total_em_andamento"])
+        .fillna(0)
+        .map(lambda v: f"{v:.0%}" if v > 0 else "0%")
+    )
+    
     st.dataframe(
-        chart_data.assign(
-            atraso_pct=lambda d: (d["atrasadas"] / d["tarefas"])
-            .fillna(0)
-            .map(lambda v: f"{v:.0%}")
-        )[["responsavel", "tarefas", "atrasadas", "no_prazo", "proximas", "atraso_pct"]],
+        df_tabela[["responsavel", "tarefas", "atrasadas", "no_prazo", "proximas", "atraso_pct"]],
         hide_index=True,
         use_container_width=True,
     )
