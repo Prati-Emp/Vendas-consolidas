@@ -549,6 +549,8 @@ def render_responsavel_section(df: pd.DataFrame):
     # Preparar dados para exibição na tabela (aplicar o mesmo filtro do gráfico)
     df_tabela = chart_data[["responsavel", "tarefas", "atrasadas", "no_prazo", "proximas"]].copy()
     df_tabela["total_grafico"] = df_tabela["no_prazo"] + df_tabela["atrasadas"]
+    # A coluna "tarefas" na tabela deve mostrar apenas atividades "Em Andamento" + "Atrasada" (igual ao gráfico)
+    df_tabela["tarefas"] = df_tabela["total_grafico"]
     df_tabela["atraso_pct"] = (
         (df_tabela["atrasadas"] / df_tabela["total_grafico"])
         .fillna(0)
