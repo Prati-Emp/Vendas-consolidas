@@ -609,11 +609,19 @@ def calcular_indicadores_leadtime(df: pd.DataFrame) -> Dict[str, Any]:
         # Se não tiver a coluna, usar lead time comum como fallback
         lead_time_ponderado = lead_time_comum_medio
     
-    # 4. Tempo de Atraso
-    # Se não entregue no prazo: data_entregue - data_prevista
+    # 4. Tempo de Atraso Médio Ponderado
+    # Se não entregue no prazo: data_entregue - data_prevista, ponderado pelo valor
     df_atrasados = df_analise[~df_analise['entregue_no_prazo']].copy()
-    if not df_atrasados.empty:
+    if not df_atrasados.empty and col_valor and col_valor in df_atrasados.columns:
         # Calcular o atraso usando data_entregue diretamente
+        df_atrasados['tempo_atraso'] = (df_atrasados['data_entregue'] - df_atrasados['data_prevista']).dt.days
+        # Ponderar pelo valor: SUMX(Total líquido insumo * Tempo de Atraso) / SUM(Total líquido insumo)
+        df_atrasados['tempo_atraso_ponderado_calc'] = df_atrasados[col_valor] * df_atrasados['tempo_atraso']
+        soma_numerador = df_atrasados['tempo_atraso_ponderado_calc'].sum()
+        soma_denominador = df_atrasados[col_valor].sum()
+        tempo_atraso_medio = (soma_numerador / soma_denominador) if soma_denominador > 0 else 0.0
+    elif not df_atrasados.empty:
+        # Fallback: média simples se não tiver coluna de valor
         df_atrasados['tempo_atraso'] = (df_atrasados['data_entregue'] - df_atrasados['data_prevista']).dt.days
         tempo_atraso_medio = df_atrasados['tempo_atraso'].mean()
     else:
@@ -694,9 +702,17 @@ def calcular_indicadores_leadtime_mensal(df: pd.DataFrame) -> pd.DataFrame:
         else:
             lead_time_ponderado = df_mes['lead_time_comum'].mean() if not df_mes.empty else 0.0
         
-        # 3. Tempo de Atraso Médio
+        # 3. Tempo de Atraso Médio Ponderado
         df_atrasados_mes = df_mes[~df_mes['entregue_no_prazo']].copy()
-        if not df_atrasados_mes.empty:
+        if not df_atrasados_mes.empty and col_valor and col_valor in df_atrasados_mes.columns:
+            df_atrasados_mes['tempo_atraso'] = (df_atrasados_mes['data_entregue'] - df_atrasados_mes['data_prevista']).dt.days
+            # Ponderar pelo valor
+            df_atrasados_mes['tempo_atraso_ponderado_calc'] = df_atrasados_mes[col_valor] * df_atrasados_mes['tempo_atraso']
+            soma_numerador = df_atrasados_mes['tempo_atraso_ponderado_calc'].sum()
+            soma_denominador = df_atrasados_mes[col_valor].sum()
+            tempo_atraso_medio = (soma_numerador / soma_denominador) if soma_denominador > 0 else 0.0
+        elif not df_atrasados_mes.empty:
+            # Fallback: média simples se não tiver coluna de valor
             df_atrasados_mes['tempo_atraso'] = (df_atrasados_mes['data_entregue'] - df_atrasados_mes['data_prevista']).dt.days
             tempo_atraso_medio = df_atrasados_mes['tempo_atraso'].mean()
         else:
@@ -764,7 +780,15 @@ def calcular_indicadores_leadtime_por(df: pd.DataFrame, group_col: str, col_labe
             lead_time_ponderado = df_grupo['lead_time_comum'].mean() if not df_grupo.empty else 0.0
 
         df_atrasados = df_grupo[~df_grupo['entregue_no_prazo']].copy()
-        if not df_atrasados.empty:
+        if not df_atrasados.empty and col_valor and col_valor in df_atrasados.columns:
+            df_atrasados['tempo_atraso'] = (df_atrasados['data_entregue'] - df_atrasados['data_prevista']).dt.days
+            # Ponderar pelo valor
+            df_atrasados['tempo_atraso_ponderado_calc'] = df_atrasados[col_valor] * df_atrasados['tempo_atraso']
+            soma_numerador = df_atrasados['tempo_atraso_ponderado_calc'].sum()
+            soma_denominador = df_atrasados[col_valor].sum()
+            tempo_atraso_medio = (soma_numerador / soma_denominador) if soma_denominador > 0 else 0.0
+        elif not df_atrasados.empty:
+            # Fallback: média simples se não tiver coluna de valor
             df_atrasados['tempo_atraso'] = (df_atrasados['data_entregue'] - df_atrasados['data_prevista']).dt.days
             tempo_atraso_medio = df_atrasados['tempo_atraso'].mean()
         else:
@@ -820,7 +844,15 @@ def calcular_indicadores_leadtime_por_obra_mes(df: pd.DataFrame) -> pd.DataFrame
             lead_time_ponderado = df_g['lead_time_comum'].mean() if not df_g.empty else 0.0
 
         df_atras = df_g[~df_g['entregue_no_prazo']].copy()
-        if not df_atras.empty:
+        if not df_atras.empty and col_valor and col_valor in df_atras.columns:
+            df_atras['tempo_atraso'] = (df_atras['data_entregue'] - df_atras['data_prevista']).dt.days
+            # Ponderar pelo valor
+            df_atras['tempo_atraso_ponderado_calc'] = df_atras[col_valor] * df_atras['tempo_atraso']
+            soma_numerador = df_atras['tempo_atraso_ponderado_calc'].sum()
+            soma_denominador = df_atras[col_valor].sum()
+            tempo_atraso_medio = (soma_numerador / soma_denominador) if soma_denominador > 0 else 0.0
+        elif not df_atras.empty:
+            # Fallback: média simples se não tiver coluna de valor
             df_atras['tempo_atraso'] = (df_atras['data_entregue'] - df_atras['data_prevista']).dt.days
             tempo_atraso_medio = df_atras['tempo_atraso'].mean()
         else:
@@ -936,9 +968,9 @@ def render_leadtime_tab(
     
     with col3:
         st.metric(
-            "Tempo de Atraso Médio",
+            "Tempo Atraso Médio Ponderado",
             formatar_dias(indicadores['tempo_atraso_medio']),
-            help="Média de dias de atraso para itens entregues fora do prazo"
+            help="Tempo médio de atraso ponderado pelo valor dos itens. Fórmula: SUMX(Total líquido insumo * Tempo de Atraso) / SUM(Total líquido insumo), considerando apenas itens entregues fora do prazo"
         )
     
     # Tabela Mensal
