@@ -758,7 +758,6 @@ def render_contratos_dashboard(
             # Preparar dados para exibição
             df_exib = df_proximos[[
                 'Numero_Contrato',
-                'Fornecedor',
                 'Responsavel',
                 'Status',
                 'Data_Final_Contrato',
@@ -790,7 +789,6 @@ def render_contratos_dashboard(
             # Renomear colunas
             df_exib.columns = [
                 'Número do Contrato',
-                'Fornecedor',
                 'Responsável',
                 'Status',
                 'Data Final',
