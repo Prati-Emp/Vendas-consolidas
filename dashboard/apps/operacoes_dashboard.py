@@ -416,114 +416,109 @@ def render_responsavel_section(df: pd.DataFrame):
     """Mostra desempenho e carga por responsável."""
     st.subheader("Responsáveis monitorados")
 
-    # Filtrar apenas tarefas "Em Andamento" para o gráfico
+    # Filtrar apenas tarefas "Em Andamento" para calcular "no_prazo"
     df_em_andamento = df[df["status_tarefas"] == "Em Andamento"].copy()
     
-    # Para tarefas "Em Andamento", considerar atrasadas aquelas com data_limite < hoje
-    # (não apenas pelo status "Atrasada")
-    hoje = pd.Timestamp.utcnow().tz_localize(None).normalize()
-    df_em_andamento["em_andamento_atrasada"] = (
-        (df_em_andamento["data_limite"].notna()) & 
-        (df_em_andamento["data_limite"] < hoje)
-    )
-    
     # Garantir que responsáveis vazios ou "—" sejam tratados como "Sem responsável"
+    df["responsavel"] = df["responsavel"].replace("—", "Sem responsável")
+    df.loc[
+        (df["responsavel"].isna()) | (df["responsavel"].str.strip() == ""),
+        "responsavel"
+    ] = "Sem responsável"
+    
     df_em_andamento["responsavel"] = df_em_andamento["responsavel"].replace("—", "Sem responsável")
     df_em_andamento.loc[
         (df_em_andamento["responsavel"].isna()) | (df_em_andamento["responsavel"].str.strip() == ""),
         "responsavel"
     ] = "Sem responsável"
     
-    # Garantir que responsáveis vazios ou "—" sejam tratados como "Sem responsável" no resumo também
-    df_resumo = df.copy()
-    df_resumo["responsavel"] = df_resumo["responsavel"].replace("—", "Sem responsável")
-    df_resumo.loc[
-        (df_resumo["responsavel"].isna()) | (df_resumo["responsavel"].str.strip() == ""),
-        "responsavel"
-    ] = "Sem responsável"
-    
     resumo = (
-        df_resumo.groupby("responsavel")
+        df.groupby("responsavel")
         .agg(
             tarefas=("chave", "count"),
-            atrasadas=("esta_atrasada", "sum"),  # Mantém para compatibilidade
+            atrasadas=("esta_atrasada", "sum"),  # Todas as tarefas atrasadas (status "Atrasada")
             proximas=("critica_proxima", "sum"),
         )
         .reset_index()
     )
     
-    # Calcular métricas apenas para tarefas "Em Andamento"
+    # Calcular "no_prazo" apenas para tarefas "Em Andamento" que não estão atrasadas
     resumo_em_andamento = (
         df_em_andamento.groupby("responsavel")
         .agg(
             em_andamento_total=("chave", "count"),
-            em_andamento_atrasadas=("em_andamento_atrasada", "sum"),
         )
         .reset_index()
     )
-    resumo_em_andamento["no_prazo"] = resumo_em_andamento["em_andamento_total"] - resumo_em_andamento["em_andamento_atrasadas"]
+    # "no_prazo" = todas as tarefas "Em Andamento" (pois quando atrasam, mudam para status "Atrasada")
+    resumo_em_andamento["no_prazo"] = resumo_em_andamento["em_andamento_total"]
     
     # Mesclar com o resumo principal
     resumo = resumo.merge(
-        resumo_em_andamento[["responsavel", "no_prazo", "em_andamento_atrasadas"]],
+        resumo_em_andamento[["responsavel", "no_prazo"]],
         on="responsavel",
         how="left"
     )
     resumo["no_prazo"] = resumo["no_prazo"].fillna(0).astype(int)
-    resumo["em_andamento_atrasadas"] = resumo["em_andamento_atrasadas"].fillna(0).astype(int)
-    top10 = resumo.sort_values("tarefas", ascending=False).head(10)
+    
+    # Ordenar por total de tarefas e mostrar TODOS os responsáveis (não apenas top 10)
+    resumo_ordenado = resumo.sort_values("tarefas", ascending=False)
 
-    if top10.empty:
+    if resumo_ordenado.empty:
         st.info("Não há responsáveis com tarefas no filtro atual.")
         return
 
-    chart_data = top10.copy()
-    # Calcular total para o gráfico: no_prazo + em_andamento_atrasadas (ambos apenas "Em Andamento")
-    chart_data["total_grafico"] = chart_data["no_prazo"] + chart_data["em_andamento_atrasadas"]
+    chart_data = resumo_ordenado.copy()
+    # Calcular total para o gráfico: no_prazo (Em Andamento) + atrasadas (status "Atrasada")
+    chart_data["total_grafico"] = chart_data["no_prazo"] + chart_data["atrasadas"]
     max_total = max(chart_data["total_grafico"].max(), 1)
 
     # Criar gráfico de barras empilhadas
     fig = go.Figure()
 
-    # Barra de Atrasadas (Vermelho) - apenas tarefas "Em Andamento" atrasadas (por data limite)
+    # Barra de Atrasadas (Vermelho) - tarefas com status "Atrasada"
     fig.add_trace(go.Bar(
         name="Atrasadas",
-        y=top10["responsavel"],
-        x=top10["em_andamento_atrasadas"],
+        y=resumo_ordenado["responsavel"],
+        x=resumo_ordenado["atrasadas"],
         orientation="h",
         marker_color="#dc2626",  # Vermelho
-        text=top10["em_andamento_atrasadas"].apply(lambda x: str(x) if x > 0 else ""), # Só mostra número se > 0
+        text=resumo_ordenado["atrasadas"].apply(lambda x: str(x) if x > 0 else ""), # Só mostra número se > 0
         textposition="auto",
         insidetextanchor="middle",
         textfont=dict(color="white")
     ))
 
-    # Barra No Prazo (Azul Escuro) - apenas tarefas "Em Andamento" no prazo
+    # Barra No Prazo (Azul Escuro) - tarefas "Em Andamento" (que não estão atrasadas)
     fig.add_trace(go.Bar(
         name="No prazo",
-        y=top10["responsavel"],
-        x=top10["no_prazo"],
+        y=resumo_ordenado["responsavel"],
+        x=resumo_ordenado["no_prazo"],
         orientation="h",
         marker_color="#1e3a8a",  # Azul escuro
-        text=top10["no_prazo"].apply(lambda x: str(x) if x > 0 else ""),
+        text=resumo_ordenado["no_prazo"].apply(lambda x: str(x) if x > 0 else ""),
         textposition="auto",
         insidetextanchor="middle",
         textfont=dict(color="white")
     ))
 
-    # Adicionar totais ao lado direito das barras (total de tarefas "Em Andamento")
+    # Adicionar totais ao lado direito das barras
     for _, row in chart_data.iterrows():
-        total_em_andamento = row["no_prazo"] + row["em_andamento_atrasadas"]
+        total_grafico = row["no_prazo"] + row["atrasadas"]
         fig.add_annotation(
-            x=total_em_andamento + max_total * 0.02,
+            x=total_grafico + max_total * 0.02,
             y=row["responsavel"],
-            text=str(total_em_andamento),
+            text=str(total_grafico),
             xanchor="left",
             yanchor="middle",
             showarrow=False,
             xshift=5,
         )
 
+    # Ajustar altura do gráfico baseado no número de responsáveis
+    num_responsaveis = len(resumo_ordenado)
+    altura_grafico = max(400, num_responsaveis * 40)  # Mínimo 400px, 40px por responsável
+    
     fig.update_layout(
         barmode="stack",
         yaxis=dict(
@@ -541,17 +536,16 @@ def render_responsavel_section(df: pd.DataFrame):
             x=1
         ),
         margin=dict(r=50, l=0),
-        height=400
+        height=altura_grafico
     )
 
     st.plotly_chart(fig, use_container_width=True)
 
     # Preparar dados para exibição na tabela
-    df_tabela = chart_data[["responsavel", "tarefas", "em_andamento_atrasadas", "no_prazo", "proximas"]].copy()
-    df_tabela = df_tabela.rename(columns={"em_andamento_atrasadas": "atrasadas"})
-    df_tabela["total_em_andamento"] = df_tabela["no_prazo"] + df_tabela["atrasadas"]
+    df_tabela = chart_data[["responsavel", "tarefas", "atrasadas", "no_prazo", "proximas"]].copy()
+    df_tabela["total_grafico"] = df_tabela["no_prazo"] + df_tabela["atrasadas"]
     df_tabela["atraso_pct"] = (
-        (df_tabela["atrasadas"] / df_tabela["total_em_andamento"])
+        (df_tabela["atrasadas"] / df_tabela["total_grafico"])
         .fillna(0)
         .map(lambda v: f"{v:.0%}" if v > 0 else "0%")
     )
