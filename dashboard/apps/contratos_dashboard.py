@@ -764,8 +764,7 @@ def render_contratos_dashboard(
                 'Dias_Restantes',
                 'Valor_Total',
                 'Total_MaoObra',
-                'Total_Material',
-                'Objeto'
+                'Total_Material'
             ]].copy()
             
             # Formatar datas
@@ -795,8 +794,7 @@ def render_contratos_dashboard(
                 'Dias Restantes',
                 'Valor Total',
                 'Valor Mão de Obra',
-                'Valor Material',
-                'Objeto'
+                'Valor Material'
             ]
             
             # Ordenar por dias restantes
