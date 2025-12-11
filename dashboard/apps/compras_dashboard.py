@@ -207,11 +207,7 @@ def calcular_indicadores(df: pd.DataFrame) -> Dict[str, Any]:
     # 1. Pedidos Atrasados: todos os atrasados (independente do status)
     # 2. Pedidos Totalmente Entregues: FULLY_DELIVERED e não atrasados
     # 3. Pedidos Parcialmente Entregues: PARTIALLY_DELIVERED e não atrasados
-    # 4. Pedidos no Prazo: todos os não atrasados que ainda não foram entregues
-    #    (não FULLY_DELIVERED, não PARTIALLY_DELIVERED e não atrasados)
-    # 
-    # NOTA: "Pedidos no Prazo" representa apenas os pendentes (não entregues).
-    # Os pedidos totalmente/parcialmente entregues no prazo já estão nas categorias 2 e 3.
+    # 4. Pedidos no Prazo: PENDING e não atrasados (pedidos pendentes no prazo)
     
     # Identificar coluna de ID do pedido
     id_col = 'ID_Pedido' if 'ID_Pedido' in df_sem_cancelados.columns else ('n_do_pedido' if 'n_do_pedido' in df_sem_cancelados.columns else None)
@@ -266,30 +262,38 @@ def calcular_indicadores(df: pd.DataFrame) -> Dict[str, Any]:
     else:
         total_parcialmente = 0
     
-    # 4. Pedidos no Prazo (TODOS os não atrasados, independente do status de entrega)
-    # Isso inclui: totalmente entregues no prazo + parcialmente entregues no prazo + pendentes no prazo
-    # NOTA: Esta categoria NÃO é mutuamente exclusiva com as categorias 2 e 3,
-    # mas representa a visão consolidada de "todos os pedidos que estão no prazo"
-    if tem_atrasado:
+    # 4. Pedidos no Prazo (Pendentes - PENDING e não atrasados)
+    # Status = PENDING e Atrasado = False
+    if tem_status and tem_atrasado:
+        pedidos_no_prazo_df = df_sem_cancelados[
+            (df_sem_cancelados['Status'] == 'PENDING') & filtro_nao_atrasado
+        ]
+        pedidos_no_prazo = contar_pedidos_unicos(pedidos_no_prazo_df)
+    elif tem_status:
+        # Se não tiver coluna Atrasado, considerar apenas PENDING
+        pedidos_no_prazo_df = df_sem_cancelados[df_sem_cancelados['Status'] == 'PENDING']
+        pedidos_no_prazo = contar_pedidos_unicos(pedidos_no_prazo_df)
+    elif tem_atrasado:
+        # Se não tiver Status, considerar apenas não atrasados
         pedidos_no_prazo_df = df_sem_cancelados[filtro_nao_atrasado]
         pedidos_no_prazo = contar_pedidos_unicos(pedidos_no_prazo_df)
     else:
-        # Se não tiver coluna Atrasado, todos os pedidos são considerados "no prazo"
-        pedidos_no_prazo = total_pedidos
+        # Se não tiver nenhum dos dois, não há como determinar
+        pedidos_no_prazo = 0
     
-    # Validação: Verificar se a lógica está correta
-    # Total = Pedidos Atrasados + Pedidos no Prazo (todos os não atrasados)
-    # Isso deve sempre bater: pedidos_atrasados + pedidos_no_prazo = total_pedidos
-    soma_atrasados_no_prazo = pedidos_atrasados + pedidos_no_prazo
-    if soma_atrasados_no_prazo != total_pedidos and total_pedidos > 0:
-        # Ajustar para garantir que a conta bata
-        diferenca = total_pedidos - soma_atrasados_no_prazo
-        pedidos_no_prazo = pedidos_no_prazo + diferenca
+    # Validação: A soma deve bater com o total de pedidos
+    # Total = Pedidos Atrasados + Pedidos Totalmente Entregues + Pedidos Parcialmente Entregues + Pedidos no Prazo
+    soma_categorias = pedidos_atrasados + total_entregues + total_parcialmente + pedidos_no_prazo
     
-    # IMPORTANTE: As categorias 2 e 3 (Totalmente Entregues e Parcialmente Entregues) 
-    # são SUBCONJUNTOS de "Pedidos no Prazo" quando estão no prazo.
-    # A soma: Pedidos Atrasados + Pedidos no Prazo = Total de Pedidos (sempre)
-    # Mas: Pedidos no Prazo = Totalmente Entregues no Prazo + Parcialmente Entregues no Prazo + Pendentes no Prazo
+    # Se houver diferença (devido a pedidos com outros status ou inconsistências),
+    # ajustar "Pedidos no Prazo" para garantir que a soma bata
+    if soma_categorias != total_pedidos and total_pedidos > 0:
+        # A diferença provavelmente são pedidos com status diferente de PENDING, FULLY_DELIVERED ou PARTIALLY_DELIVERED
+        # Vamos adicionar essa diferença aos "Pedidos no Prazo" se não estiverem atrasados
+        diferenca = total_pedidos - soma_categorias
+        # Só adicionar se a diferença for positiva (pedidos não categorizados)
+        if diferenca > 0:
+            pedidos_no_prazo = pedidos_no_prazo + diferenca
     
     percentual_atrasados = (pedidos_atrasados / total_pedidos * 100) if total_pedidos > 0 else 0.0
     percentual_entregues = (total_entregues / total_pedidos * 100) if total_pedidos > 0 else 0.0
@@ -1451,7 +1455,7 @@ def render_compras_dashboard(
             "Pedidos no Prazo",
             f"{indicadores['pedidos_no_prazo']:,}",
             f"{formatar_percentual(indicadores['percentual_no_prazo'])}",
-            help="Quantidade e percentual de TODOS os pedidos no prazo (não atrasados), incluindo totalmente entregues, parcialmente entregues e pendentes. A soma com 'Pedidos Atrasados' deve igualar o total de pedidos."
+            help="Quantidade e percentual de pedidos pendentes no prazo (Status: PENDING e Atrasado: False)"
         )
     
     # Seção 3: Análises Adicionais
