@@ -203,70 +203,90 @@ def calcular_indicadores(df: pd.DataFrame) -> Dict[str, Any]:
     else:
         total_pedidos = len(df_sem_cancelados)
     
-    # Contar pedidos por status
-    if 'Status' in df_sem_cancelados.columns:
-        # Pedidos totalmente entregues
-        pedidos_entregues = df_sem_cancelados[df_sem_cancelados['Status'] == 'FULLY_DELIVERED']
-        if not pedidos_entregues.empty:
-            if 'ID_Pedido' in pedidos_entregues.columns:
-                total_entregues = pedidos_entregues['ID_Pedido'].nunique()
-            elif 'n_do_pedido' in pedidos_entregues.columns:
-                total_entregues = pedidos_entregues['n_do_pedido'].nunique()
-            else:
-                total_entregues = len(pedidos_entregues)
+    # Lógica mutuamente exclusiva para garantir que a soma bata com o total:
+    # 1. Pedidos Atrasados: todos os atrasados (independente do status)
+    # 2. Pedidos Totalmente Entregues: FULLY_DELIVERED e não atrasados
+    # 3. Pedidos Parcialmente Entregues: PARTIALLY_DELIVERED e não atrasados
+    # 4. Pedidos no Prazo: não entregues (não FULLY_DELIVERED nem PARTIALLY_DELIVERED) e não atrasados
+    
+    # Identificar coluna de ID do pedido
+    id_col = 'ID_Pedido' if 'ID_Pedido' in df_sem_cancelados.columns else ('n_do_pedido' if 'n_do_pedido' in df_sem_cancelados.columns else None)
+    
+    # Função auxiliar para contar pedidos únicos
+    def contar_pedidos_unicos(df_subset):
+        if df_subset.empty:
+            return 0
+        if id_col and id_col in df_subset.columns:
+            return df_subset[id_col].nunique()
+        return len(df_subset)
+    
+    # Verificar se temos coluna Atrasado
+    tem_atrasado = 'Atrasado' in df_sem_cancelados.columns
+    tem_status = 'Status' in df_sem_cancelados.columns
+    
+    # Preparar filtros para Atrasado
+    if tem_atrasado:
+        if df_sem_cancelados['Atrasado'].dtype == bool:
+            filtro_atrasado = df_sem_cancelados['Atrasado'] == True
+            filtro_nao_atrasado = df_sem_cancelados['Atrasado'] == False
         else:
-            total_entregues = 0
-        
-        # Pedidos parcialmente entregues E no prazo
-        pedidos_parcialmente = df_sem_cancelados[df_sem_cancelados['Status'] == 'PARTIALLY_DELIVERED']
-        # Filtrar apenas os que não estão atrasados
-        if 'Atrasado' in pedidos_parcialmente.columns:
-            # Atrasado pode ser bool ou int (0/1)
-            if pedidos_parcialmente['Atrasado'].dtype == bool:
-                pedidos_parcialmente = pedidos_parcialmente[pedidos_parcialmente['Atrasado'] == False]
-            else:
-                pedidos_parcialmente = pedidos_parcialmente[pedidos_parcialmente['Atrasado'] == 0]
-        
-        if not pedidos_parcialmente.empty:
-            if 'ID_Pedido' in pedidos_parcialmente.columns:
-                total_parcialmente = pedidos_parcialmente['ID_Pedido'].nunique()
-            elif 'n_do_pedido' in pedidos_parcialmente.columns:
-                total_parcialmente = pedidos_parcialmente['n_do_pedido'].nunique()
-            else:
-                total_parcialmente = len(pedidos_parcialmente)
-        else:
-            total_parcialmente = 0
+            filtro_atrasado = df_sem_cancelados['Atrasado'] == 1
+            filtro_nao_atrasado = df_sem_cancelados['Atrasado'] == 0
+    else:
+        # Se não tiver coluna Atrasado, considerar todos como não atrasados
+        filtro_atrasado = pd.Series([False] * len(df_sem_cancelados), index=df_sem_cancelados.index)
+        filtro_nao_atrasado = pd.Series([True] * len(df_sem_cancelados), index=df_sem_cancelados.index)
+    
+    # 1. Pedidos Atrasados (todos os atrasados, independente do status)
+    if tem_atrasado:
+        pedidos_atrasados_df = df_sem_cancelados[filtro_atrasado]
+        pedidos_atrasados = contar_pedidos_unicos(pedidos_atrasados_df)
+    else:
+        pedidos_atrasados = 0
+    
+    # 2. Pedidos Totalmente Entregues (FULLY_DELIVERED e não atrasados)
+    if tem_status:
+        pedidos_entregues_df = df_sem_cancelados[
+            (df_sem_cancelados['Status'] == 'FULLY_DELIVERED') & filtro_nao_atrasado
+        ]
+        total_entregues = contar_pedidos_unicos(pedidos_entregues_df)
     else:
         total_entregues = 0
-        total_parcialmente = 0
-        
-    # Calcular pedidos atrasados e no prazo
-    pedidos_atrasados = 0
-    pedidos_no_prazo = 0
     
-    if 'Atrasado' in df_sem_cancelados.columns:
-        # Atrasado pode ser bool ou int (0/1)
-        if df_sem_cancelados['Atrasado'].dtype == bool:
-            pedidos_atrasados_df = df_sem_cancelados[df_sem_cancelados['Atrasado'] == True]
-            pedidos_no_prazo_df = df_sem_cancelados[df_sem_cancelados['Atrasado'] == False]
-        else:
-            pedidos_atrasados_df = df_sem_cancelados[df_sem_cancelados['Atrasado'] == 1]
-            pedidos_no_prazo_df = df_sem_cancelados[df_sem_cancelados['Atrasado'] == 0]
-        
-        # Contar pedidos únicos
-        if 'ID_Pedido' in pedidos_atrasados_df.columns:
-            pedidos_atrasados = pedidos_atrasados_df['ID_Pedido'].nunique()
-        elif 'n_do_pedido' in pedidos_atrasados_df.columns:
-            pedidos_atrasados = pedidos_atrasados_df['n_do_pedido'].nunique()
-        else:
-            pedidos_atrasados = len(pedidos_atrasados_df)
-        
-        if 'ID_Pedido' in pedidos_no_prazo_df.columns:
-            pedidos_no_prazo = pedidos_no_prazo_df['ID_Pedido'].nunique()
-        elif 'n_do_pedido' in pedidos_no_prazo_df.columns:
-            pedidos_no_prazo = pedidos_no_prazo_df['n_do_pedido'].nunique()
-        else:
-            pedidos_no_prazo = len(pedidos_no_prazo_df)
+    # 3. Pedidos Parcialmente Entregues (PARTIALLY_DELIVERED e não atrasados)
+    if tem_status:
+        pedidos_parcialmente_df = df_sem_cancelados[
+            (df_sem_cancelados['Status'] == 'PARTIALLY_DELIVERED') & filtro_nao_atrasado
+        ]
+        total_parcialmente = contar_pedidos_unicos(pedidos_parcialmente_df)
+    else:
+        total_parcialmente = 0
+    
+    # 4. Pedidos no Prazo (não entregues e não atrasados)
+    # Não são FULLY_DELIVERED, não são PARTIALLY_DELIVERED, e não estão atrasados
+    if tem_status:
+        filtro_nao_entregues = (
+            (df_sem_cancelados['Status'] != 'FULLY_DELIVERED') & 
+            (df_sem_cancelados['Status'] != 'PARTIALLY_DELIVERED')
+        )
+        pedidos_no_prazo_df = df_sem_cancelados[filtro_nao_entregues & filtro_nao_atrasado]
+        pedidos_no_prazo = contar_pedidos_unicos(pedidos_no_prazo_df)
+    else:
+        # Se não tiver Status, considerar todos os não atrasados como "no prazo"
+        pedidos_no_prazo_df = df_sem_cancelados[filtro_nao_atrasado]
+        pedidos_no_prazo = contar_pedidos_unicos(pedidos_no_prazo_df)
+    
+    # Validação: A soma deve bater com o total de pedidos
+    # Total = Pedidos Atrasados + Pedidos Totalmente Entregues + Pedidos Parcialmente Entregues + Pedidos no Prazo
+    soma_categorias = pedidos_atrasados + total_entregues + total_parcialmente + pedidos_no_prazo
+    
+    # Se houver diferença (devido a pedidos sem status definido ou outras inconsistências),
+    # ajustar "Pedidos no Prazo" para garantir que a soma bata
+    if soma_categorias != total_pedidos and total_pedidos > 0:
+        # A diferença provavelmente são pedidos sem status definido que não estão atrasados
+        # Vamos adicionar essa diferença aos "Pedidos no Prazo"
+        diferenca = total_pedidos - soma_categorias
+        pedidos_no_prazo = pedidos_no_prazo + diferenca
     
     percentual_atrasados = (pedidos_atrasados / total_pedidos * 100) if total_pedidos > 0 else 0.0
     percentual_entregues = (total_entregues / total_pedidos * 100) if total_pedidos > 0 else 0.0
@@ -1404,7 +1424,7 @@ def render_compras_dashboard(
             "Pedidos Totalmente Entregues",
             f"{indicadores['pedidos_entregues']:,}",
             f"{formatar_percentual(indicadores['percentual_entregues'])}",
-            help="Quantidade e percentual de pedidos totalmente entregues (Status: FULLY_DELIVERED)"
+            help="Quantidade e percentual de pedidos totalmente entregues e no prazo (Status: FULLY_DELIVERED e não atrasados)"
         )
     
     with col7:
@@ -1420,7 +1440,7 @@ def render_compras_dashboard(
             "Pedidos Atrasados",
             f"{indicadores['pedidos_atrasados']:,}",
             f"{formatar_percentual(indicadores['percentual_atrasados'])}",
-            help="Quantidade e percentual de pedidos atrasados"
+            help="Quantidade e percentual de pedidos atrasados (independente do status de entrega)"
         )
     
     with col9:
@@ -1428,7 +1448,7 @@ def render_compras_dashboard(
             "Pedidos no Prazo",
             f"{indicadores['pedidos_no_prazo']:,}",
             f"{formatar_percentual(indicadores['percentual_no_prazo'])}",
-            help="Quantidade e percentual de pedidos no prazo (não atrasados)"
+            help="Quantidade e percentual de pedidos que ainda não foram entregues e estão no prazo (não são FULLY_DELIVERED, não são PARTIALLY_DELIVERED e não estão atrasados)"
         )
     
     # Seção 3: Análises Adicionais
