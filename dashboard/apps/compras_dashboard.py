@@ -178,6 +178,8 @@ def calcular_indicadores(df: pd.DataFrame) -> Dict[str, Any]:
             'pedidos_parcialmente_entregues': 0,
             'percentual_entregues': 0.0,
             'percentual_parcialmente_entregues': 0.0,
+            'pedidos_no_prazo': 0,
+            'percentual_no_prazo': 0.0,
         }
     
     # Filtrar pedidos cancelados (se a coluna Status existir)
@@ -215,8 +217,16 @@ def calcular_indicadores(df: pd.DataFrame) -> Dict[str, Any]:
         else:
             total_entregues = 0
         
-        # Pedidos parcialmente entregues
+        # Pedidos parcialmente entregues E no prazo
         pedidos_parcialmente = df_sem_cancelados[df_sem_cancelados['Status'] == 'PARTIALLY_DELIVERED']
+        # Filtrar apenas os que não estão atrasados
+        if 'Atrasado' in pedidos_parcialmente.columns:
+            # Atrasado pode ser bool ou int (0/1)
+            if pedidos_parcialmente['Atrasado'].dtype == bool:
+                pedidos_parcialmente = pedidos_parcialmente[pedidos_parcialmente['Atrasado'] == False]
+            else:
+                pedidos_parcialmente = pedidos_parcialmente[pedidos_parcialmente['Atrasado'] == 0]
+        
         if not pedidos_parcialmente.empty:
             if 'ID_Pedido' in pedidos_parcialmente.columns:
                 total_parcialmente = pedidos_parcialmente['ID_Pedido'].nunique()
@@ -230,10 +240,38 @@ def calcular_indicadores(df: pd.DataFrame) -> Dict[str, Any]:
         total_entregues = 0
         total_parcialmente = 0
         
-    pedidos_atrasados = int(df_sem_cancelados['Atrasado'].sum()) if 'Atrasado' in df_sem_cancelados.columns else 0
+    # Calcular pedidos atrasados e no prazo
+    pedidos_atrasados = 0
+    pedidos_no_prazo = 0
+    
+    if 'Atrasado' in df_sem_cancelados.columns:
+        # Atrasado pode ser bool ou int (0/1)
+        if df_sem_cancelados['Atrasado'].dtype == bool:
+            pedidos_atrasados_df = df_sem_cancelados[df_sem_cancelados['Atrasado'] == True]
+            pedidos_no_prazo_df = df_sem_cancelados[df_sem_cancelados['Atrasado'] == False]
+        else:
+            pedidos_atrasados_df = df_sem_cancelados[df_sem_cancelados['Atrasado'] == 1]
+            pedidos_no_prazo_df = df_sem_cancelados[df_sem_cancelados['Atrasado'] == 0]
+        
+        # Contar pedidos únicos
+        if 'ID_Pedido' in pedidos_atrasados_df.columns:
+            pedidos_atrasados = pedidos_atrasados_df['ID_Pedido'].nunique()
+        elif 'n_do_pedido' in pedidos_atrasados_df.columns:
+            pedidos_atrasados = pedidos_atrasados_df['n_do_pedido'].nunique()
+        else:
+            pedidos_atrasados = len(pedidos_atrasados_df)
+        
+        if 'ID_Pedido' in pedidos_no_prazo_df.columns:
+            pedidos_no_prazo = pedidos_no_prazo_df['ID_Pedido'].nunique()
+        elif 'n_do_pedido' in pedidos_no_prazo_df.columns:
+            pedidos_no_prazo = pedidos_no_prazo_df['n_do_pedido'].nunique()
+        else:
+            pedidos_no_prazo = len(pedidos_no_prazo_df)
+    
     percentual_atrasados = (pedidos_atrasados / total_pedidos * 100) if total_pedidos > 0 else 0.0
     percentual_entregues = (total_entregues / total_pedidos * 100) if total_pedidos > 0 else 0.0
     percentual_parcialmente_entregues = (total_parcialmente / total_pedidos * 100) if total_pedidos > 0 else 0.0
+    percentual_no_prazo = (pedidos_no_prazo / total_pedidos * 100) if total_pedidos > 0 else 0.0
     valor_medio_pedido = (valor_pedidos / total_pedidos) if total_pedidos > 0 else 0.0
     
     return {
@@ -248,6 +286,8 @@ def calcular_indicadores(df: pd.DataFrame) -> Dict[str, Any]:
         'pedidos_parcialmente_entregues': total_parcialmente,
         'percentual_entregues': percentual_entregues,
         'percentual_parcialmente_entregues': percentual_parcialmente_entregues,
+        'pedidos_no_prazo': pedidos_no_prazo,
+        'percentual_no_prazo': percentual_no_prazo,
     }
 
 
@@ -1349,8 +1389,8 @@ def render_compras_dashboard(
             help="Soma total de descontos aplicados"
         )
     
-    # Segunda linha: % de Desconto, Pedidos Entregues, Pedidos Parcialmente Entregues, Pedidos Atrasados
-    col5, col6, col7, col8 = st.columns(4)
+    # Segunda linha: % de Desconto, Pedidos Entregues, Pedidos Parcialmente Entregues, Pedidos Atrasados, Pedidos no Prazo
+    col5, col6, col7, col8, col9 = st.columns(5)
     
     with col5:
         st.metric(
@@ -1372,7 +1412,7 @@ def render_compras_dashboard(
             "Pedidos Parcialmente Entregues",
             f"{indicadores['pedidos_parcialmente_entregues']:,}",
             f"{formatar_percentual(indicadores['percentual_parcialmente_entregues'])}",
-            help="Quantidade e percentual de pedidos parcialmente entregues (Status: PARTIALLY_DELIVERED)"
+            help="Quantidade e percentual de pedidos parcialmente entregues e no prazo (Status: PARTIALLY_DELIVERED e não atrasados)"
         )
     
     with col8:
@@ -1381,6 +1421,14 @@ def render_compras_dashboard(
             f"{indicadores['pedidos_atrasados']:,}",
             f"{formatar_percentual(indicadores['percentual_atrasados'])}",
             help="Quantidade e percentual de pedidos atrasados"
+        )
+    
+    with col9:
+        st.metric(
+            "Pedidos no Prazo",
+            f"{indicadores['pedidos_no_prazo']:,}",
+            f"{formatar_percentual(indicadores['percentual_no_prazo'])}",
+            help="Quantidade e percentual de pedidos no prazo (não atrasados)"
         )
     
     # Seção 3: Análises Adicionais
