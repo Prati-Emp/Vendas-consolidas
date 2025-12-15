@@ -21,7 +21,7 @@ async def sistema_diario():
     print("SISTEMA DE ATUALIZACAO DIARIA")
     print("=" * 60)
     print(f"Timestamp: {datetime.now()}")
-    print(f"APIs: CV Vendas, CV Repasses, CV Reservas, CV Leads, CV Leads Workflow Tempo, CV Repasses Workflow, Sienge Contratos Suprimentos, Sienge Pedidos Compras")
+    print(f"APIs: CV Vendas, CV Repasses, CV Leads, CV Leads Workflow Tempo, CV Repasses Workflow, Sienge Contratos Suprimentos, Sienge Pedidos Compras")
     
     start_time = datetime.now()
     
@@ -29,7 +29,6 @@ async def sistema_diario():
         # Importar módulos necessários
         from scripts.cv_vendas_api import CVVendasAPIClient, processar_dados_cv_vendas
         from scripts.cv_repasses_api import obter_dados_cv_repasses
-        from scripts.cv_reservas_api import obter_dados_cv_reservas
         from scripts.cv_leads_api import obter_dados_cv_leads
         from scripts.cv_leads_workflow_tempo_api import obter_dados_cv_leads_workflow_tempo
         from scripts.cv_repasses_workflow_api import obter_dados_cv_repasses_workflow
@@ -67,15 +66,6 @@ async def sistema_diario():
         except Exception as e:
             df_cv_repasses = pd.DataFrame()
             print(f"AVISO: Falha ao coletar CV Repasses: {e}")
-        
-        # 2.1. Coletar CV Reservas
-        print("\n2.1. Coletando dados CV Reservas...")
-        try:
-            df_cv_reservas = await obter_dados_cv_reservas()
-            print(f"OK: CV Reservas: {len(df_cv_reservas)} registros")
-        except Exception as e:
-            df_cv_reservas = pd.DataFrame()
-            print(f"AVISO: Falha ao coletar CV Reservas: {e}")
         
         # 3. Coletar CV Leads
         print("\n3. Coletando dados CV Leads...")
@@ -189,13 +179,6 @@ async def sistema_diario():
             count_rep = conn.sql("SELECT COUNT(*) FROM main.cv_repasses").fetchone()[0]
             print(f"OK: CV Repasses upload: {count_rep:,} registros")
         
-        # Upload CV Reservas
-        if df_cv_reservas is not None and not df_cv_reservas.empty:
-            conn.register("df_cv_reservas", df_cv_reservas)
-            conn.execute("CREATE OR REPLACE TABLE main.cv_reservas AS SELECT * FROM df_cv_reservas")
-            count_reservas = conn.sql("SELECT COUNT(*) FROM main.cv_reservas").fetchone()[0]
-            print(f"OK: CV Reservas upload: {count_reservas:,} registros")
-        
         # Upload CV Leads
         if df_cv_leads is not None and not df_cv_leads.empty:
             conn.register("df_cv_leads", df_cv_leads)
@@ -242,7 +225,6 @@ async def sistema_diario():
         print(f"Resumo:")
         print(f"   - CV Vendas: {len(df_cv_vendas):,} registros")
         print(f"   - CV Repasses: {len(df_cv_repasses):,} registros")
-        print(f"   - CV Reservas: {len(df_cv_reservas):,} registros")
         print(f"   - CV Leads: {len(df_cv_leads):,} registros")
         print(f"   - CV Leads Workflow Tempo: {len(df_cv_leads_workflow_tempo):,} registros")
         print(f"   - CV Repasses Workflow: {len(df_cv_repasses_workflow):,} registros")
