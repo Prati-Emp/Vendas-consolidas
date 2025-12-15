@@ -231,20 +231,6 @@ def login_form(dashboard_title: str = "Dashboard de Vendas") -> bool:
                 st.error("❌ Credenciais inválidas ou usuário inativo.")
                 return False
     
-    # Informações de segurança
-    st.markdown("---")
-    st.markdown("""
-    <div style="background-color: #f8fafc; padding: 1rem; border-radius: 6px; border-left: 3px solid #1e3a8a; margin-top: 1.5rem;">
-        <h4 style="color: #1e3a8a; margin: 0 0 0.8rem 0; font-size: 1rem;">🛡️ Informações de Segurança</h4>
-        <ul style="color: #4b5563; margin: 0; padding-left: 1rem; font-size: 0.9rem;">
-            <li style="margin-bottom: 0.3rem;">Dados confidenciais do Grupo Prati</li>
-            <li style="margin-bottom: 0.3rem;">Acesso restrito a funcionários autorizados</li>
-            <li style="margin-bottom: 0.3rem;">Sessão expira em 1 hora</li>
-            <li style="margin-bottom: 0;">Para suporte, procure o responsável pelo desenvolvimento</li>
-        </ul>
-    </div>
-    """, unsafe_allow_html=True)
-    
     return False
 
 def logout():
