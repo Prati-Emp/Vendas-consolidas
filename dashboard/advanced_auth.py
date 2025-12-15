@@ -78,7 +78,7 @@ USERS_DATABASE = {
         "last_login": None,
         "active": True,
         "subpages": ["operacoes.jira"],  # Apenas acesso ao Jira no Operações
-        "pages": ["vendas", "operacoes"]  # Liberado para Vendas e Operações
+        "pages": ["vendas", "operacoes", "administrativo"]  # Liberado para Vendas, Operações e Administrativo
     },
     "andre.pozza@grupoprati.com": {
         "password": "EcwSG52eL&qk",
@@ -297,7 +297,7 @@ def get_user_pages(user_data: Dict) -> List[str]:
 
     # Usuários cadastrados têm acesso total por padrão
     if user_data.get('email') in USERS_DATABASE:
-        return ['vendas', 'leads', 'reservas', 'operacoes', 'motivo_fora_prazo']
+        return ['vendas', 'leads', 'reservas', 'operacoes', 'administrativo', 'motivo_fora_prazo']
     
     # Usuários não cadastrados veem apenas Vendas
     return ['vendas']
@@ -330,6 +330,12 @@ def can_access_page(page_name: str) -> bool:
             # Se não há subpages definidas, dar acesso total (compatibilidade)
             if not user_subpages:
                 return True
+
+            # Se não há subpáginas específicas para este domínio, liberar acesso por padrão
+            has_specific_for_main = any(sp.startswith(f"{main_page}.") for sp in user_subpages)
+            if not has_specific_for_main:
+                return True
+
             # Verificar se a subpágina está na lista permitida
             return page_name in user_subpages
     
