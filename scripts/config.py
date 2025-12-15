@@ -49,6 +49,20 @@ def get_api_config(api_name: str) -> Optional[APIConfig]:
             rate_limit=60
         )
     
+    elif api_name == 'cv_reservas':
+        # Mesmas credenciais de CV Vendas, mesmo endpoint de repasses
+        return APIConfig(
+            name='CV Reservas',
+            base_url='https://prati.cvcrm.com.br/api/v1/cvdw/repasses',
+            headers={
+                'accept': 'application/json',
+                'content-type': 'application/json',
+                'email': os.environ.get('CVCRM_EMAIL', ''),
+                'token': os.environ.get('CVCRM_TOKEN', '')
+            },
+            rate_limit=60
+        )
+    
     elif api_name == 'cv_leads':
         # Mesmas credenciais de CV Vendas, endpoint diferente
         return APIConfig(
@@ -220,6 +234,7 @@ def get_all_rate_limits() -> Dict[str, int]:
     return {
         'cv_vendas': 60,
         'cv_repasses': 60,
+        'cv_reservas': 60,
         'cv_leads': 60,
         'cv_leads_workflow_tempo': 60,
         'cv_repasses_workflow': 60,
