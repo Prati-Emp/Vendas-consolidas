@@ -219,22 +219,25 @@ def render_repasses_dashboard(
             max_date = df["data_cad"].max().date()
             default_start = date(max_date.year, 1, 1)
 
-            date_range = st.date_input(
-                "Período",
-                value=(default_start, max_date),
+            start_date = st.date_input(
+                "Data inicial",
+                value=default_start,
                 min_value=min_date,
                 max_value=max_date,
             )
 
-            if len(date_range) == 2:
-                start_date, end_date = date_range
+            end_date = st.date_input(
+                "Data final",
+                value=max_date,
+                min_value=min_date,
+                max_value=max_date,
+            )
+
+            if start_date and end_date:
                 df = df[
                     (df["data_cad"].dt.date >= start_date)
                     & (df["data_cad"].dt.date <= end_date)
                 ]
-            elif len(date_range) == 1:
-                start_date = date_range[0]
-                df = df[df["data_cad"].dt.date >= start_date]
 
         # Filtro de empresa
         if "empresa" in df.columns:
