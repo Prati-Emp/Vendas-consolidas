@@ -242,17 +242,17 @@ def render_visao_geral(df: pd.DataFrame):
             textfont=dict(color="white")
         ))
         
-        # Adicionar anotações para a Quantidade FORA da barra
+        # Adicionar anotações para a Quantidade ANTES da barra (à esquerda)
         annotations = []
         for idx, row in situacao_analysis.iterrows():
             annotations.append(dict(
-                x=row["Quantidade"],
+                x=0,  # Posição inicial (início da barra)
                 y=row["situacao"],
                 text=f"<b>{row['Quantidade']}</b>",
-                xanchor='left',
+                xanchor='right',  # Alinha o texto à direita, fazendo aparecer à esquerda
                 yanchor='middle',
                 showarrow=False,
-                xshift=10,
+                xshift=-10,  # Desloca um pouco mais à esquerda
                 font=dict(color="black", size=14)
             ))
             
@@ -261,7 +261,7 @@ def render_visao_geral(df: pd.DataFrame):
             xaxis_title="Quantidade",
             yaxis_title=None,
             height=400,
-            margin=dict(r=50), # Margem direita para os números fora
+            margin=dict(l=80), # Margem esquerda para os números antes das barras
             annotations=annotations,
             showlegend=False,
             paper_bgcolor='rgba(0,0,0,0)',
