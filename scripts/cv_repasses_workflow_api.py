@@ -56,6 +56,7 @@ MAPEAMENTO_SITUACAO_PADRAO_WORKFLOW = {
     "Aprovação de Aditivo": "Em Espera",
     "Elaboração de Aditivo": "Em Espera",
     "Em assinatura Aditivo": "Em Espera",
+    "Aditivo Assinado": "Em Espera",
     "Prazo de contrato - com análise": "Em Espera",
     "Entrada no Registro": "Entrada no registro",
     "Venda a Investidor": "Venda a Investidor",
