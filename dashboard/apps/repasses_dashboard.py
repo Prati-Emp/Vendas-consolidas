@@ -242,21 +242,19 @@ def render_visao_geral(df: pd.DataFrame):
             textfont=dict(color="white")
         ))
         
-        # Adicionar anotações para a Quantidade ANTES da barra (à esquerda)
+        # Adicionar anotações para a Quantidade APÓS a barra (à direita)
         annotations = []
         max_qtd = situacao_analysis["Quantidade"].max()
         
         for idx, row in situacao_analysis.iterrows():
             annotations.append(dict(
-                xref='x',
-                yref='y',
-                x=-max_qtd * 0.05,  # Posição à esquerda das barras (5% do valor máximo)
+                x=row["Quantidade"],
                 y=row["situacao"],
-                text=f"<b>{row['Quantidade']}</b>",
-                xanchor='right',  # Alinha o texto à direita do ponto
+                text=f" <b>{row['Quantidade']}</b>", # Espaço antes do número para afastar da barra
+                xanchor='left',  # Alinha o texto à esquerda do ponto (começa após a barra)
                 yanchor='middle',
                 showarrow=False,
-                font=dict(color="black", size=14, family="Arial")
+                font=dict(color="white", size=14) # Texto branco para tema escuro
             ))
             
         fig.update_layout(
@@ -264,12 +262,15 @@ def render_visao_geral(df: pd.DataFrame):
             xaxis_title="Quantidade",
             yaxis_title=None,
             height=400,
-            margin=dict(l=100), # Margem esquerda para os números antes das barras
+            margin=dict(r=50), # Margem direita para os números
             annotations=annotations,
             showlegend=False,
             paper_bgcolor='rgba(0,0,0,0)',
             plot_bgcolor='rgba(0,0,0,0)',
-            xaxis=dict(range=[-max_qtd * 0.15, max_qtd * 1.05])  # Estender eixo X para esquerda para mostrar anotações
+            xaxis=dict(
+                range=[0, max_qtd * 1.15], # Estender eixo X para direita (15% margem)
+                showgrid=False # Remover grid vertical para limpar visual
+            )
         )
         st.plotly_chart(fig, use_container_width=True)
         
