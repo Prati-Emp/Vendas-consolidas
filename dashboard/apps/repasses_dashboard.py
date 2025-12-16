@@ -15,14 +15,14 @@ import streamlit as st
 
 from dashboard.utils.md_conn import get_md_connection
 
-# Ordem específica de status de repasse
+# Ordem específica de status de repasse (Funil Lógico)
 STATUS_ORDER = [
-    "Aguardando Documentação",
-    "Documentação Recebida",
-    "Em Análise",
-    "Aprovado",
+    "Em Espera",
+    "Em Conformidade",
+    "Em Assinatura Caixa",
+    "Entrada no registro",
     "Contrato Registrado",
-    "Repasse Realizado",
+    "Repasse Realizado", # Mantendo caso exista
     "Cancelado",
     "Outros",
 ]
@@ -38,6 +38,17 @@ COLUMN_ALIASES: Dict[str, List[str]] = {
     "data_cad": ["data_cad", "data_cadastro", "dt_cad", "data_criacao"],
 }
 
+def format_currency_short(value: float) -> str:
+    """Formata valores monetários de forma abreviada (Mi, mil)."""
+    if pd.isna(value):
+        return "R$ 0"
+    
+    if value >= 1_000_000:
+        return f"R$ {value/1_000_000:.2f} Mi".replace(".", ",")
+    elif value >= 1_000:
+        return f"R$ {value/1_000:.1f} mil".replace(".", ",")
+    else:
+        return f"R$ {value:,.0f}".replace(",", ".")
 
 @st.cache_data(ttl=600)
 def load_repasses_raw() -> pd.DataFrame:
@@ -205,34 +216,67 @@ def render_visao_geral(df: pd.DataFrame):
         situacao_analysis["ordem"] = situacao_analysis["situacao"].apply(
             lambda x: STATUS_ORDER.index(x) if x in STATUS_ORDER else len(STATUS_ORDER)
         )
-        situacao_analysis = situacao_analysis.sort_values("ordem").drop(columns=["ordem"])
         
-        # Gráfico
+        # Ordenar inverso para gráfico horizontal (topo = primeiro da lista)
+        # No Plotly horizontal, o primeiro item aparece embaixo por padrão, então invertemos.
+        situacao_analysis = situacao_analysis.sort_values("ordem", ascending=False)
+        
+        # Formatando valores para o gráfico
+        situacao_analysis["Valor Texto"] = situacao_analysis["Valor Total"].apply(format_currency_short)
+        
+        # Gráfico Horizontal customizado
         fig = go.Figure()
+        
+        # Barra principal
         fig.add_trace(go.Bar(
-            x=situacao_analysis["situacao"],
-            y=situacao_analysis["Quantidade"],
+            y=situacao_analysis["situacao"],
+            x=situacao_analysis["Quantidade"], # Tamanho da barra baseado na quantidade?
+            # O usuário pediu: "valor dentro e qtd fora". Mas geralmente o tamanho da barra representa uma métrica.
+            # Se a barra representa QUANTIDADE:
             name="Quantidade",
-            text=situacao_analysis["Quantidade"],
-            textposition="auto",
-            marker_color="#1f77b4"
+            orientation='h',
+            text=situacao_analysis["Valor Texto"], # Valor monetário DENTRO
+            textposition="inside",
+            insidetextanchor="middle",
+            marker_color="#002b55", # Azul escuro corporativo
+            textfont=dict(color="white")
         ))
         
+        # Adicionar anotações para a Quantidade FORA da barra
+        annotations = []
+        for idx, row in situacao_analysis.iterrows():
+            annotations.append(dict(
+                x=row["Quantidade"],
+                y=row["situacao"],
+                text=f"<b>{row['Quantidade']}</b>",
+                xanchor='left',
+                yanchor='middle',
+                showarrow=False,
+                xshift=10,
+                font=dict(color="black", size=14)
+            ))
+            
         fig.update_layout(
-            title="Quantidade de Processos por Situação",
-            xaxis_title=None,
-            yaxis_title="Quantidade",
-            height=400
+            title="Repasses por Situação (Valor dentro / Qtd fora)",
+            xaxis_title="Quantidade",
+            yaxis_title=None,
+            height=400,
+            margin=dict(r=50), # Margem direita para os números fora
+            annotations=annotations,
+            showlegend=False,
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)'
         )
         st.plotly_chart(fig, use_container_width=True)
         
         # Tabela Detalhada
-        situacao_analysis["Valor Formatado"] = situacao_analysis["Valor Total"].apply(
+        situacao_analysis_table = situacao_analysis.sort_values("ordem", ascending=True).copy()
+        situacao_analysis_table["Valor Formatado"] = situacao_analysis_table["Valor Total"].apply(
             lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
         )
         
         st.dataframe(
-            situacao_analysis[["situacao", "Quantidade", "Valor Formatado"]].rename(
+            situacao_analysis_table[["situacao", "Quantidade", "Valor Formatado"]].rename(
                 columns={"situacao": "Situação"}
             ),
             hide_index=True,
