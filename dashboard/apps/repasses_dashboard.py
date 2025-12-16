@@ -15,7 +15,7 @@ import streamlit as st
 
 from dashboard.utils.md_conn import get_md_connection
 
-# Ordem específica de status de repasse (conforme solicitado)
+# Ordem específica de status de repasse
 STATUS_ORDER = [
     "Aguardando Documentação",
     "Documentação Recebida",
@@ -39,21 +39,6 @@ COLUMN_ALIASES: Dict[str, List[str]] = {
 }
 
 
-def _detect_columns(columns: List[str]) -> Dict[str, str]:
-    """Detecta e mapeia colunas para nomes canônicos."""
-    mapping = {}
-    columns_lower = [c.lower() for c in columns]
-
-    for canonical, aliases in COLUMN_ALIASES.items():
-        for alias in aliases:
-            if alias.lower() in columns_lower:
-                idx = columns_lower.index(alias.lower())
-                mapping[canonical] = columns[idx]
-                break
-
-    return mapping
-
-
 @st.cache_data(ttl=600)
 def load_repasses_raw() -> pd.DataFrame:
     """Carrega os dados crus da tabela cv_repasses no MotherDuck."""
@@ -65,24 +50,30 @@ def load_repasses_raw() -> pd.DataFrame:
         empreendimento,
         Para AS situacao,
         valor_contrato,
-        data_cad
+        data_cad,
+        empresa,
+        unidade
     FROM reservas.cv_repasses
     WHERE referencia IS NOT NULL
     """
-    df = md_conn.run_query(sql)
-    
-    # Adicionar colunas empresa e unidade se não existirem
-    if "empresa" not in df.columns:
-        df["empresa"] = "Não informado"
-    else:
-        df["empresa"] = df["empresa"].fillna("Não informado")
-    
-    if "unidade" not in df.columns:
-        df["unidade"] = "Não informado"
-    else:
-        df["unidade"] = df["unidade"].fillna("Não informado")
-    
-    return df
+    try:
+        df = md_conn.run_query(sql)
+        
+        # Garantir colunas mínimas
+        if "empresa" not in df.columns:
+            df["empresa"] = "Não informado"
+        else:
+            df["empresa"] = df["empresa"].fillna("Não informado")
+        
+        if "unidade" not in df.columns:
+            df["unidade"] = "Não informado"
+        else:
+            df["unidade"] = df["unidade"].fillna("Não informado")
+            
+        return df
+    except Exception as e:
+        st.error(f"Erro ao carregar cv_repasses: {e}")
+        return pd.DataFrame()
 
 
 @st.cache_data(ttl=600)
@@ -99,324 +90,360 @@ def load_workflow_raw() -> pd.DataFrame:
     WHERE referencia IS NOT NULL
       AND situacao IS NOT NULL
     """
-    return md_conn.run_query(sql)
+    try:
+        return md_conn.run_query(sql)
+    except Exception as e:
+        st.error(f"Erro ao carregar cv_repasses_workflow: {e}")
+        return pd.DataFrame()
 
 
-def prepare_dataset(
-    df_repasses: pd.DataFrame, df_workflow: pd.DataFrame
-) -> pd.DataFrame:
-    """Prepara e combina os datasets de repasses e workflow."""
-    # Normalizar colunas de repasses
-    df_repasses = df_repasses.copy()
-    if "data_cad" in df_repasses.columns:
-        df_repasses["data_cad"] = pd.to_datetime(
-            df_repasses["data_cad"], dayfirst=True, errors="coerce"
+def prepare_repasses(df: pd.DataFrame) -> pd.DataFrame:
+    """Prepara o dataset de repasses (Visão Geral)."""
+    df = df.copy()
+    
+    # Normalizar datas
+    if "data_cad" in df.columns:
+        df["data_cad"] = pd.to_datetime(
+            df["data_cad"], dayfirst=True, errors="coerce"
         )
-
-    # Normalizar colunas de workflow
-    df_workflow = df_workflow.copy()
-    if "data_cad" in df_workflow.columns:
-        df_workflow["data_cad"] = pd.to_datetime(
-            df_workflow["data_cad"], dayfirst=True, errors="coerce"
-        )
-
-    # Calcular tempo médio por situação
-    tempo_medio_por_situacao = (
-        df_workflow.groupby("situacao")["tempo"]
-        .mean()
-        .reset_index()
-        .rename(columns={"tempo": "tempo_medio_dias"})
-    )
-
-    # Combinar dados
-    df_combined = df_repasses.merge(
-        tempo_medio_por_situacao, on="situacao", how="left"
-    )
 
     # Normalizar valores
-    if "valor_contrato" in df_combined.columns:
-        df_combined["valor_contrato"] = pd.to_numeric(
-            df_combined["valor_contrato"], errors="coerce"
-        )
+    if "valor_contrato" in df.columns:
+        df["valor_contrato"] = pd.to_numeric(
+            df["valor_contrato"], errors="coerce"
+        ).fillna(0.0)
 
-    # Normalizar situação para ordem específica
-    df_combined["situacao"] = df_combined["situacao"].fillna("Outros")
-    df_combined["situacao_ordem"] = df_combined["situacao"].apply(
+    # Normalizar situação
+    df["situacao"] = df["situacao"].fillna("Outros")
+    
+    # Criar coluna para ordenação
+    df["situacao_ordem"] = df["situacao"].apply(
         lambda x: STATUS_ORDER.index(x) if x in STATUS_ORDER else len(STATUS_ORDER)
     )
 
-    return df_combined
+    return df
 
 
-def calculate_kpis(df: pd.DataFrame) -> Dict[str, any]:
-    """Calcula KPIs principais."""
-    if df.empty:
-        return {
-            "total_repasses": 0,
-            "valor_total": 0.0,
-            "valor_medio": 0.0,
-            "tempo_medio_geral": 0.0,
-        }
+def prepare_workflow(df: pd.DataFrame) -> pd.DataFrame:
+    """Prepara o dataset de workflow (Análise Temporal)."""
+    df = df.copy()
+    
+    # Normalizar datas
+    if "data_cad" in df.columns:
+        df["data_cad"] = pd.to_datetime(
+            df["data_cad"], dayfirst=True, errors="coerce"
+        )
+        
+    # Normalizar tempo (assumindo que o banco traz em MINUTOS, converter para DIAS)
+    # Se o valor for muito alto, ajustamos. Ex: 1440 min = 1 dia.
+    if "tempo" in df.columns:
+        df["tempo"] = pd.to_numeric(df["tempo"], errors="coerce").fillna(0.0)
+        df["tempo"] = df["tempo"] / 1440  # Converter minutos para dias
 
+    return df
+
+
+def render_visao_geral(df: pd.DataFrame):
+    """Renderiza a aba de Visão Geral (Repasses)."""
+    
+    # KPIs Principais
     total_repasses = df["referencia"].nunique() if "referencia" in df.columns else len(df)
-    valor_total = (
-        df["valor_contrato"].sum()
-        if "valor_contrato" in df.columns
-        else 0.0
-    )
-    valor_medio = (
-        df["valor_contrato"].mean()
-        if "valor_contrato" in df.columns
-        else 0.0
-    )
-    tempo_medio_geral = (
-        df["tempo_medio_dias"].mean()
-        if "tempo_medio_dias" in df.columns
-        else 0.0
-    )
+    valor_total = df["valor_contrato"].sum() if "valor_contrato" in df.columns else 0.0
+    valor_medio = df["valor_contrato"].mean() if "valor_contrato" in df.columns else 0.0
 
-    return {
-        "total_repasses": int(total_repasses),
-        "valor_total": float(valor_total),
-        "valor_medio": float(valor_medio),
-        "tempo_medio_geral": float(tempo_medio_geral),
-    }
+    st.subheader("📊 Indicadores de Carteira")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.metric("Total de Repasses", f"{total_repasses:,}")
+        
+    with col2:
+        st.metric(
+            "Valor Total da Carteira",
+            f"R$ {valor_total:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        )
+        
+    with col3:
+        st.metric(
+            "Ticket Médio",
+            f"R$ {valor_medio:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        )
+
+    st.divider()
+
+    # Análise por Situação (Funil)
+    st.subheader("📉 Distribuição por Situação")
+    
+    if "situacao" in df.columns:
+        situacao_analysis = (
+            df.groupby("situacao")
+            .agg({
+                "referencia": "nunique",
+                "valor_contrato": "sum"
+            })
+            .reset_index()
+            .rename(columns={
+                "referencia": "Quantidade",
+                "valor_contrato": "Valor Total"
+            })
+        )
+        
+        # Ordenação customizada
+        situacao_analysis["ordem"] = situacao_analysis["situacao"].apply(
+            lambda x: STATUS_ORDER.index(x) if x in STATUS_ORDER else len(STATUS_ORDER)
+        )
+        situacao_analysis = situacao_analysis.sort_values("ordem").drop(columns=["ordem"])
+        
+        # Gráfico
+        fig = go.Figure()
+        fig.add_trace(go.Bar(
+            x=situacao_analysis["situacao"],
+            y=situacao_analysis["Quantidade"],
+            name="Quantidade",
+            text=situacao_analysis["Quantidade"],
+            textposition="auto",
+            marker_color="#1f77b4"
+        ))
+        
+        fig.update_layout(
+            title="Quantidade de Processos por Situação",
+            xaxis_title=None,
+            yaxis_title="Quantidade",
+            height=400
+        )
+        st.plotly_chart(fig, use_container_width=True)
+        
+        # Tabela Detalhada
+        situacao_analysis["Valor Formatado"] = situacao_analysis["Valor Total"].apply(
+            lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        )
+        
+        st.dataframe(
+            situacao_analysis[["situacao", "Quantidade", "Valor Formatado"]].rename(
+                columns={"situacao": "Situação"}
+            ),
+            hide_index=True,
+            use_container_width=True
+        )
+
+    st.divider()
+
+    # Top Empreendimentos
+    if "empreendimento" in df.columns:
+        col_emp1, col_emp2 = st.columns(2)
+        
+        with col_emp1:
+            st.subheader("🏢 Top 10 Empreendimentos (Qtd)")
+            top_qtd = (
+                df.groupby("empreendimento")["referencia"]
+                .nunique()
+                .sort_values(ascending=False)
+                .head(10)
+                .reset_index()
+                .rename(columns={"referencia": "Quantidade", "empreendimento": "Empreendimento"})
+            )
+            st.dataframe(top_qtd, hide_index=True, use_container_width=True)
+            
+        with col_emp2:
+            st.subheader("💰 Top 10 Empreendimentos (Valor)")
+            top_valor = (
+                df.groupby("empreendimento")["valor_contrato"]
+                .sum()
+                .sort_values(ascending=False)
+                .head(10)
+                .reset_index()
+            )
+            top_valor["Valor Total"] = top_valor["valor_contrato"].apply(
+                lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            )
+            st.dataframe(
+                top_valor[["empreendimento", "Valor Total"]].rename(columns={"empreendimento": "Empreendimento"}),
+                hide_index=True,
+                use_container_width=True
+            )
+
+
+def render_analise_workflow(df_workflow: pd.DataFrame):
+    """Renderiza a aba de Análise de Workflow (Tempo)."""
+    
+    if df_workflow.empty:
+        st.warning("Sem dados de workflow para o período selecionado.")
+        return
+
+    st.subheader("⏱️ Análise de Tempos (SLA)")
+    
+    # KPI Geral de Tempo
+    tempo_medio_geral = df_workflow["tempo"].mean()
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        st.metric("Tempo Médio Geral (todas as etapas)", f"{tempo_medio_geral:.1f} dias")
+
+    st.divider()
+
+    # Tempo Médio por Situação
+    st.subheader("Tempo Médio por Etapa")
+    
+    tempo_por_situacao = (
+        df_workflow.groupby("situacao")["tempo"]
+        .agg(["mean", "count", "median"])
+        .reset_index()
+        .rename(columns={
+            "mean": "Média (dias)",
+            "median": "Mediana (dias)",
+            "count": "Ocorrências"
+        })
+    )
+    
+    # Ordenar por tempo médio decrescente
+    tempo_por_situacao = tempo_por_situacao.sort_values("Média (dias)", ascending=False)
+    
+    # Gráfico
+    fig = px.bar(
+        tempo_por_situacao.head(15), # Top 15 mais demorados
+        x="Média (dias)",
+        y="situacao",
+        orientation='h',
+        title="Top 15 Etapas com Maior Tempo Médio",
+        text_auto='.1f',
+        color="Média (dias)",
+        color_continuous_scale="Reds"
+    )
+    fig.update_layout(yaxis={'categoryorder':'total ascending'})
+    st.plotly_chart(fig, use_container_width=True)
+    
+    # Tabela
+    st.dataframe(
+        tempo_por_situacao.style.format({
+            "Média (dias)": "{:.1f}",
+            "Mediana (dias)": "{:.1f}"
+        }),
+        use_container_width=True,
+        hide_index=True
+    )
+    
+    st.divider()
+    
+    # Evolução Temporal dos Tempos
+    if "data_cad" in df_workflow.columns:
+        st.subheader("Evolução do Tempo Médio (Mensal)")
+        df_workflow["mes_ano"] = df_workflow["data_cad"].dt.to_period("M").dt.to_timestamp()
+        
+        evolucao = (
+            df_workflow.groupby("mes_ano")["tempo"]
+            .mean()
+            .reset_index()
+            .rename(columns={"mes_ano": "Mês", "tempo": "Tempo Médio (dias)"})
+        )
+        
+        fig_evol = px.line(
+            evolucao,
+            x="Mês",
+            y="Tempo Médio (dias)",
+            markers=True,
+            title="Tendência de Tempo Médio de Processamento"
+        )
+        st.plotly_chart(fig_evol, use_container_width=True)
 
 
 def render_repasses_dashboard(
     show_title: bool = True, show_caption: bool = True
 ) -> None:
-    """Renderiza o dashboard completo de repasses."""
+    """Renderiza o dashboard completo de repasses com abas separadas."""
     if show_title:
         st.title("💰 Dashboard de Repasses")
 
     if show_caption:
         st.caption(
-            "📊 Análise de repasses imobiliários: quantidade, valor e tempo médio por situação"
+            "Análise detalhada de carteira e eficiência operacional."
         )
 
     # Carregar dados
-    with st.spinner("Carregando dados de repasses..."):
-        try:
-            df_repasses = load_repasses_raw()
-            df_workflow = load_workflow_raw()
-            df = prepare_dataset(df_repasses, df_workflow)
-        except Exception as e:
-            st.error(f"❌ Erro ao carregar dados: {e}")
-            return
+    with st.spinner("Carregando dados..."):
+        df_repasses = load_repasses_raw()
+        df_workflow = load_workflow_raw()
+        
+    # Preparar dados iniciais
+    df_repasses_prep = prepare_repasses(df_repasses)
+    df_workflow_prep = prepare_workflow(df_workflow)
 
-    if df.empty:
+    if df_repasses_prep.empty and df_workflow_prep.empty:
         st.warning("⚠️ Nenhum dado encontrado.")
         return
 
-    # Filtros na sidebar
+    # --- FILTROS GLOBAIS ---
     with st.sidebar:
-        st.header("🔧 Filtros")
+        st.header("🔧 Filtros Globais")
+        
+        # Filtro de Data (baseado na tabela principal de repasses, mas aplica em ambas se possível)
+        min_date = df_repasses_prep["data_cad"].min().date() if not df_repasses_prep.empty else date.today()
+        max_date = df_repasses_prep["data_cad"].max().date() if not df_repasses_prep.empty else date.today()
+        default_start = date(max_date.year, 1, 1)
 
-        # Filtro de data
-        if "data_cad" in df.columns and df["data_cad"].notna().any():
-            min_date = df["data_cad"].min().date()
-            max_date = df["data_cad"].max().date()
-            default_start = date(max_date.year, 1, 1)
+        start_date = st.date_input(
+            "Data inicial",
+            value=default_start,
+            min_value=min_date,
+            max_value=max_date,
+        )
 
-            start_date = st.date_input(
-                "Data inicial",
-                value=default_start,
-                min_value=min_date,
-                max_value=max_date,
-            )
-
-            end_date = st.date_input(
-                "Data final",
-                value=max_date,
-                min_value=min_date,
-                max_value=max_date,
-            )
-
-            if start_date and end_date:
-                df = df[
-                    (df["data_cad"].dt.date >= start_date)
-                    & (df["data_cad"].dt.date <= end_date)
-                ]
-
-        # Filtro de empresa
-        if "empresa" in df.columns:
-            empresas = sorted(df["empresa"].dropna().unique())
+        end_date = st.date_input(
+            "Data final",
+            value=max_date,
+            min_value=min_date,
+            max_value=max_date,
+        )
+        
+        # Filtro de Empresa
+        selected_empresas = []
+        if "empresa" in df_repasses_prep.columns:
+            empresas = sorted(df_repasses_prep["empresa"].dropna().unique())
             selected_empresas = st.multiselect(
                 "Empresa",
                 empresas,
                 default=empresas if len(empresas) <= 10 else [],
             )
-            if selected_empresas:
-                df = df[df["empresa"].isin(selected_empresas)]
 
-        # Filtro de unidade
-        if "unidade" in df.columns:
-            unidades = sorted(df["unidade"].dropna().unique())
+        # Filtro de Unidade
+        selected_unidades = []
+        if "unidade" in df_repasses_prep.columns:
+            unidades = sorted(df_repasses_prep["unidade"].dropna().unique())
             selected_unidades = st.multiselect(
                 "Unidade",
                 unidades,
                 default=unidades if len(unidades) <= 10 else [],
             )
-            if selected_unidades:
-                df = df[df["unidade"].isin(selected_unidades)]
 
-        # Filtro de situação
-        if "situacao" in df.columns:
-            situacoes = sorted(df["situacao"].dropna().unique())
-            selected_situacoes = st.multiselect(
-                "Situação",
-                situacoes,
-                default=situacoes,
-            )
-            if selected_situacoes:
-                df = df[df["situacao"].isin(selected_situacoes)]
-
-    # KPIs
-    kpis = calculate_kpis(df)
-    st.subheader("📊 Indicadores Principais")
-
-    col1, col2, col3, col4 = st.columns(4)
-
-    with col1:
-        st.metric("Total de Repasses", f"{kpis['total_repasses']:,}")
-
-    with col2:
-        st.metric(
-            "Valor Total",
-            f"R$ {kpis['valor_total']:,.2f}".replace(",", "X").replace(
-                ".", ","
-            ).replace("X", "."),
-        )
-
-    with col3:
-        st.metric(
-            "Valor Médio",
-            f"R$ {kpis['valor_medio']:,.2f}".replace(",", "X").replace(
-                ".", ","
-            ).replace("X", "."),
-        )
-
-    with col4:
-        st.metric(
-            "Tempo Médio Geral (dias)",
-            f"{kpis['tempo_medio_geral']:.1f}" if kpis['tempo_medio_geral'] > 0 else "-",
-        )
-
-    st.divider()
-
-    # Análise por situação
-    st.subheader("📈 Análise por Situação")
-
-    if "situacao" in df.columns:
-        # Agrupar por situação
-        situacao_analysis = (
-            df.groupby("situacao")
-            .agg(
-                {
-                    "referencia": "nunique" if "referencia" in df.columns else "count",
-                    "valor_contrato": "sum",
-                    "tempo_medio_dias": "mean",
-                }
-            )
-            .reset_index()
-        )
-        situacao_analysis.columns = [
-            "Situação",
-            "Quantidade",
-            "Valor Total",
-            "Tempo Médio (dias)",
+    # --- APLICAR FILTROS ---
+    
+    # 1. Filtros em Repasses
+    if start_date and end_date:
+        df_repasses_prep = df_repasses_prep[
+            (df_repasses_prep["data_cad"].dt.date >= start_date) &
+            (df_repasses_prep["data_cad"].dt.date <= end_date)
         ]
-
-        # Ordenar pela ordem específica
-        situacao_analysis["ordem"] = situacao_analysis["Situação"].apply(
-            lambda x: STATUS_ORDER.index(x) if x in STATUS_ORDER else len(STATUS_ORDER)
-        )
-        situacao_analysis = situacao_analysis.sort_values("ordem").drop(columns=["ordem"])
-
-        # Formatar valores
-        situacao_analysis["Valor Total"] = situacao_analysis["Valor Total"].apply(
-            lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-        )
-        situacao_analysis["Tempo Médio (dias)"] = situacao_analysis[
-            "Tempo Médio (dias)"
-        ].apply(lambda x: f"{x:.1f}" if pd.notna(x) and x > 0 else "-")
-
-        col1, col2 = st.columns(2)
-
-        with col1:
-            st.dataframe(situacao_analysis, hide_index=True, use_container_width=True)
-
-        with col2:
-            # Gráfico de barras empilhadas
-            fig = go.Figure()
-            fig.add_trace(
-                go.Bar(
-                    name="Quantidade",
-                    x=situacao_analysis["Situação"],
-                    y=situacao_analysis["Quantidade"],
-                    marker_color="#1f77b4",
-                )
-            )
-            fig.update_layout(
-                title="Repasses por Situação",
-                xaxis_title="Situação",
-                yaxis_title="Quantidade",
-                barmode="group",
-                height=400,
-            )
-            st.plotly_chart(fig, use_container_width=True)
-
-    st.divider()
-
-    # Análise por empreendimento
-    if "empreendimento" in df.columns:
-        st.subheader("🏢 Top 10 Empreendimentos")
-
-        emp_analysis = (
-            df.groupby("empreendimento")
-            .agg(
-                {
-                    "referencia": "nunique" if "referencia" in df.columns else "count",
-                    "valor_contrato": "sum",
-                }
-            )
-            .reset_index()
-        )
-        emp_analysis.columns = ["Empreendimento", "Quantidade", "Valor Total"]
-        emp_analysis = emp_analysis.sort_values("Quantidade", ascending=False).head(10)
-        emp_analysis["Valor Total"] = emp_analysis["Valor Total"].apply(
-            lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-        )
-
-        st.dataframe(emp_analysis, hide_index=True, use_container_width=True)
-
-    st.divider()
-
-    # Análise temporal
-    if "data_cad" in df.columns and df["data_cad"].notna().any():
-        st.subheader("📅 Evolução Temporal")
-
-        df["mes_ano"] = df["data_cad"].dt.to_period("M").dt.to_timestamp()
-        temporal_analysis = (
-            df.groupby("mes_ano")
-            .agg(
-                {
-                    "referencia": "nunique" if "referencia" in df.columns else "count",
-                    "valor_contrato": "sum",
-                }
-            )
-            .reset_index()
-        )
-        temporal_analysis.columns = ["Mês", "Quantidade", "Valor Total"]
-
-        fig = px.line(
-            temporal_analysis,
-            x="Mês",
-            y="Quantidade",
-            title="Evolução Mensal de Repasses",
-            markers=True,
-        )
-        fig.update_xaxes(tickangle=45)
-        st.plotly_chart(fig, use_container_width=True)
-
+        
+    if selected_empresas:
+        df_repasses_prep = df_repasses_prep[df_repasses_prep["empresa"].isin(selected_empresas)]
+        
+    if selected_unidades:
+        df_repasses_prep = df_repasses_prep[df_repasses_prep["unidade"].isin(selected_unidades)]
+        
+    # 2. Filtros em Workflow (Aplicamos Data. Empresa/Unidade não existem na tabela workflow por padrão, 
+    # a menos que fizéssemos join. Por enquanto, filtraremos workflow apenas por data para manter simples
+    # conforme solicitado "separar as analises", mas idealmente filtraríamos pelos IDs filtrados de repasses)
+    
+    # Filtrar Workflow pelos IDs que sobraram em Repasses (consistência de filtro)
+    ids_validos = df_repasses_prep["referencia"].unique()
+    df_workflow_prep = df_workflow_prep[df_workflow_prep["referencia"].isin(ids_validos)]
+    
+    # --- RENDERIZAÇÃO POR ABAS ---
+    
+    tab1, tab2 = st.tabs(["📊 Visão Geral (Carteira)", "⏱️ Análise de Workflow (Tempo)"])
+    
+    with tab1:
+        render_visao_geral(df_repasses_prep)
+        
+    with tab2:
+        render_analise_workflow(df_workflow_prep)
