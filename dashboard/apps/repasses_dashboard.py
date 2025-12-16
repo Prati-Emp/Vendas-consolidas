@@ -43,6 +43,8 @@ COLUMN_ALIASES: Dict[str, List[str]] = {
 def load_repasses_raw() -> pd.DataFrame:
     """Carrega os dados crus da tabela cv_repasses no MotherDuck."""
     md_conn = get_md_connection()
+    # Selecionando colunas garantidas. 'empresa' e 'unidade' podem não existir na tabela base.
+    # 'unidade' parece existir na amostra, mas 'empresa' não.
     sql = """
     SELECT 
         referencia,
@@ -51,29 +53,39 @@ def load_repasses_raw() -> pd.DataFrame:
         Para AS situacao,
         valor_contrato,
         data_cad,
-        empresa,
         unidade
     FROM reservas.cv_repasses
     WHERE referencia IS NOT NULL
     """
     try:
         df = md_conn.run_query(sql)
+    except Exception:
+        # Fallback se 'unidade' também não existir
+        sql_fallback = """
+        SELECT 
+            referencia,
+            idrepasse,
+            empreendimento,
+            Para AS situacao,
+            valor_contrato,
+            data_cad
+        FROM reservas.cv_repasses
+        WHERE referencia IS NOT NULL
+        """
+        df = md_conn.run_query(sql_fallback)
+
+    # Garantir colunas faltantes para o código não quebrar
+    if "empresa" not in df.columns:
+        df["empresa"] = "Não informado"
+    else:
+        df["empresa"] = df["empresa"].fillna("Não informado")
+    
+    if "unidade" not in df.columns:
+        df["unidade"] = "Não informado"
+    else:
+        df["unidade"] = df["unidade"].fillna("Não informado")
         
-        # Garantir colunas mínimas
-        if "empresa" not in df.columns:
-            df["empresa"] = "Não informado"
-        else:
-            df["empresa"] = df["empresa"].fillna("Não informado")
-        
-        if "unidade" not in df.columns:
-            df["unidade"] = "Não informado"
-        else:
-            df["unidade"] = df["unidade"].fillna("Não informado")
-            
-        return df
-    except Exception as e:
-        st.error(f"Erro ao carregar cv_repasses: {e}")
-        return pd.DataFrame()
+    return df
 
 
 @st.cache_data(ttl=600)
