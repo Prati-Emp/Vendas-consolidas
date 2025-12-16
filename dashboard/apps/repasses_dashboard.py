@@ -290,39 +290,37 @@ def render_visao_geral(df: pd.DataFrame):
 
     st.divider()
 
-    # Top Empreendimentos
+    # Top Empreendimentos (Tabela Unificada)
     if "empreendimento" in df.columns:
-        col_emp1, col_emp2 = st.columns(2)
+        st.subheader("🏢 Top Empreendimentos (Qtd e Valor)")
         
-        with col_emp1:
-            st.subheader("🏢 Top 10 Empreendimentos (Qtd)")
-            top_qtd = (
-                df.groupby("empreendimento")["referencia"]
-                .nunique()
-                .sort_values(ascending=False)
-                .head(10)
-                .reset_index()
-                .rename(columns={"referencia": "Quantidade", "empreendimento": "Empreendimento"})
-            )
-            st.dataframe(top_qtd, hide_index=True, use_container_width=True)
-            
-        with col_emp2:
-            st.subheader("💰 Top 10 Empreendimentos (Valor)")
-            top_valor = (
-                df.groupby("empreendimento")["valor_contrato"]
-                .sum()
-                .sort_values(ascending=False)
-                .head(10)
-                .reset_index()
-            )
-            top_valor["Valor Total"] = top_valor["valor_contrato"].apply(
-                lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-            )
-            st.dataframe(
-                top_valor[["empreendimento", "Valor Total"]].rename(columns={"empreendimento": "Empreendimento"}),
-                hide_index=True,
-                use_container_width=True
-            )
+        top_empreendimentos = (
+            df.groupby("empreendimento")
+            .agg({
+                "referencia": "nunique",
+                "valor_contrato": "sum"
+            })
+            .reset_index()
+            .rename(columns={
+                "empreendimento": "Empreendimento",
+                "referencia": "Quantidade",
+                "valor_contrato": "Valor Total"
+            })
+        )
+        
+        # Ordenar por Valor (decrescente) e limitar (ex: top 20 para ver mais detalhes)
+        top_empreendimentos = top_empreendimentos.sort_values("Valor Total", ascending=False).head(20)
+        
+        # Formatar Valor
+        top_empreendimentos["Valor Formatado"] = top_empreendimentos["Valor Total"].apply(
+            lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        )
+        
+        st.dataframe(
+            top_empreendimentos[["Empreendimento", "Quantidade", "Valor Formatado"]],
+            hide_index=True,
+            use_container_width=True
+        )
 
 
 def render_analise_workflow(df_workflow: pd.DataFrame):
