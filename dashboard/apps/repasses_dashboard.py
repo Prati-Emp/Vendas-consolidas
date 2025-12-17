@@ -27,6 +27,33 @@ STATUS_ORDER = [
     "Outros",
 ]
 
+# Ordem específica de workflow (Funil Lógico Workflow)
+STATUS_ORDER_WORKFLOW = [
+    "Em espera",
+    "Espera - sem análise",
+    "Espera - Analisando Credito",
+    "Espera - Analise reprovada",
+    "Espera - Analise Aprovada",
+    "Renegociação",
+    "Aprovação de Aditivo",
+    "Elaboração de Aditivo",
+    "Aditivo Assinado",
+    "Prazo de contrato - sem análise",
+    "Espera - Demanda mínima",
+    "Enviado ao correspondente",
+    "Aguardando projeto e alvará",
+    "vistoria da engenharia",
+    "validação cohapar",
+    "aguardando assinatura formulários",
+    "inconforme",
+    "conformidade aprovada",
+    "confecção de contrato caixa",
+    "assinatura caixa",
+    "recolhimento de custas",
+    "Entrada no registro",
+    "venda investidor",
+]
+
 # Mapeamento de colunas possíveis para nomes canônicos
 COLUMN_ALIASES: Dict[str, List[str]] = {
     "referencia": ["referencia", "ref", "id", "idrepasse"],
@@ -230,9 +257,7 @@ def render_visao_geral(df: pd.DataFrame):
         # Barra principal
         fig.add_trace(go.Bar(
             y=situacao_analysis["situacao"],
-            x=situacao_analysis["Quantidade"], # Tamanho da barra baseado na quantidade?
-            # O usuário pediu: "valor dentro e qtd fora". Mas geralmente o tamanho da barra representa uma métrica.
-            # Se a barra representa QUANTIDADE:
+            x=situacao_analysis["Quantidade"], # Tamanho da barra baseado na quantidade
             name="Quantidade",
             orientation='h',
             text=situacao_analysis["Valor Texto"], # Valor monetário DENTRO
@@ -354,29 +379,70 @@ def render_analise_workflow(df_workflow: pd.DataFrame):
         })
     )
     
-    # Ordenar por tempo médio decrescente
-    tempo_por_situacao = tempo_por_situacao.sort_values("Média (dias)", ascending=False)
-    
-    # Gráfico
-    fig = px.bar(
-        tempo_por_situacao.head(15), # Top 15 mais demorados
-        x="Média (dias)",
-        y="situacao",
-        orientation='h',
-        title="Top 15 Etapas com Maior Tempo Médio",
-        text_auto='.1f',
-        color="Média (dias)",
-        color_continuous_scale="Reds"
+    # Criar coluna para ordenação baseada no STATUS_ORDER_WORKFLOW
+    tempo_por_situacao["ordem"] = tempo_por_situacao["situacao"].apply(
+        lambda x: STATUS_ORDER_WORKFLOW.index(x) if x in STATUS_ORDER_WORKFLOW else len(STATUS_ORDER_WORKFLOW)
     )
-    fig.update_layout(yaxis={'categoryorder':'total ascending'})
+    
+    # Filtrar apenas as etapas que existem nos dados e estão na lista de ordem (opcional, mas bom para limpar)
+    # Vamos manter tudo, mas as que não estão na lista ficam no final.
+    
+    # Ordenar pela ordem definida (inverso para gráfico horizontal Plotly)
+    tempo_por_situacao = tempo_por_situacao.sort_values("ordem", ascending=False)
+    
+    # Gráfico Customizado (Igual Visão Geral)
+    fig = go.Figure()
+    
+    # Formatando valores para o texto dentro da barra (tempo médio)
+    tempo_por_situacao["Texto Tempo"] = tempo_por_situacao["Média (dias)"].apply(lambda x: f"{x:.1f} dias")
+    
+    fig.add_trace(go.Bar(
+        y=tempo_por_situacao["situacao"],
+        x=tempo_por_situacao["Média (dias)"],
+        name="Tempo Médio",
+        orientation='h',
+        text=tempo_por_situacao["Texto Tempo"],
+        textposition="inside",
+        insidetextanchor="middle",
+        marker_color="#8B0000", # Vermelho escuro para diferenciar
+        textfont=dict(color="white")
+    ))
+    
+    # Anotações para Ocorrências (fora da barra)
+    annotations = []
+    max_tempo = tempo_por_situacao["Média (dias)"].max()
+    
+    for idx, row in tempo_por_situacao.iterrows():
+        annotations.append(dict(
+            x=row["Média (dias)"],
+            y=row["situacao"],
+            text=f" <b>(n={row['Ocorrências']})</b>", # Mostra quantidade de ocorrências
+            xanchor='left',
+            yanchor='middle',
+            showarrow=False,
+            font=dict(color="white", size=12)
+        ))
+        
+    fig.update_layout(
+        xaxis_title="Tempo Médio (dias)",
+        yaxis_title=None,
+        height=max(400, len(tempo_por_situacao) * 25), # Altura dinâmica baseada no número de itens
+        margin=dict(r=50),
+        annotations=annotations,
+        showlegend=False,
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        xaxis=dict(
+            range=[0, max_tempo * 1.2], # Margem extra para o texto
+            showgrid=False
+        )
+    )
     st.plotly_chart(fig, use_container_width=True)
     
-    # Tabela
+    # Tabela (ordenada pela ordem do fluxo para leitura lógica)
+    tabela_ordenada = tempo_por_situacao.sort_values("ordem", ascending=True)
     st.dataframe(
-        tempo_por_situacao.style.format({
-            "Média (dias)": "{:.1f}",
-            "Mediana (dias)": "{:.1f}"
-        }),
+        tabela_ordenada[["situacao", "Média (dias)", "Mediana (dias)", "Ocorrências"]].rename(columns={"situacao": "Etapa"}),
         use_container_width=True,
         hide_index=True
     )
