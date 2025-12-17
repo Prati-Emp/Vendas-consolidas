@@ -11,7 +11,7 @@ from typing import Optional
 # Configurações de segurança
 ADMIN_USER = os.getenv("DASHBOARD_USER", "admin")
 ADMIN_PASSWORD = os.getenv("DASHBOARD_PASSWORD", "vendas2024")
-SESSION_TIMEOUT = 3600  # 1 hora
+SESSION_TIMEOUT = 57600  # 16 horas (aumentado de 1h para garantir que a TV não desconecte)
 
 def hash_password(password: str) -> str:
     """Cria hash da senha para comparação"""

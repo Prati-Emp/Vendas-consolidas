@@ -13,7 +13,7 @@ from typing import Dict, List, Optional
 from datetime import datetime, timedelta
 
 # Configurações de segurança
-SESSION_TIMEOUT = 3600  # 1 hora
+SESSION_TIMEOUT = 57600  # 16 horas (aumentado de 1h para garantir que a TV não desconecte)
 PASSWORD_LENGTH = 12
 REQUIRE_SPECIAL_CHARS = True
 
