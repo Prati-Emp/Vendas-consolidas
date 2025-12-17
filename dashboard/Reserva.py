@@ -15,6 +15,9 @@ st.set_page_config(page_title="Relatório de Reservas", layout="wide")
 # Proteger com autenticação
 require_auth()
 
+# Proteger acesso à página específica (Garante que usuário da TV não acesse)
+require_page_access("reservas")
+
 from utils import display_navigation
 # Display navigation bar (includes logo)
 display_navigation()
