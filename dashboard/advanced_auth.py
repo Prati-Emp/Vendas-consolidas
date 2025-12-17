@@ -99,6 +99,17 @@ USERS_DATABASE = {
         "last_login": None,
         "active": True,
         "subpages": ["operacoes.jira", "operacoes.compras", "operacoes.solicitacoes", "operacoes.contratos", "operacoes.evolucao_obra"]
+    },
+    "comercial.tv@grupoprati.com": {
+        "password": "comercial@TV!25",
+        "role": "analyst",
+        "name": "TV Comercial",
+        "department": "Vendas",
+        "created": "2025-12-17",
+        "last_login": None,
+        "active": True,
+        "pages": ["tv_comercial"],  # Acesso restrito apenas à TV Comercial
+        "subpages": []
     }
 }
 
