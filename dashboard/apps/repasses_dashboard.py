@@ -196,7 +196,7 @@ def render_visao_geral(df: pd.DataFrame):
     st.divider()
 
     # Análise por Situação (Funil)
-    st.subheader("📉 Distribuição por Situação")
+    st.subheader("📉 Distribuição de Repasses por Situação")
     
     if "situacao" in df.columns:
         situacao_analysis = (
@@ -258,7 +258,7 @@ def render_visao_geral(df: pd.DataFrame):
             ))
             
         fig.update_layout(
-            title="Repasses por Situação",
+            title=None,
             xaxis_title="Quantidade",
             yaxis_title=None,
             height=400,
@@ -276,12 +276,12 @@ def render_visao_geral(df: pd.DataFrame):
         
         # Tabela Detalhada
         situacao_analysis_table = situacao_analysis.sort_values("ordem", ascending=True).copy()
-        situacao_analysis_table["Valor Formatado"] = situacao_analysis_table["Valor Total"].apply(
+        situacao_analysis_table["Valor"] = situacao_analysis_table["Valor Total"].apply(
             lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
         )
         
         st.dataframe(
-            situacao_analysis_table[["situacao", "Quantidade", "Valor Formatado"]].rename(
+            situacao_analysis_table[["situacao", "Quantidade", "Valor"]].rename(
                 columns={"situacao": "Situação"}
             ),
             hide_index=True,
@@ -312,12 +312,12 @@ def render_visao_geral(df: pd.DataFrame):
         top_empreendimentos = top_empreendimentos.sort_values("Valor Total", ascending=False).head(20)
         
         # Formatar Valor
-        top_empreendimentos["Valor Formatado"] = top_empreendimentos["Valor Total"].apply(
+        top_empreendimentos["Valor"] = top_empreendimentos["Valor Total"].apply(
             lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
         )
         
         st.dataframe(
-            top_empreendimentos[["Empreendimento", "Quantidade", "Valor Formatado"]],
+            top_empreendimentos[["Empreendimento", "Quantidade", "Valor"]],
             hide_index=True,
             use_container_width=True
         )
