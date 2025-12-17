@@ -1855,8 +1855,8 @@ with carousel_placeholder.container():
                         f"Base consolidada de {TERMOMETRO_DATA_INICIO.strftime('%d/%m/%Y')} até {data_final_analise.strftime('%d/%m/%Y')} · Leads contabilizados: {total_leads_exibidos}"
                     )
         st.markdown('</div>', unsafe_allow_html=True)
-        elif current_index == 4:
-            render_bloco_cancelamentos()
+    elif current_index == 4:
+        render_bloco_cancelamentos()
             
     # Fechar div wrapper
     st.markdown('</div>', unsafe_allow_html=True)
