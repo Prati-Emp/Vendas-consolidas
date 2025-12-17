@@ -408,6 +408,9 @@ st.markdown(
     unsafe_allow_html=True
 )
 
+# Placeholder principal posicionado logo após o CSS para garantir estrutura fixa
+carousel_placeholder = st.empty()
+
 
 CONVERSAO_SITUACOES = {situacao.lower() for situacao in ["Distrato", "Mútuo", "Vendida"]}
 CONVERSAO_SITUACOES_EXCLUIDAS = {situacao.lower() for situacao in ["Vencida"]}
@@ -1764,9 +1767,6 @@ def render_bloco_cancelamentos():
 # LÓGICA DE RENDERIZAÇÃO DO CARROSSEL - SEM JAVASCRIPT, APENAS PYTHON
 # ============================================================================
 
-# Criar o placeholder aqui para garantir que ele seja o último elemento e limpe corretamente o anterior
-carousel_placeholder = st.empty()
-
 # Dicionário mapeando índice para função de renderização
 RENDER_FUNCTIONS = {
     0: render_bloco_0,
@@ -1777,23 +1777,24 @@ RENDER_FUNCTIONS = {
 }
 
 # Renderizar o bloco atual dentro do placeholder baseado no índice
-# Limpar explicitamente antes de renderizar para evitar sobreposição
+# Limpar explicitamente antes de renderizar
 carousel_placeholder.empty()
 
 with carousel_placeholder.container():
     current_index = st.session_state.carousel_index
     
-    # Container interno para isolar o conteúdo do bloco
-    with st.container():
-        if current_index == 0:
-            render_bloco_0()
-        elif current_index == 1:
-            render_bloco_reservas()
-        elif current_index == 2:
-            render_bloco_2()
-        elif current_index == 3:
-            # Bloco 3: Distribuição por Mídia
-            st.markdown('<div class="tv-carousel-section">', unsafe_allow_html=True)
+    # Adicionar uma div wrapper com ID único para forçar a atualização do DOM pelo Streamlit
+    st.markdown(f'<div id="tv-carousel-slide-{current_index}" style="width:100%; height:100%;">', unsafe_allow_html=True)
+    
+    if current_index == 0:
+        render_bloco_0()
+    elif current_index == 1:
+        render_bloco_reservas()
+    elif current_index == 2:
+        render_bloco_2()
+    elif current_index == 3:
+        # Bloco 3: Distribuição por Mídia
+        st.markdown('<div class="tv-carousel-section">', unsafe_allow_html=True)
             st.markdown("## 📣 Distribuição de leads por midia")
     
             leads_base_df = load_leads_tv()
@@ -1856,6 +1857,9 @@ with carousel_placeholder.container():
             st.markdown('</div>', unsafe_allow_html=True)
         elif current_index == 4:
             render_bloco_cancelamentos()
+            
+    # Fechar div wrapper
+    st.markdown('</div>', unsafe_allow_html=True)
 
 
 # ============================================================================
