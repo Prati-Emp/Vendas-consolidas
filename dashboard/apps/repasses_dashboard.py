@@ -403,26 +403,12 @@ def render_analise_workflow(df_workflow: pd.DataFrame):
         name="Tempo Médio",
         orientation='h',
         text=tempo_por_situacao["Texto Tempo"],
-        textposition="inside",
-        insidetextanchor="middle",
+        textposition="auto", # Ajusta automaticamente dentro ou fora da barra
         marker_color="#8B0000", # Vermelho escuro para diferenciar
         textfont=dict(color="white")
     ))
     
-    # Anotações para Ocorrências (fora da barra)
-    annotations = []
     max_tempo = tempo_por_situacao["Média (dias)"].max()
-    
-    for idx, row in tempo_por_situacao.iterrows():
-        annotations.append(dict(
-            x=row["Média (dias)"],
-            y=row["situacao"],
-            text=f" <b>(n={row['Ocorrências']})</b>", # Mostra quantidade de ocorrências
-            xanchor='left',
-            yanchor='middle',
-            showarrow=False,
-            font=dict(color="white", size=12)
-        ))
         
     fig.update_layout(
         xaxis_title="Tempo Médio (dias)",
@@ -430,12 +416,11 @@ def render_analise_workflow(df_workflow: pd.DataFrame):
         height=max(500, len(tempo_por_situacao) * 40), # Altura dinâmica aumentada para barras mais largas
         margin=dict(r=50),
         bargap=0.15, # Menor gap = barras mais largas
-        annotations=annotations,
         showlegend=False,
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
         xaxis=dict(
-            range=[0, max_tempo * 1.2], # Margem extra para o texto
+            range=[0, max_tempo * 1.15], # Margem extra para o texto se ficar fora
             showgrid=False
         )
     )
