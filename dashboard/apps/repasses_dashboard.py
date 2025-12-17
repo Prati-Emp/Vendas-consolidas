@@ -258,7 +258,7 @@ def render_visao_geral(df: pd.DataFrame):
             ))
             
         fig.update_layout(
-            title="Repasses por Situação (Valor dentro / Qtd fora)",
+            title="Repasses por Situação",
             xaxis_title="Quantidade",
             yaxis_title=None,
             height=400,
