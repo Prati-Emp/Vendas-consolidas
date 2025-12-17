@@ -21,7 +21,9 @@ from utils.formatters import format_compact_currency, format_currency
 st.set_page_config(page_title="TV Comercial", layout="wide")
 
 
-require_auth(disable_timeout=True)  # Desabilitar timeout para modo TV (roda sem parar)
+# Configuração de Autenticação para TV
+# disable_timeout=True: Desabilita o logout automático de 1h para que a TV rode continuamente
+require_auth(disable_timeout=True)  
 # display_navigation()  # Removido conforme solicitado - não mostrar barra de navegação
 st.session_state['current_page'] = __file__
 
