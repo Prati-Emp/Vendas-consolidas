@@ -379,9 +379,10 @@ def render_analise_workflow(df_workflow: pd.DataFrame):
         })
     )
     
-    # Criar coluna para ordenação baseada no STATUS_ORDER_WORKFLOW
+    # Criar coluna para ordenação baseada no STATUS_ORDER_WORKFLOW (insensível a case)
+    status_order_normalized = [s.lower().strip() for s in STATUS_ORDER_WORKFLOW]
     tempo_por_situacao["ordem"] = tempo_por_situacao["situacao"].apply(
-        lambda x: STATUS_ORDER_WORKFLOW.index(x) if x in STATUS_ORDER_WORKFLOW else len(STATUS_ORDER_WORKFLOW)
+        lambda x: status_order_normalized.index(x.lower().strip()) if x.lower().strip() in status_order_normalized else len(status_order_normalized)
     )
     
     # Filtrar apenas as etapas que existem nos dados e estão na lista de ordem (opcional, mas bom para limpar)
@@ -426,8 +427,9 @@ def render_analise_workflow(df_workflow: pd.DataFrame):
     fig.update_layout(
         xaxis_title="Tempo Médio (dias)",
         yaxis_title=None,
-        height=max(400, len(tempo_por_situacao) * 25), # Altura dinâmica baseada no número de itens
+        height=max(500, len(tempo_por_situacao) * 40), # Altura dinâmica aumentada para barras mais largas
         margin=dict(r=50),
+        bargap=0.15, # Menor gap = barras mais largas
         annotations=annotations,
         showlegend=False,
         paper_bgcolor='rgba(0,0,0,0)',
