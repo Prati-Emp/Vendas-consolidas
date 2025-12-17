@@ -435,9 +435,22 @@ def render_repasses_dashboard(
     with st.sidebar:
         st.header("🔧 Filtros Globais")
         
-        # Filtro de Data (baseado na tabela principal de repasses, mas aplica em ambas se possível)
-        min_date = df_repasses_prep["data_cad"].min().date() if not df_repasses_prep.empty else date.today()
-        max_date = df_repasses_prep["data_cad"].max().date() if not df_repasses_prep.empty else date.today()
+        # Calcular data mínima e máxima considerando ambas as tabelas para pegar a data mais atual
+        dates_list = []
+        
+        if not df_repasses_prep.empty and "data_cad" in df_repasses_prep.columns:
+            dates_list.extend(df_repasses_prep["data_cad"].dropna().tolist())
+        
+        if not df_workflow_prep.empty and "data_cad" in df_workflow_prep.columns:
+            dates_list.extend(df_workflow_prep["data_cad"].dropna().tolist())
+        
+        if dates_list:
+            min_date = pd.to_datetime(dates_list).min().date()
+            max_date = pd.to_datetime(dates_list).max().date()  # Data mais atual do conjunto de dados
+        else:
+            min_date = date.today()
+            max_date = date.today()
+        
         default_start = date(max_date.year, 1, 1)
 
         start_date = st.date_input(
@@ -449,7 +462,7 @@ def render_repasses_dashboard(
 
         end_date = st.date_input(
             "Data final",
-            value=max_date,
+            value=max_date,  # Sempre usa a data mais atual disponível
             min_value=min_date,
             max_value=max_date,
         )
