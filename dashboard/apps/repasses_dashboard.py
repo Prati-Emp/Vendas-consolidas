@@ -258,7 +258,6 @@ def render_visao_geral(df: pd.DataFrame):
             ))
             
         fig.update_layout(
-            title=None,
             xaxis_title="Quantidade",
             yaxis_title=None,
             height=400,
