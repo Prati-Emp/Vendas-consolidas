@@ -54,7 +54,8 @@ if elapsed >= CAROUSEL_INTERVAL:
 # Título e informações removidos para liberar espaço na apresentação
 
 # Placeholder principal que será atualizado com o conteúdo do bloco atual
-carousel_placeholder = st.empty()
+# (Movido para baixo para garantir ordem correta de renderização e limpeza)
+# carousel_placeholder = st.empty()  <-- Removido daqui
 
 st.markdown(
     """
@@ -1763,6 +1764,9 @@ def render_bloco_cancelamentos():
 # LÓGICA DE RENDERIZAÇÃO DO CARROSSEL - SEM JAVASCRIPT, APENAS PYTHON
 # ============================================================================
 
+# Criar o placeholder aqui para garantir que ele seja o último elemento e limpe corretamente o anterior
+carousel_placeholder = st.empty()
+
 # Dicionário mapeando índice para função de renderização
 RENDER_FUNCTIONS = {
     0: render_bloco_0,
@@ -1773,80 +1777,85 @@ RENDER_FUNCTIONS = {
 }
 
 # Renderizar o bloco atual dentro do placeholder baseado no índice
+# Limpar explicitamente antes de renderizar para evitar sobreposição
+carousel_placeholder.empty()
+
 with carousel_placeholder.container():
     current_index = st.session_state.carousel_index
     
-    if current_index == 0:
-        render_bloco_0()
-    elif current_index == 1:
-        render_bloco_reservas()
-    elif current_index == 2:
-        render_bloco_2()
-    elif current_index == 3:
-        # Bloco 3: Distribuição por Mídia
-        st.markdown('<div class="tv-carousel-section">', unsafe_allow_html=True)
-        st.markdown("## 📣 Distribuição de leads por midia")
-
-        leads_base_df = load_leads_tv()
-
-        if leads_base_df.empty:
-            st.info("Não foi possível carregar dados de mídia para o período de análise.")
-        else:
-            leads_tv_df = leads_base_df.copy()
-            leads_tv_df['data_consolidada'] = pd.to_datetime(leads_tv_df['data_consolidada'], errors='coerce')
-            leads_tv_df = leads_tv_df[leads_tv_df['data_consolidada'].notna()]
-            leads_tv_df = leads_tv_df[
-                (leads_tv_df['data_consolidada'].dt.date >= TERMOMETRO_DATA_INICIO) &
-                (leads_tv_df['data_consolidada'].dt.date <= data_final_analise)
-            ].copy()
-
-            if leads_tv_df.empty:
-                st.info("Sem dados de mídia para o período de análise selecionado.")
+    # Container interno para isolar o conteúdo do bloco
+    with st.container():
+        if current_index == 0:
+            render_bloco_0()
+        elif current_index == 1:
+            render_bloco_reservas()
+        elif current_index == 2:
+            render_bloco_2()
+        elif current_index == 3:
+            # Bloco 3: Distribuição por Mídia
+            st.markdown('<div class="tv-carousel-section">', unsafe_allow_html=True)
+            st.markdown("## 📣 Distribuição de leads por midia")
+    
+            leads_base_df = load_leads_tv()
+    
+            if leads_base_df.empty:
+                st.info("Não foi possível carregar dados de mídia para o período de análise.")
             else:
-                leads_tv_df['midia_consolidada'] = leads_tv_df['midia_consolidada'].fillna('Outros').astype(str).str.strip()
-                leads_tv_df['situacao_normalizada'] = leads_tv_df['situacao_nome'].astype(str).str.lower().str.strip()
-
-                midia_resumo = (
-                    leads_tv_df.groupby('midia_consolidada')
-                    .agg(
-                        total_leads=('idlead', 'count'),
-                        vendas=('situacao_normalizada', lambda x: (x == 'venda realizada').sum())
-                    )
-                    .reset_index()
-                )
-
-                if midia_resumo.empty:
-                    st.info("Sem dados de mídia para exibir.")
+                leads_tv_df = leads_base_df.copy()
+                leads_tv_df['data_consolidada'] = pd.to_datetime(leads_tv_df['data_consolidada'], errors='coerce')
+                leads_tv_df = leads_tv_df[leads_tv_df['data_consolidada'].notna()]
+                leads_tv_df = leads_tv_df[
+                    (leads_tv_df['data_consolidada'].dt.date >= TERMOMETRO_DATA_INICIO) &
+                    (leads_tv_df['data_consolidada'].dt.date <= data_final_analise)
+                ].copy()
+    
+                if leads_tv_df.empty:
+                    st.info("Sem dados de mídia para o período de análise selecionado.")
                 else:
-                    total_leads_midia = midia_resumo['total_leads'].sum()
-                    midia_resumo['percent_leads'] = (
-                        midia_resumo['total_leads'] / total_leads_midia * 100
-                    ).round(1) if total_leads_midia > 0 else 0.0
-
-                    midia_resumo['percent_conversao'] = midia_resumo.apply(
-                        lambda row: round((row['vendas'] / row['total_leads'] * 100), 1) if row['total_leads'] > 0 else 0.0,
-                        axis=1
+                    leads_tv_df['midia_consolidada'] = leads_tv_df['midia_consolidada'].fillna('Outros').astype(str).str.strip()
+                    leads_tv_df['situacao_normalizada'] = leads_tv_df['situacao_nome'].astype(str).str.lower().str.strip()
+    
+                    midia_resumo = (
+                        leads_tv_df.groupby('midia_consolidada')
+                        .agg(
+                            total_leads=('idlead', 'count'),
+                            vendas=('situacao_normalizada', lambda x: (x == 'venda realizada').sum())
+                        )
+                        .reset_index()
                     )
-
-                    midia_resumo = midia_resumo.sort_values('total_leads', ascending=False).head(10)
-
-                    midia_display = midia_resumo.copy()
-                    midia_display['Mídia'] = midia_display['midia_consolidada']
-                    midia_display['Total Leads'] = midia_display['total_leads'].apply(format_int_value)
-                    midia_display['Vendas Realizadas'] = midia_display['vendas'].apply(format_int_value)
-                    midia_display['% Leads'] = midia_display['percent_leads'].map(lambda v: f"{v:.1f}%")
-                    midia_display['% Conversão'] = midia_display['percent_conversao'].map(lambda v: f"{v:.1f}%")
-                    midia_display = midia_display[['Mídia', 'Total Leads', 'Vendas Realizadas', '% Leads', '% Conversão']]
-
-                    render_midia_table_html(midia_display)
-
-                    total_leads_exibidos = format_int_value(int(total_leads_midia))
-                    st.caption(
-                        f"Base consolidada de {TERMOMETRO_DATA_INICIO.strftime('%d/%m/%Y')} até {data_final_analise.strftime('%d/%m/%Y')} · Leads contabilizados: {total_leads_exibidos}"
-                    )
-        st.markdown('</div>', unsafe_allow_html=True)
-    elif current_index == 4:
-        render_bloco_cancelamentos()
+    
+                    if midia_resumo.empty:
+                        st.info("Sem dados de mídia para exibir.")
+                    else:
+                        total_leads_midia = midia_resumo['total_leads'].sum()
+                        midia_resumo['percent_leads'] = (
+                            midia_resumo['total_leads'] / total_leads_midia * 100
+                        ).round(1) if total_leads_midia > 0 else 0.0
+    
+                        midia_resumo['percent_conversao'] = midia_resumo.apply(
+                            lambda row: round((row['vendas'] / row['total_leads'] * 100), 1) if row['total_leads'] > 0 else 0.0,
+                            axis=1
+                        )
+    
+                        midia_resumo = midia_resumo.sort_values('total_leads', ascending=False).head(10)
+    
+                        midia_display = midia_resumo.copy()
+                        midia_display['Mídia'] = midia_display['midia_consolidada']
+                        midia_display['Total Leads'] = midia_display['total_leads'].apply(format_int_value)
+                        midia_display['Vendas Realizadas'] = midia_display['vendas'].apply(format_int_value)
+                        midia_display['% Leads'] = midia_display['percent_leads'].map(lambda v: f"{v:.1f}%")
+                        midia_display['% Conversão'] = midia_display['percent_conversao'].map(lambda v: f"{v:.1f}%")
+                        midia_display = midia_display[['Mídia', 'Total Leads', 'Vendas Realizadas', '% Leads', '% Conversão']]
+    
+                        render_midia_table_html(midia_display)
+    
+                        total_leads_exibidos = format_int_value(int(total_leads_midia))
+                        st.caption(
+                            f"Base consolidada de {TERMOMETRO_DATA_INICIO.strftime('%d/%m/%Y')} até {data_final_analise.strftime('%d/%m/%Y')} · Leads contabilizados: {total_leads_exibidos}"
+                        )
+            st.markdown('</div>', unsafe_allow_html=True)
+        elif current_index == 4:
+            render_bloco_cancelamentos()
 
 
 # ============================================================================
