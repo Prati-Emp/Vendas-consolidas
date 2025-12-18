@@ -551,33 +551,43 @@ def render_repasses_dashboard(
 
     # --- APLICAR FILTROS ---
     
-    # 1. Filtros em Repasses
-    if start_date and end_date:
-        df_repasses_prep = df_repasses_prep[
-            (df_repasses_prep["data_cad"].dt.date >= start_date) &
-            (df_repasses_prep["data_cad"].dt.date <= end_date)
-        ]
-        
+    # 1. Filtros Estruturais (Empresa/Unidade) - Aplicar primeiro para obter IDs válidos
+    # Isso garante que filtramos o workflow pela unidade correta, independentemente da data da venda.
+    df_repasses_estrutura = df_repasses_prep.copy()
+    
     if selected_empresas:
-        df_repasses_prep = df_repasses_prep[df_repasses_prep["empresa"].isin(selected_empresas)]
+        df_repasses_estrutura = df_repasses_estrutura[df_repasses_estrutura["empresa"].isin(selected_empresas)]
         
     if selected_unidades:
-        df_repasses_prep = df_repasses_prep[df_repasses_prep["unidade"].isin(selected_unidades)]
+        df_repasses_estrutura = df_repasses_estrutura[df_repasses_estrutura["unidade"].isin(selected_unidades)]
         
-    # 2. Filtros em Workflow (Aplicamos Data. Empresa/Unidade não existem na tabela workflow por padrão, 
-    # a menos que fizéssemos join. Por enquanto, filtraremos workflow apenas por data para manter simples
-    # conforme solicitado "separar as analises", mas idealmente filtraríamos pelos IDs filtrados de repasses)
+    ids_validos_estrutura = df_repasses_estrutura["referencia"].unique()
+
+    # 2. Filtro de Data e Estrutura para Repasses (Visão Geral - Foco na Venda)
+    df_repasses_final = df_repasses_estrutura.copy()
+    if start_date and end_date:
+        df_repasses_final = df_repasses_final[
+            (df_repasses_final["data_cad"].dt.date >= start_date) &
+            (df_repasses_final["data_cad"].dt.date <= end_date)
+        ]
+        
+    # 3. Filtro de Workflow (Análise Temporal - Foco no Evento)
+    # a) Filtrar pelos IDs da estrutura selecionada (Empresa/Unidade)
+    df_workflow_final = df_workflow_prep[df_workflow_prep["referencia"].isin(ids_validos_estrutura)]
     
-    # Filtrar Workflow pelos IDs que sobraram em Repasses (consistência de filtro)
-    ids_validos = df_repasses_prep["referencia"].unique()
-    df_workflow_prep = df_workflow_prep[df_workflow_prep["referencia"].isin(ids_validos)]
+    # b) Filtrar pela DATA do evento de workflow (permitindo ver eventos recentes de vendas antigas)
+    if start_date and end_date:
+        df_workflow_final = df_workflow_final[
+            (df_workflow_final["data_cad"].dt.date >= start_date) &
+            (df_workflow_final["data_cad"].dt.date <= end_date)
+        ]
     
     # --- RENDERIZAÇÃO POR ABAS ---
     
     tab1, tab2 = st.tabs(["📊 Visão Geral (Carteira)", "⏱️ Análise de Workflow (Tempo)"])
     
     with tab1:
-        render_visao_geral(df_repasses_prep)
+        render_visao_geral(df_repasses_final)
         
     with tab2:
-        render_analise_workflow(df_workflow_prep)
+        render_analise_workflow(df_workflow_final)
