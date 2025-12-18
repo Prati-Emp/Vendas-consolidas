@@ -529,42 +529,14 @@ def render_repasses_dashboard(
             max_value=max_date,
         )
         
-        # Filtro de Empresa
-        selected_empresas = []
-        if "empresa" in df_repasses_prep.columns:
-            empresas = sorted(df_repasses_prep["empresa"].dropna().unique())
-            selected_empresas = st.multiselect(
-                "Empresa",
-                empresas,
-                default=empresas if len(empresas) <= 10 else [],
-            )
-
-        # Filtro de Unidade
-        selected_unidades = []
-        if "unidade" in df_repasses_prep.columns:
-            unidades = sorted(df_repasses_prep["unidade"].dropna().unique())
-            selected_unidades = st.multiselect(
-                "Unidade",
-                unidades,
-                default=unidades if len(unidades) <= 10 else [],
-            )
-
     # --- APLICAR FILTROS ---
     
-    # 1. Filtros Estruturais (Empresa/Unidade) - Aplicar primeiro para obter IDs válidos
-    # Isso garante que filtramos o workflow pela unidade correta, independentemente da data da venda.
-    df_repasses_estrutura = df_repasses_prep.copy()
+    # 1. Filtros Estruturais (Empresa/Unidade) - REMOVIDOS conforme solicitação.
+    # Assumimos que o usuário quer ver todos os dados, inclusive órfãos (sem vínculo de empresa).
     
-    if selected_empresas:
-        df_repasses_estrutura = df_repasses_estrutura[df_repasses_estrutura["empresa"].isin(selected_empresas)]
-        
-    if selected_unidades:
-        df_repasses_estrutura = df_repasses_estrutura[df_repasses_estrutura["unidade"].isin(selected_unidades)]
-        
-    ids_validos_estrutura = df_repasses_estrutura["referencia"].unique()
-
-    # 2. Filtro de Data e Estrutura para Repasses (Visão Geral - Foco na Venda)
-    df_repasses_final = df_repasses_estrutura.copy()
+    # 2. Filtro de Data para Repasses (Visão Geral - Foco na Venda)
+    df_repasses_final = df_repasses_prep.copy()
+    
     if start_date and end_date:
         df_repasses_final = df_repasses_final[
             (df_repasses_final["data_cad"].dt.date >= start_date) &
@@ -572,23 +544,12 @@ def render_repasses_dashboard(
         ]
         
     # 3. Filtro de Workflow (Análise Temporal - Foco no Evento)
+    # Como removemos os filtros de estrutura, mostramos TODO o workflow, 
+    # filtrando apenas pela data do evento.
     
-    # Lógica de IDs:
-    # Se houver filtros de estrutura (Empresa/Unidade), o workflow deve respeitar esses filtros.
-    # Como a tabela workflow não tem empresa/unidade, filtramos pelos IDs que sobraram em Repasses.
-    # POREM: Se NÃO houver filtros de estrutura, devemos mostrar TODO o workflow, incluindo IDs 
-    # que não existem na tabela de repasses (órfãos), para não esconder dados.
+    df_workflow_final = df_workflow_prep.copy()
     
-    has_structure_filter = bool(selected_empresas) or bool(selected_unidades)
-    
-    if has_structure_filter:
-        # Restringe aos IDs da estrutura selecionada
-        df_workflow_final = df_workflow_prep[df_workflow_prep["referencia"].isin(ids_validos_estrutura)]
-    else:
-        # Mostra tudo (incluindo órfãos da tabela de repasses)
-        df_workflow_final = df_workflow_prep
-    
-    # b) Filtrar pela DATA do evento de workflow (permitindo ver eventos recentes de vendas antigas)
+    # Filtrar pela DATA do evento de workflow
     if start_date and end_date:
         df_workflow_final = df_workflow_final[
             (df_workflow_final["data_cad"].dt.date >= start_date) &
