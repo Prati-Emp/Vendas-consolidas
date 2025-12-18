@@ -572,8 +572,21 @@ def render_repasses_dashboard(
         ]
         
     # 3. Filtro de Workflow (Análise Temporal - Foco no Evento)
-    # a) Filtrar pelos IDs da estrutura selecionada (Empresa/Unidade)
-    df_workflow_final = df_workflow_prep[df_workflow_prep["referencia"].isin(ids_validos_estrutura)]
+    
+    # Lógica de IDs:
+    # Se houver filtros de estrutura (Empresa/Unidade), o workflow deve respeitar esses filtros.
+    # Como a tabela workflow não tem empresa/unidade, filtramos pelos IDs que sobraram em Repasses.
+    # POREM: Se NÃO houver filtros de estrutura, devemos mostrar TODO o workflow, incluindo IDs 
+    # que não existem na tabela de repasses (órfãos), para não esconder dados.
+    
+    has_structure_filter = bool(selected_empresas) or bool(selected_unidades)
+    
+    if has_structure_filter:
+        # Restringe aos IDs da estrutura selecionada
+        df_workflow_final = df_workflow_prep[df_workflow_prep["referencia"].isin(ids_validos_estrutura)]
+    else:
+        # Mostra tudo (incluindo órfãos da tabela de repasses)
+        df_workflow_final = df_workflow_prep
     
     # b) Filtrar pela DATA do evento de workflow (permitindo ver eventos recentes de vendas antigas)
     if start_date and end_date:
