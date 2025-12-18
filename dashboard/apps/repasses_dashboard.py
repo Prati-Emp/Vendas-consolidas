@@ -356,28 +356,38 @@ def render_analise_workflow(df_workflow: pd.DataFrame):
 
     st.subheader("⏱️ Análise de Tempos (SLA)")
     
-    # KPI Geral de Tempo
-    tempo_medio_geral = df_workflow["tempo"].mean()
+    # KPI Geral de Tempo (Considerando apenas tempos > 0 para evitar distorção por registros instantâneos/erros)
+    df_workflow_nonzero = df_workflow[df_workflow["tempo"] > 0.001]
+    
+    if not df_workflow_nonzero.empty:
+        tempo_medio_geral = df_workflow_nonzero["tempo"].mean()
+    else:
+        tempo_medio_geral = 0.0
     
     col1, col2 = st.columns(2)
     with col1:
-        st.metric("Tempo Médio Geral (todas as etapas)", f"{tempo_medio_geral:.1f} dias")
+        st.metric("Tempo Médio Geral (etapas com espera)", f"{tempo_medio_geral:.1f} dias")
 
     st.divider()
 
     # Tempo Médio por Situação
     st.subheader("Tempo Médio por Etapa")
     
-    tempo_por_situacao = (
-        df_workflow.groupby("situacao")["tempo"]
-        .agg(["mean", "count", "median"])
+    # Calcular contagem total (incluindo zeros) para mostrar volume real
+    stats_counts = df_workflow["situacao"].value_counts().reset_index()
+    stats_counts.columns = ["situacao", "Ocorrências"]
+    
+    # Calcular média e mediana apenas para tempos > 0 (SLA real de quem esperou)
+    stats_times = (
+        df_workflow_nonzero.groupby("situacao")["tempo"]
+        .agg(["mean", "median"])
         .reset_index()
-        .rename(columns={
-            "mean": "Média (dias)",
-            "median": "Mediana (dias)",
-            "count": "Ocorrências"
-        })
+        .rename(columns={"mean": "Média (dias)", "median": "Mediana (dias)"})
     )
+    
+    # Merge para ter tabela completa
+    tempo_por_situacao = pd.merge(stats_counts, stats_times, on="situacao", how="left")
+    tempo_por_situacao.fillna(0, inplace=True)
     
     # Criar coluna para ordenação baseada no STATUS_ORDER_WORKFLOW (insensível a case)
     status_order_normalized = [s.lower().strip() for s in STATUS_ORDER_WORKFLOW]
