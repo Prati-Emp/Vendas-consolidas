@@ -106,7 +106,6 @@ def load_repasses_raw() -> pd.DataFrame:
         df = md_conn.run_query(sql)
     except Exception:
         # Fallback se colunas opcionais não existirem (tentativa simplificada)
-        # Se falhar aqui, provavelmente a coluna não existe no banco
         st.warning("Algumas colunas detalhadas podem não estar disponíveis. Carregando conjunto reduzido.")
         sql_fallback = """
         SELECT 
@@ -137,21 +136,31 @@ def load_repasses_raw() -> pd.DataFrame:
 def load_workflow_raw() -> pd.DataFrame:
     """Carrega os dados crus da tabela cv_repasses_workflow no MotherDuck."""
     md_conn = get_md_connection()
+    # Adicionando Para (situacao_resumida) e renomeando situacao (detalhada)
     sql = """
     SELECT 
         referencia,
-        situacao,
+        situacao AS situacao_detalhada,
+        Para AS situacao_resumida,
         tempo,
         data_cad
     FROM reservas.cv_repasses_workflow
     WHERE referencia IS NOT NULL
-      AND situacao IS NOT NULL
     """
     try:
         return md_conn.run_query(sql)
     except Exception as e:
-        st.error(f"Erro ao carregar cv_repasses_workflow: {e}")
-        return pd.DataFrame()
+        # Fallback se 'Para' não existir
+        sql_fallback = """
+        SELECT 
+            referencia,
+            situacao AS situacao_detalhada,
+            tempo,
+            data_cad
+        FROM reservas.cv_repasses_workflow
+        WHERE referencia IS NOT NULL
+        """
+        return md_conn.run_query(sql_fallback)
 
 
 def prepare_repasses(df: pd.DataFrame) -> pd.DataFrame:
@@ -203,12 +212,19 @@ def prepare_workflow(df: pd.DataFrame) -> pd.DataFrame:
     if "tempo" in df.columns:
         df["tempo"] = pd.to_numeric(df["tempo"], errors="coerce").fillna(0.0)
         df["tempo"] = df["tempo"] / 1440  # Converter minutos para dias
+        
+    # Normalizar situações
+    if "situacao_resumida" in df.columns:
+        df["situacao_resumida"] = df["situacao_resumida"].fillna("Outros")
+        
+    if "situacao_detalhada" in df.columns:
+        df["situacao_detalhada"] = df["situacao_detalhada"].fillna("Outros")
 
     return df
 
 
 def _render_situacao_chart(df: pd.DataFrame, col_name: str, order_list: Optional[List[str]] = None):
-    """Helper para renderizar gráfico e tabela de situação."""
+    """Helper para renderizar gráfico e tabela de situação (Visão Geral)."""
     
     situacao_analysis = (
         df.groupby(col_name)
@@ -302,6 +318,94 @@ def _render_situacao_chart(df: pd.DataFrame, col_name: str, order_list: Optional
         hide_index=True,
         use_container_width=True,
         key=f"table_{col_name}"
+    )
+
+
+def _render_workflow_chart(df: pd.DataFrame, col_name: str, order_list: Optional[List[str]] = None, key_suffix: str = ""):
+    """Helper para renderizar gráfico e tabela de tempo médio (Workflow)."""
+    
+    # Filtra apenas tempos válidos para média
+    df_workflow_nonzero = df[df["tempo"] > 0.001]
+    
+    if df_workflow_nonzero.empty:
+        st.warning(f"Sem dados válidos de tempo para análise ({key_suffix}).")
+        return
+
+    # Calcular contagem total (incluindo zeros) para mostrar volume real
+    stats_counts = df[col_name].value_counts().reset_index()
+    stats_counts.columns = ["situacao", "Ocorrências"]
+    
+    # Calcular média e mediana apenas para tempos > 0
+    stats_times = (
+        df_workflow_nonzero.groupby(col_name)["tempo"]
+        .agg(["mean", "median"])
+        .reset_index()
+        .rename(columns={col_name: "situacao", "mean": "Média (dias)", "median": "Mediana (dias)"})
+    )
+    
+    # Merge para ter tabela completa
+    tempo_por_situacao = pd.merge(stats_counts, stats_times, on="situacao", how="left")
+    tempo_por_situacao.fillna(0, inplace=True)
+    
+    # Ordenação
+    if order_list:
+        status_order_normalized = [s.lower().strip() for s in order_list]
+        tempo_por_situacao["ordem"] = tempo_por_situacao["situacao"].apply(
+            lambda x: status_order_normalized.index(x.lower().strip()) if x.lower().strip() in status_order_normalized else len(status_order_normalized)
+        )
+        # Ordenar inverso para gráfico horizontal (topo = primeiro da lista)
+        tempo_por_situacao = tempo_por_situacao.sort_values("ordem", ascending=False)
+    else:
+        # Se não tiver ordem, ordenar por tempo médio (crescente para gráfico horizontal invertido)
+        tempo_por_situacao = tempo_por_situacao.sort_values("Média (dias)", ascending=True)
+
+    # Gráfico Customizado
+    fig = go.Figure()
+    
+    # Formatando valores para o texto dentro da barra
+    tempo_por_situacao["Texto Tempo"] = tempo_por_situacao["Média (dias)"].apply(lambda x: f"{x:.1f} dias")
+    
+    fig.add_trace(go.Bar(
+        y=tempo_por_situacao["situacao"],
+        x=tempo_por_situacao["Média (dias)"],
+        name="Tempo Médio",
+        orientation='h',
+        text=tempo_por_situacao["Texto Tempo"],
+        textposition="auto",
+        marker_color="#8B0000",
+        textfont=dict(color="white")
+    ))
+    
+    max_tempo = tempo_por_situacao["Média (dias)"].max()
+        
+    fig.update_layout(
+        xaxis_title="Tempo Médio (dias)",
+        yaxis_title=None,
+        height=max(500, len(tempo_por_situacao) * 40),
+        margin=dict(r=50),
+        bargap=0.15,
+        showlegend=False,
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        xaxis=dict(
+            range=[0, max_tempo * 1.15],
+            showgrid=False
+        )
+    )
+    st.plotly_chart(fig, use_container_width=True, key=f"workflow_chart_{key_suffix}")
+    
+    # Tabela
+    if order_list:
+        tabela_ordenada = tempo_por_situacao.sort_values("ordem", ascending=True)
+    else:
+        # Tabela ordenada por tempo médio decrescente (piores primeiro)
+        tabela_ordenada = tempo_por_situacao.sort_values("Média (dias)", ascending=False)
+        
+    st.dataframe(
+        tabela_ordenada[["situacao", "Média (dias)", "Mediana (dias)", "Ocorrências"]].rename(columns={"situacao": "Etapa"}),
+        use_container_width=True,
+        hide_index=True,
+        key=f"workflow_table_{key_suffix}"
     )
 
 
@@ -455,77 +559,22 @@ def render_analise_workflow(df_workflow: pd.DataFrame):
 
     st.divider()
 
-    # Tempo Médio por Situação
+    # Tempo Médio por Situação (Abas Resumido e Detalhado)
     st.subheader("Tempo Médio por Etapa")
     
-    # Calcular contagem total (incluindo zeros) para mostrar volume real
-    stats_counts = df_workflow["situacao"].value_counts().reset_index()
-    stats_counts.columns = ["situacao", "Ocorrências"]
+    tab_resumido, tab_detalhado = st.tabs(["Resumido", "Detalhado"])
     
-    # Calcular média e mediana apenas para tempos > 0 (SLA real de quem esperou)
-    stats_times = (
-        df_workflow_nonzero.groupby("situacao")["tempo"]
-        .agg(["mean", "median"])
-        .reset_index()
-        .rename(columns={"mean": "Média (dias)", "median": "Mediana (dias)"})
-    )
-    
-    # Merge para ter tabela completa
-    tempo_por_situacao = pd.merge(stats_counts, stats_times, on="situacao", how="left")
-    tempo_por_situacao.fillna(0, inplace=True)
-    
-    # Criar coluna para ordenação baseada no STATUS_ORDER_WORKFLOW (insensível a case)
-    status_order_normalized = [s.lower().strip() for s in STATUS_ORDER_WORKFLOW]
-    tempo_por_situacao["ordem"] = tempo_por_situacao["situacao"].apply(
-        lambda x: status_order_normalized.index(x.lower().strip()) if x.lower().strip() in status_order_normalized else len(status_order_normalized)
-    )
-    
-    # Ordenar pela ordem definida (inverso para gráfico horizontal Plotly)
-    tempo_por_situacao = tempo_por_situacao.sort_values("ordem", ascending=False)
-    
-    # Gráfico Customizado (Igual Visão Geral)
-    fig = go.Figure()
-    
-    # Formatando valores para o texto dentro da barra (tempo médio)
-    tempo_por_situacao["Texto Tempo"] = tempo_por_situacao["Média (dias)"].apply(lambda x: f"{x:.1f} dias")
-    
-    fig.add_trace(go.Bar(
-        y=tempo_por_situacao["situacao"],
-        x=tempo_por_situacao["Média (dias)"],
-        name="Tempo Médio",
-        orientation='h',
-        text=tempo_por_situacao["Texto Tempo"],
-        textposition="auto", # Ajusta automaticamente dentro ou fora da barra
-        marker_color="#8B0000", # Vermelho escuro para diferenciar
-        textfont=dict(color="white")
-    ))
-    
-    max_tempo = tempo_por_situacao["Média (dias)"].max()
-        
-    fig.update_layout(
-        xaxis_title="Tempo Médio (dias)",
-        yaxis_title=None,
-        height=max(500, len(tempo_por_situacao) * 40), # Altura dinâmica aumentada para barras mais largas
-        margin=dict(r=50),
-        bargap=0.15, # Menor gap = barras mais largas
-        showlegend=False,
-        paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(0,0,0,0)',
-        xaxis=dict(
-            range=[0, max_tempo * 1.15], # Margem extra para o texto se ficar fora
-            showgrid=False
-        )
-    )
-    st.plotly_chart(fig, use_container_width=True, key="workflow_chart")
-    
-    # Tabela (ordenada pela ordem do fluxo para leitura lógica)
-    tabela_ordenada = tempo_por_situacao.sort_values("ordem", ascending=True)
-    st.dataframe(
-        tabela_ordenada[["situacao", "Média (dias)", "Mediana (dias)", "Ocorrências"]].rename(columns={"situacao": "Etapa"}),
-        use_container_width=True,
-        hide_index=True,
-        key="workflow_table"
-    )
+    with tab_resumido:
+        if "situacao_resumida" in df_workflow.columns:
+            _render_workflow_chart(df_workflow, "situacao_resumida", STATUS_ORDER, key_suffix="resumido")
+        else:
+            st.warning("Dados de situação resumida não disponíveis para o Workflow.")
+            
+    with tab_detalhado:
+        if "situacao_detalhada" in df_workflow.columns:
+            _render_workflow_chart(df_workflow, "situacao_detalhada", STATUS_ORDER_WORKFLOW, key_suffix="detalhado")
+        else:
+            st.warning("Dados de situação detalhada não disponíveis para o Workflow.")
     
     st.divider()
     
