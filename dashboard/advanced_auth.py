@@ -98,6 +98,7 @@ USERS_DATABASE = {
         "created": "2025-12-19",
         "last_login": None,
         "active": True,
+        "pages": ["operacoes"],
         "subpages": ["operacoes.jira", "operacoes.compras", "operacoes.solicitacoes", "operacoes.contratos", "operacoes.evolucao_obra"]
     },
     "michael.seidenstucker@grupoprati.com": {
@@ -108,6 +109,7 @@ USERS_DATABASE = {
         "created": "2025-12-19",
         "last_login": None,
         "active": True,
+        "pages": ["operacoes"],
         "subpages": ["operacoes.jira"]
     },
     "italo.peres@grupoprati.com": {
