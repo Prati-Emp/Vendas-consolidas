@@ -88,7 +88,7 @@ USERS_DATABASE = {
         "created": "2025-01-23",
         "last_login": None,
         "active": True,
-        "subpages": ["operacoes.jira"]  # Apenas acesso ao Jira
+        "subpages": ["operacoes.jira", "operacoes.compras", "operacoes.solicitacoes", "operacoes.contratos", "operacoes.evolucao_obra"]
     },
     "italo.peres@grupoprati.com": {
         "password": "Pr@ti2024!Italo",
@@ -424,6 +424,7 @@ def setup_auth_environment():
             <li>José Aquino (analyst) - jose.aquino@grupoprati.com</li>
             <li>Evelyn Padilha (analyst) - evelyn.padilha@grupoprati.com</li>
             <li>João Fantinel (analyst) - joao.fantinel@grupoprati.com</li>
+            <li>André Pozza (analyst) - andre.pozza@grupoprati.com</li>
         </ul>
         <p><strong>⚠️ Importante:</strong> Senhas são fornecidas individualmente por segurança!</p>
     </div>
