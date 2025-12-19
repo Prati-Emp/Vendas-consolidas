@@ -90,6 +90,26 @@ USERS_DATABASE = {
         "active": True,
         "subpages": ["operacoes.jira", "operacoes.compras", "operacoes.solicitacoes", "operacoes.contratos", "operacoes.evolucao_obra"]
     },
+    "raul.lunkes@grupoprati.com": {
+        "password": "Pr@ti2025!Raul",
+        "role": "analyst",
+        "name": "Raul Lunkes",
+        "department": "Operações",
+        "created": "2025-12-19",
+        "last_login": None,
+        "active": True,
+        "subpages": ["operacoes.jira", "operacoes.compras", "operacoes.solicitacoes", "operacoes.contratos", "operacoes.evolucao_obra"]
+    },
+    "michael.seidenstucker@grupoprati.com": {
+        "password": "Pr@ti2025!Michael",
+        "role": "analyst",
+        "name": "Michael Seidenstucker",
+        "department": "Operações",
+        "created": "2025-12-19",
+        "last_login": None,
+        "active": True,
+        "subpages": ["operacoes.jira"]
+    },
     "italo.peres@grupoprati.com": {
         "password": "Pr@ti2024!Italo",
         "role": "manager",
@@ -425,6 +445,8 @@ def setup_auth_environment():
             <li>Evelyn Padilha (analyst) - evelyn.padilha@grupoprati.com</li>
             <li>João Fantinel (analyst) - joao.fantinel@grupoprati.com</li>
             <li>André Pozza (analyst) - andre.pozza@grupoprati.com</li>
+            <li>Raul Lunkes (analyst) - raul.lunkes@grupoprati.com</li>
+            <li>Michael Seidenstucker (analyst) - michael.seidenstucker@grupoprati.com</li>
         </ul>
         <p><strong>⚠️ Importante:</strong> Senhas são fornecidas individualmente por segurança!</p>
     </div>
