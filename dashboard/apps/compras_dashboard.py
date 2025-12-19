@@ -1385,8 +1385,8 @@ def render_compras_dashboard(
     st.markdown("---")
     st.subheader("📊 Indicadores Principais")
     
-    # Primeira linha: Valor de Compras, Total de Pedidos, Valor Médio por Pedido, Valor de Descontos
-    col1, col2, col3, col4 = st.columns(4)
+    # Primeira linha: Valor de Compras, Total de Pedidos, Valor Médio por Pedido, Valor de Descontos, % de Desconto
+    col1, col2, col3, col4, col5 = st.columns(5)
     
     with col1:
         st.metric(
@@ -1416,9 +1416,6 @@ def render_compras_dashboard(
             help="Soma total de descontos aplicados"
         )
     
-    # Segunda linha: % de Desconto, Pedidos Entregues, Pedidos Parcialmente Entregues, Pedidos Atrasados, Pedidos no Prazo
-    col5, col6, col7, col8, col9 = st.columns(5)
-    
     with col5:
         st.metric(
             "% de Desconto",
@@ -1426,12 +1423,15 @@ def render_compras_dashboard(
             help="Percentual de desconto em relação ao valor total dos pedidos"
         )
     
+    # Segunda linha: Pedidos Totalmente Entregues, Pedidos Parcialmente Entregues, Pedidos Atrasados, Pedidos no Prazo
+    col6, col7, col8, col9 = st.columns(4)
+    
     with col6:
         st.metric(
             "Pedidos Totalmente Entregues",
             f"{indicadores['pedidos_entregues']:,}",
             f"{formatar_percentual(indicadores['percentual_entregues'])}",
-            help="Quantidade e percentual de pedidos totalmente entregues e no prazo (Status: FULLY_DELIVERED e não atrasados)"
+            help="Quantidade e percentual de pedidos totalmente entregues Status: FULLY_DELIVERED."
         )
     
     with col7:
