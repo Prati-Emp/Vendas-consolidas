@@ -1154,6 +1154,10 @@ def render_leadtime_tab(
         df_exib_obra['% Comprado no Prazo'] = df_exib_obra['% Comprado no Prazo'].apply(lambda x: f"{x:.2f}%")
         df_exib_obra['Lead Time Ponderado'] = df_exib_obra['Lead Time Ponderado'].apply(lambda x: f"{x:.1f} dias")
         df_exib_obra['Tempo de Atraso Médio'] = df_exib_obra['Tempo de Atraso Médio'].apply(lambda x: f"{x:.2f} dias" if x > 0 else "-")
+        
+        # Garantir ordem das colunas: Obra, % Comprado no Prazo, Lead Time Ponderado, Tempo de Atraso Médio
+        colunas_ordenadas = ['Obra', '% Comprado no Prazo', 'Lead Time Ponderado', 'Tempo de Atraso Médio']
+        df_exib_obra = df_exib_obra[colunas_ordenadas]
 
         st.dataframe(
             df_exib_obra,
@@ -1179,6 +1183,10 @@ def render_leadtime_tab(
         df_exib_comp['% Comprado no Prazo'] = df_exib_comp['% Comprado no Prazo'].apply(lambda x: f"{x:.2f}%")
         df_exib_comp['Lead Time Ponderado'] = df_exib_comp['Lead Time Ponderado'].apply(lambda x: f"{x:.1f} dias")
         df_exib_comp['Tempo de Atraso Médio'] = df_exib_comp['Tempo de Atraso Médio'].apply(lambda x: f"{x:.2f} dias" if x > 0 else "-")
+        
+        # Garantir ordem das colunas: Comprador, % Comprado no Prazo, Lead Time Ponderado, Tempo de Atraso Médio
+        colunas_ordenadas = ['Comprador', '% Comprado no Prazo', 'Lead Time Ponderado', 'Tempo de Atraso Médio']
+        df_exib_comp = df_exib_comp[colunas_ordenadas]
 
         st.dataframe(
             df_exib_comp,
@@ -1222,6 +1230,10 @@ def render_leadtime_tab(
             df_exib_obra_mes['% Comprado no Prazo'] = df_exib_obra_mes['% Comprado no Prazo'].apply(lambda x: f"{x:.2f}%")
             df_exib_obra_mes['Lead Time Ponderado'] = df_exib_obra_mes['Lead Time Ponderado'].apply(lambda x: f"{x:.1f} dias")
             df_exib_obra_mes['Tempo de Atraso Médio'] = df_exib_obra_mes['Tempo de Atraso Médio'].apply(lambda x: f"{x:.2f} dias" if x > 0 else "-")
+            
+            # Garantir ordem das colunas: Obra, Mês, % Comprado no Prazo, Lead Time Ponderado, Tempo de Atraso Médio
+            colunas_ordenadas = ['Obra', 'Mês', '% Comprado no Prazo', 'Lead Time Ponderado', 'Tempo de Atraso Médio']
+            df_exib_obra_mes = df_exib_obra_mes[colunas_ordenadas]
 
             st.dataframe(
                 df_exib_obra_mes,
