@@ -83,12 +83,14 @@ def load_repasses_raw() -> pd.DataFrame:
     md_conn = get_md_connection()
     # Selecionando colunas garantidas. 'empresa' e 'unidade' podem não existir na tabela base.
     # 'unidade' parece existir na amostra, mas 'empresa' não.
+    # Atualizado para buscar 'Para' (Resumido) e 'Situacao' (Detalhado)
     sql = """
     SELECT 
         referencia,
         idrepasse,
         empreendimento,
-        Para AS situacao,
+        Para AS situacao_resumida,
+        Situacao AS situacao_detalhada,
         valor_contrato,
         data_cad,
         unidade
@@ -98,13 +100,15 @@ def load_repasses_raw() -> pd.DataFrame:
     try:
         df = md_conn.run_query(sql)
     except Exception:
-        # Fallback se 'unidade' também não existir
+        # Fallback se 'unidade' também não existir ou erro na query principal
+        # Tentamos sem unidade, mas mantendo as duas situações
         sql_fallback = """
         SELECT 
             referencia,
             idrepasse,
             empreendimento,
-            Para AS situacao,
+            Para AS situacao_resumida,
+            Situacao AS situacao_detalhada,
             valor_contrato,
             data_cad
         FROM reservas.cv_repasses
@@ -163,13 +167,18 @@ def prepare_repasses(df: pd.DataFrame) -> pd.DataFrame:
             df["valor_contrato"], errors="coerce"
         ).fillna(0.0)
 
-    # Normalizar situação
-    df["situacao"] = df["situacao"].fillna("Outros")
-    
-    # Criar coluna para ordenação
-    df["situacao_ordem"] = df["situacao"].apply(
-        lambda x: STATUS_ORDER.index(x) if x in STATUS_ORDER else len(STATUS_ORDER)
-    )
+    # Normalizar situação resumida
+    if "situacao_resumida" in df.columns:
+        df["situacao_resumida"] = df["situacao_resumida"].fillna("Outros")
+        
+        # Criar coluna para ordenação
+        df["situacao_resumida_ordem"] = df["situacao_resumida"].apply(
+            lambda x: STATUS_ORDER.index(x) if x in STATUS_ORDER else len(STATUS_ORDER)
+        )
+        
+    # Normalizar situação detalhada
+    if "situacao_detalhada" in df.columns:
+        df["situacao_detalhada"] = df["situacao_detalhada"].fillna("Outros")
 
     return df
 
@@ -191,6 +200,103 @@ def prepare_workflow(df: pd.DataFrame) -> pd.DataFrame:
         df["tempo"] = df["tempo"] / 1440  # Converter minutos para dias
 
     return df
+
+
+def _render_situacao_chart(df: pd.DataFrame, col_name: str, order_list: Optional[List[str]] = None):
+    """Helper para renderizar gráfico e tabela de situação."""
+    
+    situacao_analysis = (
+        df.groupby(col_name)
+        .agg({
+            "referencia": "nunique",
+            "valor_contrato": "sum"
+        })
+        .reset_index()
+        .rename(columns={
+            col_name: "Situação",
+            "referencia": "Quantidade",
+            "valor_contrato": "Valor Total"
+        })
+    )
+    
+    # Ordenação
+    if order_list:
+        situacao_analysis["ordem"] = situacao_analysis["Situação"].apply(
+            lambda x: order_list.index(x) if x in order_list else len(order_list)
+        )
+        # Ordenar inverso para gráfico horizontal (topo = primeiro da lista)
+        situacao_analysis = situacao_analysis.sort_values("ordem", ascending=False)
+    else:
+        # Se não houver ordem definida, ordenar por Quantidade (crescente para ficar no topo no gráfico horizontal invertido)
+        # No Plotly H, o ultimo do dataframe fica no topo.
+        situacao_analysis = situacao_analysis.sort_values("Quantidade", ascending=True)
+    
+    # Formatando valores para o gráfico
+    situacao_analysis["Valor Texto"] = situacao_analysis["Valor Total"].apply(format_currency_short)
+    
+    # Gráfico Horizontal customizado
+    fig = go.Figure()
+    
+    # Barra principal
+    fig.add_trace(go.Bar(
+        y=situacao_analysis["Situação"],
+        x=situacao_analysis["Quantidade"], 
+        name="Quantidade",
+        orientation='h',
+        text=situacao_analysis["Valor Texto"], 
+        textposition="inside",
+        insidetextanchor="middle",
+        marker_color="#002b55", 
+        textfont=dict(color="white")
+    ))
+    
+    # Adicionar anotações
+    annotations = []
+    max_qtd = situacao_analysis["Quantidade"].max() if not situacao_analysis.empty else 0
+    
+    for idx, row in situacao_analysis.iterrows():
+        annotations.append(dict(
+            x=row["Quantidade"],
+            y=row["Situação"],
+            text=f" <b>{row['Quantidade']}</b>", 
+            xanchor='left',
+            yanchor='middle',
+            showarrow=False,
+            font=dict(color="white", size=14)
+        ))
+        
+    fig.update_layout(
+        xaxis_title="Quantidade",
+        yaxis_title=None,
+        height=max(400, len(situacao_analysis) * 40), # Dynamic height
+        margin=dict(r=50), 
+        annotations=annotations,
+        showlegend=False,
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        xaxis=dict(
+            range=[0, max_qtd * 1.15], 
+            showgrid=False 
+        )
+    )
+    st.plotly_chart(fig, use_container_width=True)
+    
+    # Tabela Detalhada
+    if order_list:
+        situacao_analysis_table = situacao_analysis.sort_values("ordem", ascending=True).copy()
+    else:
+        # Para tabela, queremos o maior no topo
+        situacao_analysis_table = situacao_analysis.sort_values("Quantidade", ascending=False).copy()
+        
+    situacao_analysis_table["Valor"] = situacao_analysis_table["Valor Total"].apply(
+        lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    )
+    
+    st.dataframe(
+        situacao_analysis_table[["Situação", "Quantidade", "Valor"]],
+        hide_index=True,
+        use_container_width=True
+    )
 
 
 def render_visao_geral(df: pd.DataFrame):
@@ -225,92 +331,19 @@ def render_visao_geral(df: pd.DataFrame):
     # Análise por Situação (Funil)
     st.subheader("📉 Distribuição de Repasses por Situação")
     
-    if "situacao" in df.columns:
-        situacao_analysis = (
-            df.groupby("situacao")
-            .agg({
-                "referencia": "nunique",
-                "valor_contrato": "sum"
-            })
-            .reset_index()
-            .rename(columns={
-                "referencia": "Quantidade",
-                "valor_contrato": "Valor Total"
-            })
-        )
-        
-        # Ordenação customizada
-        situacao_analysis["ordem"] = situacao_analysis["situacao"].apply(
-            lambda x: STATUS_ORDER.index(x) if x in STATUS_ORDER else len(STATUS_ORDER)
-        )
-        
-        # Ordenar inverso para gráfico horizontal (topo = primeiro da lista)
-        # No Plotly horizontal, o primeiro item aparece embaixo por padrão, então invertemos.
-        situacao_analysis = situacao_analysis.sort_values("ordem", ascending=False)
-        
-        # Formatando valores para o gráfico
-        situacao_analysis["Valor Texto"] = situacao_analysis["Valor Total"].apply(format_currency_short)
-        
-        # Gráfico Horizontal customizado
-        fig = go.Figure()
-        
-        # Barra principal
-        fig.add_trace(go.Bar(
-            y=situacao_analysis["situacao"],
-            x=situacao_analysis["Quantidade"], # Tamanho da barra baseado na quantidade
-            name="Quantidade",
-            orientation='h',
-            text=situacao_analysis["Valor Texto"], # Valor monetário DENTRO
-            textposition="inside",
-            insidetextanchor="middle",
-            marker_color="#002b55", # Azul escuro corporativo
-            textfont=dict(color="white")
-        ))
-        
-        # Adicionar anotações para a Quantidade APÓS a barra (à direita)
-        annotations = []
-        max_qtd = situacao_analysis["Quantidade"].max()
-        
-        for idx, row in situacao_analysis.iterrows():
-            annotations.append(dict(
-                x=row["Quantidade"],
-                y=row["situacao"],
-                text=f" <b>{row['Quantidade']}</b>", # Espaço antes do número para afastar da barra
-                xanchor='left',  # Alinha o texto à esquerda do ponto (começa após a barra)
-                yanchor='middle',
-                showarrow=False,
-                font=dict(color="white", size=14) # Texto branco para tema escuro
-            ))
+    tab_resumido, tab_detalhado = st.tabs(["Resumido", "Detalhado"])
+    
+    with tab_resumido:
+        if "situacao_resumida" in df.columns:
+            _render_situacao_chart(df, "situacao_resumida", STATUS_ORDER)
+        else:
+            st.warning("Dados de situação resumida não disponíveis.")
             
-        fig.update_layout(
-            xaxis_title="Quantidade",
-            yaxis_title=None,
-            height=400,
-            margin=dict(r=50), # Margem direita para os números
-            annotations=annotations,
-            showlegend=False,
-            paper_bgcolor='rgba(0,0,0,0)',
-            plot_bgcolor='rgba(0,0,0,0)',
-            xaxis=dict(
-                range=[0, max_qtd * 1.15], # Estender eixo X para direita (15% margem)
-                showgrid=False # Remover grid vertical para limpar visual
-            )
-        )
-        st.plotly_chart(fig, use_container_width=True)
-        
-        # Tabela Detalhada
-        situacao_analysis_table = situacao_analysis.sort_values("ordem", ascending=True).copy()
-        situacao_analysis_table["Valor"] = situacao_analysis_table["Valor Total"].apply(
-            lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-        )
-        
-        st.dataframe(
-            situacao_analysis_table[["situacao", "Quantidade", "Valor"]].rename(
-                columns={"situacao": "Situação"}
-            ),
-            hide_index=True,
-            use_container_width=True
-        )
+    with tab_detalhado:
+        if "situacao_detalhada" in df.columns:
+            _render_situacao_chart(df, "situacao_detalhada")
+        else:
+            st.warning("Dados de situação detalhada não disponíveis.")
 
     st.divider()
 
@@ -394,9 +427,6 @@ def render_analise_workflow(df_workflow: pd.DataFrame):
     tempo_por_situacao["ordem"] = tempo_por_situacao["situacao"].apply(
         lambda x: status_order_normalized.index(x.lower().strip()) if x.lower().strip() in status_order_normalized else len(status_order_normalized)
     )
-    
-    # Filtrar apenas as etapas que existem nos dados e estão na lista de ordem (opcional, mas bom para limpar)
-    # Vamos manter tudo, mas as que não estão na lista ficam no final.
     
     # Ordenar pela ordem definida (inverso para gráfico horizontal Plotly)
     tempo_por_situacao = tempo_por_situacao.sort_values("ordem", ascending=False)
