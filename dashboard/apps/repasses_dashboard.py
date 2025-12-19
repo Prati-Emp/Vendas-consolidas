@@ -405,7 +405,18 @@ def _render_workflow_chart(df: pd.DataFrame, col_name: str, order_list: Optional
         tabela_ordenada[["situacao", "Média (dias)", "Mediana (dias)", "Ocorrências"]].rename(columns={"situacao": "Etapa"}),
         use_container_width=True,
         hide_index=True,
-        key=f"workflow_table_{key_suffix}"
+        key=f"workflow_table_{key_suffix}",
+        column_config={
+            "Média (dias)": st.column_config.NumberColumn(
+                "Média (dias)",
+                format="%.2f"
+            ),
+            "Mediana (dias)": st.column_config.NumberColumn(
+                "Mediana (dias)",
+                help="Valor central: 50% dos casos foram mais rápidos que este tempo. Diferente da média, a mediana ignora extremos (outliers) muito demorados, representando melhor o tempo 'típico' do processo.",
+                format="%.2f"
+            )
+        }
     )
 
 
