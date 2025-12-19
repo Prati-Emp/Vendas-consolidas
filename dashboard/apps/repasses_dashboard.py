@@ -559,23 +559,57 @@ def render_repasses_dashboard(
             max_value=max_date,
         )
         
+        st.divider()
+        st.subheader("Filtros da Carteira")
+        
+        # Filtro de Situação (apenas para Visão Geral)
+        selected_situacoes = []
+        if "situacao_detalhada" in df_repasses_prep.columns:
+            situacoes = sorted(df_repasses_prep["situacao_detalhada"].dropna().unique())
+            selected_situacoes = st.multiselect(
+                "Situação",
+                situacoes,
+                default=[],
+                placeholder="Selecione as situações"
+            )
+            
+        # Filtro de Empreendimento (apenas para Visão Geral)
+        selected_empreendimentos = []
+        if "empreendimento" in df_repasses_prep.columns:
+            empreendimentos = sorted(df_repasses_prep["empreendimento"].dropna().unique())
+            selected_empreendimentos = st.multiselect(
+                "Empreendimento",
+                empreendimentos,
+                default=[],
+                placeholder="Selecione os empreendimentos"
+            )
+        
     # --- APLICAR FILTROS ---
     
     # 1. Filtros Estruturais (Empresa/Unidade) - REMOVIDOS conforme solicitação.
     # Assumimos que o usuário quer ver todos os dados, inclusive órfãos (sem vínculo de empresa).
     
-    # 2. Filtro de Data para Repasses (Visão Geral - Foco na Venda)
+    # 2. Filtro de Data e Específicos para Repasses (Visão Geral - Foco na Venda)
     df_repasses_final = df_repasses_prep.copy()
     
+    # Filtro de Data
     if start_date and end_date:
         df_repasses_final = df_repasses_final[
             (df_repasses_final["data_cad"].dt.date >= start_date) &
             (df_repasses_final["data_cad"].dt.date <= end_date)
         ]
         
+    # Filtro de Situação
+    if selected_situacoes:
+        df_repasses_final = df_repasses_final[df_repasses_final["situacao_detalhada"].isin(selected_situacoes)]
+        
+    # Filtro de Empreendimento
+    if selected_empreendimentos:
+        df_repasses_final = df_repasses_final[df_repasses_final["empreendimento"].isin(selected_empreendimentos)]
+        
     # 3. Filtro de Workflow (Análise Temporal - Foco no Evento)
     # Como removemos os filtros de estrutura, mostramos TODO o workflow, 
-    # filtrando apenas pela data do evento.
+    # filtrando apenas pela data do evento. Os filtros de Situação/Empreendimento NÃO se aplicam aqui.
     
     df_workflow_final = df_workflow_prep.copy()
     
