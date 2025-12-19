@@ -413,7 +413,7 @@ def _render_workflow_chart(df: pd.DataFrame, col_name: str, order_list: Optional
             ),
             "Mediana (dias)": st.column_config.NumberColumn(
                 "Mediana (dias)",
-                help="Valor central: 50% dos casos foram mais rápidos que este tempo. Diferente da média, a mediana ignora extremos (outliers) muito demorados, representando melhor o tempo 'típico' do processo.",
+                help="Representa o tempo padrão: metade dos processos (50%) terminou dentro deste prazo. É uma referência melhor que a Média, pois não é afetada por poucos casos que demoraram muito tempo.",
                 format="%.2f"
             )
         }
