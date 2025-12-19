@@ -348,44 +348,6 @@ def render_visao_geral(df: pd.DataFrame):
     with tab_detalhado:
         if "situacao_detalhada" in df.columns:
             _render_situacao_chart(df, "situacao_detalhada")
-            
-            st.divider()
-            st.subheader("📋 Detalhamento de Repasses")
-            
-            # Montar tabela detalhada
-            cols_map = {
-                "empreendimento": "Empreendimento",
-                "cliente": "Cliente",
-                "data_venda": "Data Venda",
-                "data_cad": "Cadastro Repasse",
-                "situacao_detalhada": "Situação",
-                "correspondente": "Correspondente",
-                "data_alteracao_status": "Última Alteração",
-                "idrepasse": "ID Repasse",
-                "idreserva": "ID Reserva",
-                "idsituacao": "ID Situação"
-            }
-            
-            # Filtrar colunas que existem no dataframe
-            available_cols = [c for c in cols_map.keys() if c in df.columns]
-            
-            if available_cols:
-                df_table = df[available_cols].rename(columns=cols_map).copy()
-                
-                # Formatar datas
-                date_cols_display = ["Data Venda", "Cadastro Repasse", "Última Alteração"]
-                for col in date_cols_display:
-                    if col in df_table.columns:
-                        df_table[col] = df_table[col].dt.strftime("%d/%m/%Y")
-                
-                st.dataframe(
-                    df_table,
-                    hide_index=True,
-                    use_container_width=True,
-                    key="detailed_repasses_table"
-                )
-            else:
-                st.info("Colunas detalhadas não disponíveis para exibição.")
         else:
             st.warning("Dados de situação detalhada não disponíveis.")
 
@@ -423,6 +385,51 @@ def render_visao_geral(df: pd.DataFrame):
             use_container_width=True,
             key="top_empreendimentos_table"
         )
+        
+    st.divider()
+    st.subheader("📋 Detalhamento de Repasses")
+    
+    # Montar tabela detalhada
+    cols_map = {
+        "empreendimento": "Empreendimento",
+        "cliente": "Cliente",
+        "valor_contrato": "Valor Contrato",
+        "data_venda": "Data Venda",
+        "data_cad": "Cadastro Repasse",
+        "situacao_detalhada": "Situação",
+        "correspondente": "Correspondente",
+        "data_alteracao_status": "Última Alteração",
+        "idrepasse": "ID Repasse",
+        "idreserva": "ID Reserva",
+        "idsituacao": "ID Situação"
+    }
+    
+    # Filtrar colunas que existem no dataframe
+    available_cols = [c for c in cols_map.keys() if c in df.columns]
+    
+    if available_cols:
+        df_table = df[available_cols].rename(columns=cols_map).copy()
+        
+        # Formatar datas
+        date_cols_display = ["Data Venda", "Cadastro Repasse", "Última Alteração"]
+        for col in date_cols_display:
+            if col in df_table.columns:
+                df_table[col] = df_table[col].dt.strftime("%d/%m/%Y")
+        
+        # Formatar Valor
+        if "Valor Contrato" in df_table.columns:
+            df_table["Valor Contrato"] = df_table["Valor Contrato"].apply(
+                lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            )
+        
+        st.dataframe(
+            df_table,
+            hide_index=True,
+            use_container_width=True,
+            key="detailed_repasses_table"
+        )
+    else:
+        st.info("Colunas detalhadas não disponíveis para exibição.")
 
 
 def render_analise_workflow(df_workflow: pd.DataFrame):
