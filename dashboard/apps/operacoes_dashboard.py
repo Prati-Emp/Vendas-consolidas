@@ -148,6 +148,8 @@ def build_filters(data: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
             st.caption("📅 Período disponível: dados sem data de referência registrada.")
 
         status_options = sorted(data["status_tarefas"].dropna().unique().tolist())
+        # Remover "A iniciar" das opções disponíveis para filtro (remove das visões gerais)
+        status_options = [s for s in status_options if s != "A iniciar"]
         status_selected = st.multiselect(
             "Status operacional",
             options=status_options,
@@ -303,9 +305,6 @@ def render_status_section(df: pd.DataFrame):
             )
             fig_prioridade.update_layout(showlegend=False, xaxis_title="Tarefas", yaxis_title="")
             st.plotly_chart(fig_prioridade, use_container_width=True)
-
-    st.subheader("Calendário de projetos")
-    render_project_calendar(df)
 
 
 def render_project_calendar(df: pd.DataFrame):
@@ -694,8 +693,7 @@ def render_operacoes_dashboard(
         return
 
     base_df = prepare_dataframe(raw_df)
-    # Excluir tarefas "A iniciar" de todas as análises
-    base_df = base_df[base_df["status_tarefas"] != "A iniciar"]
+    
     filtered_df, filters_meta = build_filters(base_df)
     filters_meta = filters_meta or {}
 
@@ -719,11 +717,34 @@ def render_operacoes_dashboard(
         return
 
     render_kpis(filtered_df)
+    
+    # Criar dataframe para calendário (ignorando filtro de status da sidebar para incluir "A iniciar")
+    calendar_df = base_df.copy()
+    
+    # Aplicar filtros do metadata exceto status
+    if filters_meta.get("projetos"):
+        calendar_df = calendar_df[calendar_df["projeto_name"].isin(filters_meta["projetos"])]
+    if filters_meta.get("tipo_item"):
+        calendar_df = calendar_df[calendar_df["tipo_item"].isin(filters_meta["tipo_item"])]
+    if filters_meta.get("responsaveis"):
+        calendar_df = calendar_df[calendar_df["responsavel"].isin(filters_meta["responsaveis"])]
+    if filters_meta.get("prioridades"):
+        calendar_df = calendar_df[calendar_df["prioridade"].isin(filters_meta["prioridades"])]
+    if filters_meta.get("apenas_abertas"):
+        calendar_df = calendar_df[calendar_df["esta_em_aberto"]]
+    if filters_meta.get("busca"):
+        texto_busca = filters_meta["busca"].lower()
+        calendar_df = calendar_df[
+            calendar_df["chave"].astype(str).str.lower().str.contains(texto_busca, na=False)
+            | calendar_df["resumo"].astype(str).str.lower().str.contains(texto_busca, na=False)
+        ]
 
     tab1, tab2, tab3 = st.tabs(["Visão Geral", "Responsáveis", "Detalhamento"])
 
     with tab1:
         render_status_section(filtered_df)
+        st.subheader("Calendário de projetos")
+        render_project_calendar(calendar_df)
         render_alerts(filtered_df)
 
     with tab2:
