@@ -875,11 +875,11 @@ def calcular_indicadores_leadtime_por(df: pd.DataFrame, group_col: str, col_labe
     Calcula indicadores de lead time agrupados por uma dimensão (ex.: obra, comprador).
     """
     if df.empty or group_col not in df.columns:
-        return pd.DataFrame(columns=[col_label, '% Comprado no Prazo', 'Lead Time Ponderado', 'Tempo de Atraso Médio'])
+        return pd.DataFrame(columns=[col_label, '% Comprado no Prazo', 'Lead Time Ponderado', 'Tempo de Atraso Médio', 'Tempo Atraso Médio Ponderado'])
 
     df_com_entrega = df[df['data_entregue'].notna()].copy()
     if df_com_entrega.empty:
-        return pd.DataFrame(columns=[col_label, '% Comprado no Prazo', 'Lead Time Ponderado', 'Tempo de Atraso Médio'])
+        return pd.DataFrame(columns=[col_label, '% Comprado no Prazo', 'Lead Time Ponderado', 'Tempo de Atraso Médio', 'Tempo Atraso Médio Ponderado'])
 
     # Preparar colunas auxiliares
     df_com_entrega['entregue_no_prazo'] = df_com_entrega['data_entregue'] <= df_com_entrega['data_prevista']
@@ -906,25 +906,29 @@ def calcular_indicadores_leadtime_por(df: pd.DataFrame, group_col: str, col_labe
             lead_time_ponderado = df_grupo['lead_time_comum'].mean() if not df_grupo.empty else 0.0
 
         df_atrasados = df_grupo[~df_grupo['entregue_no_prazo']].copy()
-        if not df_atrasados.empty and col_valor and col_valor in df_atrasados.columns:
+        if not df_atrasados.empty:
             df_atrasados['tempo_atraso'] = (df_atrasados['data_entregue'] - df_atrasados['data_prevista']).dt.days
-            # Ponderar pelo valor
-            df_atrasados['tempo_atraso_ponderado_calc'] = df_atrasados[col_valor] * df_atrasados['tempo_atraso']
-            soma_numerador = df_atrasados['tempo_atraso_ponderado_calc'].sum()
-            soma_denominador = df_atrasados[col_valor].sum()
-            tempo_atraso_medio = (soma_numerador / soma_denominador) if soma_denominador > 0 else 0.0
-        elif not df_atrasados.empty:
-            # Fallback: média simples se não tiver coluna de valor
-            df_atrasados['tempo_atraso'] = (df_atrasados['data_entregue'] - df_atrasados['data_prevista']).dt.days
-            tempo_atraso_medio = df_atrasados['tempo_atraso'].mean()
+            # Média simples
+            tempo_atraso_medio_simples = df_atrasados['tempo_atraso'].mean()
+            
+            # Média ponderada pelo valor
+            if col_valor and col_valor in df_atrasados.columns:
+                df_atrasados['tempo_atraso_ponderado_calc'] = df_atrasados[col_valor] * df_atrasados['tempo_atraso']
+                soma_numerador = df_atrasados['tempo_atraso_ponderado_calc'].sum()
+                soma_denominador = df_atrasados[col_valor].sum()
+                tempo_atraso_medio_ponderado = (soma_numerador / soma_denominador) if soma_denominador > 0 else 0.0
+            else:
+                tempo_atraso_medio_ponderado = tempo_atraso_medio_simples
         else:
-            tempo_atraso_medio = 0.0
+            tempo_atraso_medio_simples = 0.0
+            tempo_atraso_medio_ponderado = 0.0
 
         resultados.append({
             col_label: grupo,
             '% Comprado no Prazo': percentual_no_prazo,
             'Lead Time Ponderado': lead_time_ponderado,
-            'Tempo de Atraso Médio': tempo_atraso_medio
+            'Tempo de Atraso Médio': tempo_atraso_medio_simples,
+            'Tempo Atraso Médio Ponderado': tempo_atraso_medio_ponderado
         })
 
     df_resultado = pd.DataFrame(resultados)
@@ -938,11 +942,11 @@ def calcular_indicadores_leadtime_por_obra_mes(df: pd.DataFrame) -> pd.DataFrame
     Calcula indicadores de lead time agrupados por Obra e Mês.
     """
     if df.empty or 'obra' not in df.columns or 'data_entregue' not in df.columns:
-        return pd.DataFrame(columns=['Obra', 'Mês', '% Comprado no Prazo', 'Lead Time Ponderado', 'Tempo de Atraso Médio'])
+        return pd.DataFrame(columns=['Obra', 'Mês', '% Comprado no Prazo', 'Lead Time Ponderado', 'Tempo de Atraso Médio', 'Tempo Atraso Médio Ponderado'])
 
     df_com_entrega = df[df['data_entregue'].notna()].copy()
     if df_com_entrega.empty:
-        return pd.DataFrame(columns=['Obra', 'Mês', '% Comprado no Prazo', 'Lead Time Ponderado', 'Tempo de Atraso Médio'])
+        return pd.DataFrame(columns=['Obra', 'Mês', '% Comprado no Prazo', 'Lead Time Ponderado', 'Tempo de Atraso Médio', 'Tempo Atraso Médio Ponderado'])
 
     # Colunas auxiliares
     df_com_entrega['entregue_no_prazo'] = df_com_entrega['data_entregue'] <= df_com_entrega['data_prevista']
@@ -970,19 +974,22 @@ def calcular_indicadores_leadtime_por_obra_mes(df: pd.DataFrame) -> pd.DataFrame
             lead_time_ponderado = df_g['lead_time_comum'].mean() if not df_g.empty else 0.0
 
         df_atras = df_g[~df_g['entregue_no_prazo']].copy()
-        if not df_atras.empty and col_valor and col_valor in df_atras.columns:
+        if not df_atras.empty:
             df_atras['tempo_atraso'] = (df_atras['data_entregue'] - df_atras['data_prevista']).dt.days
-            # Ponderar pelo valor
-            df_atras['tempo_atraso_ponderado_calc'] = df_atras[col_valor] * df_atras['tempo_atraso']
-            soma_numerador = df_atras['tempo_atraso_ponderado_calc'].sum()
-            soma_denominador = df_atras[col_valor].sum()
-            tempo_atraso_medio = (soma_numerador / soma_denominador) if soma_denominador > 0 else 0.0
-        elif not df_atras.empty:
-            # Fallback: média simples se não tiver coluna de valor
-            df_atras['tempo_atraso'] = (df_atras['data_entregue'] - df_atras['data_prevista']).dt.days
-            tempo_atraso_medio = df_atras['tempo_atraso'].mean()
+            # Média simples
+            tempo_atraso_medio_simples = df_atras['tempo_atraso'].mean()
+            
+            # Média ponderada pelo valor
+            if col_valor and col_valor in df_atras.columns:
+                df_atras['tempo_atraso_ponderado_calc'] = df_atras[col_valor] * df_atras['tempo_atraso']
+                soma_numerador = df_atras['tempo_atraso_ponderado_calc'].sum()
+                soma_denominador = df_atras[col_valor].sum()
+                tempo_atraso_medio_ponderado = (soma_numerador / soma_denominador) if soma_denominador > 0 else 0.0
+            else:
+                tempo_atraso_medio_ponderado = tempo_atraso_medio_simples
         else:
-            tempo_atraso_medio = 0.0
+            tempo_atraso_medio_simples = 0.0
+            tempo_atraso_medio_ponderado = 0.0
 
         # Nome do mês em português
         data_ref = df_g['data_entregue'].iloc[0]
@@ -997,7 +1004,8 @@ def calcular_indicadores_leadtime_por_obra_mes(df: pd.DataFrame) -> pd.DataFrame
             'Mês': mes_nome_pt,
             '% Comprado no Prazo': percentual_no_prazo,
             'Lead Time Ponderado': lead_time_ponderado,
-            'Tempo de Atraso Médio': tempo_atraso_medio
+            'Tempo de Atraso Médio': tempo_atraso_medio_simples,
+            'Tempo Atraso Médio Ponderado': tempo_atraso_medio_ponderado
         })
 
     df_resultado = pd.DataFrame(resultados)
@@ -1154,9 +1162,10 @@ def render_leadtime_tab(
         df_exib_obra['% Comprado no Prazo'] = df_exib_obra['% Comprado no Prazo'].apply(lambda x: f"{x:.2f}%")
         df_exib_obra['Lead Time Ponderado'] = df_exib_obra['Lead Time Ponderado'].apply(lambda x: f"{x:.1f} dias")
         df_exib_obra['Tempo de Atraso Médio'] = df_exib_obra['Tempo de Atraso Médio'].apply(lambda x: f"{x:.2f} dias" if x > 0 else "-")
+        df_exib_obra['Tempo Atraso Médio Ponderado'] = df_exib_obra['Tempo Atraso Médio Ponderado'].apply(lambda x: f"{x:.2f} dias" if x > 0 else "-")
         
-        # Garantir ordem das colunas: Obra, % Comprado no Prazo, Lead Time Ponderado, Tempo de Atraso Médio
-        colunas_ordenadas = ['Obra', '% Comprado no Prazo', 'Lead Time Ponderado', 'Tempo de Atraso Médio']
+        # Garantir ordem das colunas: Obra, % Comprado no Prazo, Lead Time Ponderado, Tempo de Atraso Médio, Tempo Atraso Médio Ponderado
+        colunas_ordenadas = ['Obra', '% Comprado no Prazo', 'Lead Time Ponderado', 'Tempo de Atraso Médio', 'Tempo Atraso Médio Ponderado']
         df_exib_obra = df_exib_obra[colunas_ordenadas]
 
         st.dataframe(
@@ -1168,6 +1177,7 @@ def render_leadtime_tab(
                 "% Comprado no Prazo": st.column_config.TextColumn("% Comprado no Prazo", width="medium"),
                 "Lead Time Ponderado": st.column_config.TextColumn("Lead Time Ponderado", width="medium"),
                 "Tempo de Atraso Médio": st.column_config.TextColumn("Tempo de Atraso Médio", width="medium"),
+                "Tempo Atraso Médio Ponderado": st.column_config.TextColumn("Tempo Atraso Médio Ponderado", width="medium"),
             }
         )
     else:
@@ -1183,9 +1193,10 @@ def render_leadtime_tab(
         df_exib_comp['% Comprado no Prazo'] = df_exib_comp['% Comprado no Prazo'].apply(lambda x: f"{x:.2f}%")
         df_exib_comp['Lead Time Ponderado'] = df_exib_comp['Lead Time Ponderado'].apply(lambda x: f"{x:.1f} dias")
         df_exib_comp['Tempo de Atraso Médio'] = df_exib_comp['Tempo de Atraso Médio'].apply(lambda x: f"{x:.2f} dias" if x > 0 else "-")
+        df_exib_comp['Tempo Atraso Médio Ponderado'] = df_exib_comp['Tempo Atraso Médio Ponderado'].apply(lambda x: f"{x:.2f} dias" if x > 0 else "-")
         
-        # Garantir ordem das colunas: Comprador, % Comprado no Prazo, Lead Time Ponderado, Tempo de Atraso Médio
-        colunas_ordenadas = ['Comprador', '% Comprado no Prazo', 'Lead Time Ponderado', 'Tempo de Atraso Médio']
+        # Garantir ordem das colunas: Comprador, % Comprado no Prazo, Lead Time Ponderado, Tempo de Atraso Médio, Tempo Atraso Médio Ponderado
+        colunas_ordenadas = ['Comprador', '% Comprado no Prazo', 'Lead Time Ponderado', 'Tempo de Atraso Médio', 'Tempo Atraso Médio Ponderado']
         df_exib_comp = df_exib_comp[colunas_ordenadas]
 
         st.dataframe(
@@ -1197,6 +1208,7 @@ def render_leadtime_tab(
                 "% Comprado no Prazo": st.column_config.TextColumn("% Comprado no Prazo", width="medium"),
                 "Lead Time Ponderado": st.column_config.TextColumn("Lead Time Ponderado", width="medium"),
                 "Tempo de Atraso Médio": st.column_config.TextColumn("Tempo de Atraso Médio", width="medium"),
+                "Tempo Atraso Médio Ponderado": st.column_config.TextColumn("Tempo Atraso Médio Ponderado", width="medium"),
             }
         )
     else:
@@ -1230,9 +1242,10 @@ def render_leadtime_tab(
             df_exib_obra_mes['% Comprado no Prazo'] = df_exib_obra_mes['% Comprado no Prazo'].apply(lambda x: f"{x:.2f}%")
             df_exib_obra_mes['Lead Time Ponderado'] = df_exib_obra_mes['Lead Time Ponderado'].apply(lambda x: f"{x:.1f} dias")
             df_exib_obra_mes['Tempo de Atraso Médio'] = df_exib_obra_mes['Tempo de Atraso Médio'].apply(lambda x: f"{x:.2f} dias" if x > 0 else "-")
+            df_exib_obra_mes['Tempo Atraso Médio Ponderado'] = df_exib_obra_mes['Tempo Atraso Médio Ponderado'].apply(lambda x: f"{x:.2f} dias" if x > 0 else "-")
             
-            # Garantir ordem das colunas: Obra, Mês, % Comprado no Prazo, Lead Time Ponderado, Tempo de Atraso Médio
-            colunas_ordenadas = ['Obra', 'Mês', '% Comprado no Prazo', 'Lead Time Ponderado', 'Tempo de Atraso Médio']
+            # Garantir ordem das colunas: Obra, Mês, % Comprado no Prazo, Lead Time Ponderado, Tempo de Atraso Médio, Tempo Atraso Médio Ponderado
+            colunas_ordenadas = ['Obra', 'Mês', '% Comprado no Prazo', 'Lead Time Ponderado', 'Tempo de Atraso Médio', 'Tempo Atraso Médio Ponderado']
             df_exib_obra_mes = df_exib_obra_mes[colunas_ordenadas]
 
             st.dataframe(
@@ -1245,6 +1258,7 @@ def render_leadtime_tab(
                     "% Comprado no Prazo": st.column_config.TextColumn("% Comprado no Prazo", width="medium"),
                     "Lead Time Ponderado": st.column_config.TextColumn("Lead Time Ponderado", width="medium"),
                     "Tempo de Atraso Médio": st.column_config.TextColumn("Tempo de Atraso Médio", width="medium"),
+                    "Tempo Atraso Médio Ponderado": st.column_config.TextColumn("Tempo Atraso Médio Ponderado", width="medium"),
                 }
             )
     else:
