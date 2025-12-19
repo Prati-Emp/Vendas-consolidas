@@ -233,7 +233,6 @@ def render_kpis(df: pd.DataFrame):
     """Exibe indicadores principais."""
     total = int(len(df))
     abertas = int(df["esta_em_aberto"].sum())
-    a_iniciar = int((df["status_tarefas"] == "A iniciar").sum())
     em_andamento = int((df["status_tarefas"] == "Em Andamento").sum())
     atrasadas = int(df["esta_atrasada"].sum())
     criticas = int(df["critica_proxima"].sum())
@@ -242,17 +241,16 @@ def render_kpis(df: pd.DataFrame):
     andamento_pct = f"{(em_andamento / total * 100):.1f}% do total" if total else "0%"
     criticas_pct = f"{(criticas / total * 100):.1f}% do total" if total else "0%"
 
-    col1, col2, col3, col4, col5 = st.columns(5)
+    col1, col2, col3, col4 = st.columns(4)
     tooltip_monitoradas = (
         "Atividades monitoradas são tarefas com status diferente de 'Finalizada' "
         "e atividades que estão 'A iniciar' (status 'Backlog' no Jira). "
         "Essas são as tarefas que estão sendo acompanhadas no dashboard."
     )
     col1.metric("Tarefas monitoradas", total, help=tooltip_monitoradas)
-    col2.metric("A iniciar", a_iniciar, delta=f"{(a_iniciar / total * 100):.1f}% do total" if total else "0%")
-    col3.metric("Em andamento", em_andamento, delta=andamento_pct)
-    col4.metric("Atrasadas", atrasadas, delta=atraso_pct)
-    col5.metric("Próximas do prazo (≤7 dias)", criticas, delta=criticas_pct)
+    col2.metric("Em andamento", em_andamento, delta=andamento_pct)
+    col3.metric("Atrasadas", atrasadas, delta=atraso_pct)
+    col4.metric("Próximas do prazo (≤7 dias)", criticas, delta=criticas_pct)
 
 
 def render_status_section(df: pd.DataFrame):
@@ -263,6 +261,8 @@ def render_status_section(df: pd.DataFrame):
         .reset_index(name="quantidade")
         .sort_values("quantidade", ascending=False)
     )
+    # Remover "A iniciar" do gráfico
+    status_counts = status_counts[status_counts["status_tarefas"] != "A iniciar"]
 
     prioridade_counts = (
         df.groupby("prioridade")
