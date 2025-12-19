@@ -279,7 +279,7 @@ def _render_situacao_chart(df: pd.DataFrame, col_name: str, order_list: Optional
             showgrid=False 
         )
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, use_container_width=True, key=f"chart_{col_name}")
     
     # Tabela Detalhada
     if order_list:
@@ -295,7 +295,8 @@ def _render_situacao_chart(df: pd.DataFrame, col_name: str, order_list: Optional
     st.dataframe(
         situacao_analysis_table[["Situação", "Quantidade", "Valor"]],
         hide_index=True,
-        use_container_width=True
+        use_container_width=True,
+        key=f"table_{col_name}"
     )
 
 
