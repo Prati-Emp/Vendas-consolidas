@@ -81,9 +81,7 @@ def format_currency_short(value: float) -> str:
 def load_repasses_raw() -> pd.DataFrame:
     """Carrega os dados crus da tabela cv_repasses no MotherDuck."""
     md_conn = get_md_connection()
-    # Selecionando colunas garantidas. 'empresa' e 'unidade' podem não existir na tabela base.
-    # 'unidade' parece existir na amostra, mas 'empresa' não.
-    # Atualizado para buscar 'Para' (Resumido) e 'Situacao' (Detalhado)
+    # Selecionando colunas garantidas e novas colunas solicitadas
     sql = """
     SELECT 
         referencia,
@@ -93,15 +91,23 @@ def load_repasses_raw() -> pd.DataFrame:
         Situacao AS situacao_detalhada,
         valor_contrato,
         data_cad,
-        unidade
+        unidade,
+        idsituacao,
+        idreserva,
+        idcliente,
+        cliente,
+        correspondente,
+        data_alteracao_status,
+        data_venda
     FROM reservas.cv_repasses
     WHERE referencia IS NOT NULL
     """
     try:
         df = md_conn.run_query(sql)
     except Exception:
-        # Fallback se 'unidade' também não existir ou erro na query principal
-        # Tentamos sem unidade, mas mantendo as duas situações
+        # Fallback se colunas opcionais não existirem (tentativa simplificada)
+        # Se falhar aqui, provavelmente a coluna não existe no banco
+        st.warning("Algumas colunas detalhadas podem não estar disponíveis. Carregando conjunto reduzido.")
         sql_fallback = """
         SELECT 
             referencia,
@@ -117,16 +123,13 @@ def load_repasses_raw() -> pd.DataFrame:
         df = md_conn.run_query(sql_fallback)
 
     # Garantir colunas faltantes para o código não quebrar
-    if "empresa" not in df.columns:
-        df["empresa"] = "Não informado"
-    else:
-        df["empresa"] = df["empresa"].fillna("Não informado")
-    
-    if "unidade" not in df.columns:
-        df["unidade"] = "Não informado"
-    else:
-        df["unidade"] = df["unidade"].fillna("Não informado")
-        
+    cols_to_ensure = ["empresa", "unidade", "cliente", "correspondente"]
+    for col in cols_to_ensure:
+        if col not in df.columns:
+            df[col] = "Não informado"
+        else:
+            df[col] = df[col].fillna("Não informado")
+            
     return df
 
 
@@ -155,11 +158,13 @@ def prepare_repasses(df: pd.DataFrame) -> pd.DataFrame:
     """Prepara o dataset de repasses (Visão Geral)."""
     df = df.copy()
     
-    # Normalizar datas
-    if "data_cad" in df.columns:
-        df["data_cad"] = pd.to_datetime(
-            df["data_cad"], dayfirst=True, errors="coerce"
-        )
+    # Normalizar datas principais
+    date_cols = ["data_cad", "data_venda", "data_alteracao_status"]
+    for col in date_cols:
+        if col in df.columns:
+            df[col] = pd.to_datetime(
+                df[col], dayfirst=True, errors="coerce"
+            )
 
     # Normalizar valores
     if "valor_contrato" in df.columns:
@@ -343,6 +348,44 @@ def render_visao_geral(df: pd.DataFrame):
     with tab_detalhado:
         if "situacao_detalhada" in df.columns:
             _render_situacao_chart(df, "situacao_detalhada")
+            
+            st.divider()
+            st.subheader("📋 Detalhamento de Repasses")
+            
+            # Montar tabela detalhada
+            cols_map = {
+                "empreendimento": "Empreendimento",
+                "cliente": "Cliente",
+                "data_venda": "Data Venda",
+                "data_cad": "Cadastro Repasse",
+                "situacao_detalhada": "Situação",
+                "correspondente": "Correspondente",
+                "data_alteracao_status": "Última Alteração",
+                "idrepasse": "ID Repasse",
+                "idreserva": "ID Reserva",
+                "idsituacao": "ID Situação"
+            }
+            
+            # Filtrar colunas que existem no dataframe
+            available_cols = [c for c in cols_map.keys() if c in df.columns]
+            
+            if available_cols:
+                df_table = df[available_cols].rename(columns=cols_map).copy()
+                
+                # Formatar datas
+                date_cols_display = ["Data Venda", "Cadastro Repasse", "Última Alteração"]
+                for col in date_cols_display:
+                    if col in df_table.columns:
+                        df_table[col] = df_table[col].dt.strftime("%d/%m/%Y")
+                
+                st.dataframe(
+                    df_table,
+                    hide_index=True,
+                    use_container_width=True,
+                    key="detailed_repasses_table"
+                )
+            else:
+                st.info("Colunas detalhadas não disponíveis para exibição.")
         else:
             st.warning("Dados de situação detalhada não disponíveis.")
 
@@ -377,7 +420,8 @@ def render_visao_geral(df: pd.DataFrame):
         st.dataframe(
             top_empreendimentos[["Empreendimento", "Quantidade", "Valor"]],
             hide_index=True,
-            use_container_width=True
+            use_container_width=True,
+            key="top_empreendimentos_table"
         )
 
 
@@ -465,14 +509,15 @@ def render_analise_workflow(df_workflow: pd.DataFrame):
             showgrid=False
         )
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, use_container_width=True, key="workflow_chart")
     
     # Tabela (ordenada pela ordem do fluxo para leitura lógica)
     tabela_ordenada = tempo_por_situacao.sort_values("ordem", ascending=True)
     st.dataframe(
         tabela_ordenada[["situacao", "Média (dias)", "Mediana (dias)", "Ocorrências"]].rename(columns={"situacao": "Etapa"}),
         use_container_width=True,
-        hide_index=True
+        hide_index=True,
+        key="workflow_table"
     )
     
     st.divider()
@@ -496,7 +541,7 @@ def render_analise_workflow(df_workflow: pd.DataFrame):
             markers=True,
             title="Tendência de Tempo Médio de Processamento"
         )
-        st.plotly_chart(fig_evol, use_container_width=True)
+        st.plotly_chart(fig_evol, use_container_width=True, key="workflow_evolution")
 
 
 def render_repasses_dashboard(
