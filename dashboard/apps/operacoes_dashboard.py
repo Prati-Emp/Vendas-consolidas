@@ -243,9 +243,8 @@ def render_kpis(df: pd.DataFrame):
 
     col1, col2, col3, col4 = st.columns(4)
     tooltip_monitoradas = (
-        "Atividades monitoradas são tarefas com status diferente de 'Finalizada' "
-        "e atividades que estão 'A iniciar' (status 'Backlog' no Jira). "
-        "Essas são as tarefas que estão sendo acompanhadas no dashboard."
+        "Atividades monitoradas são tarefas com status diferente de 'Finalizada'. "
+        "Tarefas 'A iniciar' (status 'Backlog' no Jira) não são contabilizadas neste dashboard."
     )
     col1.metric("Tarefas monitoradas", total, help=tooltip_monitoradas)
     col2.metric("Em andamento", em_andamento, delta=andamento_pct)
@@ -695,6 +694,8 @@ def render_operacoes_dashboard(
         return
 
     base_df = prepare_dataframe(raw_df)
+    # Excluir tarefas "A iniciar" de todas as análises
+    base_df = base_df[base_df["status_tarefas"] != "A iniciar"]
     filtered_df, filters_meta = build_filters(base_df)
     filters_meta = filters_meta or {}
 
