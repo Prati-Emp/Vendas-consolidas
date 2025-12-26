@@ -34,29 +34,10 @@ async def sistema_contas_pagas():
         
         # 1. Coletar dados de contas pagas
         print("\n1. Coletando dados de contas pagas do Sienge...")
+        print("   - Período: 2025-01-01 até hoje")
+        print("   - Data de correção: hoje")
         
-        # Busca dados dos últimos 30 dias (padrão)
-        # Para primeira execução, pode buscar desde 2025-01-01
-        dias_retrocesso = int(os.environ.get('SIENGE_CONTAS_PAGAS_DIAS_RETRO', '30'))
-        
-        # Para primeira execução, pode usar modo inicial
-        modo_inicial = os.environ.get('SIENGE_CONTAS_PAGAS_MODO_INICIAL', 'false').lower() == 'true'
-        
-        if modo_inicial:
-            print("🔄 Modo inicial ativado: buscando desde 2025-01-01")
-            data_inicio = "2025-01-01"
-            data_fim = date.today().strftime("%Y-%m-%d")
-            dias_retrocesso = None  # Não usar dias_retrocesso no modo inicial
-        else:
-            print(f"🔄 Modo normal: buscando últimos {dias_retrocesso} dias")
-            data_inicio = None  # Será calculado dentro da função
-            data_fim = None  # Será calculado dentro da função
-        
-        df_contas_pagas = obter_dados_sienge_contas_pagas(
-            data_inicio=data_inicio,
-            data_fim=data_fim,
-            dias_retrocesso=dias_retrocesso
-        )
+        df_contas_pagas = obter_dados_sienge_contas_pagas()
         
         if df_contas_pagas.empty:
             print("AVISO: Nenhum dado coletado de contas pagas")

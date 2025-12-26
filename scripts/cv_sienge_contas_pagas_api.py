@@ -402,20 +402,11 @@ def processar_dados_contas_pagas(dados: List[Dict], data_snapshot: str) -> pd.Da
     return df
 
 
-def obter_dados_sienge_contas_pagas(data_inicio: str = None, 
-                                     data_fim: str = None,
-                                     dias_retrocesso: int = None) -> pd.DataFrame:
+def obter_dados_sienge_contas_pagas() -> pd.DataFrame:
     """
     Função principal para obter dados de contas pagas do Sienge
+    Busca sempre desde 01/01/2025 até a data de hoje
     
-    Args:
-        data_inicio (str, optional): Data inicial no formato YYYY-MM-DD. 
-                                    Se None, usa dias_retrocesso dias atrás
-        data_fim (str, optional): Data final no formato YYYY-MM-DD. 
-                                 Se None, usa data atual
-        dias_retrocesso (int, optional): Número de dias para buscar retroativamente. 
-                                        Se None e data_inicio não fornecida, usa 30 dias
-        
     Returns:
         pd.DataFrame: DataFrame com dados processados
     """
@@ -423,18 +414,14 @@ def obter_dados_sienge_contas_pagas(data_inicio: str = None,
         # Criar cliente
         client = ContasPagasSiengeAPIClient()
         
-        # Define datas se não fornecidas
+        # Define datas: sempre desde 01/01/2025 até hoje
         hoje = date.today()
-        
-        if data_fim is None:
-            data_fim = hoje.strftime("%Y-%m-%d")
-        
-        if data_inicio is None:
-            if dias_retrocesso is None:
-                dias_retrocesso = 30
-            data_inicio = (hoje - timedelta(days=dias_retrocesso)).strftime("%Y-%m-%d")
+        data_inicio = "2025-01-01"
+        data_fim = hoje.strftime("%Y-%m-%d")
+        correction_date = hoje.strftime("%Y-%m-%d")  # Data de correção sempre é hoje
         
         logger.info(f"Buscando contas pagas de {data_inicio} até {data_fim}")
+        logger.info(f"Data de correção: {correction_date}")
         
         # Buscar dados
         df = client.buscar_dados_completos(
@@ -442,7 +429,7 @@ def obter_dados_sienge_contas_pagas(data_inicio: str = None,
             data_fim=data_fim,
             selection_type='D',
             correction_indexer_id=0,
-            correction_date=data_fim,  # Usa data final como data de correção
+            correction_date=correction_date,  # Sempre usa data de hoje para correção
             with_authorizations=True,
             with_bank_movements=False
         )
@@ -451,7 +438,7 @@ def obter_dados_sienge_contas_pagas(data_inicio: str = None,
             logger.warning("Nenhum dado encontrado")
             return pd.DataFrame()
         
-        # Adiciona coluna Data_Snapshot (usa data final como snapshot)
+        # Adiciona coluna Data_Snapshot (usa data de hoje)
         df['Data_Snapshot'] = pd.to_datetime(data_fim)
         
         # Adiciona colunas padrão do sistema
@@ -471,7 +458,8 @@ def obter_dados_sienge_contas_pagas(data_inicio: str = None,
 if __name__ == "__main__":
     # Teste local
     print("Testando API de Contas Pagas do Sienge...")
-    df = obter_dados_sienge_contas_pagas(dias_retrocesso=30)
+    print("Buscando dados desde 2025-01-01 até hoje...")
+    df = obter_dados_sienge_contas_pagas()
     print(f"Registros obtidos: {len(df)}")
     if not df.empty:
         print(f"Colunas: {list(df.columns)}")

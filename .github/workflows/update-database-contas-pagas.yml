@@ -11,11 +11,6 @@ on:
         required: false
         default: 'Atualização manual Contas Pagas'
         type: string
-      initial_mode:
-        description: 'Modo inicial (buscar desde 2025-01-01)'
-        required: false
-        default: 'false'
-        type: boolean
 
 jobs:
   update-database:
@@ -42,11 +37,11 @@ jobs:
         env:
           MOTHERDUCK_TOKEN: ${{ secrets.MOTHERDUCK_TOKEN }}
           SIENGE_TOKEN: ${{ secrets.SIENGE_TOKEN }}
-          SIENGE_CONTAS_PAGAS_MODO_INICIAL: ${{ inputs.initial_mode || 'false' }} # Controla o modo inicial
-          SIENGE_CONTAS_PAGAS_DIAS_RETRO: '30' # Dias de retrocesso para busca diária
           PYTHONPATH: ${{ github.workspace }}/scripts:${{ github.workspace }}
         run: |
           echo "Iniciando atualizacao diaria de Contas Pagas do MotherDuck..."
+          echo "Periodo: 2025-01-01 ate hoje"
+          echo "Data de correcao: hoje"
           python -u scripts/update_motherduck_contas_pagas.py
       
       - name: Notify success
