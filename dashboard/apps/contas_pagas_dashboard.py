@@ -231,7 +231,7 @@ def render_visao_geral(df: pd.DataFrame):
                 
                 # Tabela 1: Ordenada por Valor
                 with col_tab1:
-                    st.markdown("#### 🔴 Credores com Maior Valor Pago em Atraso")
+                    st.markdown("#### 🔴 Credores Pagos com Maior **Valor de Atraso**")
                     
                     top_credores_valor = top_credores_agg.sort_values("Valor Total", ascending=False).head(10).copy()
                     top_credores_valor["Valor Pago com Atraso"] = top_credores_valor["Valor Total"].apply(format_currency_short)
@@ -267,7 +267,7 @@ def render_visao_geral(df: pd.DataFrame):
                 
                 # Tabela 2: Ordenada por Dias de Atraso
                 with col_tab2:
-                    st.markdown("#### ⏰ Credores com Maior Tempo de Atraso ao Pagar")
+                    st.markdown("#### ⏰ Credores Pagos com Maior **Tempo de Atraso**")
                     
                     top_credores_dias = top_credores_agg.sort_values("Dias Médio", ascending=False).head(10).copy()
                     top_credores_dias["Valor Pago com Atraso"] = top_credores_dias["Valor Total"].apply(format_currency_short)
