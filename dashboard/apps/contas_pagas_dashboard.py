@@ -568,39 +568,6 @@ def render_visao_geral(df: pd.DataFrame):
     
     st.divider()
     
-    # Análise de Descontos e Impostos
-    if "Desconto" in df.columns or "Valor_Imposto_Retido" in df.columns:
-        st.subheader("💸 Análise de Descontos e Impostos")
-        
-        col1, col2, col3 = st.columns(3)
-        
-        with col1:
-            total_descontos = df["Desconto"].sum() if "Desconto" in df.columns else 0.0
-            st.metric(
-                "Total de Descontos",
-                format_currency_short(total_descontos)
-            )
-        
-        with col2:
-            total_impostos = df["Valor_Imposto_Retido"].sum() if "Valor_Imposto_Retido" in df.columns else 0.0
-            st.metric(
-                "Total de Impostos Retidos",
-                format_currency_short(total_impostos)
-            )
-        
-        with col3:
-            valor_bruto_total = df["Valor_bruto"].sum() if "Valor_bruto" in df.columns else 0.0
-            if valor_bruto_total > 0:
-                percentual_desconto = (total_descontos / valor_bruto_total) * 100
-                st.metric(
-                    "% Médio de Desconto",
-                    f"{percentual_desconto:.2f}%"
-                )
-            else:
-                st.metric("% Médio de Desconto", "0%")
-    
-    st.divider()
-    
     # Análise de Vencimentos Próximos (próximos 30 dias)
     if "Data_vencimento" in df.columns and not df_a_pagar.empty:
         st.subheader("📅 Contas a Vencer (Próximos 30 dias)")
