@@ -167,6 +167,103 @@ def render_visao_geral(df: pd.DataFrame):
     
     st.divider()
     
+    # Tabela de Títulos a Pagar
+    if not df_a_pagar.empty:
+        st.subheader("📋 Títulos a Pagar")
+        
+        # Preparar dados para tabela
+        df_tabela_a_pagar = df_a_pagar.copy()
+        df_tabela_a_pagar = df_tabela_a_pagar.sort_values("Data_vencimento", ascending=True)
+        
+        # Selecionar colunas relevantes
+        cols_a_pagar = {
+            "Titulo": "Título",
+            "Parcela": "Parcela",
+            "Empresa": "Empresa",
+            "Credor": "Credor",
+            "Data_vencimento": "Data Vencimento",
+            "Valor_bruto": "Valor Bruto",
+            "Documento": "Documento",
+            "Numero_documento": "Nº Documento",
+            "Status_parcela": "Status"
+        }
+        
+        available_cols_apagar = [c for c in cols_a_pagar.keys() if c in df_tabela_a_pagar.columns]
+        
+        if available_cols_apagar:
+            df_display_apagar = df_tabela_a_pagar[available_cols_apagar].rename(columns=cols_a_pagar).copy()
+            
+            # Formatar data
+            if "Data Vencimento" in df_display_apagar.columns:
+                df_display_apagar["Data Vencimento"] = pd.to_datetime(df_display_apagar["Data Vencimento"], errors="coerce")
+                df_display_apagar["Data Vencimento"] = df_display_apagar["Data Vencimento"].dt.strftime("%d/%m/%Y")
+            
+            # Formatar valor
+            if "Valor Bruto" in df_display_apagar.columns:
+                df_display_apagar["Valor Bruto"] = df_display_apagar["Valor Bruto"].apply(format_currency_short)
+            
+            # Mapear status
+            if "Status" in df_display_apagar.columns:
+                def mapear_status(status):
+                    if status == "ABERTA":
+                        return "Aberta"
+                    elif status == "PAGA":
+                        return "Paga"
+                    elif status == "PARCIAL":
+                        return "Parcial"
+                    else:
+                        return str(status)
+                df_display_apagar["Status"] = df_display_apagar["Status"].apply(mapear_status)
+            
+            st.dataframe(
+                df_display_apagar,
+                hide_index=True,
+                use_container_width=True,
+                key="tabela_titulos_a_pagar",
+                column_config={
+                    "Título": st.column_config.NumberColumn(
+                        "Título",
+                        help="Número do título/documento",
+                        format="%d"
+                    ),
+                    "Parcela": st.column_config.NumberColumn(
+                        "Parcela",
+                        help="Número da parcela",
+                        format="%d"
+                    ),
+                    "Empresa": st.column_config.TextColumn(
+                        "Empresa",
+                        help="Nome da empresa responsável pela conta"
+                    ),
+                    "Credor": st.column_config.TextColumn(
+                        "Credor",
+                        help="Nome do fornecedor ou credor"
+                    ),
+                    "Data Vencimento": st.column_config.TextColumn(
+                        "Data Vencimento",
+                        help="Data em que a conta vence"
+                    ),
+                    "Valor Bruto": st.column_config.TextColumn(
+                        "Valor Bruto",
+                        help="Valor bruto da conta a pagar, formatado em mil ou milhões"
+                    ),
+                    "Documento": st.column_config.TextColumn(
+                        "Documento",
+                        help="Tipo de documento"
+                    ),
+                    "Nº Documento": st.column_config.TextColumn(
+                        "Nº Documento",
+                        help="Número do documento"
+                    ),
+                    "Status": st.column_config.TextColumn(
+                        "Status",
+                        help="Status atual da parcela: Aberta (não paga), Paga, ou Parcial"
+                    )
+                }
+            )
+    
+    st.divider()
+    
     # Contas Pagas com Atraso - Análise de Credores (movido para cima)
     if "Dias_atraso" in df.columns and "Status_parcela" in df.columns:
         st.subheader("⚠️ Análise de Contas Pagas com Atraso")
