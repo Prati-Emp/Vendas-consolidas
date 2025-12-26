@@ -16,16 +16,16 @@ import streamlit as st
 from dashboard.utils.md_conn import get_md_connection
 
 def format_currency_short(value: float) -> str:
-    """Formata valores monetários de forma abreviada (Mi, mil)."""
+    """Formata valores monetários de forma abreviada (milhões, mil) padrão PT-BR."""
     if pd.isna(value) or value == 0:
-        return "R$ 0"
+        return "R$ 0,00"
     
-    if value >= 1_000_000:
-        return f"R$ {value/1_000_000:.2f} Mi".replace(".", ",")
-    elif value >= 1_000:
+    if abs(value) >= 1_000_000:
+        return f"R$ {value/1_000_000:.2f} milhões".replace(".", ",")
+    elif abs(value) >= 1_000:
         return f"R$ {value/1_000:.1f} mil".replace(".", ",")
     else:
-        return f"R$ {value:,.0f}".replace(",", ".")
+        return f"R$ {value:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 @st.cache_data(ttl=600)
 def load_contas_pagas_raw() -> pd.DataFrame:
@@ -730,37 +730,29 @@ def render_contas_pagas_dashboard(
     with st.sidebar:
         st.header("🔧 Filtros Globais")
         
-        # Calcular data mínima e máxima
-        dates_list = []
-        
-        if "Data_vencimento" in df_prep.columns:
-            dates_list.extend(df_prep["Data_vencimento"].dropna().tolist())
-        
-        if "Data_pagamento" in df_prep.columns:
-            dates_list.extend(df_prep["Data_pagamento"].dropna().tolist())
-        
-        if dates_list:
-            min_date = pd.to_datetime(dates_list).min().date()
-            max_date = pd.to_datetime(dates_list).max().date()
+        # Calcular data mínima e máxima baseado na Data de Vencimento
+        if "Data_vencimento" in df_prep.columns and not df_prep["Data_vencimento"].dropna().empty:
+            min_date = df_prep["Data_vencimento"].min().date()
+            max_date = df_prep["Data_vencimento"].max().date()
         else:
             min_date = date.today() - timedelta(days=365)
             max_date = date.today()
         
-        # Filtro de período (últimos 90 dias por padrão para contas pagas)
-        default_start = max_date - timedelta(days=90)
-        
+        # Datas padrão solicitadas: início é a menor data e fim é a maior data
         start_date = st.date_input(
-            "Data inicial",
-            value=default_start,
+            "Data inicial (Vencimento)",
+            value=min_date,
             min_value=min_date,
             max_value=max_date,
+            format="DD/MM/YYYY"
         )
         
         end_date = st.date_input(
-            "Data final",
+            "Data final (Vencimento)",
             value=max_date,
             min_value=min_date,
             max_value=max_date,
+            format="DD/MM/YYYY"
         )
         
         st.divider()
