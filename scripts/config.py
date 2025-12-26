@@ -213,6 +213,28 @@ def get_api_config(api_name: str) -> Optional[APIConfig]:
             rate_limit=50
         )
     
+    elif api_name == 'sienge_contas_pagas':
+        token = os.environ.get('SIENGE_TOKEN', '')
+        # Limpar token de caracteres extras
+        token = token.strip()
+        if token.startswith('sBasic '):
+            token = token[1:]  # Remove o 's' extra
+        if token.startswith('Basic '):
+            auth_header = token
+        else:
+            auth_header = f'Basic {token}'
+            
+        return APIConfig(
+            name='Sienge Contas Pagas',
+            base_url='https://api.sienge.com.br/pratiemp/public/api/bulk-data/v1/outcome',
+            headers={
+                'accept': 'application/json',
+                'authorization': auth_header,
+                'Content-Type': 'application/json'
+            },
+            rate_limit=50
+        )
+    
     return None
 
 def get_all_rate_limits() -> Dict[str, int]:
@@ -229,5 +251,6 @@ def get_all_rate_limits() -> Dict[str, int]:
         'sienge_contratos_suprimentos': 50,
         'sienge_pedidos_compras': 50,
         'sienge_medicoes': 50,
+        'sienge_contas_pagas': 50,
         'jira': 30
     }
