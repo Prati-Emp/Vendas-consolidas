@@ -134,40 +134,32 @@ def render_visao_geral(df: pd.DataFrame):
     # KPIs Principais
     st.subheader("📊 Indicadores Financeiros")
     
-    col1, col2, col3, col4, col5 = st.columns(5)
+    # Linha 1: valores principais (mais espaço para evitar truncar)
+    v1, v2, v3 = st.columns([1.1, 1.1, 1.1])
     
-    with col1:
+    with v1:
+        valor_total = df["Valor_bruto"].sum() if "Valor_bruto" in df.columns else 0.0
+        st.metric("Valor Total", format_currency_short(valor_total))
+        
+    with v2:
+        valor_pago = df_pagas["Valor_bruto"].sum() if not df_pagas.empty else 0.0
+        st.metric("Total Pago", format_currency_short(valor_pago))
+        
+    with v3:
+        valor_a_pagar = df_a_pagar["Valor_bruto"].sum() if not df_a_pagar.empty else 0.0
+        st.metric("Total a Pagar", format_currency_short(valor_a_pagar))
+    
+    # Linha 2: totais auxiliares
+    a1, a2 = st.columns([1.0, 1.0])
+    
+    with a1:
         total_titulos = df["Titulo"].nunique() if "Titulo" in df.columns else len(df)
         st.metric("Total de Títulos", f"{total_titulos:,}")
-        
-    with col2:
-        valor_total = df["Valor_bruto"].sum() if "Valor_bruto" in df.columns else 0.0
-        st.metric(
-            "Valor Total",
-            format_currency_short(valor_total)
-        )
-        
-    with col3:
-        valor_pago = df_pagas["Valor_bruto"].sum() if not df_pagas.empty else 0.0
-        st.metric(
-            "Total Pago",
-            format_currency_short(valor_pago)
-        )
-        
-    with col4:
-        valor_a_pagar = df_a_pagar["Valor_bruto"].sum() if not df_a_pagar.empty else 0.0
-        st.metric(
-            "Total a Pagar",
-            format_currency_short(valor_a_pagar)
-        )
     
-    with col5:
+    with a2:
         if valor_total > 0:
             percentual_pago = (valor_pago / valor_total) * 100
-            st.metric(
-                "% Pago",
-                f"{percentual_pago:.1f}%"
-            )
+            st.metric("% Pago", f"{percentual_pago:.1f}%")
         else:
             st.metric("% Pago", "0%")
     
