@@ -922,6 +922,28 @@ def render_contas_pagas_dashboard(
                 default=[],
                 placeholder="Selecione os status"
             )
+        
+        # Filtro de Credor
+        selected_credores = []
+        if "Credor" in df_prep.columns:
+            credores = sorted(df_prep["Credor"].dropna().unique())
+            selected_credores = st.multiselect(
+                "Credor",
+                credores,
+                default=[],
+                placeholder="Selecione os credores"
+            )
+        
+        # Filtro de Documento
+        selected_documentos = []
+        if "Documento" in df_prep.columns:
+            documentos = sorted(df_prep["Documento"].dropna().unique())
+            selected_documentos = st.multiselect(
+                "Documento",
+                documentos,
+                default=[],
+                placeholder="Selecione os documentos"
+            )
     
     # --- APLICAR FILTROS ---
     
@@ -951,6 +973,14 @@ def render_contas_pagas_dashboard(
     # Filtro de Status
     if selected_status:
         df_final = df_final[df_final["Status_parcela"].isin(selected_status)]
+    
+    # Filtro de Credor
+    if selected_credores:
+        df_final = df_final[df_final["Credor"].isin(selected_credores)]
+    
+    # Filtro de Documento
+    if selected_documentos:
+        df_final = df_final[df_final["Documento"].isin(selected_documentos)]
     
     # --- RENDERIZAÇÃO POR ABAS ---
     
