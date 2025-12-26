@@ -171,9 +171,26 @@ def render_visao_geral(df: pd.DataFrame):
     if not df_a_pagar.empty:
         st.subheader("📋 Títulos a Pagar")
         
+        # Card com total dos valores
+        valor_total_tabela = df_a_pagar["Valor_bruto"].sum() if "Valor_bruto" in df_a_pagar.columns else 0.0
+        st.metric(
+            "Total dos Títulos a Pagar",
+            format_currency_short(valor_total_tabela),
+            help="Somatório total dos valores de todos os títulos listados na tabela abaixo"
+        )
+        
         # Preparar dados para tabela
         df_tabela_a_pagar = df_a_pagar.copy()
         df_tabela_a_pagar = df_tabela_a_pagar.sort_values("Data_vencimento", ascending=True)
+        
+        # Calcular dias de atraso
+        if "Data_vencimento" in df_tabela_a_pagar.columns:
+            hoje = pd.Timestamp.now().date()
+            df_tabela_a_pagar["Data_vencimento_dt"] = pd.to_datetime(df_tabela_a_pagar["Data_vencimento"], errors="coerce")
+            df_tabela_a_pagar["Dias_atraso_tabela"] = (
+                (hoje - df_tabela_a_pagar["Data_vencimento_dt"].dt.date)
+                .apply(lambda x: x.days if pd.notna(x) and x.days > 0 else 0)
+            )
         
         # Selecionar colunas relevantes
         cols_a_pagar = {
@@ -183,6 +200,7 @@ def render_visao_geral(df: pd.DataFrame):
             "Credor": "Credor",
             "Data_vencimento": "Data Vencimento",
             "Valor_bruto": "Valor Bruto",
+            "Dias_atraso_tabela": "Dias de Atraso",
             "Documento": "Documento",
             "Numero_documento": "Nº Documento",
             "Status_parcela": "Status"
@@ -201,6 +219,12 @@ def render_visao_geral(df: pd.DataFrame):
             # Formatar valor
             if "Valor Bruto" in df_display_apagar.columns:
                 df_display_apagar["Valor Bruto"] = df_display_apagar["Valor Bruto"].apply(format_currency_short)
+            
+            # Formatar dias de atraso
+            if "Dias de Atraso" in df_display_apagar.columns:
+                df_display_apagar["Dias de Atraso"] = df_display_apagar["Dias de Atraso"].apply(
+                    lambda x: f"{int(x)}" if pd.notna(x) and x > 0 else "-"
+                )
             
             # Mapear status
             if "Status" in df_display_apagar.columns:
@@ -246,6 +270,10 @@ def render_visao_geral(df: pd.DataFrame):
                     "Valor Bruto": st.column_config.TextColumn(
                         "Valor Bruto",
                         help="Valor bruto da conta a pagar, formatado em mil ou milhões"
+                    ),
+                    "Dias de Atraso": st.column_config.TextColumn(
+                        "Dias de Atraso",
+                        help="Quantidade de dias em atraso. Mostra '-' se a conta ainda não venceu ou está em dia"
                     ),
                     "Documento": st.column_config.TextColumn(
                         "Documento",
