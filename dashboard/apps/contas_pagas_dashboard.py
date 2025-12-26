@@ -577,16 +577,19 @@ def render_analise_temporal(df: pd.DataFrame):
         
         evolucao_pagamentos = evolucao_pagamentos.sort_values("Mês")
         
-        # Gráfico de linha
+        # Gráfico de linha com rótulos (elimina necessidade de tabela abaixo)
         fig_evol = go.Figure()
         
         fig_evol.add_trace(go.Scatter(
             x=evolucao_pagamentos["Mês"],
             y=evolucao_pagamentos["Valor Total"],
-            mode='lines+markers',
+            mode='lines+markers+text',
             name="Valor Pago",
             line=dict(color="#002b55", width=3),
-            marker=dict(size=8)
+            marker=dict(size=8),
+            text=evolucao_pagamentos["Valor Total"].apply(format_currency_short),
+            textposition="top center",
+            textfont=dict(size=12)
         ))
         
         fig_evol.update_layout(
@@ -595,7 +598,8 @@ def render_analise_temporal(df: pd.DataFrame):
             yaxis_title="Valor (R$)",
             paper_bgcolor='rgba(0,0,0,0)',
             plot_bgcolor='rgba(0,0,0,0)',
-            hovermode='x unified'
+            hovermode='x unified',
+            yaxis=dict(tickprefix="R$ ")
         )
         
         st.plotly_chart(fig_evol, use_container_width=True, key="evol_pagamentos")
@@ -629,15 +633,7 @@ def render_analise_temporal(df: pd.DataFrame):
                     delta=format_currency_short(menor_valor)
                 )
         
-        # Tabela
-        evolucao_pagamentos["Valor"] = evolucao_pagamentos["Valor Total"].apply(format_currency_short)
-        
-        st.dataframe(
-            evolucao_pagamentos[["Mês", "Quantidade", "Valor"]],
-            hide_index=True,
-            use_container_width=True,
-            key="table_evol_pagamentos"
-        )
+        # Valores exibidos diretamente no gráfico (tabela não necessária)
     else:
         st.info("ℹ️ Nenhum dado de pagamento disponível para análise temporal.")
     
@@ -663,14 +659,17 @@ def render_analise_temporal(df: pd.DataFrame):
         
         evolucao_vencimentos = evolucao_vencimentos.sort_values("Mês")
         
-        # Gráfico de barras
+        # Gráfico de barras com rótulos (elimina necessidade de tabela abaixo)
         fig_venc = go.Figure()
         
         fig_venc.add_trace(go.Bar(
             x=evolucao_vencimentos["Mês"],
             y=evolucao_vencimentos["Valor Total"],
             name="Valor Total",
-            marker_color="#8B0000"
+            marker_color="#8B0000",
+            text=evolucao_vencimentos["Valor Total"].apply(format_currency_short),
+            textposition="outside",
+            textfont=dict(size=12)
         ))
         
         fig_venc.update_layout(
@@ -678,20 +677,12 @@ def render_analise_temporal(df: pd.DataFrame):
             xaxis_title="Mês",
             yaxis_title="Valor (R$)",
             paper_bgcolor='rgba(0,0,0,0)',
-            plot_bgcolor='rgba(0,0,0,0)'
+            plot_bgcolor='rgba(0,0,0,0)',
+            yaxis=dict(tickprefix="R$ "),
+            bargap=0.25
         )
         
         st.plotly_chart(fig_venc, use_container_width=True, key="evol_vencimentos")
-        
-        # Tabela
-        evolucao_vencimentos["Valor"] = evolucao_vencimentos["Valor Total"].apply(format_currency_short)
-        
-        st.dataframe(
-            evolucao_vencimentos[["Mês", "Quantidade", "Valor"]],
-            hide_index=True,
-            use_container_width=True,
-            key="table_evol_vencimentos"
-        )
 
 
 def render_contas_pagas_dashboard(
