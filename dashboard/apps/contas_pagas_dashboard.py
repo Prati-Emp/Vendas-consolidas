@@ -131,13 +131,13 @@ def _render_status_chart(df: pd.DataFrame):
         df.groupby("Status_parcela")
         .agg({
             "Titulo": "nunique",
-            "Valor_liquido": "sum"
+            "Valor_bruto": "sum"
         })
         .reset_index()
         .rename(columns={
             "Status_parcela": "Status",
             "Titulo": "Quantidade",
-            "Valor_liquido": "Valor Total"
+            "Valor_bruto": "Valor Total"
         })
     )
     
@@ -196,9 +196,7 @@ def _render_status_chart(df: pd.DataFrame):
     
     # Tabela Detalhada
     status_analysis_table = status_analysis.copy()
-    status_analysis_table["Valor"] = status_analysis_table["Valor Total"].apply(
-        lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-    )
+    status_analysis_table["Valor"] = status_analysis_table["Valor Total"].apply(format_currency_short)
     
     st.dataframe(
         status_analysis_table[["Status", "Quantidade", "Valor"]],
@@ -225,24 +223,24 @@ def render_visao_geral(df: pd.DataFrame):
         st.metric("Total de Títulos", f"{total_titulos:,}")
         
     with col2:
-        valor_total = df["Valor_liquido"].sum() if "Valor_liquido" in df.columns else 0.0
+        valor_total = df["Valor_bruto"].sum() if "Valor_bruto" in df.columns else 0.0
         st.metric(
             "Valor Total",
-            f"R$ {valor_total:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            format_currency_short(valor_total)
         )
         
     with col3:
-        valor_pago = df_pagas["Valor_liquido"].sum() if not df_pagas.empty else 0.0
+        valor_pago = df_pagas["Valor_bruto"].sum() if not df_pagas.empty else 0.0
         st.metric(
             "Total Pago",
-            f"R$ {valor_pago:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            format_currency_short(valor_pago)
         )
         
     with col4:
-        valor_a_pagar = df_a_pagar["Valor_liquido"].sum() if not df_a_pagar.empty else 0.0
+        valor_a_pagar = df_a_pagar["Valor_bruto"].sum() if not df_a_pagar.empty else 0.0
         st.metric(
             "Total a Pagar",
-            f"R$ {valor_a_pagar:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            format_currency_short(valor_a_pagar)
         )
     
     with col5:
@@ -271,22 +269,20 @@ def render_visao_geral(df: pd.DataFrame):
             df.groupby("Empresa")
             .agg({
                 "Titulo": "nunique",
-                "Valor_liquido": "sum"
+                "Valor_bruto": "sum"
             })
             .reset_index()
             .rename(columns={
                 "Empresa": "Empresa",
                 "Titulo": "Quantidade",
-                "Valor_liquido": "Valor Total"
+                "Valor_bruto": "Valor Total"
             })
         )
         
         empresa_analysis = empresa_analysis.sort_values("Valor Total", ascending=False).head(20)
         
         # Formatar Valor
-        empresa_analysis["Valor"] = empresa_analysis["Valor Total"].apply(
-            lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-        )
+        empresa_analysis["Valor"] = empresa_analysis["Valor Total"].apply(format_currency_short)
         
         st.dataframe(
             empresa_analysis[["Empresa", "Quantidade", "Valor"]],
@@ -305,22 +301,20 @@ def render_visao_geral(df: pd.DataFrame):
             df.groupby("Credor")
             .agg({
                 "Titulo": "nunique",
-                "Valor_liquido": "sum"
+                "Valor_bruto": "sum"
             })
             .reset_index()
             .rename(columns={
                 "Credor": "Credor",
                 "Titulo": "Quantidade",
-                "Valor_liquido": "Valor Total"
+                "Valor_bruto": "Valor Total"
             })
         )
         
         credor_analysis = credor_analysis.sort_values("Valor Total", ascending=False).head(20)
         
         # Formatar Valor
-        credor_analysis["Valor"] = credor_analysis["Valor Total"].apply(
-            lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-        )
+        credor_analysis["Valor"] = credor_analysis["Valor Total"].apply(format_currency_short)
         
         st.dataframe(
             credor_analysis[["Credor", "Quantidade", "Valor"]],
@@ -341,14 +335,14 @@ def render_visao_geral(df: pd.DataFrame):
             total_descontos = df["Desconto"].sum() if "Desconto" in df.columns else 0.0
             st.metric(
                 "Total de Descontos",
-                f"R$ {total_descontos:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+                format_currency_short(total_descontos)
             )
         
         with col2:
             total_impostos = df["Valor_Imposto_Retido"].sum() if "Valor_Imposto_Retido" in df.columns else 0.0
             st.metric(
                 "Total de Impostos Retidos",
-                f"R$ {total_impostos:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+                format_currency_short(total_impostos)
             )
         
         with col3:
@@ -378,10 +372,10 @@ def render_visao_geral(df: pd.DataFrame):
                 st.metric("Títulos em Atraso", f"{total_atrasadas:,}")
             
             with col2:
-                valor_atrasado = df_atrasadas["Valor_liquido"].sum()
+                valor_atrasado = df_atrasadas["Valor_bruto"].sum()
                 st.metric(
                     "Valor em Atraso",
-                    f"R$ {valor_atrasado:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+                    format_currency_short(valor_atrasado)
                 )
             
             with col3:
@@ -416,21 +410,19 @@ def render_visao_geral(df: pd.DataFrame):
                     df_atrasadas.groupby("Credor")
                     .agg({
                         "Titulo": "nunique",
-                        "Valor_liquido": "sum",
+                        "Valor_bruto": "sum",
                         "Dias_atraso": "mean"
                     })
                     .reset_index()
                     .rename(columns={
                         "Credor": "Credor",
                         "Titulo": "Quantidade",
-                        "Valor_liquido": "Valor Total",
+                        "Valor_bruto": "Valor Total",
                         "Dias_atraso": "Dias Médio Atraso"
                     })
                 )
                 top_credores_atraso = top_credores_atraso.sort_values("Valor Total", ascending=False).head(10)
-                top_credores_atraso["Valor"] = top_credores_atraso["Valor Total"].apply(
-                    lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-                )
+                top_credores_atraso["Valor"] = top_credores_atraso["Valor Total"].apply(format_currency_short)
                 top_credores_atraso["Dias Médio"] = top_credores_atraso["Dias Médio Atraso"].apply(lambda x: f"{x:.1f}")
                 
                 st.dataframe(
@@ -464,10 +456,10 @@ def render_visao_geral(df: pd.DataFrame):
                 st.metric("Títulos a Vencer", f"{total_proximos:,}")
             
             with col2:
-                valor_proximos = df_proximos_vencimentos["Valor_liquido"].sum()
+                valor_proximos = df_proximos_vencimentos["Valor_bruto"].sum()
                 st.metric(
                     "Valor a Vencer",
-                    f"R$ {valor_proximos:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+                    format_currency_short(valor_proximos)
                 )
             
             # Gráfico de vencimentos por dia
@@ -476,12 +468,12 @@ def render_visao_geral(df: pd.DataFrame):
                 df_proximos_vencimentos.groupby("Dia")
                 .agg({
                     "Titulo": "nunique",
-                    "Valor_liquido": "sum"
+                    "Valor_bruto": "sum"
                 })
                 .reset_index()
                 .rename(columns={
                     "Titulo": "Quantidade",
-                    "Valor_liquido": "Valor Total"
+                    "Valor_bruto": "Valor Total"
                 })
             )
             vencimentos_diarios = vencimentos_diarios.sort_values("Dia")
@@ -516,7 +508,7 @@ def render_visao_geral(df: pd.DataFrame):
         "Credor": "Credor",
         "Data_vencimento": "Data Vencimento",
         "Data_pagamento": "Data Pagamento",
-        "Valor_liquido": "Valor Líquido",
+        "Valor_bruto": "Valor Bruto",
         "Status_parcela": "Status",
         "Dias_atraso": "Dias Atraso",
         "Documento": "Documento",
@@ -537,10 +529,8 @@ def render_visao_geral(df: pd.DataFrame):
                 df_table[col] = df_table[col].dt.strftime("%d/%m/%Y")
         
         # Formatar Valor
-        if "Valor Líquido" in df_table.columns:
-            df_table["Valor Líquido"] = df_table["Valor Líquido"].apply(
-                lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-            )
+        if "Valor Bruto" in df_table.columns:
+            df_table["Valor Bruto"] = df_table["Valor Bruto"].apply(format_currency_short)
         
         st.dataframe(
             df_table,
@@ -565,13 +555,13 @@ def render_analise_temporal(df: pd.DataFrame):
             df_pagas.groupby("Mes_pagamento")
             .agg({
                 "Titulo": "nunique",
-                "Valor_liquido": "sum"
+                "Valor_bruto": "sum"
             })
             .reset_index()
             .rename(columns={
                 "Mes_pagamento": "Mês",
                 "Titulo": "Quantidade",
-                "Valor_liquido": "Valor Total"
+                "Valor_bruto": "Valor Total"
             })
         )
         
@@ -608,7 +598,7 @@ def render_analise_temporal(df: pd.DataFrame):
                 valor_medio_mensal = evolucao_pagamentos["Valor Total"].mean()
                 st.metric(
                     "Valor Médio Mensal",
-                    f"R$ {valor_medio_mensal:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+                    format_currency_short(valor_medio_mensal)
                 )
             
             with col2:
@@ -617,7 +607,7 @@ def render_analise_temporal(df: pd.DataFrame):
                 st.metric(
                     "Maior Mês",
                     f"{maior_mes.strftime('%m/%Y')}",
-                    delta=f"R$ {maior_valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+                    delta=format_currency_short(maior_valor)
                 )
             
             with col3:
@@ -626,13 +616,11 @@ def render_analise_temporal(df: pd.DataFrame):
                 st.metric(
                     "Menor Mês",
                     f"{menor_mes.strftime('%m/%Y')}",
-                    delta=f"R$ {menor_valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+                    delta=format_currency_short(menor_valor)
                 )
         
         # Tabela
-        evolucao_pagamentos["Valor"] = evolucao_pagamentos["Valor Total"].apply(
-            lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-        )
+        evolucao_pagamentos["Valor"] = evolucao_pagamentos["Valor Total"].apply(format_currency_short)
         
         st.dataframe(
             evolucao_pagamentos[["Mês", "Quantidade", "Valor"]],
@@ -653,13 +641,13 @@ def render_analise_temporal(df: pd.DataFrame):
             df.groupby("Mes_vencimento")
             .agg({
                 "Titulo": "nunique",
-                "Valor_liquido": "sum"
+                "Valor_bruto": "sum"
             })
             .reset_index()
             .rename(columns={
                 "Mes_vencimento": "Mês",
                 "Titulo": "Quantidade",
-                "Valor_liquido": "Valor Total"
+                "Valor_bruto": "Valor Total"
             })
         )
         
@@ -686,9 +674,7 @@ def render_analise_temporal(df: pd.DataFrame):
         st.plotly_chart(fig_venc, use_container_width=True, key="evol_vencimentos")
         
         # Tabela
-        evolucao_vencimentos["Valor"] = evolucao_vencimentos["Valor Total"].apply(
-            lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-        )
+        evolucao_vencimentos["Valor"] = evolucao_vencimentos["Valor Total"].apply(format_currency_short)
         
         st.dataframe(
             evolucao_vencimentos[["Mês", "Quantidade", "Valor"]],
