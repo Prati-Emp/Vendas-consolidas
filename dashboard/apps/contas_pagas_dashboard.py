@@ -428,37 +428,81 @@ def render_visao_geral(df: pd.DataFrame):
                     format_currency_short(valor_proximos)
                 )
             
-            # Gráfico de vencimentos por dia
-            df_proximos_vencimentos["Dia"] = df_proximos_vencimentos["Data_vencimento"].dt.date
-            vencimentos_diarios = (
-                df_proximos_vencimentos.groupby("Dia")
-                .agg({
-                    "Titulo": "nunique",
-                    "Valor_bruto": "sum"
-                })
-                .reset_index()
-                .rename(columns={
-                    "Titulo": "Quantidade",
-                    "Valor_bruto": "Valor Total"
-                })
-            )
-            vencimentos_diarios = vencimentos_diarios.sort_values("Dia")
+            # Tabela detalhada de contas a vencer
+            st.markdown("#### 📋 Detalhamento das Contas a Vencer")
             
-            fig_vencimentos = go.Figure()
-            fig_vencimentos.add_trace(go.Bar(
-                x=vencimentos_diarios["Dia"],
-                y=vencimentos_diarios["Valor Total"],
-                name="Valor Total",
-                marker_color="#8B0000"
-            ))
-            fig_vencimentos.update_layout(
-                title="Valor por Dia de Vencimento (Próximos 30 dias)",
-                xaxis_title="Data de Vencimento",
-                yaxis_title="Valor (R$)",
-                paper_bgcolor='rgba(0,0,0,0)',
-                plot_bgcolor='rgba(0,0,0,0)'
-            )
-            st.plotly_chart(fig_vencimentos, use_container_width=True, key="chart_vencimentos_proximos")
+            # Preparar dados para tabela
+            df_tabela_vencimentos = df_proximos_vencimentos.copy()
+            df_tabela_vencimentos = df_tabela_vencimentos.sort_values("Data_vencimento", ascending=True)
+            
+            # Selecionar colunas relevantes
+            cols_vencimentos = {
+                "Titulo": "Título",
+                "Parcela": "Parcela",
+                "Empresa": "Empresa",
+                "Credor": "Credor",
+                "Data_vencimento": "Data Vencimento",
+                "Valor_bruto": "Valor Bruto",
+                "Documento": "Documento",
+                "Numero_documento": "Nº Documento"
+            }
+            
+            available_cols_venc = [c for c in cols_vencimentos.keys() if c in df_tabela_vencimentos.columns]
+            
+            if available_cols_venc:
+                df_display_venc = df_tabela_vencimentos[available_cols_venc].rename(columns=cols_vencimentos).copy()
+                
+                # Formatar data
+                if "Data Vencimento" in df_display_venc.columns:
+                    df_display_venc["Data Vencimento"] = pd.to_datetime(df_display_venc["Data Vencimento"], errors="coerce")
+                    df_display_venc["Data Vencimento"] = df_display_venc["Data Vencimento"].dt.strftime("%d/%m/%Y")
+                
+                # Formatar valor
+                if "Valor Bruto" in df_display_venc.columns:
+                    df_display_venc["Valor Bruto"] = df_display_venc["Valor Bruto"].apply(format_currency_short)
+                
+                st.dataframe(
+                    df_display_venc,
+                    hide_index=True,
+                    use_container_width=True,
+                    key="tabela_vencimentos_proximos",
+                    column_config={
+                        "Título": st.column_config.NumberColumn(
+                            "Título",
+                            help="Número do título/documento",
+                            format="%d"
+                        ),
+                        "Parcela": st.column_config.NumberColumn(
+                            "Parcela",
+                            help="Número da parcela",
+                            format="%d"
+                        ),
+                        "Empresa": st.column_config.TextColumn(
+                            "Empresa",
+                            help="Nome da empresa responsável pela conta"
+                        ),
+                        "Credor": st.column_config.TextColumn(
+                            "Credor",
+                            help="Nome do fornecedor ou credor"
+                        ),
+                        "Data Vencimento": st.column_config.TextColumn(
+                            "Data Vencimento",
+                            help="Data em que a conta vence (próximos 30 dias)"
+                        ),
+                        "Valor Bruto": st.column_config.TextColumn(
+                            "Valor Bruto",
+                            help="Valor bruto da conta a vencer, formatado em mil ou milhões"
+                        ),
+                        "Documento": st.column_config.TextColumn(
+                            "Documento",
+                            help="Tipo de documento"
+                        ),
+                        "Nº Documento": st.column_config.TextColumn(
+                            "Nº Documento",
+                            help="Número do documento"
+                        )
+                    }
+                )
         else:
             st.info("ℹ️ Nenhuma conta a vencer nos próximos 30 dias.")
     
