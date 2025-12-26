@@ -174,7 +174,7 @@ def render_visao_geral(df: pd.DataFrame):
         # Card com total dos valores
         valor_total_tabela = df_a_pagar["Valor_bruto"].sum() if "Valor_bruto" in df_a_pagar.columns else 0.0
         st.metric(
-            "Total dos Títulos a Pagar",
+            "Valor Total Pago e a Pagar",
             format_currency_short(valor_total_tabela),
             help="Somatório total dos valores de todos os títulos listados na tabela abaixo"
         )
