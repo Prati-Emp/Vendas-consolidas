@@ -16,16 +16,21 @@ import streamlit as st
 from dashboard.utils.md_conn import get_md_connection
 
 def format_currency_short(value: float) -> str:
-    """Formata valores monetários de forma abreviada (milhões, mil) padrão PT-BR."""
+    """Formata valores de forma abreviada para caber em uma linha (Mi / Mil)."""
     if pd.isna(value) or value == 0:
-        return "R$ 0,00"
-    
-    if abs(value) >= 1_000_000:
-        return f"R$ {value/1_000_000:.2f} milhões".replace(".", ",")
-    elif abs(value) >= 1_000:
-        return f"R$ {value/1_000:.1f} mil".replace(".", ",")
+        return "R$ 0"
+
+    sign = "-" if value < 0 else ""
+    v = abs(value)
+
+    if v >= 1_000_000:
+        # Ex.: R$ 114.3Mi
+        return f"{sign}R$ {v/1_000_000:.1f}Mi"
+    elif v >= 1_000:
+        # Ex.: R$ 244.3Mil
+        return f"{sign}R$ {v/1_000:.1f}Mil"
     else:
-        return f"R$ {value:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        return f"{sign}R$ {v:,.0f}".replace(",", ".")
 
 @st.cache_data(ttl=600)
 def load_contas_pagas_raw() -> pd.DataFrame:
