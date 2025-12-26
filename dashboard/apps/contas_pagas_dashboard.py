@@ -405,8 +405,6 @@ def render_visao_geral(df: pd.DataFrame):
             
             # Top títulos em atraso
             if "Credor" in df_atrasadas.columns:
-                st.subheader("🔴 Credores com Maior Valor em Atraso")
-                
                 # Agregar dados por credor
                 def get_most_common_status(series):
                     """Retorna o status mais comum ou o primeiro se houver empate"""
@@ -446,42 +444,88 @@ def render_visao_geral(df: pd.DataFrame):
                 
                 top_credores_agg["Status Parcela"] = top_credores_agg["Status"].apply(mapear_status)
                 
-                top_credores_agg = top_credores_agg.sort_values("Valor Total", ascending=False).head(10)
-                top_credores_agg["Valor em Atraso"] = top_credores_agg["Valor Total"].apply(format_currency_short)
-                top_credores_agg["Dias Médio Atraso"] = top_credores_agg["Dias Médio"].apply(lambda x: f"{x:.1f}")
+                # Criar duas colunas para exibir as tabelas lado a lado
+                col1, col2 = st.columns(2)
                 
-                # Reordenar colunas para exibição
-                display_df = top_credores_agg[["Credor", "Qtd Títulos", "Valor em Atraso", "Dias Médio Atraso", "Status Parcela"]].copy()
+                # Tabela 1: Ordenada por Valor
+                with col1:
+                    st.subheader("🔴 Credores com Maior Valor Pago em Atraso")
+                    
+                    top_credores_valor = top_credores_agg.sort_values("Valor Total", ascending=False).head(10).copy()
+                    top_credores_valor["Valor em Atraso"] = top_credores_valor["Valor Total"].apply(format_currency_short)
+                    top_credores_valor["Dias Médio Atraso"] = top_credores_valor["Dias Médio"].apply(lambda x: f"{x:.1f}")
+                    
+                    display_df_valor = top_credores_valor[["Credor", "Qtd Títulos", "Valor em Atraso", "Dias Médio Atraso", "Status Parcela"]].copy()
+                    
+                    st.dataframe(
+                        display_df_valor,
+                        hide_index=True,
+                        use_container_width=True,
+                        key="top_credores_atraso_valor_table",
+                        column_config={
+                            "Credor": st.column_config.TextColumn(
+                                "Credor",
+                                help="Nome do fornecedor ou credor com contas em atraso"
+                            ),
+                            "Qtd Títulos": st.column_config.NumberColumn(
+                                "Qtd. Títulos",
+                                help="Quantidade total de títulos/documentos em atraso deste credor",
+                                format="%d"
+                            ),
+                            "Valor em Atraso": st.column_config.TextColumn(
+                                "Valor em Atraso",
+                                help="Valor total (em R$) das contas em atraso deste credor, formatado em mil ou milhões"
+                            ),
+                            "Dias Médio Atraso": st.column_config.TextColumn(
+                                "Dias Médio Atraso",
+                                help="Média de dias de atraso das contas deste credor. Quanto maior, mais tempo as contas estão vencidas"
+                            ),
+                            "Status Parcela": st.column_config.TextColumn(
+                                "Status",
+                                help="Status predominante das parcelas: 'Atrasada' indica contas não pagas, 'Paga' indica que algumas foram pagas, 'Parcial' indica pagamento parcial"
+                            )
+                        }
+                    )
                 
-                st.dataframe(
-                    display_df,
-                    hide_index=True,
-                    use_container_width=True,
-                    key="top_credores_atraso_table",
-                    column_config={
-                        "Credor": st.column_config.TextColumn(
-                            "Credor",
-                            help="Nome do fornecedor ou credor com contas em atraso"
-                        ),
-                        "Qtd Títulos": st.column_config.NumberColumn(
-                            "Qtd. Títulos",
-                            help="Quantidade total de títulos/documentos em atraso deste credor",
-                            format="%d"
-                        ),
-                        "Valor em Atraso": st.column_config.TextColumn(
-                            "Valor em Atraso",
-                            help="Valor total (em R$) das contas em atraso deste credor, formatado em mil ou milhões"
-                        ),
-                        "Dias Médio Atraso": st.column_config.TextColumn(
-                            "Dias Médio Atraso",
-                            help="Média de dias de atraso das contas deste credor. Quanto maior, mais tempo as contas estão vencidas"
-                        ),
-                        "Status Parcela": st.column_config.TextColumn(
-                            "Status",
-                            help="Status predominante das parcelas: 'Atrasada' indica contas não pagas, 'Paga' indica que algumas foram pagas, 'Parcial' indica pagamento parcial"
-                        )
-                    }
-                )
+                # Tabela 2: Ordenada por Dias de Atraso
+                with col2:
+                    st.subheader("⏰ Credores com Maior Tempo de Atraso")
+                    
+                    top_credores_dias = top_credores_agg.sort_values("Dias Médio", ascending=False).head(10).copy()
+                    top_credores_dias["Valor em Atraso"] = top_credores_dias["Valor Total"].apply(format_currency_short)
+                    top_credores_dias["Dias Médio Atraso"] = top_credores_dias["Dias Médio"].apply(lambda x: f"{x:.1f}")
+                    
+                    display_df_dias = top_credores_dias[["Credor", "Qtd Títulos", "Valor em Atraso", "Dias Médio Atraso", "Status Parcela"]].copy()
+                    
+                    st.dataframe(
+                        display_df_dias,
+                        hide_index=True,
+                        use_container_width=True,
+                        key="top_credores_atraso_dias_table",
+                        column_config={
+                            "Credor": st.column_config.TextColumn(
+                                "Credor",
+                                help="Nome do fornecedor ou credor com contas em atraso"
+                            ),
+                            "Qtd Títulos": st.column_config.NumberColumn(
+                                "Qtd. Títulos",
+                                help="Quantidade total de títulos/documentos em atraso deste credor",
+                                format="%d"
+                            ),
+                            "Valor em Atraso": st.column_config.TextColumn(
+                                "Valor em Atraso",
+                                help="Valor total (em R$) das contas em atraso deste credor, formatado em mil ou milhões"
+                            ),
+                            "Dias Médio Atraso": st.column_config.TextColumn(
+                                "Dias Médio Atraso",
+                                help="Média de dias de atraso das contas deste credor. Quanto maior, mais tempo as contas estão vencidas"
+                            ),
+                            "Status Parcela": st.column_config.TextColumn(
+                                "Status",
+                                help="Status predominante das parcelas: 'Atrasada' indica contas não pagas, 'Paga' indica que algumas foram pagas, 'Parcial' indica pagamento parcial"
+                            )
+                        }
+                    )
         else:
             st.info("✅ Nenhuma conta em atraso encontrada no período selecionado.")
     
