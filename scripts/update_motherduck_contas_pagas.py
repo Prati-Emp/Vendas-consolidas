@@ -80,57 +80,12 @@ async def sistema_contas_pagas():
         duckdb.sql(f"SET motherduck_token='{token}'")
         conn = duckdb.connect('md:administracao')
         
-        # Upload Contas Pagas (incremental)
-        print("   - Fazendo upload incremental Sienge Contas Pagas...")
+        # Upload Contas Pagas (substituição completa)
+        print("   - Fazendo upload completo Sienge Contas Pagas (substituindo tabela)...")
         conn.register("df_contas_pagas", df_contas_pagas)
         
-        # Verificar se a tabela existe
-        tabela_existe = False
-        try:
-            conn.sql("SELECT 1 FROM sienge_contas_pagas_e_a_pagar LIMIT 1").fetchone()
-            tabela_existe = True
-            print("   - Tabela já existe, fazendo atualização incremental...")
-        except:
-            print("   - Tabela não existe, criando nova tabela...")
-        
-        if tabela_existe:
-            # Obter Data_Snapshot dos novos dados para deletar duplicatas
-            if 'Data_Snapshot' in df_contas_pagas.columns:
-                # Obter data única dos novos dados e converter para string
-                data_snapshot = df_contas_pagas['Data_Snapshot'].iloc[0]
-                
-                if isinstance(data_snapshot, pd.Timestamp):
-                    data_snapshot_str = data_snapshot.strftime('%Y-%m-%d')
-                elif isinstance(data_snapshot, str):
-                    data_snapshot_str = data_snapshot[:10]  # Pega apenas a parte da data
-                else:
-                    try:
-                        dt = pd.to_datetime(data_snapshot)
-                        data_snapshot_str = dt.strftime('%Y-%m-%d')
-                    except:
-                        data_snapshot_str = date.today().strftime('%Y-%m-%d')
-                
-                # Contar registros antes da deleção
-                count_antes = conn.sql("SELECT COUNT(*) FROM sienge_contas_pagas_e_a_pagar").fetchone()[0]
-                
-                print(f"   - Removendo registros existentes para Data_Snapshot: {data_snapshot_str}")
-                # Deletar registros com a mesma data (para evitar duplicatas)
-                conn.execute(f"""
-                    DELETE FROM sienge_contas_pagas_e_a_pagar 
-                    WHERE DATE(Data_Snapshot) = '{data_snapshot_str}'
-                """)
-                
-                # Contar registros depois da deleção
-                count_depois = conn.sql("SELECT COUNT(*) FROM sienge_contas_pagas_e_a_pagar").fetchone()[0]
-                registros_deletados = count_antes - count_depois
-                print(f"   - Registros removidos: {registros_deletados}")
-            
-            # Inserir novos registros
-            print("   - Inserindo novos registros...")
-            conn.execute("INSERT INTO sienge_contas_pagas_e_a_pagar SELECT * FROM df_contas_pagas")
-        else:
-            # Criar tabela pela primeira vez
-            conn.execute("CREATE TABLE sienge_contas_pagas_e_a_pagar AS SELECT * FROM df_contas_pagas")
+        # Substituir tabela completamente (CREATE OR REPLACE)
+        conn.execute("CREATE OR REPLACE TABLE sienge_contas_pagas_e_a_pagar AS SELECT * FROM df_contas_pagas")
         
         count_contas_pagas = conn.sql("SELECT COUNT(*) FROM sienge_contas_pagas_e_a_pagar").fetchone()[0]
         print(f"OK: Sienge Contas Pagas upload: {count_contas_pagas:,} registros totais na tabela")
