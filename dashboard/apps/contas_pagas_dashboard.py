@@ -428,6 +428,11 @@ def render_visao_geral(df: pd.DataFrame):
     if "Empresa" in df.columns:
         st.subheader("🏢 Análise por Empresa")
         
+        # Separar pagos e a pagar
+        df_pagas_emp = df[df["Status_parcela"] == "PAGA"].copy() if "Status_parcela" in df.columns else pd.DataFrame()
+        df_a_pagar_emp = df[df["Status_parcela"] != "PAGA"].copy() if "Status_parcela" in df.columns else df.copy()
+        
+        # Agregação total
         empresa_analysis = (
             df.groupby("Empresa")
             .agg({
@@ -442,16 +447,51 @@ def render_visao_geral(df: pd.DataFrame):
             })
         )
         
+        # Agregação de valores pagos
+        if not df_pagas_emp.empty:
+            empresa_pagos = (
+                df_pagas_emp.groupby("Empresa")
+                .agg({"Valor_bruto": "sum"})
+                .reset_index()
+                .rename(columns={"Valor_bruto": "Valor Pago"})
+            )
+            empresa_analysis = empresa_analysis.merge(empresa_pagos, on="Empresa", how="left")
+            empresa_analysis["Valor Pago"] = empresa_analysis["Valor Pago"].fillna(0)
+        else:
+            empresa_analysis["Valor Pago"] = 0
+        
+        # Agregação de valores a pagar
+        if not df_a_pagar_emp.empty:
+            empresa_a_pagar = (
+                df_a_pagar_emp.groupby("Empresa")
+                .agg({"Valor_bruto": "sum"})
+                .reset_index()
+                .rename(columns={"Valor_bruto": "Valor a Pagar"})
+            )
+            empresa_analysis = empresa_analysis.merge(empresa_a_pagar, on="Empresa", how="left")
+            empresa_analysis["Valor a Pagar"] = empresa_analysis["Valor a Pagar"].fillna(0)
+        else:
+            empresa_analysis["Valor a Pagar"] = 0
+        
         empresa_analysis = empresa_analysis.sort_values("Valor Total", ascending=False).head(20)
         
-        # Formatar Valor
+        # Formatar Valores
         empresa_analysis["Valor"] = empresa_analysis["Valor Total"].apply(format_currency_short)
+        empresa_analysis["Pago"] = empresa_analysis["Valor Pago"].apply(format_currency_short)
+        empresa_analysis["a Pagar"] = empresa_analysis["Valor a Pagar"].apply(format_currency_short)
         
         st.dataframe(
-            empresa_analysis[["Empresa", "Quantidade", "Valor"]],
+            empresa_analysis[["Empresa", "Quantidade", "Valor", "Pago", "a Pagar"]],
             hide_index=True,
             use_container_width=True,
-            key="top_empresas_table"
+            key="top_empresas_table",
+            column_config={
+                "Empresa": st.column_config.TextColumn("Empresa"),
+                "Quantidade": st.column_config.NumberColumn("Quantidade", format="%d"),
+                "Valor": st.column_config.TextColumn("Valor Total", help="Valor total (pago + a pagar)"),
+                "Pago": st.column_config.TextColumn("Pago", help="Valor total já pago"),
+                "a Pagar": st.column_config.TextColumn("a Pagar", help="Valor total ainda a pagar")
+            }
         )
     
     st.divider()
@@ -460,6 +500,11 @@ def render_visao_geral(df: pd.DataFrame):
     if "Credor" in df.columns:
         st.subheader("👥 Top Credores")
         
+        # Separar pagos e a pagar
+        df_pagas_cred = df[df["Status_parcela"] == "PAGA"].copy() if "Status_parcela" in df.columns else pd.DataFrame()
+        df_a_pagar_cred = df[df["Status_parcela"] != "PAGA"].copy() if "Status_parcela" in df.columns else df.copy()
+        
+        # Agregação total
         credor_analysis = (
             df.groupby("Credor")
             .agg({
@@ -474,16 +519,51 @@ def render_visao_geral(df: pd.DataFrame):
             })
         )
         
+        # Agregação de valores pagos
+        if not df_pagas_cred.empty:
+            credor_pagos = (
+                df_pagas_cred.groupby("Credor")
+                .agg({"Valor_bruto": "sum"})
+                .reset_index()
+                .rename(columns={"Valor_bruto": "Valor Pago"})
+            )
+            credor_analysis = credor_analysis.merge(credor_pagos, on="Credor", how="left")
+            credor_analysis["Valor Pago"] = credor_analysis["Valor Pago"].fillna(0)
+        else:
+            credor_analysis["Valor Pago"] = 0
+        
+        # Agregação de valores a pagar
+        if not df_a_pagar_cred.empty:
+            credor_a_pagar = (
+                df_a_pagar_cred.groupby("Credor")
+                .agg({"Valor_bruto": "sum"})
+                .reset_index()
+                .rename(columns={"Valor_bruto": "Valor a Pagar"})
+            )
+            credor_analysis = credor_analysis.merge(credor_a_pagar, on="Credor", how="left")
+            credor_analysis["Valor a Pagar"] = credor_analysis["Valor a Pagar"].fillna(0)
+        else:
+            credor_analysis["Valor a Pagar"] = 0
+        
         credor_analysis = credor_analysis.sort_values("Valor Total", ascending=False).head(20)
         
-        # Formatar Valor
+        # Formatar Valores
         credor_analysis["Valor"] = credor_analysis["Valor Total"].apply(format_currency_short)
+        credor_analysis["Pago"] = credor_analysis["Valor Pago"].apply(format_currency_short)
+        credor_analysis["a Pagar"] = credor_analysis["Valor a Pagar"].apply(format_currency_short)
         
         st.dataframe(
-            credor_analysis[["Credor", "Quantidade", "Valor"]],
+            credor_analysis[["Credor", "Quantidade", "Valor", "Pago", "a Pagar"]],
             hide_index=True,
             use_container_width=True,
-            key="top_credores_table"
+            key="top_credores_table",
+            column_config={
+                "Credor": st.column_config.TextColumn("Credor"),
+                "Quantidade": st.column_config.NumberColumn("Quantidade", format="%d"),
+                "Valor": st.column_config.TextColumn("Valor Total", help="Valor total (pago + a pagar)"),
+                "Pago": st.column_config.TextColumn("Pago", help="Valor total já pago"),
+                "a Pagar": st.column_config.TextColumn("a Pagar", help="Valor total ainda a pagar")
+            }
         )
     
     st.divider()
