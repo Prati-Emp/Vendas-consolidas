@@ -105,9 +105,9 @@ def prepare_contas_pagas(df: pd.DataFrame) -> pd.DataFrame:
                 df[col], errors="coerce"
             ).fillna(0.0)
     
-    # Normalizar Status_parcela
+    # Normalizar Status_parcela (já filtrado, mas normalizar para consistência)
     if "Status_parcela" in df.columns:
-        df["Status_parcela"] = df["Status_parcela"].fillna("Não informado")
+        df["Status_parcela"] = df["Status_parcela"].fillna("PAGA")
     
     # Normalizar Dias_atraso
     if "Dias_atraso" in df.columns:
