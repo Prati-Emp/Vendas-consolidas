@@ -312,7 +312,7 @@ def render_visao_geral(df: pd.DataFrame):
             .reset_index()
             .rename(columns={
                 "Empresa": "Empresa",
-                "Titulo": "Quantidade",
+                "Titulo": "Qtd Títulos",
                 "Valor_bruto": "Valor Total"
             })
         )
@@ -323,13 +323,13 @@ def render_visao_geral(df: pd.DataFrame):
         empresa_analysis["Valor"] = empresa_analysis["Valor Total"].apply(format_currency_short)
         
         st.dataframe(
-            empresa_analysis[["Empresa", "Quantidade", "Valor"]],
+            empresa_analysis[["Empresa", "Qtd Títulos", "Valor"]],
             hide_index=True,
             use_container_width=True,
             key="top_empresas_table",
             column_config={
                 "Empresa": st.column_config.TextColumn("Empresa"),
-                "Quantidade": st.column_config.NumberColumn("Quantidade", format="%d", help="Quantidade de títulos pagos"),
+                "Qtd Títulos": st.column_config.NumberColumn("Qtd. Títulos", format="%d", help="Quantidade de títulos pagos"),
                 "Valor": st.column_config.TextColumn("Valor Total", help="Valor total pago pela empresa")
             }
         )
@@ -350,7 +350,7 @@ def render_visao_geral(df: pd.DataFrame):
             .reset_index()
             .rename(columns={
                 "Credor": "Credor",
-                "Titulo": "Quantidade",
+                "Titulo": "Qtd Títulos",
                 "Valor_bruto": "Valor Total"
             })
         )
@@ -361,13 +361,13 @@ def render_visao_geral(df: pd.DataFrame):
         credor_analysis["Valor"] = credor_analysis["Valor Total"].apply(format_currency_short)
         
         st.dataframe(
-            credor_analysis[["Credor", "Quantidade", "Valor"]],
+            credor_analysis[["Credor", "Qtd Títulos", "Valor"]],
             hide_index=True,
             use_container_width=True,
             key="top_credores_table",
             column_config={
                 "Credor": st.column_config.TextColumn("Credor"),
-                "Quantidade": st.column_config.NumberColumn("Quantidade", format="%d", help="Quantidade de títulos pagos"),
+                "Qtd Títulos": st.column_config.NumberColumn("Qtd. Títulos", format="%d", help="Quantidade de títulos pagos"),
                 "Valor": st.column_config.TextColumn("Valor Total", help="Valor total pago ao credor")
             }
         )
