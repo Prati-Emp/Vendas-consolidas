@@ -81,8 +81,12 @@ def load_contas_pagas_raw() -> pd.DataFrame:
 
 
 def prepare_contas_pagas(df: pd.DataFrame) -> pd.DataFrame:
-    """Prepara o dataset de contas pagas e a pagar."""
+    """Prepara o dataset de contas pagas (apenas Status_parcela == 'PAGA')."""
     df = df.copy()
+    
+    # Filtrar apenas contas pagas
+    if "Status_parcela" in df.columns:
+        df = df[df["Status_parcela"] == "PAGA"].copy()
     
     # Normalizar datas
     date_cols = ["Data_vencimento", "Data_pagamento", "Data_emissao", "Data_cadastro", "Data_Snapshot"]
@@ -109,11 +113,9 @@ def prepare_contas_pagas(df: pd.DataFrame) -> pd.DataFrame:
     if "Dias_atraso" in df.columns:
         df["Dias_atraso"] = pd.to_numeric(df["Dias_atraso"], errors="coerce").fillna(0)
     
-    # Criar coluna de tipo (Paga ou A Pagar)
+    # Criar coluna de tipo (sempre Paga, já que filtramos apenas contas pagas)
     if "Status_parcela" in df.columns:
-        df["Tipo"] = df["Status_parcela"].apply(
-            lambda x: "Paga" if x == "PAGA" else "A Pagar"
-        )
+        df["Tipo"] = "Paga"
     else:
         df["Tipo"] = "Não informado"
     
@@ -659,16 +661,8 @@ def render_contas_pagas_dashboard(
                 placeholder="Selecione os títulos"
             )
         
-        # Filtro de Status
-        selected_status = []
-        if "Status_parcela" in df_prep.columns:
-            status_list = sorted(df_prep["Status_parcela"].dropna().unique())
-            selected_status = st.multiselect(
-                "Status",
-                status_list,
-                default=[],
-                placeholder="Selecione os status"
-            )
+        # Filtro de Status removido - apenas contas pagas são exibidas
+        # (já filtrado na função prepare_contas_pagas)
         
         # Filtro de Credor
         selected_credores = []
@@ -717,9 +711,8 @@ def render_contas_pagas_dashboard(
     if selected_titulos:
         df_final = df_final[df_final["Titulo"].isin(selected_titulos)]
     
-    # Filtro de Status
-    if selected_status:
-        df_final = df_final[df_final["Status_parcela"].isin(selected_status)]
+    # Filtro de Status removido - apenas contas pagas são exibidas
+    # (já filtrado na função prepare_contas_pagas)
     
     # Filtro de Credor
     if selected_credores:
