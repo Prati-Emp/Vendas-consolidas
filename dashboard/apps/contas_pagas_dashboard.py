@@ -84,9 +84,12 @@ def prepare_contas_pagas(df: pd.DataFrame) -> pd.DataFrame:
     """Prepara o dataset de contas pagas (apenas Status_parcela == 'PAGA')."""
     df = df.copy()
     
-    # Filtrar apenas contas pagas
+    # Filtrar apenas contas pagas (case-insensitive e removendo espaços)
     if "Status_parcela" in df.columns:
-        df = df[df["Status_parcela"] == "PAGA"].copy()
+        # Normalizar status para comparação (uppercase, sem espaços)
+        df["Status_parcela_normalizado"] = df["Status_parcela"].astype(str).str.upper().str.strip()
+        df = df[df["Status_parcela_normalizado"] == "PAGA"].copy()
+        df = df.drop(columns=["Status_parcela_normalizado"], errors="ignore")
     
     # Normalizar datas
     date_cols = ["Data_vencimento", "Data_pagamento", "Data_emissao", "Data_cadastro", "Data_Snapshot"]
@@ -133,6 +136,10 @@ def prepare_contas_pagas(df: pd.DataFrame) -> pd.DataFrame:
 
 def render_visao_geral(df: pd.DataFrame):
     """Renderiza a aba de Visão Geral (Contas Pagas)."""
+    
+    # Garantir que apenas contas pagas sejam usadas (verificação de segurança)
+    if "Status_parcela" in df.columns:
+        df = df[df["Status_parcela"].astype(str).str.upper().str.strip() == "PAGA"].copy()
     
     # KPIs Principais
     st.subheader("📊 Indicadores Financeiros")
@@ -422,6 +429,10 @@ def render_visao_geral(df: pd.DataFrame):
 
 def render_analise_temporal(df: pd.DataFrame):
     """Renderiza a aba de Análise Temporal."""
+    # Garantir que apenas contas pagas sejam usadas (verificação de segurança)
+    if "Status_parcela" in df.columns:
+        df = df[df["Status_parcela"].astype(str).str.upper().str.strip() == "PAGA"].copy()
+    
     start_date = st.session_state.get("contas_filtro_inicio")
     end_date = st.session_state.get("contas_filtro_fim")
     
