@@ -32,7 +32,7 @@ TAB_DEFINITIONS = [
         "key": "repasses",
     },
     {
-        "label": "💳 Contas Pagas e a Pagar",
+        "label": "💳 Contas Pagas",
         "permission": "administrativo.contas_pagas",
         "page_path": "pages/3_Contas_Pagas_e_a_Pagar.py",
         "key": "contas_pagas",

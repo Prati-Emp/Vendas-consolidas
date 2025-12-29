@@ -1,4 +1,4 @@
-"""Página de Contas Pagas e a Pagar do dashboard de Administrativo."""
+"""Página de Contas Pagas do dashboard de Administrativo."""
 
 import sys
 from pathlib import Path
@@ -19,7 +19,7 @@ from navigation import render_administrativo_navigation  # noqa: E402
 from dashboard.apps.contas_pagas_dashboard import render_contas_pagas_dashboard  # noqa: E402
 
 st.set_page_config(
-    page_title="Administrativo - Contas Pagas e a Pagar",
+    page_title="Administrativo - Contas Pagas",
     page_icon="💰",
     layout="wide",
     initial_sidebar_state="expanded",

@@ -1,6 +1,6 @@
 """
-Dashboard de Contas Pagas e a Pagar - Análise financeira de contas.
-Foco em fluxo de caixa, pagamentos e contas a pagar.
+Dashboard de Contas Pagas - Análise financeira de contas pagas.
+Foco em histórico de pagamentos e análise de fluxo de caixa.
 """
 
 from __future__ import annotations
@@ -130,49 +130,48 @@ def prepare_contas_pagas(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def render_visao_geral(df: pd.DataFrame):
-    """Renderiza a aba de Visão Geral (Contas Pagas e a Pagar)."""
-    
-    # Separar contas pagas e a pagar
-    df_pagas = df[df["Status_parcela"] == "PAGA"].copy()
-    df_a_pagar = df[df["Status_parcela"] != "PAGA"].copy()
+    """Renderiza a aba de Visão Geral (Contas Pagas)."""
     
     # KPIs Principais
     st.subheader("📊 Indicadores Financeiros")
     
-    # Todos os KPIs em uma única linha
-    col1, col2, col3, col4, col5 = st.columns(5)
+    # Todos os KPIs em uma única linha (4 colunas)
+    col1, col2, col3, col4 = st.columns(4)
     
     with col1:
         valor_total = df["Valor_bruto"].sum() if "Valor_bruto" in df.columns else 0.0
-        st.metric("Valor Total", format_currency_short(valor_total))
+        st.metric("Valor Total Pago", format_currency_short(valor_total))
         
     with col2:
-        valor_pago = df_pagas["Valor_bruto"].sum() if not df_pagas.empty else 0.0
-        st.metric("Total Pago", format_currency_short(valor_pago))
-        
-    with col3:
-        valor_a_pagar = df_a_pagar["Valor_bruto"].sum() if not df_a_pagar.empty else 0.0
-        st.metric("Total a Pagar", format_currency_short(valor_a_pagar))
-    
-    with col4:
         total_titulos = df["Titulo"].nunique() if "Titulo" in df.columns else len(df)
         st.metric("Total de Títulos", f"{total_titulos:,}")
     
-    with col5:
-        if valor_total > 0:
-            percentual_pago = (valor_pago / valor_total) * 100
-            st.metric("% Pago", f"{percentual_pago:.1f}%")
+    with col3:
+        valor_medio = valor_total / total_titulos if total_titulos > 0 else 0.0
+        st.metric("Valor Médio por Título", format_currency_short(valor_medio))
+    
+    with col4:
+        if "Data_pagamento" in df.columns:
+            df_com_data = df[df["Data_pagamento"].notna()].copy()
+            if not df_com_data.empty:
+                data_mais_recente = df_com_data["Data_pagamento"].max()
+                if pd.notna(data_mais_recente):
+                    st.metric("Último Pagamento", data_mais_recente.strftime("%d/%m/%Y"))
+                else:
+                    st.metric("Último Pagamento", "N/A")
+            else:
+                st.metric("Último Pagamento", "N/A")
         else:
-            st.metric("% Pago", "0%")
+            st.metric("Último Pagamento", "N/A")
     
     st.divider()
     
     # Contas Pagas com Atraso - Análise de Credores (insight crítico - posicionado após KPIs)
-    if "Dias_atraso" in df.columns and "Status_parcela" in df.columns:
+    if "Dias_atraso" in df.columns:
         st.subheader("⚠️ Análise de Contas Pagas com Atraso")
         
-        # Filtrar apenas contas que foram PAGAS mas tinham atraso
-        df_pagas_com_atraso = df[(df["Status_parcela"] == "PAGA") & (df["Dias_atraso"] > 0)].copy()
+        # Filtrar apenas contas que foram pagas mas tinham atraso
+        df_pagas_com_atraso = df[df["Dias_atraso"] > 0].copy()
         
         if not df_pagas_com_atraso.empty:
             col1, col2, col3 = st.columns(3)
@@ -303,11 +302,7 @@ def render_visao_geral(df: pd.DataFrame):
     if "Empresa" in df.columns:
         st.subheader("🏢 Análise por Empresa")
         
-        # Separar pagos e a pagar
-        df_pagas_emp = df[df["Status_parcela"] == "PAGA"].copy() if "Status_parcela" in df.columns else pd.DataFrame()
-        df_a_pagar_emp = df[df["Status_parcela"] != "PAGA"].copy() if "Status_parcela" in df.columns else df.copy()
-        
-        # Agregação total
+        # Agregação de contas pagas por empresa
         empresa_analysis = (
             df.groupby("Empresa")
             .agg({
@@ -322,50 +317,20 @@ def render_visao_geral(df: pd.DataFrame):
             })
         )
         
-        # Agregação de valores pagos
-        if not df_pagas_emp.empty:
-            empresa_pagos = (
-                df_pagas_emp.groupby("Empresa")
-                .agg({"Valor_bruto": "sum"})
-                .reset_index()
-                .rename(columns={"Valor_bruto": "Valor Pago"})
-            )
-            empresa_analysis = empresa_analysis.merge(empresa_pagos, on="Empresa", how="left")
-            empresa_analysis["Valor Pago"] = empresa_analysis["Valor Pago"].fillna(0)
-        else:
-            empresa_analysis["Valor Pago"] = 0
-        
-        # Agregação de valores a pagar
-        if not df_a_pagar_emp.empty:
-            empresa_a_pagar = (
-                df_a_pagar_emp.groupby("Empresa")
-                .agg({"Valor_bruto": "sum"})
-                .reset_index()
-                .rename(columns={"Valor_bruto": "Valor a Pagar"})
-            )
-            empresa_analysis = empresa_analysis.merge(empresa_a_pagar, on="Empresa", how="left")
-            empresa_analysis["Valor a Pagar"] = empresa_analysis["Valor a Pagar"].fillna(0)
-        else:
-            empresa_analysis["Valor a Pagar"] = 0
-        
         empresa_analysis = empresa_analysis.sort_values("Valor Total", ascending=False).head(20)
         
         # Formatar Valores
         empresa_analysis["Valor"] = empresa_analysis["Valor Total"].apply(format_currency_short)
-        empresa_analysis["Pago"] = empresa_analysis["Valor Pago"].apply(format_currency_short)
-        empresa_analysis["a Pagar"] = empresa_analysis["Valor a Pagar"].apply(format_currency_short)
         
         st.dataframe(
-            empresa_analysis[["Empresa", "Quantidade", "Valor", "Pago", "a Pagar"]],
+            empresa_analysis[["Empresa", "Quantidade", "Valor"]],
             hide_index=True,
             use_container_width=True,
             key="top_empresas_table",
             column_config={
                 "Empresa": st.column_config.TextColumn("Empresa"),
-                "Quantidade": st.column_config.NumberColumn("Quantidade", format="%d"),
-                "Valor": st.column_config.TextColumn("Valor Total", help="Valor total (pago + a pagar)"),
-                "Pago": st.column_config.TextColumn("Pago", help="Valor total já pago"),
-                "a Pagar": st.column_config.TextColumn("a Pagar", help="Valor total ainda a pagar")
+                "Quantidade": st.column_config.NumberColumn("Quantidade", format="%d", help="Quantidade de títulos pagos"),
+                "Valor": st.column_config.TextColumn("Valor Total", help="Valor total pago pela empresa")
             }
         )
     
@@ -375,11 +340,7 @@ def render_visao_geral(df: pd.DataFrame):
     if "Credor" in df.columns:
         st.subheader("👥 Top Credores")
         
-        # Separar pagos e a pagar
-        df_pagas_cred = df[df["Status_parcela"] == "PAGA"].copy() if "Status_parcela" in df.columns else pd.DataFrame()
-        df_a_pagar_cred = df[df["Status_parcela"] != "PAGA"].copy() if "Status_parcela" in df.columns else df.copy()
-        
-        # Agregação total
+        # Agregação de contas pagas por credor
         credor_analysis = (
             df.groupby("Credor")
             .agg({
@@ -394,283 +355,22 @@ def render_visao_geral(df: pd.DataFrame):
             })
         )
         
-        # Agregação de valores pagos
-        if not df_pagas_cred.empty:
-            credor_pagos = (
-                df_pagas_cred.groupby("Credor")
-                .agg({"Valor_bruto": "sum"})
-                .reset_index()
-                .rename(columns={"Valor_bruto": "Valor Pago"})
-            )
-            credor_analysis = credor_analysis.merge(credor_pagos, on="Credor", how="left")
-            credor_analysis["Valor Pago"] = credor_analysis["Valor Pago"].fillna(0)
-        else:
-            credor_analysis["Valor Pago"] = 0
-        
-        # Agregação de valores a pagar
-        if not df_a_pagar_cred.empty:
-            credor_a_pagar = (
-                df_a_pagar_cred.groupby("Credor")
-                .agg({"Valor_bruto": "sum"})
-                .reset_index()
-                .rename(columns={"Valor_bruto": "Valor a Pagar"})
-            )
-            credor_analysis = credor_analysis.merge(credor_a_pagar, on="Credor", how="left")
-            credor_analysis["Valor a Pagar"] = credor_analysis["Valor a Pagar"].fillna(0)
-        else:
-            credor_analysis["Valor a Pagar"] = 0
-        
         credor_analysis = credor_analysis.sort_values("Valor Total", ascending=False).head(20)
         
         # Formatar Valores
         credor_analysis["Valor"] = credor_analysis["Valor Total"].apply(format_currency_short)
-        credor_analysis["Pago"] = credor_analysis["Valor Pago"].apply(format_currency_short)
-        credor_analysis["a Pagar"] = credor_analysis["Valor a Pagar"].apply(format_currency_short)
         
         st.dataframe(
-            credor_analysis[["Credor", "Quantidade", "Valor", "Pago", "a Pagar"]],
+            credor_analysis[["Credor", "Quantidade", "Valor"]],
             hide_index=True,
             use_container_width=True,
             key="top_credores_table",
             column_config={
                 "Credor": st.column_config.TextColumn("Credor"),
-                "Quantidade": st.column_config.NumberColumn("Quantidade", format="%d"),
-                "Valor": st.column_config.TextColumn("Valor Total", help="Valor total (pago + a pagar)"),
-                "Pago": st.column_config.TextColumn("Pago", help="Valor total já pago"),
-                "a Pagar": st.column_config.TextColumn("a Pagar", help="Valor total ainda a pagar")
+                "Quantidade": st.column_config.NumberColumn("Quantidade", format="%d", help="Quantidade de títulos pagos"),
+                "Valor": st.column_config.TextColumn("Valor Total", help="Valor total pago ao credor")
             }
         )
-    
-    st.divider()
-    
-    # Análise de Vencimentos Próximos (próximos 30 dias)
-    if "Data_vencimento" in df.columns and not df_a_pagar.empty:
-        st.subheader("📅 Contas a Vencer (Próximos 30 dias)")
-        
-        hoje = pd.Timestamp.now().date()
-        proximos_30_dias = hoje + timedelta(days=30)
-        
-        df_proximos_vencimentos = df_a_pagar[
-            (df_a_pagar["Data_vencimento"].dt.date >= hoje) &
-            (df_a_pagar["Data_vencimento"].dt.date <= proximos_30_dias)
-        ].copy()
-        
-        if not df_proximos_vencimentos.empty:
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                total_proximos = df_proximos_vencimentos["Titulo"].nunique()
-                st.metric("Títulos a Vencer", f"{total_proximos:,}")
-            
-            with col2:
-                valor_proximos = df_proximos_vencimentos["Valor_bruto"].sum()
-                st.metric(
-                    "Valor a Vencer",
-                    format_currency_short(valor_proximos)
-                )
-            
-            # Tabela detalhada de contas a vencer
-            st.markdown("#### 📋 Detalhamento das Contas a Vencer")
-            
-            # Preparar dados para tabela
-            df_tabela_vencimentos = df_proximos_vencimentos.copy()
-            df_tabela_vencimentos = df_tabela_vencimentos.sort_values("Data_vencimento", ascending=True)
-            
-            # Selecionar colunas relevantes
-            cols_vencimentos = {
-                "Titulo": "Título",
-                "Parcela": "Parcela",
-                "Empresa": "Empresa",
-                "Credor": "Credor",
-                "Data_vencimento": "Data Vencimento",
-                "Valor_bruto": "Valor Bruto",
-                "Documento": "Documento",
-                "Numero_documento": "Nº Documento"
-            }
-            
-            available_cols_venc = [c for c in cols_vencimentos.keys() if c in df_tabela_vencimentos.columns]
-            
-            if available_cols_venc:
-                df_display_venc = df_tabela_vencimentos[available_cols_venc].rename(columns=cols_vencimentos).copy()
-                
-                # Formatar data
-                if "Data Vencimento" in df_display_venc.columns:
-                    df_display_venc["Data Vencimento"] = pd.to_datetime(df_display_venc["Data Vencimento"], errors="coerce")
-                    df_display_venc["Data Vencimento"] = df_display_venc["Data Vencimento"].dt.strftime("%d/%m/%Y")
-                
-                # Formatar valor
-                if "Valor Bruto" in df_display_venc.columns:
-                    df_display_venc["Valor Bruto"] = df_display_venc["Valor Bruto"].apply(format_currency_short)
-                
-                st.dataframe(
-                    df_display_venc,
-                    hide_index=True,
-                    use_container_width=True,
-                    key="tabela_vencimentos_proximos",
-                    column_config={
-                        "Título": st.column_config.NumberColumn(
-                            "Título",
-                            help="Número do título/documento",
-                            format="%d"
-                        ),
-                        "Parcela": st.column_config.NumberColumn(
-                            "Parcela",
-                            help="Número da parcela",
-                            format="%d"
-                        ),
-                        "Empresa": st.column_config.TextColumn(
-                            "Empresa",
-                            help="Nome da empresa responsável pela conta"
-                        ),
-                        "Credor": st.column_config.TextColumn(
-                            "Credor",
-                            help="Nome do fornecedor ou credor"
-                        ),
-                        "Data Vencimento": st.column_config.TextColumn(
-                            "Data Vencimento",
-                            help="Data em que a conta vence (próximos 30 dias)"
-                        ),
-                        "Valor Bruto": st.column_config.TextColumn(
-                            "Valor Bruto",
-                            help="Valor bruto da conta a vencer, formatado em mil ou milhões"
-                        ),
-                        "Documento": st.column_config.TextColumn(
-                            "Documento",
-                            help="Tipo de documento"
-                        ),
-                        "Nº Documento": st.column_config.TextColumn(
-                            "Nº Documento",
-                            help="Número do documento"
-                        )
-                    }
-                )
-        else:
-            st.info("ℹ️ Nenhuma conta a vencer nos próximos 30 dias.")
-    
-    st.divider()
-    
-    # Tabela de Títulos a Pagar (drill-down específico - após análises agregadas)
-    if not df_a_pagar.empty:
-        st.subheader("📋 Títulos a Pagar")
-        
-        # Card com total dos valores
-        valor_total_tabela = df_a_pagar["Valor_bruto"].sum() if "Valor_bruto" in df_a_pagar.columns else 0.0
-        st.metric(
-            "Valor Total Pago e a Pagar",
-            format_currency_short(valor_total_tabela),
-            help="Somatório total dos valores de todos os títulos listados na tabela abaixo"
-        )
-        
-        # Preparar dados para tabela
-        df_tabela_a_pagar = df_a_pagar.copy()
-        df_tabela_a_pagar = df_tabela_a_pagar.sort_values("Data_vencimento", ascending=True)
-        
-        # Calcular dias de atraso
-        if "Data_vencimento" in df_tabela_a_pagar.columns:
-            hoje = pd.Timestamp.now().date()
-            df_tabela_a_pagar["Data_vencimento_dt"] = pd.to_datetime(df_tabela_a_pagar["Data_vencimento"], errors="coerce")
-            df_tabela_a_pagar["Dias_atraso_tabela"] = (
-                (hoje - df_tabela_a_pagar["Data_vencimento_dt"].dt.date)
-                .apply(lambda x: x.days if pd.notna(x) and x.days > 0 else 0)
-            )
-        
-        # Selecionar colunas relevantes
-        cols_a_pagar = {
-            "Titulo": "Título",
-            "Parcela": "Parcela",
-            "Empresa": "Empresa",
-            "Credor": "Credor",
-            "Data_vencimento": "Data Vencimento",
-            "Valor_bruto": "Valor Bruto",
-            "Dias_atraso_tabela": "Dias de Atraso",
-            "Documento": "Documento",
-            "Numero_documento": "Nº Documento",
-            "Status_parcela": "Status"
-        }
-        
-        available_cols_apagar = [c for c in cols_a_pagar.keys() if c in df_tabela_a_pagar.columns]
-        
-        if available_cols_apagar:
-            df_display_apagar = df_tabela_a_pagar[available_cols_apagar].rename(columns=cols_a_pagar).copy()
-            
-            # Formatar data
-            if "Data Vencimento" in df_display_apagar.columns:
-                df_display_apagar["Data Vencimento"] = pd.to_datetime(df_display_apagar["Data Vencimento"], errors="coerce")
-                df_display_apagar["Data Vencimento"] = df_display_apagar["Data Vencimento"].dt.strftime("%d/%m/%Y")
-            
-            # Formatar valor
-            if "Valor Bruto" in df_display_apagar.columns:
-                df_display_apagar["Valor Bruto"] = df_display_apagar["Valor Bruto"].apply(format_currency_short)
-            
-            # Formatar dias de atraso
-            if "Dias de Atraso" in df_display_apagar.columns:
-                df_display_apagar["Dias de Atraso"] = df_display_apagar["Dias de Atraso"].apply(
-                    lambda x: f"{int(x)}" if pd.notna(x) and x > 0 else "-"
-                )
-            
-            # Mapear status
-            if "Status" in df_display_apagar.columns:
-                def mapear_status(status):
-                    if status == "ABERTA":
-                        return "Aberta"
-                    elif status == "PAGA":
-                        return "Paga"
-                    elif status == "PARCIAL":
-                        return "Parcial"
-                    else:
-                        return str(status)
-                df_display_apagar["Status"] = df_display_apagar["Status"].apply(mapear_status)
-            
-            st.dataframe(
-                df_display_apagar,
-                hide_index=True,
-                use_container_width=True,
-                key="tabela_titulos_a_pagar",
-                column_config={
-                    "Título": st.column_config.NumberColumn(
-                        "Título",
-                        help="Número do título/documento",
-                        format="%d"
-                    ),
-                    "Parcela": st.column_config.NumberColumn(
-                        "Parcela",
-                        help="Número da parcela",
-                        format="%d"
-                    ),
-                    "Empresa": st.column_config.TextColumn(
-                        "Empresa",
-                        help="Nome da empresa responsável pela conta"
-                    ),
-                    "Credor": st.column_config.TextColumn(
-                        "Credor",
-                        help="Nome do fornecedor ou credor"
-                    ),
-                    "Data Vencimento": st.column_config.TextColumn(
-                        "Data Vencimento",
-                        help="Data em que a conta vence"
-                    ),
-                    "Valor Bruto": st.column_config.TextColumn(
-                        "Valor Bruto",
-                        help="Valor bruto da conta a pagar, formatado em mil ou milhões"
-                    ),
-                    "Dias de Atraso": st.column_config.TextColumn(
-                        "Dias de Atraso",
-                        help="Quantidade de dias em atraso. Mostra '-' se a conta ainda não venceu ou está em dia"
-                    ),
-                    "Documento": st.column_config.TextColumn(
-                        "Documento",
-                        help="Tipo de documento"
-                    ),
-                    "Nº Documento": st.column_config.TextColumn(
-                        "Nº Documento",
-                        help="Número do documento"
-                    ),
-                    "Status": st.column_config.TextColumn(
-                        "Status",
-                        help="Status atual da parcela: Aberta (não paga), Paga, ou Parcial"
-                    )
-                }
-            )
     
     st.divider()
     
@@ -727,18 +427,18 @@ def render_analise_temporal(df: pd.DataFrame):
     
     # Análise mensal de pagamentos (respeita data de pagamento)
     if "Mes_pagamento" in df.columns:
-        df_pagas = df[df["Status_parcela"] == "PAGA"].copy()
+        df_filtrado = df.copy()
         
-        if start_date and end_date and "Data_pagamento" in df_pagas.columns:
-            df_pagas = df_pagas[
-                (df_pagas["Data_pagamento"].dt.date >= start_date)
-                & (df_pagas["Data_pagamento"].dt.date <= end_date)
+        if start_date and end_date and "Data_pagamento" in df_filtrado.columns:
+            df_filtrado = df_filtrado[
+                (df_filtrado["Data_pagamento"].dt.date >= start_date)
+                & (df_filtrado["Data_pagamento"].dt.date <= end_date)
             ]
         
-        if not df_pagas.empty:
+        if not df_filtrado.empty:
         
             evolucao_pagamentos = (
-                df_pagas.groupby("Mes_pagamento")
+                df_filtrado.groupby("Mes_pagamento")
                 .agg({
                     "Titulo": "nunique",
                     "Valor_bruto": "sum"
@@ -876,14 +576,14 @@ def render_analise_temporal(df: pd.DataFrame):
 def render_contas_pagas_dashboard(
     show_title: bool = True, show_caption: bool = True
 ) -> None:
-    """Renderiza o dashboard completo de contas pagas e a pagar."""
+    """Renderiza o dashboard completo de contas pagas."""
     
     if show_title:
-        st.title("💰 Dashboard de Contas Pagas e a Pagar")
+        st.title("💰 Dashboard de Contas Pagas")
     
     if show_caption:
         st.caption(
-            "Análise detalhada de fluxo de caixa e contas a pagar."
+            "Análise detalhada do histórico de pagamentos e fluxo de caixa."
         )
     
     # Carregar dados
