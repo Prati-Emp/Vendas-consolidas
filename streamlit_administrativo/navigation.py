@@ -37,6 +37,18 @@ TAB_DEFINITIONS = [
         "page_path": "pages/3_Contas_Pagas.py",
         "key": "contas_pagas",
     },
+    {
+        "label": "💵 Saldo Em Caixa",
+        "permission": "administrativo.saldo_em_caixa",
+        "page_path": "pages/4_Saldo_Em_Caixa.py",
+        "key": "saldo_em_caixa",
+    },
+    {
+        "label": "👥 RH",
+        "permission": "administrativo.rh",
+        "page_path": "pages/5_RH.py",
+        "key": "rh",
+    },
 ]
 
 
