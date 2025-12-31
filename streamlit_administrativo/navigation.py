@@ -34,7 +34,7 @@ TAB_DEFINITIONS = [
     {
         "label": "💳 Contas Pagas",
         "permission": "administrativo.contas_pagas",
-        "page_path": "pages/3_Contas_Pagas_e_a_Pagar.py",
+        "page_path": "pages/3_Contas_Pagas.py",
         "key": "contas_pagas",
     },
 ]
