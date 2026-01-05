@@ -263,7 +263,7 @@ def render_metas_section(kpis: dict, meta_total: float, meta_ratio: float = 1.0)
             help="Diferença entre vendas realizadas e meta"
         )
 
-def render_timeline(timeline_data: pd.DataFrame):
+def render_timeline(timeline_data: pd.DataFrame, key_suffix: str = ""):
     """Renderiza gráfico de timeline."""
     if timeline_data.empty:
         st.warning("Nenhum dado disponível para o período selecionado.")
@@ -286,7 +286,7 @@ def render_timeline(timeline_data: pd.DataFrame):
         hovermode='x unified'
     )
     
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, use_container_width=True, key=f"timeline_chart_{key_suffix}")
     
     # Tabela resumo
     st.subheader("📊 Resumo Mensal")
@@ -300,9 +300,9 @@ def render_timeline(timeline_data: pd.DataFrame):
     
     timeline_display.columns = ['Mês', 'Quantidade', 'Valor Total', 'Ticket Médio']
     
-    st.dataframe(timeline_display, use_container_width=True)
+    st.dataframe(timeline_display, use_container_width=True, key=f"timeline_table_{key_suffix}")
 
-def render_top_empreendimentos(top_empreendimentos: pd.DataFrame):
+def render_top_empreendimentos(top_empreendimentos: pd.DataFrame, key_suffix: str = ""):
     """Renderiza top empreendimentos."""
     if top_empreendimentos.empty:
         st.warning("Nenhum dado disponível para o período selecionado.")
@@ -321,7 +321,8 @@ def render_top_empreendimentos(top_empreendimentos: pd.DataFrame):
         
         st.dataframe(
             top_valor[['nome_empreendimento', 'qtd_vendas', 'total_valor', 'ticket_medio']],
-            use_container_width=True
+            use_container_width=True,
+            key=f"top_empreendimentos_table_{key_suffix}"
         )
     
     with col2:
@@ -340,12 +341,12 @@ def render_top_empreendimentos(top_empreendimentos: pd.DataFrame):
             height=400
         )
         
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True, key=f"top_empreendimentos_chart_{key_suffix}")
 
 def render_house_analysis(data_inicial: str, data_final: str, 
                          midia_selecionada: List[str], tipovenda_selecionada: List[str],
                          empreendimento_selecionado: str, corretor_selecionado: List[str],
-                         imobiliaria_selecionada: List[str]):
+                         imobiliaria_selecionada: List[str], key_suffix: str = ""):
     """Renderiza análise House vs Imobiliárias."""
     st.subheader("🏠 Análise Vendas House x Imobiliárias")
     
@@ -371,7 +372,7 @@ def render_house_analysis(data_inicial: str, data_final: str,
     analise_origem['Ticket Médio'] = analise_origem['Ticket Médio'].apply(format_currency)
     analise_origem['Quantidade'] = analise_origem['Quantidade'].apply(format_int)
     
-    st.dataframe(analise_origem, use_container_width=True)
+    st.dataframe(analise_origem, use_container_width=True, key=f"house_analysis_table_{key_suffix}")
     
     # Gráfico de pizza
     col1, col2 = st.columns(2)
@@ -383,7 +384,7 @@ def render_house_analysis(data_inicial: str, data_final: str,
             names='tipo_venda_origem',
             title='Distribuição por Origem (Valor)'
         )
-        st.plotly_chart(fig_pizza, use_container_width=True)
+        st.plotly_chart(fig_pizza, use_container_width=True, key=f"house_analysis_pie_{key_suffix}")
     
     with col2:
         # Taxa House (calculada por valor, não por quantidade)
@@ -400,7 +401,7 @@ def render_house_analysis(data_inicial: str, data_final: str,
 def render_empreendimentos_estratificados(data_inicial: str, data_final: str,
                                          midia_selecionada: List[str], tipovenda_selecionada: List[str],
                                          empreendimento_selecionado: str, corretor_selecionado: List[str],
-                                         imobiliaria_selecionada: List[str]):
+                                         imobiliaria_selecionada: List[str], key_suffix: str = ""):
     """Renderiza tabela estratificada por empreendimento."""
     st.subheader("🏢 Vendas por Empreendimento (House x Externa)")
     
@@ -483,7 +484,7 @@ def render_empreendimentos_estratificados(data_inicial: str, data_final: str,
     ]
     estratificacao = estratificacao[cols_ordem]
 
-    st.dataframe(estratificacao, use_container_width=True)
+    st.dataframe(estratificacao, use_container_width=True, key=f"empreendimentos_estratificados_{key_suffix}")
 
 
 def render_vendas_tab(
@@ -533,13 +534,16 @@ def render_vendas_tab(
         st.error(f"❌ Erro ao carregar dados de {titulo_tab}: {str(e)}")
         return
 
+    # Criar key_suffix único baseado no título da aba
+    key_suffix = titulo_tab.lower().replace(" ", "_")
+    
     render_kpis(kpis)
     st.markdown("---")
 
     render_metas_section(kpis, meta_total_periodo, meta_ratio)
     st.markdown("---")
 
-    render_top_empreendimentos(top_empreendimentos)
+    render_top_empreendimentos(top_empreendimentos, key_suffix=key_suffix)
     st.markdown("---")
 
     imobiliaria_list = imobiliaria_param if isinstance(imobiliaria_param, list) else []
@@ -549,7 +553,8 @@ def render_vendas_tab(
             data_inicial, data_final,
             midia_selecionada, tipovenda_selecionada,
             empreendimento_selecionado, corretor_selecionado,
-            imobiliaria_list
+            imobiliaria_list,
+            key_suffix=key_suffix
         )
         st.markdown("---")
 
@@ -557,7 +562,8 @@ def render_vendas_tab(
         data_inicial, data_final,
         midia_selecionada, tipovenda_selecionada,
         empreendimento_selecionado, corretor_selecionado,
-        imobiliaria_list
+        imobiliaria_list,
+        key_suffix=key_suffix
     )
     st.markdown("---")
 
@@ -566,7 +572,8 @@ def render_vendas_tab(
         midia_selecionada, tipovenda_selecionada,
         empreendimento_selecionado, corretor_selecionado,
         imobiliaria_list,
-        mostrar_vpl_imobiliaria=mostrar_vpl_imobiliaria
+        mostrar_vpl_imobiliaria=mostrar_vpl_imobiliaria,
+        key_suffix=key_suffix
     )
     st.markdown("---")
 
@@ -575,7 +582,8 @@ def render_vendas_tab(
             data_inicial, data_final,
             midia_selecionada, tipovenda_selecionada,
             empreendimento_selecionado, corretor_selecionado,
-            imobiliaria_list
+            imobiliaria_list,
+            key_suffix=key_suffix
         )
 
 
@@ -745,7 +753,8 @@ def render_analytics_corretor(data_inicial: str, data_final: str,
                              midia_selecionada: List[str], tipovenda_selecionada: List[str],
                              empreendimento_selecionado: str, corretor_selecionado: List[str],
                              imobiliaria_selecionada: List[str],
-                             mostrar_vpl_imobiliaria: bool = True):
+                             mostrar_vpl_imobiliaria: bool = True,
+                             key_suffix: str = ""):
     """Renderiza quadro analítico por corretor."""
     st.subheader("👨‍💼 Análise por Corretor")
     
@@ -845,7 +854,8 @@ def render_analytics_corretor(data_inicial: str, data_final: str,
         st.dataframe(
             display_data,
             use_container_width=True,
-            hide_index=True
+            hide_index=True,
+            key=f"analytics_corretor_table_{key_suffix}"
         )
         
         # Gráfico de barras - Top 10 corretores por valor
@@ -871,7 +881,7 @@ def render_analytics_corretor(data_inicial: str, data_final: str,
             textposition='outside'
         )
         
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True, key=f"analytics_corretor_chart_{key_suffix}")
         
         # =============================================================================
         # ANÁLISE DE VPL - EXPANDERS
@@ -977,7 +987,8 @@ def render_analytics_corretor(data_inicial: str, data_final: str,
                         st.dataframe(
                             vpl_corretor,
                             use_container_width=True,
-                            hide_index=True
+                            hide_index=True,
+                            key=f"vpl_corretor_table_{key_suffix}"
                         )
                     else:
                         st.info("ℹ️ Nenhum dado de VPL encontrado para corretores no período selecionado.")
@@ -1017,7 +1028,8 @@ def render_analytics_corretor(data_inicial: str, data_final: str,
                             st.dataframe(
                                 vpl_imobiliaria,
                                 use_container_width=True,
-                                hide_index=True
+                                hide_index=True,
+                                key=f"vpl_imobiliaria_table_{key_suffix}"
                             )
                         else:
                             st.info("ℹ️ Nenhum dado de VPL encontrado para imobiliárias no período selecionado.")
@@ -1032,10 +1044,11 @@ def render_analytics_corretor(data_inicial: str, data_final: str,
 
  
 
-def render_analytics_imobiliaria(data_inicial: str, data_final: str, 
+def render_analytics_imobiliaria(data_inicial: str, data_final: str,
                                  midia_selecionada: List[str], tipovenda_selecionada: List[str],
                                  empreendimento_selecionado: str, corretor_selecionado: List[str],
-                                 imobiliaria_selecionada: List[str]):
+                                 imobiliaria_selecionada: List[str],
+                                 key_suffix: str = ""):
     """Renderiza quadro analítico por imobiliária."""
     st.subheader("🏢 Análise por Imobiliária")
     
@@ -1140,7 +1153,7 @@ def render_analytics_imobiliaria(data_inicial: str, data_final: str,
             textposition='outside'
         )
         
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True, key=f"analytics_imobiliaria_chart_{key_suffix}")
         
     except Exception as e:
         st.error(f"❌ Erro ao carregar análise por imobiliária: {str(e)}")
