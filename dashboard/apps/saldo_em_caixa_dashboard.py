@@ -246,7 +246,7 @@ def render_analise_temporal(df: pd.DataFrame):
         st.info("Nenhum dado de movimentação encontrado.")
         return
 
-    col_filters1, col_filters2 = st.columns(2)
+    col_filters1, _ = st.columns(2)
     
     with col_filters1:
         # Opção de visualização (Eixo de Cor)
@@ -257,16 +257,6 @@ def render_analise_temporal(df: pd.DataFrame):
             key="radio_visao_temporal"
         )
     
-    with col_filters2:
-        # Opção de Modo de Barras
-        barmode_option = st.radio(
-            "Modo de Visualização:",
-            ["Agrupado (Lado a lado)", "Empilhado (Somado)"],
-            horizontal=True,
-            key="radio_barmode"
-        )
-        plotly_barmode = "group" if "Agrupado" in barmode_option else "relative"
-
     group_col = categoria_col if visao_tipo == "Categoria" else banco_col
     
     # Filtro adicional para remover "Saldos" se desejar focar apenas em fluxo
@@ -298,14 +288,14 @@ def render_analise_temporal(df: pd.DataFrame):
     )
     evolucao_mov["Data"] = pd.to_datetime(evolucao_mov["Data"])
     
-    # Gráfico de Barras
-    fig2 = px.bar(
+    # Gráfico de Linhas (Revertido para Linhas, mantendo filtros)
+    fig2 = px.line(
         evolucao_mov,
         x="Data",
         y=valor_col,
         color=group_col,
         title=f"Evolução Temporal por {visao_tipo}",
-        barmode=plotly_barmode
+        markers=True
     )
     
     fig2.update_layout(
@@ -323,14 +313,14 @@ def render_analise_temporal(df: pd.DataFrame):
         legend_title_text=visao_tipo
     )
     
-    # Ajustar Tooltips para ser mais limpo
+    # Ajustar Tooltips
     fig2.update_traces(
         hovertemplate='<b>%{fullData.name}</b><br>' +
                       'Data: %{x|%d/%m/%Y}<br>' +
                       'Valor: R$ %{y:,.2f}<extra></extra>'
     )
     
-    st.plotly_chart(fig2, use_container_width=True, key="chart_movimentacoes_bar")
+    st.plotly_chart(fig2, use_container_width=True, key="chart_movimentacoes_line")
 
 def render_saldo_em_caixa_dashboard(
     show_title: bool = True, show_caption: bool = True
