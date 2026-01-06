@@ -298,16 +298,31 @@ def render_charts_and_tables(df_input: pd.DataFrame):
         summary['Saldo Final'] = saldos_semanais
         summary['Resultado'] = summary['Entradas'] - summary['Saídas']
         
-        # Formatar
+        # Configurar tooltips e formatação para a tabela
+        column_config = {
+            "Semana": st.column_config.DateColumn("Semana", format="DD/MM/YYYY", help="Início da semana de referência"),
+            "Entradas": st.column_config.NumberColumn("Entradas", help="Soma de Recebimentos e Resgates", format="R$ %.2f"),
+            "Saídas": st.column_config.NumberColumn("Saídas", help="Soma de Pagamentos e Aplicações", format="R$ %.2f"),
+            "Saldo Final": st.column_config.NumberColumn("Saldo Final", help="Saldo no último dia com movimentação na semana", format="R$ %.2f"),
+            "Resultado": st.column_config.NumberColumn("Resultado", help="Entradas - Saídas", format="R$ %.2f"),
+        }
+
         st.dataframe(
-            summary.style.format({
-                'Entradas': 'R$ {:,.2f}', 
-                'Saídas': 'R$ {:,.2f}',
-                'Saldo Final': 'R$ {:,.2f}',
-                'Resultado': 'R$ {:,.2f}'
-            }),
-            use_container_width=True
+            summary,
+            column_config=column_config,
+            use_container_width=True,
+            hide_index=True
         )
+
+        with st.expander("ℹ️ Entenda os Cálculos do Resumo Semanal"):
+            st.markdown("""
+            **Como os valores são calculados:**
+            
+            *   **Entradas:** Soma de todas as movimentações categorizadas como `Recebimentos` ou `Resgate` na semana.
+            *   **Saídas:** Soma de todas as movimentações categorizadas como `Pagamentos` ou `Aplicação` na semana.
+            *   **Saldo Final:** Valor do `Saldo Atual` registrado no último dia com movimentação dentro daquela semana.
+            *   **Resultado:** Cálculo simples de `Entradas - Saídas`. Se positivo, houve geração de caixa; se negativo, houve consumo.
+            """)
 
 def render_saldo_em_caixa_dashboard(
     show_title: bool = True, show_caption: bool = True
