@@ -343,6 +343,95 @@ def render_charts_and_tables(df_input: pd.DataFrame):
             *   **Resultado:** Cálculo simples de `Entradas - Saídas`. Se positivo, houve geração de caixa; se negativo, houve consumo.
             """)
 
+        # --- NOVA MATRIZ SEMANAL (Estilo Excel original) ---
+        st.subheader("📑 Matriz de Saldos por Semana (Detalhada)")
+        
+        if not df.empty:
+            # 1. Preparar dados para Pivot
+            # Agrupar por Semana, Banco e Categoria
+            df_pivot_src = df.copy()
+            df_pivot_src['Semana'] = df_pivot_src['Data'].dt.to_period('W').apply(lambda r: r.start_time.strftime("%d/%b"))
+            
+            # Precisamos de uma tabela onde:
+            # Index = [Categoria, Banco] ou apenas [Categoria] se for consolidado?
+            # A imagem mostra colunas agrupadas por data e subcolunas por banco.
+            # No Streamlit, multi-index columns são chatas de exibir nativamente.
+            # Vamos fazer uma abordagem simplificada: Pivotar apenas por data, concatenando Banco na Categoria ou usando filtros.
+            
+            # Vamos tentar replicar a estrutura da imagem:
+            # Linhas: Categorias
+            # Colunas: Semanas (e dentro delas, bancos)
+            
+            # Opção A: Tabela longa com colunas "11/nov - Sicredi", "11/nov - CEF"
+            pivot_data = []
+            
+            # Ordenar semanas
+            weeks = sorted(df_pivot_src['Semana'].unique())
+            
+            # Definir ordem das categorias (conforme imagem)
+            cat_order = [
+                "Saldo Anterior", "Pagamentos", "Aplicação", 
+                "Recebimentos", "Resgate", "Saldo Atual", 
+                "Saldo de Investimentos", "Saldo Acumulado"
+            ]
+            
+            # Encontrar categorias existentes que batem com a ordem
+            existing_cats = df_pivot_src['Categoria'].unique()
+            sorted_cats = []
+            for co in cat_order:
+                matches = [c for c in existing_cats if co.lower() in str(c).lower()]
+                # Deduplicar preservando ordem
+                for m in matches:
+                    if m not in sorted_cats:
+                        sorted_cats.append(m)
+            
+            # Adicionar outras categorias não mapeadas no final
+            for c in existing_cats:
+                if c not in sorted_cats:
+                    sorted_cats.append(c)
+            
+            # Construir DataFrame
+            rows = []
+            for cat in sorted_cats:
+                row = {'Categoria': cat}
+                for week in weeks:
+                    # Filtrar dados da semana e categoria
+                    df_w = df_pivot_src[(df_pivot_src['Semana'] == week) & (df_pivot_src['Categoria'] == cat)]
+                    
+                    # Separar por banco (assumindo Sicredi e CEF principais)
+                    # Se tiver mais bancos, isso precisa ser dinâmico
+                    bancos_week = sorted(df_pivot_src['Banco'].unique())
+                    
+                    for banco in bancos_week:
+                        col_name = f"{week} ({banco})"
+                        # Para Saldo: pegar último valor (Saldo Atual/Investimento) ou Soma (Fluxos)?
+                        # A imagem mostra fluxos somados e saldos pontuais (provavelmente ultimo dia ou soma da semana?)
+                        # Fluxos na planilha original parecem ser somas semanais. Saldos são posições.
+                        
+                        is_saldo = 'saldo' in str(cat).lower()
+                        if is_saldo:
+                            # Se for saldo, pega o último valor da semana
+                            if not df_w.empty:
+                                max_date = df_w['Data'].max()
+                                val = df_w[(df_w['Data'] == max_date) & (df_w['Banco'] == banco)]['Valor'].sum()
+                            else:
+                                val = 0
+                        else:
+                            # Se for fluxo, soma
+                            val = df_w[df_w['Banco'] == banco]['Valor'].sum()
+                            
+                        row[col_name] = val
+                rows.append(row)
+                
+            df_matrix = pd.DataFrame(rows)
+            
+            # Exibir
+            st.dataframe(
+                df_matrix.set_index('Categoria').style.format("R$ {:,.2f}"),
+                use_container_width=True,
+                height=400
+            )
+
 def render_saldo_em_caixa_dashboard(
     show_title: bool = True, show_caption: bool = True
 ) -> None:
