@@ -67,181 +67,216 @@ def prepare_saldos_bancarios(df: pd.DataFrame) -> pd.DataFrame:
 def render_visao_geral(df: pd.DataFrame):
     """Renderiza a aba de Visão Geral."""
     
-    st.subheader("📊 Indicadores Financeiros")
+    st.subheader("📋 Resumo Financeiro por Instituição")
     
-    # Identificar colunas de saldo/valor
+    # Identificar colunas
     saldo_cols = [col for col in df.columns if 'saldo' in col.lower() or 'valor' in col.lower()]
+    banco_cols = [col for col in df.columns if 'banco' in col.lower() or 'instituicao' in col.lower() or 'conta' in col.lower()]
+    categoria_cols = [col for col in df.columns if 'categoria' in col.lower()]
     
-    if not saldo_cols:
-        st.warning("⚠️ Nenhuma coluna de saldo encontrada nos dados.")
+    if not saldo_cols or not banco_cols or not categoria_cols:
+        st.warning("⚠️ Dados insuficientes para gerar a visão geral (faltam colunas de Saldo, Banco ou Categoria).")
         return
     
-    # Usar a primeira coluna de saldo encontrada
     saldo_col = saldo_cols[0]
+    banco_col = banco_cols[0]
+    categoria_col = categoria_cols[0]
     
-    # KPIs Principais
+    # Categorias de interesse (baseado na imagem do usuário, mas adaptável ao que existir no banco)
+    categorias_ordem = [
+        "Saldo Anterior",
+        "Pagamentos",
+        "Aplicação",
+        "Recebimentos",
+        "Resgate",
+        "Saldo Atual",
+        "Saldo de Investimentos"
+    ]
+    
+    # Filtrar apenas categorias que existem no dataframe
+    categorias_existentes = df[categoria_col].unique()
+    # Tenta fazer match case-insensitive
+    categorias_filtradas = []
+    for cat_ordem in categorias_ordem:
+        match = next((c for c in categorias_existentes if str(c).lower() == cat_ordem.lower()), None)
+        if match:
+            categorias_filtradas.append(match)
+    
+    # Adicionar outras categorias que não estejam na lista, se houver (opcional, para não perder dados)
+    # Por enquanto, vamos focar nas solicitadas ou mostrar todas se a lista for muito divergente
+    if not categorias_filtradas:
+        categorias_filtradas = list(categorias_existentes)
+    
+    # Pivot Table: Index=Categoria, Columns=Banco, Values=Valor
+    pivot_df = pd.pivot_table(
+        df[df[categoria_col].isin(categorias_filtradas)],
+        values=saldo_col,
+        index=categoria_col,
+        columns=banco_col,
+        aggfunc="sum",
+        fill_value=0
+    )
+    
+    # Reordenar index se possível
+    pivot_df = pivot_df.reindex([c for c in categorias_filtradas if c in pivot_df.index])
+    
+    # Adicionar coluna Total
+    pivot_df["Total"] = pivot_df.sum(axis=1)
+    
+    # Formatação para exibição
+    st.dataframe(
+        pivot_df.style.format("R$ {:,.2f}"),
+        use_container_width=True,
+        height=400
+    )
+
+    st.divider()
+
+    # KPIs Principais (Totalizadores)
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-        saldo_total = df[saldo_col].sum() if saldo_col in df.columns else 0.0
-        st.metric("Saldo Total", format_currency_short(saldo_total))
+        # Tenta pegar Saldo Atual ou Saldo Total
+        saldo_atual = df[df[categoria_col].astype(str).str.contains("Saldo Atual", case=False, na=False)][saldo_col].sum()
+        if saldo_atual == 0: # Se não achar pela categoria, soma tudo (comportamento original)
+             saldo_atual = df[saldo_col].sum()
+        st.metric("Saldo Atual Total", format_currency_short(saldo_atual))
         
     with col2:
-        total_contas = df.shape[0] if not df.empty else 0
-        st.metric("Total de Contas", f"{total_contas:,}")
+        recebimentos = df[df[categoria_col].astype(str).str.contains("Recebimentos", case=False, na=False)][saldo_col].sum()
+        st.metric("Total Recebimentos", format_currency_short(recebimentos))
     
     with col3:
-        saldo_medio = df[saldo_col].mean() if saldo_col in df.columns and not df.empty else 0.0
-        st.metric("Saldo Médio", format_currency_short(saldo_medio))
+        pagamentos = df[df[categoria_col].astype(str).str.contains("Pagamentos", case=False, na=False)][saldo_col].sum()
+        st.metric("Total Pagamentos", format_currency_short(pagamentos))
     
     with col4:
-        # Identificar coluna de banco/instituição
-        banco_cols = [col for col in df.columns if 'banco' in col.lower() or 'instituicao' in col.lower() or 'conta' in col.lower()]
-        if banco_cols:
-            total_bancos = df[banco_cols[0]].nunique() if banco_cols[0] in df.columns else 0
-            st.metric("Total de Bancos", f"{total_bancos:,}")
-        else:
-            st.metric("Total de Bancos", "N/A")
+         # Saldo Investimentos
+        investimentos = df[df[categoria_col].astype(str).str.contains("Investimentos", case=False, na=False)][saldo_col].sum()
+        st.metric("Saldo Investimentos", format_currency_short(investimentos))
     
     st.divider()
     
-    # Análise por Banco/Instituição
-    banco_cols = [col for col in df.columns if 'banco' in col.lower() or 'instituicao' in col.lower() or 'conta' in col.lower()]
-    if banco_cols:
-        st.subheader("🏦 Análise por Banco")
-        
-        banco_col = banco_cols[0]
-        
-        banco_analysis = (
-            df.groupby(banco_col)
-            .agg({
-                saldo_col: "sum"
-            })
-            .reset_index()
-            .rename(columns={
-                banco_col: "Banco",
-                saldo_col: "Saldo Total"
-            })
+    # Gráfico de Composição por Banco (Saldo Atual)
+    st.subheader("🏦 Composição do Saldo Atual por Banco")
+    
+    # Filtrar apenas Saldo Atual para o gráfico de pizza/barra
+    df_saldo_atual = df[df[categoria_col].astype(str).str.contains("Saldo Atual", case=False, na=False)]
+    
+    if not df_saldo_atual.empty:
+        fig_bancos = px.pie(
+            df_saldo_atual,
+            values=saldo_col,
+            names=banco_col,
+            title="Distribuição do Saldo Atual",
+            hole=0.4
         )
-        
-        banco_analysis = banco_analysis.sort_values("Saldo Total", ascending=False)
-        
-        # Formatar Valores
-        banco_analysis["Saldo"] = banco_analysis["Saldo Total"].apply(format_currency_short)
-        
-        st.dataframe(
-            banco_analysis[["Banco", "Saldo"]],
-            hide_index=True,
-            use_container_width=True,
-            key="banco_analysis_table",
-            column_config={
-                "Banco": st.column_config.TextColumn("Banco"),
-                "Saldo": st.column_config.TextColumn("Saldo Total", help="Saldo total por banco")
-            }
-        )
-    
-    st.divider()
-    
-    # Tabela Detalhada
-    st.subheader("📋 Detalhamento Completo")
-    
-    # Preparar colunas para exibição
-    display_cols = [col for col in df.columns if col not in ['index', 'id']]
-    
-    st.dataframe(
-        df[display_cols],
-        hide_index=True,
-        use_container_width=True,
-        key="saldos_detalhado_table"
-    )
+        st.plotly_chart(fig_bancos, use_container_width=True)
+    else:
+        st.info("Não foi possível gerar o gráfico de composição (Categoria 'Saldo Atual' não encontrada).")
 
 def render_analise_temporal(df: pd.DataFrame):
     """Renderiza a aba de Análise Temporal."""
     
-    st.subheader("📅 Evolução Temporal de Saldos")
+    st.subheader("📅 Evolução Temporal")
     
     # Identificar colunas
     date_cols = [col for col in df.columns if 'data' in col.lower() or 'date' in col.lower()]
     banco_cols = [col for col in df.columns if 'banco' in col.lower()]
     categoria_cols = [col for col in df.columns if 'categoria' in col.lower()]
-    valor_cols = [col for col in df.columns if 'valor' in col.lower()]
+    valor_cols = [col for col in df.columns if 'valor' in col.lower() or 'saldo' in col.lower()]
     
-    if not date_cols or not valor_cols:
-        st.warning("⚠️ Dados insuficientes para análise temporal. Verifique se há colunas de data e valor.")
+    if not date_cols or not valor_cols or not categoria_cols:
+        st.warning("⚠️ Dados insuficientes para análise temporal. Verifique se há colunas de data, valor e categoria.")
         return
     
     date_col = date_cols[0]
     banco_col = banco_cols[0] if banco_cols else None
-    categoria_col = categoria_cols[0] if categoria_cols else None
+    categoria_col = categoria_cols[0]
     valor_col = valor_cols[0]
     
+    # --- GRÁFICO 1: Saldo Acumulado (Sicredi + CEF) ---
     # Filtrar apenas "Saldo Acumulado" e bancos Sicredi e CEF
-    df_temporal = df.copy()
-    df_temporal["Data"] = pd.to_datetime(df_temporal[date_col], errors="coerce")
-    df_temporal = df_temporal[df_temporal["Data"].notna()]
+    df_acumulado = df.copy()
+    df_acumulado["Data"] = pd.to_datetime(df_acumulado[date_col], errors="coerce")
+    df_acumulado = df_acumulado[df_acumulado["Data"].notna()]
     
-    if df_temporal.empty:
-        st.warning("⚠️ Nenhuma data válida encontrada para análise temporal.")
+    df_acumulado_sicredi_cef = df_acumulado[
+        (df_acumulado[categoria_col].str.contains("Saldo Acumulado", case=False, na=False)) &
+        (df_acumulado[banco_col].isin(["Sicredi", "CEF"]))
+    ]
+    
+    if not df_acumulado_sicredi_cef.empty:
+        # Agregar por data (dia a dia) somando Sicredi + CEF
+        evolucao_saldos = (
+            df_acumulado_sicredi_cef.groupby(df_acumulado_sicredi_cef["Data"].dt.date)
+            .agg({valor_col: "sum"})
+            .reset_index()
+        )
+        evolucao_saldos["Data"] = pd.to_datetime(evolucao_saldos["Data"])
+        evolucao_saldos = evolucao_saldos.rename(columns={valor_col: "Saldo Acumulado"})
+        evolucao_saldos = evolucao_saldos.sort_values("Data")
+        
+        fig1 = px.line(
+            evolucao_saldos,
+            x="Data",
+            y="Saldo Acumulado",
+            title="Evolução Diária do Saldo Acumulado (Sicredi + CEF)",
+            markers=True
+        )
+        fig1.update_layout(
+            xaxis_title="Data", yaxis_title="Saldo (R$)", hovermode="x unified",
+            yaxis=dict(tickformat=",.0f", tickprefix="R$ ")
+        )
+        st.plotly_chart(fig1, use_container_width=True, key="chart_saldo_acumulado")
+    else:
+        st.info("Dados de 'Saldo Acumulado' (Sicredi/CEF) não encontrados para o período.")
+
+    st.divider()
+
+    # --- GRÁFICO 2: Comparativo de Movimentações (Demais Categorias) ---
+    st.subheader("📉 Comparativo de Movimentações (Pagamentos, Recebimentos, etc.)")
+    
+    # Excluir "Saldo Acumulado" para focar nas movimentações
+    df_movimentacoes = df_acumulado[
+        ~df_acumulado[categoria_col].str.contains("Saldo Acumulado", case=False, na=False)
+    ].copy()
+    
+    if df_movimentacoes.empty:
+        st.info("Nenhum dado de movimentação encontrado.")
         return
+
+    # Opção de visualização
+    visao_tipo = st.radio(
+        "Visualizar por:",
+        ["Categoria", "Banco"],
+        horizontal=True,
+        key="radio_visao_temporal"
+    )
     
-    # Filtrar por categoria "Saldo Acumulado"
-    if categoria_col and categoria_col in df_temporal.columns:
-        df_temporal = df_temporal[
-            df_temporal[categoria_col].str.contains("Saldo Acumulado", case=False, na=False)
-        ]
+    group_col = categoria_col if visao_tipo == "Categoria" else banco_col
     
-    # Filtrar apenas Sicredi e CEF
-    if banco_col and banco_col in df_temporal.columns:
-        df_temporal = df_temporal[
-            df_temporal[banco_col].isin(["Sicredi", "CEF"])
-        ]
-    
-    if df_temporal.empty:
-        st.warning("⚠️ Nenhum dado encontrado para 'Saldo Acumulado' dos bancos Sicredi e CEF.")
-        return
-    
-    # Agregar por data (dia a dia) somando Sicredi + CEF
-    evolucao_saldos = (
-        df_temporal.groupby(df_temporal["Data"].dt.date)
-        .agg({
-            valor_col: "sum"
-        })
+    # Agregar por Data e Grupo
+    evolucao_mov = (
+        df_movimentacoes.groupby([df_movimentacoes["Data"].dt.date, group_col])
+        .agg({valor_col: "sum"})
         .reset_index()
     )
+    evolucao_mov["Data"] = pd.to_datetime(evolucao_mov["Data"])
     
-    evolucao_saldos["Data"] = pd.to_datetime(evolucao_saldos["Data"])
-    evolucao_saldos = evolucao_saldos.rename(columns={valor_col: "Saldo Acumulado"})
-    evolucao_saldos = evolucao_saldos.sort_values("Data")
-    
-    # Gráfico de linha
-    fig = px.line(
-        evolucao_saldos,
+    fig2 = px.line( # ou bar
+        evolucao_mov,
         x="Data",
-        y="Saldo Acumulado",
-        title="Evolução Diária do Saldo Acumulado (Sicredi + CEF)",
+        y=valor_col,
+        color=group_col,
+        title=f"Evolução Temporal por {visao_tipo}",
         markers=True
     )
-    
-    fig.update_layout(
-        xaxis_title="Data",
-        yaxis_title="Saldo Acumulado (R$)",
-        hovermode="x unified",
-        xaxis=dict(
-            tickformat="%d/%m/%Y",
-            tickangle=-45
-        ),
-        yaxis=dict(
-            tickformat=",.0f"
-        )
+    fig2.update_layout(
+        xaxis_title="Data", yaxis_title="Valor (R$)", hovermode="x unified",
+        yaxis=dict(tickformat=",.0f", tickprefix="R$ ")
     )
-    
-    # Adicionar valores nos pontos
-    fig.update_traces(
-        mode='lines+markers',
-        hovertemplate='<b>Data:</b> %{x|%d/%m/%Y}<br><b>Saldo Acumulado:</b> R$ %{y:,.2f}<extra></extra>'
-    )
-    
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig2, use_container_width=True, key="chart_movimentacoes")
 
 def render_saldo_em_caixa_dashboard(
     show_title: bool = True, show_caption: bool = True
