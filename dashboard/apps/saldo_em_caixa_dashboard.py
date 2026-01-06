@@ -235,9 +235,9 @@ def render_analise_temporal(df: pd.DataFrame):
     st.divider()
 
     # --- GRÁFICO 2: Comparativo de Movimentações (Demais Categorias) ---
-    st.subheader("📉 Comparativo de Movimentações (Pagamentos, Recebimentos, etc.)")
+    st.subheader("📉 Comparativo de Movimentações")
     
-    # Excluir "Saldo Acumulado" para focar nas movimentações
+    # Excluir "Saldo Acumulado" (categoria do gráfico 1)
     df_movimentacoes = df_acumulado[
         ~df_acumulado[categoria_col].str.contains("Saldo Acumulado", case=False, na=False)
     ].copy()
@@ -246,15 +246,49 @@ def render_analise_temporal(df: pd.DataFrame):
         st.info("Nenhum dado de movimentação encontrado.")
         return
 
-    # Opção de visualização
-    visao_tipo = st.radio(
-        "Visualizar por:",
-        ["Categoria", "Banco"],
-        horizontal=True,
-        key="radio_visao_temporal"
+    col_filters1, col_filters2 = st.columns(2)
+    
+    with col_filters1:
+        # Opção de visualização (Eixo de Cor)
+        visao_tipo = st.radio(
+            "Agrupar cores por:",
+            ["Categoria", "Banco"],
+            horizontal=True,
+            key="radio_visao_temporal"
+        )
+    
+    with col_filters2:
+        # Opção de Modo de Barras
+        barmode_option = st.radio(
+            "Modo de Visualização:",
+            ["Agrupado (Lado a lado)", "Empilhado (Somado)"],
+            horizontal=True,
+            key="radio_barmode"
+        )
+        plotly_barmode = "group" if "Agrupado" in barmode_option else "relative"
+
+    group_col = categoria_col if visao_tipo == "Categoria" else banco_col
+    
+    # Filtro adicional para remover "Saldos" se desejar focar apenas em fluxo
+    # Identificar categorias que parecem ser saldo de estoque vs fluxo
+    todas_cats = sorted(df_movimentacoes[categoria_col].unique())
+    cats_padrao = [c for c in todas_cats if "saldo" not in str(c).lower()]
+    if not cats_padrao: # Se tudo tiver saldo no nome, seleciona tudo
+        cats_padrao = todas_cats
+        
+    cats_selecionadas = st.multiselect(
+        "Filtrar Categorias:",
+        options=todas_cats,
+        default=todas_cats, # Começa mostrando tudo conforme pedido, mas usuário pode tirar
+        key="multiselect_cats_temporal"
     )
     
-    group_col = categoria_col if visao_tipo == "Categoria" else banco_col
+    if cats_selecionadas:
+        df_movimentacoes = df_movimentacoes[df_movimentacoes[categoria_col].isin(cats_selecionadas)]
+
+    if df_movimentacoes.empty:
+        st.warning("Nenhuma categoria selecionada.")
+        return
     
     # Agregar por Data e Grupo
     evolucao_mov = (
@@ -264,19 +298,39 @@ def render_analise_temporal(df: pd.DataFrame):
     )
     evolucao_mov["Data"] = pd.to_datetime(evolucao_mov["Data"])
     
-    fig2 = px.line( # ou bar
+    # Gráfico de Barras
+    fig2 = px.bar(
         evolucao_mov,
         x="Data",
         y=valor_col,
         color=group_col,
         title=f"Evolução Temporal por {visao_tipo}",
-        markers=True
+        barmode=plotly_barmode
     )
+    
     fig2.update_layout(
-        xaxis_title="Data", yaxis_title="Valor (R$)", hovermode="x unified",
-        yaxis=dict(tickformat=",.0f", tickprefix="R$ ")
+        xaxis_title="Data", 
+        yaxis_title="Valor (R$)", 
+        hovermode="x unified", # Unificado ajuda a ver todos os valores do dia
+        xaxis=dict(
+            tickformat="%d/%m/%Y",
+            tickangle=-45
+        ),
+        yaxis=dict(
+            tickformat=",.0f", 
+            tickprefix="R$ "
+        ),
+        legend_title_text=visao_tipo
     )
-    st.plotly_chart(fig2, use_container_width=True, key="chart_movimentacoes")
+    
+    # Ajustar Tooltips para ser mais limpo
+    fig2.update_traces(
+        hovertemplate='<b>%{fullData.name}</b><br>' +
+                      'Data: %{x|%d/%m/%Y}<br>' +
+                      'Valor: R$ %{y:,.2f}<extra></extra>'
+    )
+    
+    st.plotly_chart(fig2, use_container_width=True, key="chart_movimentacoes_bar")
 
 def render_saldo_em_caixa_dashboard(
     show_title: bool = True, show_caption: bool = True
