@@ -228,11 +228,10 @@ def render_kpi_cards(kpis: Dict):
 def check_anomalies(df: pd.DataFrame):
     """Verifica e exibe anomalias financeiras."""
     
-    # Configurações de limite (hardcoded por enquanto, idealmente viriam de config)
+    # Configurações de limite
     LIMIT_RESGATE_HIGH = 500_000
-    LIMIT_SALDO_LOW = 100_000
     
-    # 1. Resgates Altos
+    # 1. Resgates Altos (MANTIDO)
     cats_resgate = [c for c in df['Categoria'].unique() if 'resgate' in str(c).lower()]
     df_resgate = df[df['Categoria'].isin(cats_resgate)]
     
@@ -242,114 +241,16 @@ def check_anomalies(df: pd.DataFrame):
         for _, row in high_resgates.iterrows():
             st.warning(f"🚨 **Resgate Alto Detectado:** R$ {row['Valor']:,.2f} ({row['Banco']}) em {row['Data'].strftime('%d/%m/%Y')}")
 
-    # 2. Saldo Baixo
-    cats_saldo = [c for c in df['Categoria'].unique() if 'saldo atual' in str(c).lower()]
-    df_saldo = df[df['Categoria'].isin(cats_saldo)]
-    
-    low_balance = df_saldo[df_saldo['Valor'] < LIMIT_SALDO_LOW]
-    
-    if not low_balance.empty:
-        # Agrupar por data para ver saldo total do dia
-        daily_bal = low_balance.groupby('Data')['Valor'].sum()
-        for dt, val in daily_bal.items():
-            if val < LIMIT_SALDO_LOW:
-                 st.error(f"⚠️ **Saldo Crítico:** R$ {val:,.2f} em {dt.strftime('%d/%m/%Y')}")
-
-def render_waterfall_chart(df: pd.DataFrame):
-    """Renderiza gráfico Waterfall de fluxo de caixa."""
-    st.subheader("🌊 Fluxo de Caixa (Waterfall)")
-    
-    # Calcular componentes
-    cats_in = [c for c in df['Categoria'].unique() if 'recebimento' in str(c).lower() or 'resgate' in str(c).lower()]
-    cats_out = [c for c in df['Categoria'].unique() if ('pagamento' in str(c).lower() or 'aplica' in str(c).lower()) and 'saldo' not in str(c).lower()]
-    
-    total_in = df[df['Categoria'].isin(cats_in)]['Valor'].sum()
-    total_out = df[df['Categoria'].isin(cats_out)]['Valor'].sum()
-    
-    # Saldo Inicial e Final (aproximados pelo período)
-    # Pegar saldo do dia anterior ao inicio do filtro se possivel, senao 0
-    # Simplificação: O waterfall mostra a variação do período, não necessariamente batendo com saldo bancário absoluto se não tivermos o saldo anterior exato carregado
-    
-    fig = go.Figure(go.Waterfall(
-        name="Fluxo",
-        orientation="v",
-        measure=["relative", "relative", "total"],
-        x=["Entradas", "Saídas", "Resultado Líquido"],
-        textposition="outside",
-        text=[f"R$ {total_in:,.0f}", f"R$ -{total_out:,.0f}", f"R$ {total_in - total_out:,.0f}"],
-        y=[total_in, -total_out, total_in - total_out],
-        connector={"line": {"color": "rgb(63, 63, 63)"}},
-        decreasing={"marker": {"color": "#FF4B4B"}},
-        increasing={"marker": {"color": "#00CC96"}},
-        totals={"marker": {"color": "#555555"}}
-    ))
-    
-    fig.update_layout(
-        title="Balanço do Período (Entradas vs Saídas)",
-        showlegend=False,
-        waterfallgap=0.3
-    )
-    st.plotly_chart(fig, use_container_width=True)
-
-def render_comparison_chart(df: pd.DataFrame):
-    """Renderiza comparativo entre bancos."""
-    st.subheader("🏦 Comparativo entre Instituições")
-    
-    # Agrupar por Banco e Tipo (Entrada/Saída/Saldo Médio)
-    cats_in = [c for c in df['Categoria'].unique() if 'recebimento' in str(c).lower() or 'resgate' in str(c).lower()]
-    cats_out = [c for c in df['Categoria'].unique() if ('pagamento' in str(c).lower() or 'aplica' in str(c).lower()) and 'saldo' not in str(c).lower()]
-    cats_saldo = [c for c in df['Categoria'].unique() if 'saldo atual' in str(c).lower()]
-    
-    data = []
-    
-    for banco in df['Banco'].unique():
-        df_b = df[df['Banco'] == banco]
-        val_in = df_b[df_b['Categoria'].isin(cats_in)]['Valor'].sum()
-        val_out = df_b[df_b['Categoria'].isin(cats_out)]['Valor'].sum()
-        val_saldo = df_b[df_b['Categoria'].isin(cats_saldo)]['Valor'].mean() # Média do saldo no período
-        
-        data.append({'Banco': banco, 'Métrica': 'Total Entradas', 'Valor': val_in})
-        data.append({'Banco': banco, 'Métrica': 'Total Saídas', 'Valor': val_out})
-        data.append({'Banco': banco, 'Métrica': 'Saldo Médio', 'Valor': val_saldo})
-        
-    df_comp = pd.DataFrame(data)
-    
-    if not df_comp.empty:
-        fig = px.bar(
-            df_comp, 
-            x="Métrica", 
-            y="Valor", 
-            color="Banco", 
-            barmode="group",
-            text_auto='.2s',
-            title="Comparativo de Performance por Banco"
-        )
-        fig.update_layout(yaxis=dict(tickformat=",.0f", tickprefix="R$ "))
-        st.plotly_chart(fig, use_container_width=True)
-
 def render_charts_and_tables(df_input: pd.DataFrame):
     """Renderiza gráficos e tabelas principais."""
     
     # Criar cópia para não alterar o dataframe original
     df = df_input.copy()
     
-    # --- ALERTAS (Novo Fase 2) ---
+    # --- ALERTAS (Apenas Resgate) ---
     check_anomalies(df)
     
-    # --- GRÁFICOS ---
-    
-    col_chart1, col_chart2 = st.columns(2)
-    
-    with col_chart1:
-        # Waterfall (Novo Fase 2)
-        render_waterfall_chart(df)
-        
-    with col_chart2:
-        # Comparativo Bancos (Novo Fase 2)
-        render_comparison_chart(df)
-
-    st.divider()
-    st.subheader("📊 Detalhe Diário")
+    st.subheader("📊 Análise de Movimentações")
     
     # Preparar dados para gráfico de barras empilhadas
     # Categorias de fluxo (não saldo)
