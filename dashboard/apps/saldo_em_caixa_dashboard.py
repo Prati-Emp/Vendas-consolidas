@@ -160,18 +160,22 @@ def render_analise_temporal(df: pd.DataFrame):
     
     st.subheader("📅 Evolução Temporal de Saldos")
     
-    # Identificar colunas de data e saldo
+    # Identificar colunas
     date_cols = [col for col in df.columns if 'data' in col.lower() or 'date' in col.lower()]
-    saldo_cols = [col for col in df.columns if 'saldo' in col.lower() or 'valor' in col.lower()]
+    banco_cols = [col for col in df.columns if 'banco' in col.lower()]
+    categoria_cols = [col for col in df.columns if 'categoria' in col.lower()]
+    valor_cols = [col for col in df.columns if 'valor' in col.lower()]
     
-    if not date_cols or not saldo_cols:
-        st.warning("⚠️ Dados insuficientes para análise temporal. Verifique se há colunas de data e saldo.")
+    if not date_cols or not valor_cols:
+        st.warning("⚠️ Dados insuficientes para análise temporal. Verifique se há colunas de data e valor.")
         return
     
     date_col = date_cols[0]
-    saldo_col = saldo_cols[0]
+    banco_col = banco_cols[0] if banco_cols else None
+    categoria_col = categoria_cols[0] if categoria_cols else None
+    valor_col = valor_cols[0]
     
-    # Agregar por data
+    # Filtrar apenas "Saldo Acumulado" e bancos Sicredi e CEF
     df_temporal = df.copy()
     df_temporal["Data"] = pd.to_datetime(df_temporal[date_col], errors="coerce")
     df_temporal = df_temporal[df_temporal["Data"].notna()]
@@ -180,31 +184,61 @@ def render_analise_temporal(df: pd.DataFrame):
         st.warning("⚠️ Nenhuma data válida encontrada para análise temporal.")
         return
     
+    # Filtrar por categoria "Saldo Acumulado"
+    if categoria_col and categoria_col in df_temporal.columns:
+        df_temporal = df_temporal[
+            df_temporal[categoria_col].str.contains("Saldo Acumulado", case=False, na=False)
+        ]
+    
+    # Filtrar apenas Sicredi e CEF
+    if banco_col and banco_col in df_temporal.columns:
+        df_temporal = df_temporal[
+            df_temporal[banco_col].isin(["Sicredi", "CEF"])
+        ]
+    
+    if df_temporal.empty:
+        st.warning("⚠️ Nenhum dado encontrado para 'Saldo Acumulado' dos bancos Sicredi e CEF.")
+        return
+    
+    # Agregar por data (dia a dia) somando Sicredi + CEF
     evolucao_saldos = (
-        df_temporal.groupby(df_temporal["Data"].dt.to_period("M"))
+        df_temporal.groupby(df_temporal["Data"].dt.date)
         .agg({
-            saldo_col: "sum"
+            valor_col: "sum"
         })
         .reset_index()
     )
     
-    evolucao_saldos["Data"] = evolucao_saldos["Data"].dt.to_timestamp()
-    evolucao_saldos["Mês"] = evolucao_saldos["Data"].dt.strftime("%Y-%m")
-    evolucao_saldos = evolucao_saldos.rename(columns={saldo_col: "Saldo Total"})
+    evolucao_saldos["Data"] = pd.to_datetime(evolucao_saldos["Data"])
+    evolucao_saldos = evolucao_saldos.rename(columns={valor_col: "Saldo Acumulado"})
+    evolucao_saldos = evolucao_saldos.sort_values("Data")
     
     # Gráfico de linha
     fig = px.line(
         evolucao_saldos,
         x="Data",
-        y="Saldo Total",
-        title="Evolução Mensal de Saldos",
+        y="Saldo Acumulado",
+        title="Evolução Diária do Saldo Acumulado (Sicredi + CEF)",
         markers=True
     )
     
     fig.update_layout(
-        xaxis_title="Mês",
-        yaxis_title="Saldo Total",
-        hovermode="x unified"
+        xaxis_title="Data",
+        yaxis_title="Saldo Acumulado (R$)",
+        hovermode="x unified",
+        xaxis=dict(
+            tickformat="%d/%m/%Y",
+            tickangle=-45
+        ),
+        yaxis=dict(
+            tickformat=",.0f"
+        )
+    )
+    
+    # Adicionar valores nos pontos
+    fig.update_traces(
+        mode='lines+markers',
+        hovertemplate='<b>Data:</b> %{x|%d/%m/%Y}<br><b>Saldo Acumulado:</b> R$ %{y:,.2f}<extra></extra>'
     )
     
     st.plotly_chart(fig, use_container_width=True)
