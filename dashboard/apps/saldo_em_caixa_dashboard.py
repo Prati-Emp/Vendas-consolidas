@@ -576,11 +576,6 @@ def render_saldo_em_caixa_dashboard(
     
     # --- RENDERIZAÇÃO ---
     
-    # KPIs no topo (Prioridade 1)
-    render_kpi_cards(kpis)
-    
-    st.divider()
-    
     # Resumo Semanal e Detalhamento Semanal no topo (fora das tabs)
     render_resumo_semanal(df_filtered, df_for_kpi, start_date)
     render_detalhamento_semanal(df_filtered)
