@@ -538,10 +538,10 @@ def render_charts_and_tables(df_input: pd.DataFrame, df_completo: pd.DataFrame =
         for _, row in df_agregado.iterrows():
             hover_text = (
                 f"<b>{row['Data'].strftime('%d/%m/%Y')}</b><br>" +
-                f"Recebimentos: R$ {row['Recebimentos']:,.2f}<br>" +
-                f"Pagamentos: R$ {row['Pagamentos']:,.2f}<br>" +
-                f"Aplicações: R$ {row['Aplicações']:,.2f}<br>" +
-                f"Resgates: R$ {row['Resgates']:,.2f}"
+                f"<span style='color:{cores['recebimentos']}'>■</span> Recebimentos: R$ {row['Recebimentos']:,.2f}<br>" +
+                f"<span style='color:{cores['pagamentos']}'>■</span> Pagamentos: R$ {row['Pagamentos']:,.2f}<br>" +
+                f"<span style='color:{cores['aplicacoes']}'>■</span> Aplicações: R$ {row['Aplicações']:,.2f}<br>" +
+                f"<span style='color:{cores['resgates']}'>■</span> Resgates: R$ {row['Resgates']:,.2f}"
             )
             hovertexts_list.append(hover_text)
         
