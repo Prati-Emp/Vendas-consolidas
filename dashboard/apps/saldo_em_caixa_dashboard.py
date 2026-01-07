@@ -299,7 +299,8 @@ def render_resumo_semanal(df_input: pd.DataFrame, df_completo: pd.DataFrame = No
         summary['Saldo Anterior'] = saldos_anteriores
         
         # Calcular Saldo Semana (diferença entre atual e anterior)
-        summary['Saldo Semana'] = summary['Saldo Atual'] - summary['Saldo Anterior']
+        col_dif = "Dif. Semana Anterior"
+        summary[col_dif] = summary['Saldo Atual'] - summary['Saldo Anterior']
         
         # Criar coluna de período (início e fim da semana)
         summary['Período'] = summary['Semana'].apply(
@@ -307,13 +308,13 @@ def render_resumo_semanal(df_input: pd.DataFrame, df_completo: pd.DataFrame = No
         )
         
         # Reordenar colunas: Período primeiro, depois os saldos
-        summary = summary[['Período', 'Saldo Anterior', 'Saldo Atual', 'Saldo Semana']]
+        summary = summary[['Período', 'Saldo Anterior', 'Saldo Atual', col_dif]]
         
         # Criar cópia para formatação de exibição
         summary_display = summary.copy()
         summary_display['Saldo Anterior'] = summary_display['Saldo Anterior'].apply(format_currency_full)
         summary_display['Saldo Atual'] = summary_display['Saldo Atual'].apply(format_currency_full)
-        summary_display['Saldo Semana'] = summary_display['Saldo Semana'].apply(format_currency_full)
+        summary_display[col_dif] = summary_display[col_dif].apply(format_currency_full)
         
         # Configurar tooltips e formatação para a tabela
         column_config = {
@@ -326,8 +327,8 @@ def render_resumo_semanal(df_input: pd.DataFrame, df_completo: pd.DataFrame = No
                 "Saldo Atual", 
                 help="Saldo de fechamento da semana atual"
             ),
-            "Saldo Semana": st.column_config.TextColumn(
-                "Saldo Semana", 
+            col_dif: st.column_config.TextColumn(
+                col_dif, 
                 help="Diferença entre Saldo Atual e Saldo Anterior"
             ),
         }
@@ -340,12 +341,12 @@ def render_resumo_semanal(df_input: pd.DataFrame, df_completo: pd.DataFrame = No
         )
 
         with st.expander("ℹ️ Entenda os Cálculos do Resumo Semanal"):
-            st.markdown("""
+            st.markdown(f"""
             **Como os valores são calculados:**
             
             *   **Saldo Anterior:** Saldo de fechamento da semana anterior (último dia com movimentação da semana anterior).
             *   **Saldo Atual:** Saldo de fechamento da semana atual (último dia com movimentação da semana atual).
-            *   **Saldo Semana:** Diferença entre o Saldo Atual e o Saldo Anterior (Saldo Atual - Saldo Anterior). Indica a variação do saldo na semana.
+            *   **{col_dif}:** Diferença entre o Saldo Atual e o Saldo Anterior (Saldo Atual - Saldo Anterior). Indica a variação do saldo na semana.
             """)
 
 def render_detalhamento_semanal(df_input: pd.DataFrame):
