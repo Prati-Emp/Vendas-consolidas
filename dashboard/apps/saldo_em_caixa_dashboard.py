@@ -518,10 +518,73 @@ def render_saldo_em_caixa_dashboard(
         fig_acum.update_layout(yaxis=dict(tickformat=",.0f", tickprefix="R$ "))
         st.plotly_chart(fig_acum, use_container_width=True)
     
-    tab1, tab2 = st.tabs(["📊 Visão Geral & Gráficos", "📅 Dados Detalhados"])
+    tab1, tab_receb, tab_pag, tab_inv, tab2 = st.tabs([
+        "📊 Visão Geral", 
+        "💰 Recebimentos", 
+        "💸 Pagamentos", 
+        "📈 Investimentos", 
+        "📅 Dados Detalhados"
+    ])
     
     with tab1:
         render_charts_and_tables(df_filtered)
+        
+    with tab_receb:
+        st.subheader("Evolução de Recebimentos")
+        cats_receb = [c for c in df_filtered['Categoria'].unique() if 'recebimento' in str(c).lower()]
+        if cats_receb:
+            # Agrupar por dia para gráfico de linha
+            df_receb = df_filtered[df_filtered['Categoria'].isin(cats_receb)].groupby('Data')['Valor'].sum().reset_index()
+            if not df_receb.empty:
+                fig_receb = px.line(df_receb, x='Data', y='Valor', title='Evolução Diária de Recebimentos', markers=True)
+                fig_receb.update_layout(yaxis=dict(tickformat=",.0f", tickprefix="R$ "))
+                st.plotly_chart(fig_receb, use_container_width=True)
+            else:
+                st.info("Sem dados de Recebimentos para o período selecionado.")
+        else:
+            st.info("Nenhuma categoria de Recebimentos encontrada.")
+
+    with tab_pag:
+        st.subheader("Evolução de Pagamentos")
+        cats_pag = [c for c in df_filtered['Categoria'].unique() if 'pagamento' in str(c).lower()]
+        if cats_pag:
+            # Agrupar por dia
+            df_pag = df_filtered[df_filtered['Categoria'].isin(cats_pag)].groupby('Data')['Valor'].sum().reset_index()
+            if not df_pag.empty:
+                fig_pag = px.line(df_pag, x='Data', y='Valor', title='Evolução Diária de Pagamentos', markers=True)
+                fig_pag.update_layout(yaxis=dict(tickformat=",.0f", tickprefix="R$ "))
+                st.plotly_chart(fig_pag, use_container_width=True)
+            else:
+                st.info("Sem dados de Pagamentos para o período selecionado.")
+        else:
+            st.info("Nenhuma categoria de Pagamentos encontrada.")
+
+    with tab_inv:
+        st.subheader("Análise de Investimentos")
+        
+        # 1. Saldo de Investimentos (Linha)
+        cats_inv_saldo = [c for c in df_filtered['Categoria'].unique() if 'saldo' in str(c).lower() and ('investimento' in str(c).lower() or 'aplica' in str(c).lower())]
+        if cats_inv_saldo:
+            df_inv_saldo = df_filtered[df_filtered['Categoria'].isin(cats_inv_saldo)].groupby('Data')['Valor'].sum().reset_index()
+            if not df_inv_saldo.empty:
+                fig_inv_saldo = px.line(df_inv_saldo, x='Data', y='Valor', title='Evolução do Saldo de Investimentos', markers=True)
+                fig_inv_saldo.update_layout(yaxis=dict(tickformat=",.0f", tickprefix="R$ "))
+                st.plotly_chart(fig_inv_saldo, use_container_width=True)
+        
+        # 2. Aplicações e Resgates (Barras ou Linhas)
+        st.markdown("### Movimentações de Investimento (Aplicações e Resgates)")
+        cats_inv_mov = [c for c in df_filtered['Categoria'].unique() if ('aplica' in str(c).lower() or 'resgate' in str(c).lower()) and 'saldo' not in str(c).lower()]
+        
+        if cats_inv_mov:
+            df_inv_mov = df_filtered[df_filtered['Categoria'].isin(cats_inv_mov)].groupby(['Data', 'Categoria'])['Valor'].sum().reset_index()
+            if not df_inv_mov.empty:
+                fig_inv_mov = px.line(df_inv_mov, x='Data', y='Valor', color='Categoria', title='Aplicações vs Resgates', markers=True)
+                fig_inv_mov.update_layout(yaxis=dict(tickformat=",.0f", tickprefix="R$ "))
+                st.plotly_chart(fig_inv_mov, use_container_width=True)
+            else:
+                st.info("Sem movimentações de investimento no período.")
+        else:
+            st.info("Categorias de movimentação de investimento não encontradas.")
     
     with tab2:
         st.subheader("📋 Dados em Tabela")
