@@ -514,12 +514,12 @@ def render_charts_and_tables(df_input: pd.DataFrame, df_completo: pd.DataFrame =
         # Criar figura
         fig = go.Figure()
         
-        # Definir cores e opacidades
+        # Definir cores semânticas
         cores = {
-            'recebimentos': '#00CC96',  # Verde
-            'pagamentos': '#EF553B',    # Vermelho
-            'aplicacoes': '#636EFA',    # Azul
-            'resgates': '#FFA15A'       # Laranja
+            'recebimentos': '#10B981',  # Verde (entrada de dinheiro)
+            'pagamentos': '#EF4444',    # Vermelho (saída de dinheiro)
+            'aplicacoes': '#3B82F6',    # Azul (investimento)
+            'resgates': '#F59E0B'       # Laranja (resgate de investimento)
         }
         
         # Preparar dados agregados por data
