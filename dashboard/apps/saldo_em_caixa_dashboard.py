@@ -546,6 +546,7 @@ def render_charts_and_tables(df_input: pd.DataFrame, df_completo: pd.DataFrame =
             hovertexts_list.append(hover_text)
         
         # Camada principal (opacidade 100%) - garantir todas as datas
+        # Apenas a primeira trace terá o hovertext completo para evitar duplicação
         fig.add_trace(go.Bar(
             x=df_agregado['Data'],
             y=df_agregado['Recebimentos'],
@@ -562,8 +563,7 @@ def render_charts_and_tables(df_input: pd.DataFrame, df_completo: pd.DataFrame =
             name='Pagamentos',
             marker_color=cores['pagamentos'],
             opacity=1.0,
-            hovertext=hovertexts_list,
-            hovertemplate='%{hovertext}<extra></extra>'
+            hovertemplate='<extra></extra>'  # Sem tooltip para evitar duplicação
         ))
         
         # Camada secundária (opacidade 45%)
@@ -573,8 +573,7 @@ def render_charts_and_tables(df_input: pd.DataFrame, df_completo: pd.DataFrame =
             name='Aplicações',
             marker_color=cores['aplicacoes'],
             opacity=0.45,
-            hovertext=hovertexts_list,
-            hovertemplate='%{hovertext}<extra></extra>'
+            hovertemplate='<extra></extra>'  # Sem tooltip para evitar duplicação
         ))
         
         fig.add_trace(go.Bar(
@@ -583,8 +582,7 @@ def render_charts_and_tables(df_input: pd.DataFrame, df_completo: pd.DataFrame =
             name='Resgates',
             marker_color=cores['resgates'],
             opacity=0.45,
-            hovertext=hovertexts_list,
-            hovertemplate='%{hovertext}<extra></extra>'
+            hovertemplate='<extra></extra>'  # Sem tooltip para evitar duplicação
         ))
         
         # Layout
