@@ -233,8 +233,8 @@ def render_kpi_cards(kpis: Dict):
             help="Saldo Atual / Média Diária de Saídas"
         )
 
-def render_resumo_e_detalhamento_semanal(df_input: pd.DataFrame, df_completo: pd.DataFrame = None, start_date: date = None):
-    """Renderiza Resumo Semanal e Detalhamento Semanal."""
+def render_resumo_semanal(df_input: pd.DataFrame, df_completo: pd.DataFrame = None, start_date: date = None):
+    """Renderiza Resumo Semanal."""
     
     # Criar cópia para não alterar o dataframe original
     df = df_input.copy()
@@ -348,10 +348,16 @@ def render_resumo_e_detalhamento_semanal(df_input: pd.DataFrame, df_completo: pd
             *   **Saldo Semana:** Diferença entre o Saldo Atual e o Saldo Anterior (Saldo Atual - Saldo Anterior). Indica a variação do saldo na semana.
             """)
 
-        # --- DETALHAMENTO SEMANAL ---
-        st.subheader("📑 Detalhamento Semanal")
-        
-        if not df.empty:
+def render_detalhamento_semanal(df_input: pd.DataFrame):
+    """Renderiza Detalhamento Semanal."""
+    
+    # Criar cópia para não alterar o dataframe original
+    df = df_input.copy()
+    
+    # --- DETALHAMENTO SEMANAL ---
+    st.subheader("📑 Detalhamento Semanal")
+    
+    if not df.empty:
             # Preparar dados: agrupar por semana
             df_detalhado = df.copy()
             df_detalhado['Semana'] = df_detalhado['Data'].dt.to_period('W').apply(lambda r: r.start_time)
@@ -584,10 +590,13 @@ def render_saldo_em_caixa_dashboard(
     ])
     
     with tab1:
-        # Resumo Semanal e Detalhamento Semanal no topo
-        render_resumo_e_detalhamento_semanal(df_filtered, df_for_kpi, start_date)
+        # Resumo Semanal no topo
+        render_resumo_semanal(df_filtered, df_for_kpi, start_date)
             
         render_charts_and_tables(df_filtered, df_for_kpi, start_date)
+        
+        # Detalhamento Semanal
+        render_detalhamento_semanal(df_filtered)
         
         # Fluxo de Caixa Acumulado no fim da página
         st.subheader("Fluxo de Caixa Acumulado")
