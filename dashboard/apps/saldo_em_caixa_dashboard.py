@@ -536,15 +536,12 @@ def render_charts_and_tables(df_input: pd.DataFrame, df_completo: pd.DataFrame =
         # Criar hovertext customizado
         hovertexts_list = []
         for _, row in df_agregado.iterrows():
-            fluxo_str = f"{'+' if row['Fluxo'] >= 0 else ''}R$ {row['Fluxo']:,.2f}"
-            evento_str = "<br>▲ Evento relevante" if row['Evento'] else ""
             hover_text = (
                 f"<b>{row['Data'].strftime('%d/%m/%Y')}</b><br>" +
                 f"Recebimentos: R$ {row['Recebimentos']:,.2f}<br>" +
                 f"Pagamentos: R$ {row['Pagamentos']:,.2f}<br>" +
                 f"Aplicações: R$ {row['Aplicações']:,.2f}<br>" +
-                f"Resgates: R$ {row['Resgates']:,.2f}<br>" +
-                f"<b>Fluxo do dia:</b> {fluxo_str}{evento_str}"
+                f"Resgates: R$ {row['Resgates']:,.2f}"
             )
             hovertexts_list.append(hover_text)
         
