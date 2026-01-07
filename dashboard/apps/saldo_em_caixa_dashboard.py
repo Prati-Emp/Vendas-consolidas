@@ -330,9 +330,9 @@ def render_charts_and_tables(df_input: pd.DataFrame, df_completo: pd.DataFrame =
         # Calcular Saldo Semana (diferença entre atual e anterior)
         summary['Saldo Semana'] = summary['Saldo Atual'] - summary['Saldo Anterior']
         
-        # Criar coluna de período (início e fim da semana)
+        # Criar coluna de período (início e fim da semana) - formato: "01 - 07/12/2025"
         summary['Período'] = summary['Semana'].apply(
-            lambda x: f"{x.strftime('%d/%m/%Y')} - {(x + timedelta(days=6)).strftime('%d/%m/%Y')}"
+            lambda x: f"{x.strftime('%d')} - {(x + timedelta(days=6)).strftime('%d/%m/%Y')}"
         )
         
         # Reordenar colunas: Período primeiro, depois os saldos
