@@ -412,79 +412,86 @@ def render_charts_and_tables(df_input: pd.DataFrame, df_completo: pd.DataFrame =
             # Obter bancos únicos
             bancos = sorted(df_detalhado['Banco'].unique())
             
-            # Criar expander para cada semana
+            # Criar lista de labels para as tabs
+            tab_labels = []
             for semana in semanas_detalhado:
                 semana_inicio = semana
                 semana_fim = semana + timedelta(days=6)
-                periodo_str = f"{semana_inicio.strftime('%d/%m/%Y')} - {semana_fim.strftime('%d/%m/%Y')}"
+                periodo_str = f"{semana_inicio.strftime('%d/%m')} - {semana_fim.strftime('%d/%m')}"
+                tab_labels.append(f"📅 {periodo_str}")
+            
+            # Criar tabs para cada semana
+            if tab_labels:
+                tabs_semanas = st.tabs(tab_labels)
                 
-                with st.expander(f"📅 Semana: {periodo_str}", expanded=False):
-                    # Preparar dados da semana
-                    df_semana = df_detalhado[df_detalhado['Semana'] == semana]
-                    
-                    # Obter todos os dias da semana que têm dados
-                    dias_semana = sorted(df_semana['Data'].dt.date.unique())
-                    
-                    # Construir tabela: Categorias x (Dias x Bancos)
-                    rows_detalhe = []
-                    for cat in sorted_cats:
-                        row_detalhe = {'Categoria': cat}
-                        df_cat = df_semana[df_semana['Categoria'] == cat]
+                for idx, semana in enumerate(semanas_detalhado):
+                    with tabs_semanas[idx]:
+                        # Preparar dados da semana
+                        df_semana = df_detalhado[df_detalhado['Semana'] == semana]
                         
-                        # Para cada dia da semana
-                        for dia in dias_semana:
-                            df_cat_dia = df_cat[df_cat['Data'].dt.date == dia]
+                        # Obter todos os dias da semana que têm dados
+                        dias_semana = sorted(df_semana['Data'].dt.date.unique())
+                        
+                        # Construir tabela: Categorias x (Dias x Bancos)
+                        rows_detalhe = []
+                        for cat in sorted_cats:
+                            row_detalhe = {'Categoria': cat}
+                            df_cat = df_semana[df_semana['Categoria'] == cat]
                             
-                            # Para cada banco
-                            for banco in bancos:
-                                df_cat_dia_banco = df_cat_dia[df_cat_dia['Banco'] == banco]
+                            # Para cada dia da semana
+                            for dia in dias_semana:
+                                df_cat_dia = df_cat[df_cat['Data'].dt.date == dia]
                                 
-                                # Para saldos: pegar valor do dia (último se houver múltiplos)
-                                # Para fluxos: somar todos os valores do dia
-                                is_saldo = 'saldo' in str(cat).lower()
-                                
-                                if not df_cat_dia_banco.empty:
-                                    if is_saldo:
-                                        # Saldo: último valor do dia (caso haja múltiplos registros)
-                                        val = df_cat_dia_banco.iloc[-1]['Valor']
+                                # Para cada banco
+                                for banco in bancos:
+                                    df_cat_dia_banco = df_cat_dia[df_cat_dia['Banco'] == banco]
+                                    
+                                    # Para saldos: pegar valor do dia (último se houver múltiplos)
+                                    # Para fluxos: somar todos os valores do dia
+                                    is_saldo = 'saldo' in str(cat).lower()
+                                    
+                                    if not df_cat_dia_banco.empty:
+                                        if is_saldo:
+                                            # Saldo: último valor do dia (caso haja múltiplos registros)
+                                            val = df_cat_dia_banco.iloc[-1]['Valor']
+                                        else:
+                                            # Fluxo: soma do dia
+                                            val = df_cat_dia_banco['Valor'].sum()
                                     else:
-                                        # Fluxo: soma do dia
-                                        val = df_cat_dia_banco['Valor'].sum()
-                                else:
-                                    val = 0
-                                
-                                # Nome da coluna: "DD/MM (Banco)"
-                                col_name = f"{dia.strftime('%d/%m')} ({banco})"
-                                row_detalhe[col_name] = val
+                                        val = 0
+                                    
+                                    # Nome da coluna: "DD/MM (Banco)"
+                                    col_name = f"{dia.strftime('%d/%m')} ({banco})"
+                                    row_detalhe[col_name] = val
+                            
+                            rows_detalhe.append(row_detalhe)
                         
-                        rows_detalhe.append(row_detalhe)
-                    
-                    df_tabela_semana = pd.DataFrame(rows_detalhe)
-                    
-                    # Formatar valores para exibição
-                    df_tabela_display = df_tabela_semana.copy()
-                    for col in df_tabela_display.columns:
-                        if col != 'Categoria':
-                            df_tabela_display[col] = df_tabela_display[col].apply(format_currency_full)
-                    
-                    # Configurar colunas
-                    column_config_detalhe = {
-                        "Categoria": st.column_config.TextColumn("Categoria", width="medium")
-                    }
-                    for col in df_tabela_display.columns:
-                        if col != 'Categoria':
-                            column_config_detalhe[col] = st.column_config.TextColumn(
-                                col,
-                                help=f"Valor do dia {col}"
-                            )
-                    
-                    # Exibir tabela
-                    st.dataframe(
-                        df_tabela_display,
-                        column_config=column_config_detalhe,
-                        use_container_width=True,
-                        hide_index=True
-                    )
+                        df_tabela_semana = pd.DataFrame(rows_detalhe)
+                        
+                        # Formatar valores para exibição
+                        df_tabela_display = df_tabela_semana.copy()
+                        for col in df_tabela_display.columns:
+                            if col != 'Categoria':
+                                df_tabela_display[col] = df_tabela_display[col].apply(format_currency_full)
+                        
+                        # Configurar colunas
+                        column_config_detalhe = {
+                            "Categoria": st.column_config.TextColumn("Categoria", width="medium")
+                        }
+                        for col in df_tabela_display.columns:
+                            if col != 'Categoria':
+                                column_config_detalhe[col] = st.column_config.TextColumn(
+                                    col,
+                                    help=f"Valor do dia {col}"
+                                )
+                        
+                        # Exibir tabela
+                        st.dataframe(
+                            df_tabela_display,
+                            column_config=column_config_detalhe,
+                            use_container_width=True,
+                            hide_index=True
+                        )
 
 def render_saldo_em_caixa_dashboard(
     show_title: bool = True, show_caption: bool = True
