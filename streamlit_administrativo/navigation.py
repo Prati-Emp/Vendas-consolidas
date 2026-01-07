@@ -20,13 +20,12 @@ from advanced_auth import can_access_page  # noqa: E402
 
 TAB_DEFINITIONS = [
     {
-        "label": "📌 Visão Geral",
-        "permission": "administrativo.visao_geral",
-        "page_path": "pages/1_Visao_Geral.py",
-        "key": "visao_geral",
+        "label": "💰 Repasses",
+        "permission": "administrativo.repasses",
+        "page_path": "pages/2_Repasses.py",
+        "key": "repasses",
     },
     {
-        "label": "💰 Repasses",
         "permission": "administrativo.repasses",
         "page_path": "pages/2_Repasses.py",
         "key": "repasses",
