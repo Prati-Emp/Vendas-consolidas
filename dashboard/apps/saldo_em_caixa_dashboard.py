@@ -487,19 +487,73 @@ def render_charts_and_tables(df_input: pd.DataFrame, df_completo: pd.DataFrame =
         # Agrupar por data e categoria
         df_chart = df_flow.groupby(['Data', 'Categoria'])['Valor'].sum().reset_index()
         
+        # Ordenar categorias para melhor visualização (entradas primeiro, depois saídas)
+        cat_order = ['Recebimentos', 'Resgate', 'Pagamentos', 'Aplicação']
+        existing_cats = df_chart['Categoria'].unique()
+        sorted_cats = []
+        for co in cat_order:
+            matches = [c for c in existing_cats if co.lower() in str(c).lower()]
+            for m in matches:
+                if m not in sorted_cats:
+                    sorted_cats.append(m)
+        for c in existing_cats:
+            if c not in sorted_cats:
+                sorted_cats.append(c)
+        
+        # Criar coluna de categoria ordenada
+        df_chart['Categoria_Ordered'] = pd.Categorical(df_chart['Categoria'], categories=sorted_cats, ordered=True)
+        df_chart = df_chart.sort_values('Categoria_Ordered')
+        
+        # Definir cores personalizadas
+        color_map = {}
+        for cat in sorted_cats:
+            if 'recebimento' in str(cat).lower():
+                color_map[cat] = '#00CC96'  # Verde claro
+            elif 'resgate' in str(cat).lower():
+                color_map[cat] = '#FFA15A'  # Laranja
+            elif 'pagamento' in str(cat).lower():
+                color_map[cat] = '#EF553B'  # Vermelho
+            elif 'aplica' in str(cat).lower():
+                color_map[cat] = '#636EFA'  # Azul
+            else:
+                color_map[cat] = '#AB63FA'  # Roxo
+        
         fig = px.bar(
             df_chart,
             x="Data",
             y="Valor",
             color="Categoria",
             title="Movimentações Diárias por Categoria",
-            barmode="group" # Pode ser 'stack' ou 'group'. Group facilita comparar entradas vs saídas
+            barmode="group",
+            color_discrete_map=color_map
         )
+        
+        # Melhorar tooltips
+        fig.update_traces(
+            hovertemplate='<b>%{fullData.name}</b><br>' +
+                         'Data: %{x|%d/%m/%Y}<br>' +
+                         'Valor: R$ %{y:,.2f}<br>' +
+                         '<extra></extra>'
+        )
+        
         fig.update_layout(
             xaxis_title="Data", 
             yaxis_title="Valor (R$)",
             yaxis=dict(tickformat=",.0f", tickprefix="R$ "),
-            hovermode="x unified"
+            hovermode="x unified",
+            xaxis=dict(
+                tickformat="%d/%m/%Y",
+                tickangle=-45
+            ),
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=1.02,
+                xanchor="right",
+                x=1
+            ),
+            bargap=0.2,  # Espaçamento entre grupos de barras
+            bargroupgap=0.1  # Espaçamento entre barras do mesmo grupo
         )
         st.plotly_chart(fig, use_container_width=True)
     else:
