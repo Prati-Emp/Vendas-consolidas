@@ -266,45 +266,46 @@ def render_charts_and_tables(df_input: pd.DataFrame):
     if not df.empty:
         df['Semana'] = df['Data'].dt.to_period('W').apply(lambda r: r.start_time)
         
-        # Agregação complexa: Soma fluxos, pega último saldo
+        # Identificar categorias de saldo atual
         cats_saldo = [c for c in df['Categoria'].unique() if 'saldo atual' in str(c).lower()]
-        cats_in = [c for c in df['Categoria'].unique() if 'recebimento' in str(c).lower() or 'resgate' in str(c).lower()]
-        cats_out = [c for c in df['Categoria'].unique() if ('pagamento' in str(c).lower() or 'aplica' in str(c).lower()) and 'saldo' not in str(c).lower()]
         
-        # Criar colunas helper
-        df['Entradas'] = df.apply(lambda x: x['Valor'] if x['Categoria'] in cats_in else 0, axis=1)
-        df['Saídas'] = df.apply(lambda x: x['Valor'] if x['Categoria'] in cats_out else 0, axis=1)
+        # Agrupar por semana para obter lista de semanas
+        semanas_unicas = sorted(df['Semana'].unique())
         
-        summary = df.groupby('Semana').agg({
-            'Entradas': 'sum',
-            'Saídas': 'sum'
-        }).reset_index()
-        
-        # Calcular Saldo Final da Semana (aproximado pegando o max date da semana)
-        # Isso é mais custoso, vamos fazer uma iteração simples
-        saldos_semanais = []
-        for sem in summary['Semana']:
+        # Calcular saldos para cada semana
+        saldos_data = []
+        for sem in semanas_unicas:
             end_of_week = sem + timedelta(days=6)
-            # Pegar o registro mais próximo do fim da semana no df original
+            # Pegar o saldo do último dia da semana
             mask = (df['Data'] <= end_of_week) & (df['Categoria'].isin(cats_saldo))
             if mask.any():
-                # Pega o saldo da data máxima dentro do filtro
                 max_date_in_week = df[mask]['Data'].max()
-                bal = df[(df['Data'] == max_date_in_week) & (df['Categoria'].isin(cats_saldo))]['Valor'].sum()
+                saldo_atual = df[(df['Data'] == max_date_in_week) & (df['Categoria'].isin(cats_saldo))]['Valor'].sum()
             else:
-                bal = 0
-            saldos_semanais.append(bal)
+                saldo_atual = 0
             
-        summary['Saldo Final'] = saldos_semanais
-        summary['Resultado'] = summary['Entradas'] - summary['Saídas']
+            saldos_data.append({
+                'Semana': sem,
+                'Saldo Atual': saldo_atual
+            })
+        
+        summary = pd.DataFrame(saldos_data)
+        
+        # Calcular Saldo Anterior (saldo de fechamento da semana anterior)
+        summary['Saldo Anterior'] = summary['Saldo Atual'].shift(1).fillna(0)
+        
+        # Calcular Saldo Semana (diferença entre atual e anterior)
+        summary['Saldo Semana'] = summary['Saldo Atual'] - summary['Saldo Anterior']
+        
+        # Selecionar apenas as colunas necessárias
+        summary = summary[['Semana', 'Saldo Anterior', 'Saldo Atual', 'Saldo Semana']]
         
         # Configurar tooltips e formatação para a tabela
         column_config = {
             "Semana": st.column_config.DateColumn("Semana", format="DD/MM/YYYY", help="Início da semana de referência"),
-            "Entradas": st.column_config.NumberColumn("Entradas", help="Soma de Recebimentos e Resgates", format="R$ %.2f"),
-            "Saídas": st.column_config.NumberColumn("Saídas", help="Soma de Pagamentos e Aplicações", format="R$ %.2f"),
-            "Saldo Final": st.column_config.NumberColumn("Saldo Final", help="Saldo no último dia com movimentação na semana", format="R$ %.2f"),
-            "Resultado": st.column_config.NumberColumn("Resultado", help="Entradas - Saídas", format="R$ %.2f"),
+            "Saldo Anterior": st.column_config.NumberColumn("Saldo Anterior", help="Saldo de fechamento da semana anterior", format="R$ %.2f"),
+            "Saldo Atual": st.column_config.NumberColumn("Saldo Atual", help="Saldo de fechamento da semana atual", format="R$ %.2f"),
+            "Saldo Semana": st.column_config.NumberColumn("Saldo Semana", help="Diferença entre Saldo Atual e Saldo Anterior", format="R$ %.2f"),
         }
 
         st.dataframe(
@@ -318,10 +319,9 @@ def render_charts_and_tables(df_input: pd.DataFrame):
             st.markdown("""
             **Como os valores são calculados:**
             
-            *   **Entradas:** Soma de todas as movimentações categorizadas como `Recebimentos` ou `Resgate` na semana.
-            *   **Saídas:** Soma de todas as movimentações categorizadas como `Pagamentos` ou `Aplicação` na semana.
-            *   **Saldo Final:** Valor do `Saldo Atual` registrado no último dia com movimentação dentro daquela semana.
-            *   **Resultado:** Cálculo simples de `Entradas - Saídas`. Se positivo, houve geração de caixa; se negativo, houve consumo.
+            *   **Saldo Anterior:** Saldo de fechamento da semana anterior (último dia com movimentação da semana anterior).
+            *   **Saldo Atual:** Saldo de fechamento da semana atual (último dia com movimentação da semana atual).
+            *   **Saldo Semana:** Diferença entre o Saldo Atual e o Saldo Anterior (Saldo Atual - Saldo Anterior). Indica a variação do saldo na semana.
             """)
 
         # --- NOVA MATRIZ SEMANAL (Estilo Excel original) ---
