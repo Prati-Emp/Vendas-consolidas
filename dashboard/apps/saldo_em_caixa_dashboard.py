@@ -225,30 +225,11 @@ def render_kpi_cards(kpis: Dict):
             help="Saldo Atual / Média Diária de Saídas"
         )
 
-def check_anomalies(df: pd.DataFrame):
-    """Verifica e exibe anomalias financeiras."""
-    
-    # Configurações de limite
-    LIMIT_RESGATE_HIGH = 500_000
-    
-    # 1. Resgates Altos (MANTIDO)
-    cats_resgate = [c for c in df['Categoria'].unique() if 'resgate' in str(c).lower()]
-    df_resgate = df[df['Categoria'].isin(cats_resgate)]
-    
-    high_resgates = df_resgate[df_resgate['Valor'] > LIMIT_RESGATE_HIGH]
-    
-    if not high_resgates.empty:
-        for _, row in high_resgates.iterrows():
-            st.warning(f"🚨 **Resgate Alto Detectado:** R$ {row['Valor']:,.2f} ({row['Banco']}) em {row['Data'].strftime('%d/%m/%Y')}")
-
 def render_charts_and_tables(df_input: pd.DataFrame):
     """Renderiza gráficos e tabelas principais."""
     
     # Criar cópia para não alterar o dataframe original
     df = df_input.copy()
-    
-    # --- ALERTAS (Apenas Resgate) ---
-    check_anomalies(df)
     
     st.subheader("📊 Análise de Movimentações")
     
