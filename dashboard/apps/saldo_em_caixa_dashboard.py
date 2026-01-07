@@ -526,6 +526,68 @@ def render_saldo_em_caixa_dashboard(
             fig_acum = px.line(df_acum, x='Data', y='Valor', title='Evolução do Saldo Acumulado', markers=True)
             fig_acum.update_layout(yaxis=dict(tickformat=",.0f", tickprefix="R$ "))
             st.plotly_chart(fig_acum, use_container_width=True)
+        
+        st.subheader("📊 Visão Consolidada (Saldos + Fluxos)")
+        
+        # Preparar dados para o gráfico consolidado
+        cats_receb_all = [c for c in df_filtered['Categoria'].unique() if 'recebimento' in str(c).lower()]
+        cats_pag_all = [c for c in df_filtered['Categoria'].unique() if 'pagamento' in str(c).lower()]
+        # Saldo Total: Exclui Saldo Anterior para evitar duplicidade ou erro de escala, pega Saldo Atual, Acumulado, Investimentos
+        cats_saldo_total = [c for c in df_filtered['Categoria'].unique() 
+                           if 'saldo' in str(c).lower() and 'anterior' not in str(c).lower()]
+        
+        # Agregações
+        df_cons_receb = df_filtered[df_filtered['Categoria'].isin(cats_receb_all)].groupby('Data')['Valor'].sum().reset_index() if cats_receb_all else pd.DataFrame(columns=['Data', 'Valor'])
+        df_cons_pag = df_filtered[df_filtered['Categoria'].isin(cats_pag_all)].groupby('Data')['Valor'].sum().reset_index() if cats_pag_all else pd.DataFrame(columns=['Data', 'Valor'])
+        df_cons_saldo = df_filtered[df_filtered['Categoria'].isin(cats_saldo_total)].groupby('Data')['Valor'].sum().reset_index() if cats_saldo_total else pd.DataFrame(columns=['Data', 'Valor'])
+        
+        if not df_cons_saldo.empty or not df_cons_receb.empty:
+            fig_combo = go.Figure()
+            
+            # Barras de Fluxo
+            if not df_cons_receb.empty:
+                fig_combo.add_trace(go.Bar(
+                    x=df_cons_receb['Data'], y=df_cons_receb['Valor'], 
+                    name='Recebimentos', marker_color='#00CC96'
+                ))
+            
+            if not df_cons_pag.empty:
+                fig_combo.add_trace(go.Bar(
+                    x=df_cons_pag['Data'], y=df_cons_pag['Valor'], 
+                    name='Pagamentos', marker_color='#EF553B'
+                ))
+                
+            # Linha de Saldo (Eixo Secundário)
+            if not df_cons_saldo.empty:
+                fig_combo.add_trace(go.Scatter(
+                    x=df_cons_saldo['Data'], y=df_cons_saldo['Valor'], 
+                    name='Saldo Total (Cx + Inv)', 
+                    line=dict(color='#636EFA', width=3),
+                    yaxis='y2'
+                ))
+
+            fig_combo.update_layout(
+                title='Consolidado: Receitas vs Despesas vs Saldo Total',
+                xaxis=dict(title='Data'),
+                yaxis=dict(
+                    title='Fluxo (R$)', 
+                    tickformat=",.0f", 
+                    tickprefix="R$ ",
+                    showgrid=False
+                ),
+                yaxis2=dict(
+                    title='Saldo Total (R$)', 
+                    overlaying='y', 
+                    side='right', 
+                    tickformat=",.0f", 
+                    tickprefix="R$ ",
+                    showgrid=True
+                ),
+                barmode='group',
+                hovermode='x unified',
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+            )
+            st.plotly_chart(fig_combo, use_container_width=True)
             
         render_charts_and_tables(df_filtered)
         
