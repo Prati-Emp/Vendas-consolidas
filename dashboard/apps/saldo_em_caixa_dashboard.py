@@ -225,7 +225,7 @@ def render_kpi_cards(kpis: Dict):
             help="Saldo Atual / Média Diária de Saídas"
         )
 
-def render_charts_and_tables(df_input: pd.DataFrame):
+def render_charts_and_tables(df_input: pd.DataFrame, df_completo: pd.DataFrame = None, start_date: date = None):
     """Renderiza gráficos e tabelas principais."""
     
     # Criar cópia para não alterar o dataframe original
@@ -266,8 +266,11 @@ def render_charts_and_tables(df_input: pd.DataFrame):
     if not df.empty:
         df['Semana'] = df['Data'].dt.to_period('W').apply(lambda r: r.start_time)
         
-        # Identificar categorias de saldo atual
-        cats_saldo = [c for c in df['Categoria'].unique() if 'saldo atual' in str(c).lower()]
+        # Identificar categorias de saldo atual (usar df_completo se disponível para ter todas as categorias)
+        if df_completo is not None:
+            cats_saldo = [c for c in df_completo['Categoria'].unique() if 'saldo atual' in str(c).lower()]
+        else:
+            cats_saldo = [c for c in df['Categoria'].unique() if 'saldo atual' in str(c).lower()]
         
         # Agrupar por semana para obter lista de semanas
         semanas_unicas = sorted(df['Semana'].unique())
@@ -292,7 +295,29 @@ def render_charts_and_tables(df_input: pd.DataFrame):
         summary = pd.DataFrame(saldos_data)
         
         # Calcular Saldo Anterior (saldo de fechamento da semana anterior)
-        summary['Saldo Anterior'] = summary['Saldo Atual'].shift(1).fillna(0)
+        # Para a primeira semana, buscar saldo anterior fora do período filtrado se disponível
+        saldos_anteriores = []
+        for idx, row in summary.iterrows():
+            if idx == 0:
+                # Primeira semana: buscar saldo anterior fora do período filtrado
+                saldo_anterior = 0
+                if df_completo is not None and start_date is not None:
+                    # Calcular semana anterior
+                    semana_anterior = row['Semana'] - timedelta(days=7)
+                    end_semana_anterior = semana_anterior + timedelta(days=6)
+                    
+                    # Buscar saldo no dataframe completo (antes do filtro de data)
+                    if end_semana_anterior.date() < start_date:
+                        mask_anterior = (df_completo['Data'].dt.date <= end_semana_anterior.date()) & (df_completo['Categoria'].isin(cats_saldo))
+                        if mask_anterior.any():
+                            max_date_anterior = df_completo[mask_anterior]['Data'].max()
+                            saldo_anterior = df_completo[(df_completo['Data'] == max_date_anterior) & (df_completo['Categoria'].isin(cats_saldo))]['Valor'].sum()
+                saldos_anteriores.append(saldo_anterior)
+            else:
+                # Demais semanas: usar saldo atual da semana anterior
+                saldos_anteriores.append(summary.iloc[idx - 1]['Saldo Atual'])
+        
+        summary['Saldo Anterior'] = saldos_anteriores
         
         # Calcular Saldo Semana (diferença entre atual e anterior)
         summary['Saldo Semana'] = summary['Saldo Atual'] - summary['Saldo Anterior']
@@ -533,7 +558,7 @@ def render_saldo_em_caixa_dashboard(
         else:
             st.info("Sem dados para exibir no gráfico consolidado.")
             
-        render_charts_and_tables(df_filtered)
+        render_charts_and_tables(df_filtered, df_for_kpi, start_date)
         
     with tab_receb:
         st.subheader("Evolução de Recebimentos")
