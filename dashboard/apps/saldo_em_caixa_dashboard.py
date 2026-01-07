@@ -508,16 +508,6 @@ def render_saldo_em_caixa_dashboard(
     
     st.divider()
     
-    st.subheader("Fluxo de Caixa Acumulado")
-    # Waterfall simplificado ou Gráfico de Saldo
-    # Vamos manter o gráfico de linha de saldo acumulado que já existia pois é útil
-    cats_acum = [c for c in df_filtered['Categoria'].unique() if 'saldo acumulado' in str(c).lower()]
-    if cats_acum:
-        df_acum = df_filtered[df_filtered['Categoria'].isin(cats_acum)].groupby('Data')['Valor'].sum().reset_index()
-        fig_acum = px.line(df_acum, x='Data', y='Valor', title='Evolução do Saldo Acumulado', markers=True)
-        fig_acum.update_layout(yaxis=dict(tickformat=",.0f", tickprefix="R$ "))
-        st.plotly_chart(fig_acum, use_container_width=True)
-    
     tab1, tab_receb, tab_pag, tab_inv, tab2 = st.tabs([
         "📊 Visão Geral", 
         "💰 Recebimentos", 
@@ -527,6 +517,16 @@ def render_saldo_em_caixa_dashboard(
     ])
     
     with tab1:
+        st.subheader("Fluxo de Caixa Acumulado")
+        # Waterfall simplificado ou Gráfico de Saldo
+        # Vamos manter o gráfico de linha de saldo acumulado que já existia pois é útil
+        cats_acum = [c for c in df_filtered['Categoria'].unique() if 'saldo acumulado' in str(c).lower()]
+        if cats_acum:
+            df_acum = df_filtered[df_filtered['Categoria'].isin(cats_acum)].groupby('Data')['Valor'].sum().reset_index()
+            fig_acum = px.line(df_acum, x='Data', y='Valor', title='Evolução do Saldo Acumulado', markers=True)
+            fig_acum.update_layout(yaxis=dict(tickformat=",.0f", tickprefix="R$ "))
+            st.plotly_chart(fig_acum, use_container_width=True)
+            
         render_charts_and_tables(df_filtered)
         
     with tab_receb:
