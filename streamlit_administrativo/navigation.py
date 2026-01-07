@@ -26,11 +26,6 @@ TAB_DEFINITIONS = [
         "key": "repasses",
     },
     {
-        "permission": "administrativo.repasses",
-        "page_path": "pages/2_Repasses.py",
-        "key": "repasses",
-    },
-    {
         "label": "💳 Contas Pagas",
         "permission": "administrativo.contas_pagas",
         "page_path": "pages/3_Contas_Pagas.py",
