@@ -487,63 +487,130 @@ def render_charts_and_tables(df_input: pd.DataFrame, df_completo: pd.DataFrame =
         # Agrupar por data e categoria
         df_chart = df_flow.groupby(['Data', 'Categoria'])['Valor'].sum().reset_index()
         
-        # Ordenar categorias para melhor visualização (entradas primeiro, depois saídas)
-        cat_order = ['Recebimentos', 'Resgate', 'Pagamentos', 'Aplicação']
-        existing_cats = df_chart['Categoria'].unique()
-        sorted_cats = []
-        for co in cat_order:
-            matches = [c for c in existing_cats if co.lower() in str(c).lower()]
-            for m in matches:
-                if m not in sorted_cats:
-                    sorted_cats.append(m)
-        for c in existing_cats:
-            if c not in sorted_cats:
-                sorted_cats.append(c)
+        # Identificar categorias
+        cats_receb = [c for c in df_chart['Categoria'].unique() if 'recebimento' in str(c).lower()]
+        cats_pag = [c for c in df_chart['Categoria'].unique() if 'pagamento' in str(c).lower()]
+        cats_aplic = [c for c in df_chart['Categoria'].unique() if 'aplica' in str(c).lower() and 'saldo' not in str(c).lower()]
+        cats_resgate = [c for c in df_chart['Categoria'].unique() if 'resgate' in str(c).lower()]
         
-        # Criar coluna de categoria ordenada
-        df_chart['Categoria_Ordered'] = pd.Categorical(df_chart['Categoria'], categories=sorted_cats, ordered=True)
-        df_chart = df_chart.sort_values('Categoria_Ordered')
+        # Preparar dados por data
+        datas = sorted(df_chart['Data'].unique())
         
-        # Definir cores personalizadas
-        color_map = {}
-        for cat in sorted_cats:
-            if 'recebimento' in str(cat).lower():
-                color_map[cat] = '#00CC96'  # Verde claro
-            elif 'resgate' in str(cat).lower():
-                color_map[cat] = '#FFA15A'  # Laranja
-            elif 'pagamento' in str(cat).lower():
-                color_map[cat] = '#EF553B'  # Vermelho
-            elif 'aplica' in str(cat).lower():
-                color_map[cat] = '#636EFA'  # Azul
-            else:
-                color_map[cat] = '#AB63FA'  # Roxo
+        # Calcular fluxo líquido por dia e média do período
+        fluxos_diarios = []
+        for data in datas:
+            receb = df_chart[(df_chart['Data'] == data) & (df_chart['Categoria'].isin(cats_receb))]['Valor'].sum()
+            pag = df_chart[(df_chart['Data'] == data) & (df_chart['Categoria'].isin(cats_pag))]['Valor'].sum()
+            aplic = df_chart[(df_chart['Data'] == data) & (df_chart['Categoria'].isin(cats_aplic))]['Valor'].sum()
+            resgate = df_chart[(df_chart['Data'] == data) & (df_chart['Categoria'].isin(cats_resgate))]['Valor'].sum()
+            fluxo_liquido = receb - pag + resgate - aplic
+            fluxos_diarios.append(fluxo_liquido)
         
-        fig = px.bar(
-            df_chart,
-            x="Data",
-            y="Valor",
-            color="Categoria",
-            title="Movimentações Diárias por Categoria",
-            barmode="group",
-            color_discrete_map=color_map
-        )
+        # Calcular média e desvio padrão para detectar eventos relevantes
+        media_fluxo = pd.Series(fluxos_diarios).mean()
+        desvio_fluxo = pd.Series(fluxos_diarios).std()
+        threshold_evento = abs(media_fluxo) + 2 * desvio_fluxo  # 2 desvios padrão
         
-        # Melhorar tooltips
-        fig.update_traces(
-            hovertemplate='<b>%{fullData.name}</b><br>' +
-                         'Data: %{x|%d/%m/%Y}<br>' +
-                         'Valor: R$ %{y:,.2f}<br>' +
-                         '<extra></extra>'
-        )
+        # Criar figura
+        fig = go.Figure()
         
+        # Definir cores e opacidades
+        cores = {
+            'recebimentos': '#00CC96',  # Verde
+            'pagamentos': '#EF553B',    # Vermelho
+            'aplicacoes': '#636EFA',    # Azul
+            'resgates': '#FFA15A'       # Laranja
+        }
+        
+        # Preparar dados agregados por data
+        df_agregado = pd.DataFrame({
+            'Data': datas,
+            'Recebimentos': [df_chart[(df_chart['Data'] == d) & (df_chart['Categoria'].isin(cats_receb))]['Valor'].sum() for d in datas],
+            'Pagamentos': [df_chart[(df_chart['Data'] == d) & (df_chart['Categoria'].isin(cats_pag))]['Valor'].sum() for d in datas],
+            'Aplicações': [df_chart[(df_chart['Data'] == d) & (df_chart['Categoria'].isin(cats_aplic))]['Valor'].sum() for d in datas],
+            'Resgates': [df_chart[(df_chart['Data'] == d) & (df_chart['Categoria'].isin(cats_resgate))]['Valor'].sum() for d in datas]
+        })
+        df_agregado['Fluxo'] = df_agregado['Recebimentos'] - df_agregado['Pagamentos'] + df_agregado['Resgates'] - df_agregado['Aplicações']
+        df_agregado['Evento'] = df_agregado['Fluxo'].abs() > threshold_evento
+        
+        # Criar hovertext customizado
+        hovertexts_list = []
+        for _, row in df_agregado.iterrows():
+            fluxo_str = f"{'+' if row['Fluxo'] >= 0 else ''}R$ {row['Fluxo']:,.2f}"
+            evento_str = "<br>▲ Evento relevante" if row['Evento'] else ""
+            hover_text = (
+                f"<b>{row['Data'].strftime('%d/%m/%Y')}</b><br>" +
+                f"Recebimentos: R$ {row['Recebimentos']:,.2f}<br>" +
+                f"Pagamentos: R$ {row['Pagamentos']:,.2f}<br>" +
+                f"Aplicações: R$ {row['Aplicações']:,.2f}<br>" +
+                f"Resgates: R$ {row['Resgates']:,.2f}<br>" +
+                f"<b>Fluxo do dia:</b> {fluxo_str}{evento_str}"
+            )
+            hovertexts_list.append(hover_text)
+        
+        # Camada principal (opacidade 100%) - garantir todas as datas
+        fig.add_trace(go.Bar(
+            x=df_agregado['Data'],
+            y=df_agregado['Recebimentos'],
+            name='Recebimentos',
+            marker_color=cores['recebimentos'],
+            opacity=1.0,
+            hovertext=hovertexts_list,
+            hovertemplate='%{hovertext}<extra></extra>'
+        ))
+        
+        fig.add_trace(go.Bar(
+            x=df_agregado['Data'],
+            y=df_agregado['Pagamentos'],
+            name='Pagamentos',
+            marker_color=cores['pagamentos'],
+            opacity=1.0,
+            hovertext=hovertexts_list,
+            hovertemplate='%{hovertext}<extra></extra>'
+        ))
+        
+        # Camada secundária (opacidade 45%)
+        fig.add_trace(go.Bar(
+            x=df_agregado['Data'],
+            y=df_agregado['Aplicações'],
+            name='Aplicações',
+            marker_color=cores['aplicacoes'],
+            opacity=0.45,
+            hovertext=hovertexts_list,
+            hovertemplate='%{hovertext}<extra></extra>'
+        ))
+        
+        fig.add_trace(go.Bar(
+            x=df_agregado['Data'],
+            y=df_agregado['Resgates'],
+            name='Resgates',
+            marker_color=cores['resgates'],
+            opacity=0.45,
+            hovertext=hovertexts_list,
+            hovertemplate='%{hovertext}<extra></extra>'
+        ))
+        
+        # Layout
         fig.update_layout(
-            xaxis_title="Data", 
+            title="Análise de Movimentações Detalhado",
+            xaxis_title="Data",
             yaxis_title="Valor (R$)",
-            yaxis=dict(tickformat=",.0f", tickprefix="R$ "),
-            hovermode="x unified",
+            barmode='group',
+            hovermode='x unified',
             xaxis=dict(
                 tickformat="%d/%m/%Y",
-                tickangle=-45
+                tickangle=-45,
+                showgrid=True,
+                gridcolor='rgba(128, 128, 128, 0.2)'
+            ),
+            yaxis=dict(
+                tickformat=",.0f",
+                tickprefix="R$ ",
+                showgrid=True,
+                gridcolor='rgba(128, 128, 128, 0.2)',
+                zeroline=True,
+                zerolinecolor='rgba(128, 128, 128, 0.5)',
+                zerolinewidth=1
             ),
             legend=dict(
                 orientation="h",
@@ -552,9 +619,12 @@ def render_charts_and_tables(df_input: pd.DataFrame, df_completo: pd.DataFrame =
                 xanchor="right",
                 x=1
             ),
-            bargap=0.2,  # Espaçamento entre grupos de barras
-            bargroupgap=0.1  # Espaçamento entre barras do mesmo grupo
+            bargap=0.2,
+            bargroupgap=0.1,
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)'
         )
+        
         st.plotly_chart(fig, use_container_width=True)
     else:
         st.info("Sem dados de movimentação para o gráfico.")
