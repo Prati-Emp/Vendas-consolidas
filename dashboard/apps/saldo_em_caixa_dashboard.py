@@ -233,41 +233,12 @@ def render_kpi_cards(kpis: Dict):
             help="Saldo Atual / Média Diária de Saídas"
         )
 
-def render_charts_and_tables(df_input: pd.DataFrame, df_completo: pd.DataFrame = None, start_date: date = None):
-    """Renderiza gráficos e tabelas principais."""
+def render_resumo_e_detalhamento_semanal(df_input: pd.DataFrame, df_completo: pd.DataFrame = None, start_date: date = None):
+    """Renderiza Resumo Semanal e Detalhamento Semanal."""
     
     # Criar cópia para não alterar o dataframe original
     df = df_input.copy()
     
-    st.subheader("📊 Análise de Movimentações")
-    
-    # Preparar dados para gráfico de barras empilhadas
-    # Categorias de fluxo (não saldo)
-    cats_flow = [c for c in df['Categoria'].unique() if 'saldo' not in str(c).lower()]
-    df_flow = df[df['Categoria'].isin(cats_flow)].copy()
-    
-    if not df_flow.empty:
-        # Agrupar por data e categoria
-        df_chart = df_flow.groupby(['Data', 'Categoria'])['Valor'].sum().reset_index()
-        
-        fig = px.bar(
-            df_chart,
-            x="Data",
-            y="Valor",
-            color="Categoria",
-            title="Movimentações Diárias por Categoria",
-            barmode="group" # Pode ser 'stack' ou 'group'. Group facilita comparar entradas vs saídas
-        )
-        fig.update_layout(
-            xaxis_title="Data", 
-            yaxis_title="Valor (R$)",
-            yaxis=dict(tickformat=",.0f", tickprefix="R$ "),
-            hovermode="x unified"
-        )
-        st.plotly_chart(fig, use_container_width=True)
-    else:
-        st.info("Sem dados de movimentação para o gráfico.")
-        
     # Tabela Semanal
     st.subheader("📅 Resumo Semanal")
     
@@ -493,6 +464,41 @@ def render_charts_and_tables(df_input: pd.DataFrame, df_completo: pd.DataFrame =
                             hide_index=True
                         )
 
+def render_charts_and_tables(df_input: pd.DataFrame, df_completo: pd.DataFrame = None, start_date: date = None):
+    """Renderiza gráficos e tabelas principais."""
+    
+    # Criar cópia para não alterar o dataframe original
+    df = df_input.copy()
+    
+    st.subheader("📊 Análise de Movimentações")
+    
+    # Preparar dados para gráfico de barras empilhadas
+    # Categorias de fluxo (não saldo)
+    cats_flow = [c for c in df['Categoria'].unique() if 'saldo' not in str(c).lower()]
+    df_flow = df[df['Categoria'].isin(cats_flow)].copy()
+    
+    if not df_flow.empty:
+        # Agrupar por data e categoria
+        df_chart = df_flow.groupby(['Data', 'Categoria'])['Valor'].sum().reset_index()
+        
+        fig = px.bar(
+            df_chart,
+            x="Data",
+            y="Valor",
+            color="Categoria",
+            title="Movimentações Diárias por Categoria",
+            barmode="group" # Pode ser 'stack' ou 'group'. Group facilita comparar entradas vs saídas
+        )
+        fig.update_layout(
+            xaxis_title="Data", 
+            yaxis_title="Valor (R$)",
+            yaxis=dict(tickformat=",.0f", tickprefix="R$ "),
+            hovermode="x unified"
+        )
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.info("Sem dados de movimentação para o gráfico.")
+
 def render_saldo_em_caixa_dashboard(
     show_title: bool = True, show_caption: bool = True
 ) -> None:
@@ -587,6 +593,9 @@ def render_saldo_em_caixa_dashboard(
             fig_acum = px.line(df_acum, x='Data', y='Valor', title='Evolução do Saldo Acumulado', markers=True)
             fig_acum.update_layout(yaxis=dict(tickformat=",.0f", tickprefix="R$ "))
             st.plotly_chart(fig_acum, use_container_width=True)
+        
+        # Resumo Semanal e Detalhamento Semanal no topo
+        render_resumo_e_detalhamento_semanal(df_filtered, df_for_kpi, start_date)
             
         render_charts_and_tables(df_filtered, df_for_kpi, start_date)
         
