@@ -563,7 +563,7 @@ def render_charts_and_tables(df_input: pd.DataFrame, df_completo: pd.DataFrame =
             name='Pagamentos',
             marker_color=cores['pagamentos'],
             opacity=1.0,
-            hovertemplate='<extra></extra>'  # Sem tooltip para evitar duplicação
+            hoverinfo='skip'  # Remove do tooltip para evitar duplicação e marcadores extras
         ))
         
         # Camada secundária (opacidade 45%)
@@ -573,7 +573,7 @@ def render_charts_and_tables(df_input: pd.DataFrame, df_completo: pd.DataFrame =
             name='Aplicações',
             marker_color=cores['aplicacoes'],
             opacity=0.45,
-            hovertemplate='<extra></extra>'  # Sem tooltip para evitar duplicação
+            hoverinfo='skip'  # Remove do tooltip para evitar duplicação e marcadores extras
         ))
         
         fig.add_trace(go.Bar(
@@ -582,7 +582,7 @@ def render_charts_and_tables(df_input: pd.DataFrame, df_completo: pd.DataFrame =
             name='Resgates',
             marker_color=cores['resgates'],
             opacity=0.45,
-            hovertemplate='<extra></extra>'  # Sem tooltip para evitar duplicação
+            hoverinfo='skip'  # Remove do tooltip para evitar duplicação e marcadores extras
         ))
         
         # Layout
