@@ -581,24 +581,23 @@ def render_saldo_em_caixa_dashboard(
     
     st.divider()
     
-    tab1, tab_receb, tab_pag, tab_inv, tab2 = st.tabs([
-        "📊 Visão Geral", 
+    # Resumo Semanal e Detalhamento Semanal no topo (fora das tabs)
+    render_resumo_semanal(df_filtered, df_for_kpi, start_date)
+    render_detalhamento_semanal(df_filtered)
+    
+    st.divider()
+    
+    # Tabs para análises específicas
+    tab_geral, tab_receb, tab_pag, tab_inv, tab2 = st.tabs([
+        "📊 Geral", 
         "💰 Recebimentos", 
         "💸 Pagamentos", 
         "📈 Investimentos", 
         "📅 Dados Detalhados"
     ])
     
-    with tab1:
-        # Resumo Semanal no topo
-        render_resumo_semanal(df_filtered, df_for_kpi, start_date)
-            
-        render_charts_and_tables(df_filtered, df_for_kpi, start_date)
-        
-        # Detalhamento Semanal
-        render_detalhamento_semanal(df_filtered)
-        
-        # Fluxo de Caixa Acumulado no fim da página
+    with tab_geral:
+        # Fluxo de Caixa Acumulado na aba Geral
         st.subheader("Fluxo de Caixa Acumulado")
         # Waterfall simplificado ou Gráfico de Saldo
         # Vamos manter o gráfico de linha de saldo acumulado que já existia pois é útil
@@ -608,6 +607,9 @@ def render_saldo_em_caixa_dashboard(
             fig_acum = px.line(df_acum, x='Data', y='Valor', title='Evolução do Saldo Acumulado', markers=True)
             fig_acum.update_layout(yaxis=dict(tickformat=",.0f", tickprefix="R$ "))
             st.plotly_chart(fig_acum, use_container_width=True)
+        
+        # Análise de Movimentações também na aba Geral
+        render_charts_and_tables(df_filtered, df_for_kpi, start_date)
         
     with tab_receb:
         st.subheader("Evolução de Recebimentos")
