@@ -532,31 +532,6 @@ def render_saldo_em_caixa_dashboard(
             fig_acum = px.line(df_acum, x='Data', y='Valor', title='Evolução do Saldo Acumulado', markers=True)
             fig_acum.update_layout(yaxis=dict(tickformat=",.0f", tickprefix="R$ "))
             st.plotly_chart(fig_acum, use_container_width=True)
-        
-        st.subheader("📊 Visão Consolidada - Todas as Categorias")
-        
-        # Preparar dados para gráfico de múltiplas linhas com todas as categorias
-        # Agrupar por Data e Categoria, somando valores
-        df_consolidado = df_filtered.groupby(['Data', 'Categoria'])['Valor'].sum().reset_index()
-        
-        if not df_consolidado.empty:
-            # Criar gráfico de linhas com todas as categorias
-            fig_consolidado = px.line(
-                df_consolidado,
-                x='Data',
-                y='Valor',
-                color='Categoria',
-                title='Evolução Temporal de Todas as Categorias',
-                markers=True
-            )
-            fig_consolidado.update_layout(
-                yaxis=dict(tickformat=",.0f", tickprefix="R$ "),
-                hovermode='x unified',
-                legend=dict(orientation="v", yanchor="top", y=1, xanchor="left", x=1.02)
-            )
-            st.plotly_chart(fig_consolidado, use_container_width=True)
-        else:
-            st.info("Sem dados para exibir no gráfico consolidado.")
             
         render_charts_and_tables(df_filtered, df_for_kpi, start_date)
         
