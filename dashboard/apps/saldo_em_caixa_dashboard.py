@@ -422,31 +422,40 @@ def render_charts_and_tables(df_input: pd.DataFrame, df_completo: pd.DataFrame =
                     # Preparar dados da semana
                     df_semana = df_detalhado[df_detalhado['Semana'] == semana]
                     
-                    # Construir tabela: Categorias x Bancos
+                    # Obter todos os dias da semana que têm dados
+                    dias_semana = sorted(df_semana['Data'].dt.date.unique())
+                    
+                    # Construir tabela: Categorias x (Dias x Bancos)
                     rows_detalhe = []
                     for cat in sorted_cats:
                         row_detalhe = {'Categoria': cat}
                         df_cat = df_semana[df_semana['Categoria'] == cat]
                         
-                        for banco in bancos:
-                            df_cat_banco = df_cat[df_cat['Banco'] == banco]
+                        # Para cada dia da semana
+                        for dia in dias_semana:
+                            df_cat_dia = df_cat[df_cat['Data'].dt.date == dia]
                             
-                            # Para saldos: pegar último valor da semana
-                            # Para fluxos: somar todos os valores
-                            is_saldo = 'saldo' in str(cat).lower()
-                            
-                            if not df_cat_banco.empty:
-                                if is_saldo:
-                                    # Saldo: último valor da semana
-                                    max_date = df_cat_banco['Data'].max()
-                                    val = df_cat_banco[df_cat_banco['Data'] == max_date]['Valor'].sum()
+                            # Para cada banco
+                            for banco in bancos:
+                                df_cat_dia_banco = df_cat_dia[df_cat_dia['Banco'] == banco]
+                                
+                                # Para saldos: pegar valor do dia (último se houver múltiplos)
+                                # Para fluxos: somar todos os valores do dia
+                                is_saldo = 'saldo' in str(cat).lower()
+                                
+                                if not df_cat_dia_banco.empty:
+                                    if is_saldo:
+                                        # Saldo: último valor do dia (caso haja múltiplos registros)
+                                        val = df_cat_dia_banco.iloc[-1]['Valor']
+                                    else:
+                                        # Fluxo: soma do dia
+                                        val = df_cat_dia_banco['Valor'].sum()
                                 else:
-                                    # Fluxo: soma
-                                    val = df_cat_banco['Valor'].sum()
-                            else:
-                                val = 0
-                            
-                            row_detalhe[banco] = val
+                                    val = 0
+                                
+                                # Nome da coluna: "DD/MM (Banco)"
+                                col_name = f"{dia.strftime('%d/%m')} ({banco})"
+                                row_detalhe[col_name] = val
                         
                         rows_detalhe.append(row_detalhe)
                     
@@ -454,19 +463,20 @@ def render_charts_and_tables(df_input: pd.DataFrame, df_completo: pd.DataFrame =
                     
                     # Formatar valores para exibição
                     df_tabela_display = df_tabela_semana.copy()
-                    for banco in bancos:
-                        if banco in df_tabela_display.columns:
-                            df_tabela_display[banco] = df_tabela_display[banco].apply(format_currency_full)
+                    for col in df_tabela_display.columns:
+                        if col != 'Categoria':
+                            df_tabela_display[col] = df_tabela_display[col].apply(format_currency_full)
                     
                     # Configurar colunas
                     column_config_detalhe = {
                         "Categoria": st.column_config.TextColumn("Categoria", width="medium")
                     }
-                    for banco in bancos:
-                        column_config_detalhe[banco] = st.column_config.TextColumn(
-                            banco,
-                            help=f"Valores para {banco} na semana"
-                        )
+                    for col in df_tabela_display.columns:
+                        if col != 'Categoria':
+                            column_config_detalhe[col] = st.column_config.TextColumn(
+                                col,
+                                help=f"Valor do dia {col}"
+                            )
                     
                     # Exibir tabela
                     st.dataframe(
