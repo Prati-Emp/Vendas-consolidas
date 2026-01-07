@@ -29,6 +29,14 @@ def format_currency_short(value: float) -> str:
     else:
         return f"{sign}R$ {v:,.0f}".replace(",", ".")
 
+def format_currency_full(value: float) -> str:
+    """Formata valores monetários completos com separadores de milhar."""
+    if pd.isna(value):
+        return "R$ 0,00"
+    
+    # Formatar com separador de milhar e 2 casas decimais
+    return f"R$ {value:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
 @st.cache_data(ttl=600)
 def load_saldos_bancarios_raw() -> pd.DataFrame:
     """Carrega os dados crus da view saldos_bancarios_consolidado no MotherDuck."""
@@ -322,19 +330,39 @@ def render_charts_and_tables(df_input: pd.DataFrame, df_completo: pd.DataFrame =
         # Calcular Saldo Semana (diferença entre atual e anterior)
         summary['Saldo Semana'] = summary['Saldo Atual'] - summary['Saldo Anterior']
         
-        # Selecionar apenas as colunas necessárias
-        summary = summary[['Semana', 'Saldo Anterior', 'Saldo Atual', 'Saldo Semana']]
+        # Criar coluna de período (início e fim da semana)
+        summary['Período'] = summary['Semana'].apply(
+            lambda x: f"{x.strftime('%d/%m/%Y')} - {(x + timedelta(days=6)).strftime('%d/%m/%Y')}"
+        )
+        
+        # Reordenar colunas: Período primeiro, depois os saldos
+        summary = summary[['Período', 'Saldo Anterior', 'Saldo Atual', 'Saldo Semana']]
+        
+        # Criar cópia para formatação de exibição
+        summary_display = summary.copy()
+        summary_display['Saldo Anterior'] = summary_display['Saldo Anterior'].apply(format_currency_full)
+        summary_display['Saldo Atual'] = summary_display['Saldo Atual'].apply(format_currency_full)
+        summary_display['Saldo Semana'] = summary_display['Saldo Semana'].apply(format_currency_full)
         
         # Configurar tooltips e formatação para a tabela
         column_config = {
-            "Semana": st.column_config.DateColumn("Semana", format="DD/MM/YYYY", help="Início da semana de referência"),
-            "Saldo Anterior": st.column_config.NumberColumn("Saldo Anterior", help="Saldo de fechamento da semana anterior", format="R$ %.2f"),
-            "Saldo Atual": st.column_config.NumberColumn("Saldo Atual", help="Saldo de fechamento da semana atual", format="R$ %.2f"),
-            "Saldo Semana": st.column_config.NumberColumn("Saldo Semana", help="Diferença entre Saldo Atual e Saldo Anterior", format="R$ %.2f"),
+            "Período": st.column_config.TextColumn("Período", help="Período da semana (início - fim)"),
+            "Saldo Anterior": st.column_config.TextColumn(
+                "Saldo Anterior", 
+                help="Saldo de fechamento da semana anterior"
+            ),
+            "Saldo Atual": st.column_config.TextColumn(
+                "Saldo Atual", 
+                help="Saldo de fechamento da semana atual"
+            ),
+            "Saldo Semana": st.column_config.TextColumn(
+                "Saldo Semana", 
+                help="Diferença entre Saldo Atual e Saldo Anterior"
+            ),
         }
 
         st.dataframe(
-            summary,
+            summary_display,
             column_config=column_config,
             use_container_width=True,
             hide_index=True
