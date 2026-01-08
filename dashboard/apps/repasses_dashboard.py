@@ -678,12 +678,7 @@ def render_analise_workflow(df_workflow_filtered: pd.DataFrame, df_workflow_full
             f"{lead_time_medio:.1f} dias",
             help="Tempo médio acumulado desde o início do processo até a primeira entrada no status 'Entrada no Registro'. Considera apenas processos que atingiram este status no período selecionado."
         )
-    with col2:
-         st.metric(
-            "Processos Registrados no Período", 
-            f"{qtd_registrados_periodo}",
-            help="Quantidade de processos que chegaram na etapa 'Entrada no Registro' dentro do período de data selecionado."
-        )
+    # Card "Processos Registrados no Período" removido conforme solicitação
 
     st.divider()
 
