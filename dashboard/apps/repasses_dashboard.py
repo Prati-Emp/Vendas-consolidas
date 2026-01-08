@@ -675,7 +675,6 @@ def render_analise_workflow(df_workflow_filtered: pd.DataFrame, df_workflow_full
         return
 
     st.subheader("⏱️ Análise de Tempos (SLA)")
-    st.caption("Análise de eficiência operacional e tempos de processamento das etapas de repasse.")
     
     # --- CÁLCULO DE LEAD TIME (Início -> Entrada no Registro) ---
     # Precisamos do histórico completo (df_workflow_full) para calcular o tempo acumulado
