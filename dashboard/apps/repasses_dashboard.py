@@ -767,7 +767,6 @@ def render_analise_workflow(df_workflow_filtered: pd.DataFrame, df_workflow_full
     
     # Evolução Temporal do Lead Time
     st.subheader("Evolução do Lead Time Médio (Mensal)")
-    st.caption("Tendência do tempo total de processamento (início até Entrada no Registro) para processos concluídos em cada mês.")
     
     if not df_lead_time_evolucao.empty:
         # Usa data de conclusão (já garantida no cálculo acima)
