@@ -355,6 +355,13 @@ def normalize_text(text: str) -> str:
     text = unicodedata.normalize('NFD', text)
     # Filter out non-spacing mark characters (accents)
     text = "".join(c for c in text if unicodedata.category(c) != 'Mn')
+    
+    # Normalize whitespace
+    text = " ".join(text.split())
+    
+    # Normalize dashes
+    text = text.replace('–', '-').replace('—', '-')
+    
     return text.lower().strip()
 
 
