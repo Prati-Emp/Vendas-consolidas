@@ -469,7 +469,8 @@ def _render_workflow_chart(df: pd.DataFrame, col_name: str, order_list: Optional
         column_config={
             "Média (dias)": st.column_config.NumberColumn(
                 "Média (dias)",
-                format="%.2f"
+                format="%.2f",
+                help="Média simples dos tempos desta etapa."
             ),
             "Mediana (dias)": st.column_config.NumberColumn(
                 "Mediana (dias)",
@@ -515,22 +516,29 @@ def render_visao_geral(df: pd.DataFrame):
     col1, col2, col3 = st.columns(3)
     
     with col1:
-        st.metric("Total de Repasses", f"{total_repasses:,}")
+        st.metric(
+            "Total de Repasses", 
+            f"{total_repasses:,}",
+            help="Quantidade total de processos de repasse na carteira filtrada (independente do status)."
+        )
         
     with col2:
         st.metric(
             "Valor Total da Carteira",
-            f"R$ {valor_total:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            f"R$ {valor_total:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."),
+            help="Soma do valor de contrato de todos os repasses filtrados."
         )
         
     with col3:
         st.metric(
             "Ticket Médio",
-            f"R$ {valor_medio:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            f"R$ {valor_medio:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."),
+            help="Valor médio dos contratos de repasse."
         )
 
     # Linha para Indicadores de Contrato Registrado (integrado)
     st.markdown("#### Contratos Registrados")
+    st.caption("Indicadores específicos para processos que atingiram a etapa de 'Contrato Registrado'.")
     
     col1_reg, col2_reg, col3_reg = st.columns(3)
     
@@ -539,7 +547,8 @@ def render_visao_geral(df: pd.DataFrame):
             "Total Registrados", 
             f"{total_repasses_reg:,}",
             delta=f"{pct_qtd:.1f}% do Total",
-            delta_color="off" # Cor neutra pois é informativo
+            delta_color="off", # Cor neutra pois é informativo
+            help="Quantidade de contratos que estão na situação 'Contrato Registrado'."
         )
         
     with col2_reg:
@@ -547,19 +556,22 @@ def render_visao_geral(df: pd.DataFrame):
             "Valor Carteira (Registrado)",
             f"R$ {valor_total_reg:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."),
             delta=f"{pct_val:.1f}% do Total",
-            delta_color="off"
+            delta_color="off",
+            help="Valor total dos contratos registrados."
         )
         
     with col3_reg:
         st.metric(
             "Ticket Médio (Registrado)",
-            f"R$ {valor_medio_reg:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            f"R$ {valor_medio_reg:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."),
+            help="Valor médio dos contratos registrados."
         )
 
     st.divider()
 
     # Análise por Situação (Funil)
     st.subheader("📉 Distribuição de Repasses por Situação")
+    st.caption("Visualização do funil de vendas e distribuição dos contratos por etapa atual.")
     
     tab_resumido, tab_detalhado = st.tabs(["Resumido", "Detalhado"])
     
@@ -580,6 +592,7 @@ def render_visao_geral(df: pd.DataFrame):
     # Top Empreendimentos (Tabela Unificada)
     if "empreendimento" in df.columns:
         st.subheader("🏢 Top Empreendimentos (Qtd e Valor)")
+        st.caption("Ranking dos empreendimentos com maior volume financeiro e quantidade de contratos.")
         
         top_empreendimentos = (
             df.groupby("empreendimento")
@@ -664,36 +677,22 @@ def render_analise_workflow(df_workflow_filtered: pd.DataFrame, df_workflow_full
         return
 
     st.subheader("⏱️ Análise de Tempos (SLA)")
+    st.caption("Análise de eficiência operacional e tempos de processamento das etapas de repasse.")
     
-    # --- CÁLCULO DE LEAD TIME (Início -> Entrada no Registro) ---
+    # --- CÁLCULO DE LEAD TIME (Início -> Contrato Registrado) ---
     # Precisamos do histórico completo (df_workflow_full) para calcular o tempo acumulado
     
     lead_time_medio = 0.0
-    qtd_registrados_periodo = 0
+    df_lead_time_evolucao = pd.DataFrame()
     
     if df_workflow_full is not None and not df_workflow_full.empty:
         # Agrupar por repasse para reconstruir a história
         # Ordenar por data para garantir sequencia correta
         df_sorted = df_workflow_full.sort_values(["referencia", "data_cad"])
         
-        lead_times = []
-        target_stage_normalized = "entrada no registro"
-        
-        # Iterar por grupo é lento, mas mais seguro para lógica complexa. 
-        # Como o volume não deve ser gigantesco no Streamlit, ok. 
-        # Otimização: Vetorizar se possível.
-        
-        # Identificar repasses que atingiram o alvo
-        # Vamos olhar para 'situacao_detalhada' ou 'situacao_resumida' (Para)
-        # Se 'situacao_resumida' == Target, é a transição PARA o target.
-        # Data dessa transição é a data de conclusão.
-        
-        # Target atualizado: "Contrato Registrado" (ou entrada no registro dependendo da semântica, mas pedido foi "até a etapa de contrato registrado")
-        # O usuário pediu: "vamos contabilizar até a etapa de contrato registrado"
-        # Ajustando target para 'contrato registrado'
         target_stage_normalized = "contrato registrado"
         
-        # Filtrar apenas linhas que são transição PARA 'contrato registrado'
+        # Identificar repasses que atingiram o alvo
         df_completed = df_sorted[
             (df_sorted["situacao_resumida"].apply(normalize_text) == target_stage_normalized) |
             (df_sorted["situacao_detalhada"].apply(normalize_text) == target_stage_normalized)
@@ -704,48 +703,50 @@ def render_analise_workflow(df_workflow_filtered: pd.DataFrame, df_workflow_full
             completion_events = df_completed.groupby("referencia")["data_cad"].min().reset_index()
             completion_events.rename(columns={"data_cad": "completion_date"}, inplace=True)
             
-            # Filtrar completions que ocorreram DENTRO do período selecionado
+            # Precisamos calcular o Lead Time para TODOS os completions primeiro, para depois filtrar e fazer o gráfico
+            valid_refs = completion_events["referencia"].unique()
+            df_history = df_sorted[df_sorted["referencia"].isin(valid_refs)]
+            df_history = df_history.merge(completion_events, on="referencia", how="inner")
+            
+            # Somar tempo de etapas que ocorreram ANTES ou NA MESMA DATA da conclusão
+            df_history_valid = df_history[df_history["data_cad"] <= df_history["completion_date"]]
+            
+            # Calcular Lead Time por referencia
+            lead_time_per_ref = df_history_valid.groupby("referencia")["tempo"].sum().reset_index()
+            lead_time_per_ref.rename(columns={"tempo": "lead_time_days"}, inplace=True)
+            
+            # Juntar com a data de completion para saber quando o Lead Time "aconteceu"
+            df_lead_time_data = lead_time_per_ref.merge(completion_events, on="referencia")
+            
+            # --- KPI: Filtrar pelo período selecionado ---
+            df_kpi = df_lead_time_data.copy()
             if start_date_filter and end_date_filter:
-                completion_events = completion_events[
-                    (completion_events["completion_date"].dt.date >= start_date_filter) &
-                    (completion_events["completion_date"].dt.date <= end_date_filter)
+                df_kpi = df_kpi[
+                    (df_kpi["completion_date"].dt.date >= start_date_filter) &
+                    (df_kpi["completion_date"].dt.date <= end_date_filter)
                 ]
             
-            qtd_registrados_periodo = len(completion_events)
-            
-            if qtd_registrados_periodo > 0:
-                # Agora calcular a soma dos tempos ANTERIORES à data de conclusão para esses caras
-                valid_refs = completion_events["referencia"].unique()
+            if not df_kpi.empty:
+                lead_time_medio = df_kpi["lead_time_days"].mean()
                 
-                # Filtrar o DF completo apenas para os refs válidos
-                df_history = df_sorted[df_sorted["referencia"].isin(valid_refs)]
-                
-                # Merge com a data de conclusão
-                df_history = df_history.merge(completion_events, on="referencia", how="inner")
-                
-                # Somar tempo de etapas que ocorreram ANTES ou NA MESMA DATA da conclusão
-                # (Considerando que se a linha é a transição PARA, o tempo nela é o tempo da etapa ANTERIOR, então soma-se)
-                # Se a linha for POSTERIOR, descarta.
-                df_history_valid = df_history[df_history["data_cad"] <= df_history["completion_date"]]
-                
-                # Calcular Lead Time por referencia
-                lead_time_per_ref = df_history_valid.groupby("referencia")["tempo"].sum()
-                
-                lead_time_medio = lead_time_per_ref.mean()
-    
+            # --- Gráfico Evolução: Dados para o gráfico (pode ser todo o histórico ou filtrado) ---
+            # Para o gráfico de evolução, geralmente queremos ver a tendência dentro do filtro, 
+            # ou talvez expandir um pouco? Vamos respeitar o filtro para consistência visual com os outros gráficos.
+            df_lead_time_evolucao = df_kpi.copy()
+
     col1, col2 = st.columns(2)
     with col1:
         st.metric(
             "Lead Time Médio (até Contrato Registrado)", 
             f"{lead_time_medio:.1f} dias",
-            help="Tempo médio acumulado desde o início do processo até a primeira entrada no status 'Contrato Registrado'. Considera apenas processos que atingiram este status no período selecionado."
+            help="Tempo total médio decorrido desde o início do processo até a etapa de 'Contrato Registrado'. Considera a soma dos tempos de todas as etapas anteriores para os processos concluídos no período selecionado."
         )
-    # Card "Processos Registrados no Período" removido conforme solicitação
 
     st.divider()
 
     # Tempo Médio por Situação (Abas Resumido e Detalhado)
     st.subheader("Tempo Médio por Etapa")
+    st.caption("Quanto tempo, em média, um processo permanece em cada etapa específica.")
     
     # Usamos o filtered para mostrar as etapas que ocorreram no período
     df_workflow = df_workflow_filtered
@@ -766,26 +767,31 @@ def render_analise_workflow(df_workflow_filtered: pd.DataFrame, df_workflow_full
     
     st.divider()
     
-    # Evolução Temporal dos Tempos
-    if "data_cad" in df_workflow.columns:
-        st.subheader("Evolução do Tempo Médio (Mensal)")
-        df_workflow["mes_ano"] = df_workflow["data_cad"].dt.to_period("M").dt.to_timestamp()
+    # Evolução Temporal do Lead Time
+    st.subheader("Evolução do Lead Time Médio (Mensal)")
+    st.caption("Tendência do tempo total de processamento (início ao registro) para processos concluídos em cada mês.")
+    
+    if not df_lead_time_evolucao.empty:
+        df_lead_time_evolucao["mes_ano"] = df_lead_time_evolucao["completion_date"].dt.to_period("M").dt.to_timestamp()
         
         evolucao = (
-            df_workflow.groupby("mes_ano")["tempo"]
+            df_lead_time_evolucao.groupby("mes_ano")["lead_time_days"]
             .mean()
             .reset_index()
-            .rename(columns={"mes_ano": "Mês", "tempo": "Tempo Médio (dias)"})
+            .rename(columns={"mes_ano": "Mês", "lead_time_days": "Lead Time Médio (dias)"})
         )
         
         fig_evol = px.line(
             evolucao,
             x="Mês",
-            y="Tempo Médio (dias)",
+            y="Lead Time Médio (dias)",
             markers=True,
-            title="Tendência de Tempo Médio de Processamento"
+            title="Evolução do Tempo Total de Processamento (Lead Time)"
         )
+        fig_evol.update_layout(yaxis_title="Dias", xaxis_title="Mês de Conclusão")
         st.plotly_chart(fig_evol, use_container_width=True, key="workflow_evolution")
+    else:
+        st.info("Sem dados suficientes de 'Contrato Registrado' no período selecionado para gerar o gráfico de evolução do Lead Time.")
 
 
 
@@ -793,7 +799,7 @@ def render_contratos_registrados(df_raw: pd.DataFrame, empreendimentos_filter: L
     """Renderiza a aba de Contratos Registrados com filtros específicos."""
     
     st.subheader("✅ Contratos Registrados")
-    st.caption("Esta aba possui filtros de data específicos baseados na 'Data de Alteração de Status'.")
+    st.caption("Visualização dedicada aos contratos finalizados, com filtros baseados na data de registro.")
     
     # --- Filtros Específicos para esta aba ---
     col_filtros1, col_filtros2 = st.columns(2)
@@ -865,18 +871,24 @@ def render_contratos_registrados(df_raw: pd.DataFrame, empreendimentos_filter: L
     col1, col2, col3 = st.columns(3)
     
     with col1:
-        st.metric("Total Registrados", f"{total_reg:,}")
+        st.metric(
+            "Total Registrados", 
+            f"{total_reg:,}",
+            help="Quantidade de contratos registrados no período filtrado."
+        )
         
     with col2:
         st.metric(
             "Valor Total (Registrados)",
-            f"R$ {valor_total_reg:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            f"R$ {valor_total_reg:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."),
+            help="Soma do valor de contrato dos itens registrados no período."
         )
         
     with col3:
         st.metric(
             "Ticket Médio",
-            f"R$ {valor_medio_reg:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            f"R$ {valor_medio_reg:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."),
+            help="Valor médio dos contratos registrados no período."
         )
     
     st.divider()
