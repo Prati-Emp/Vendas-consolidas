@@ -661,23 +661,72 @@ def render_analise_workflow(df_workflow: pd.DataFrame):
 
 
 
-def render_contratos_registrados(df: pd.DataFrame):
-    """Renderiza a aba de Contratos Registrados."""
+def render_contratos_registrados(df_raw: pd.DataFrame, empreendimentos_filter: List[str] = None):
+    """Renderiza a aba de Contratos Registrados com filtros específicos."""
     
     st.subheader("✅ Contratos Registrados")
+    st.caption("Esta aba possui filtros de data específicos baseados na 'Data de Alteração de Status'.")
     
-    # Filtrar apenas Contrato Registrado
+    # --- Filtros Específicos para esta aba ---
+    col_filtros1, col_filtros2 = st.columns(2)
+    
+    # Determinar intervalo padrão para o filtro específico
+    min_date_esp = date.today()
+    max_date_esp = date.today()
+    
+    if "data_alteracao_status" in df_raw.columns:
+        valid_dates = df_raw["data_alteracao_status"].dropna()
+        if not valid_dates.empty:
+            min_date_esp = valid_dates.min().date()
+            max_date_esp = valid_dates.max().date()
+            
+    default_start_esp = date(max_date_esp.year, 1, 1)
+
+    with col_filtros1:
+        start_date_reg = st.date_input(
+            "Data Inicial (Registro)",
+            value=default_start_esp,
+            min_value=min_date_esp,
+            max_value=max_date_esp,
+            key="start_date_contratos_reg"
+        )
+        
+    with col_filtros2:
+        end_date_reg = st.date_input(
+            "Data Final (Registro)",
+            value=max_date_esp,
+            min_value=min_date_esp,
+            max_value=max_date_esp,
+            key="end_date_contratos_reg"
+        )
+        
+    st.divider()
+
+    # --- Aplicação dos Filtros ---
+    df_filtered = df_raw.copy()
+    
+    # 1. Filtro de Empreendimento (Global)
+    if empreendimentos_filter:
+        df_filtered = df_filtered[df_filtered["empreendimento"].isin(empreendimentos_filter)]
+        
+    # 2. Filtro de Situação (Fixo: Contrato Registrado)
     target_status = "Contrato Registrado"
-    
-    if "situacao_resumida" in df.columns:
-        df_registrado = df[df["situacao_resumida"] == target_status]
-    elif "situacao_detalhada" in df.columns:
-        df_registrado = df[df["situacao_detalhada"] == target_status]
+    if "situacao_resumida" in df_filtered.columns:
+        df_registrado = df_filtered[df_filtered["situacao_resumida"] == target_status]
+    elif "situacao_detalhada" in df_filtered.columns:
+        df_registrado = df_filtered[df_filtered["situacao_detalhada"] == target_status]
     else:
         df_registrado = pd.DataFrame()
+        
+    # 3. Filtro de Data Específico (Data de Alteração de Status)
+    if "data_alteracao_status" in df_registrado.columns and start_date_reg and end_date_reg:
+        df_registrado = df_registrado[
+            (df_registrado["data_alteracao_status"].dt.date >= start_date_reg) &
+            (df_registrado["data_alteracao_status"].dt.date <= end_date_reg)
+        ]
 
     if df_registrado.empty:
-        st.info("Nenhum contrato registrado encontrado para os filtros selecionados.")
+        st.info("Nenhum contrato registrado encontrado para o período e filtros selecionados.")
         return
 
     # KPIs Específicos
@@ -712,7 +761,7 @@ def render_contratos_registrados(df: pd.DataFrame):
         "cliente": "Cliente",
         "valor_contrato": "Valor Contrato",
         "data_venda": "Data Venda",
-        "data_cad": "Data Registro", # Usando data_cad como proxy se não houver específica, mas idealmente seria data do status
+        "data_alteracao_status": "Data Registro",
         "correspondente": "Correspondente",
         "unidade": "Unidade"
     }
@@ -872,7 +921,8 @@ def render_repasses_dashboard(
         render_visao_geral(df_repasses_final)
 
     with tab2:
-        render_contratos_registrados(df_repasses_final)
+        # Passar df_repasses_prep (antes dos filtros de data global) e os filtros de empreendimento selecionados
+        render_contratos_registrados(df_repasses_prep, selected_empreendimentos)
         
     with tab3:
         render_analise_workflow(df_workflow_final)
