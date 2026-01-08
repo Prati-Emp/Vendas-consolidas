@@ -660,6 +660,88 @@ def render_analise_workflow(df_workflow: pd.DataFrame):
         st.plotly_chart(fig_evol, use_container_width=True, key="workflow_evolution")
 
 
+
+def render_contratos_registrados(df: pd.DataFrame):
+    """Renderiza a aba de Contratos Registrados."""
+    
+    st.subheader("✅ Contratos Registrados")
+    
+    # Filtrar apenas Contrato Registrado
+    target_status = "Contrato Registrado"
+    
+    if "situacao_resumida" in df.columns:
+        df_registrado = df[df["situacao_resumida"] == target_status]
+    elif "situacao_detalhada" in df.columns:
+        df_registrado = df[df["situacao_detalhada"] == target_status]
+    else:
+        df_registrado = pd.DataFrame()
+
+    if df_registrado.empty:
+        st.info("Nenhum contrato registrado encontrado para os filtros selecionados.")
+        return
+
+    # KPIs Específicos
+    total_reg = df_registrado["referencia"].nunique()
+    valor_total_reg = df_registrado["valor_contrato"].sum()
+    valor_medio_reg = df_registrado["valor_contrato"].mean()
+
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.metric("Total Registrados", f"{total_reg:,}")
+        
+    with col2:
+        st.metric(
+            "Valor Total (Registrados)",
+            f"R$ {valor_total_reg:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        )
+        
+    with col3:
+        st.metric(
+            "Ticket Médio",
+            f"R$ {valor_medio_reg:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        )
+    
+    st.divider()
+    
+    # Detalhamento Específico
+    st.subheader("📋 Detalhamento dos Contratos Registrados")
+    
+    cols_map = {
+        "empreendimento": "Empreendimento",
+        "cliente": "Cliente",
+        "valor_contrato": "Valor Contrato",
+        "data_venda": "Data Venda",
+        "data_cad": "Data Registro", # Usando data_cad como proxy se não houver específica, mas idealmente seria data do status
+        "correspondente": "Correspondente",
+        "unidade": "Unidade"
+    }
+    
+    available_cols = [c for c in cols_map.keys() if c in df_registrado.columns]
+    
+    if available_cols:
+        df_table = df_registrado[available_cols].rename(columns=cols_map).copy()
+        
+        # Formatar datas
+        date_cols_display = ["Data Venda", "Data Registro"]
+        for col in date_cols_display:
+            if col in df_table.columns:
+                df_table[col] = df_table[col].dt.strftime("%d/%m/%Y")
+        
+        # Formatar Valor
+        if "Valor Contrato" in df_table.columns:
+            df_table["Valor Contrato"] = df_table["Valor Contrato"].apply(
+                lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            )
+        
+        st.dataframe(
+            df_table,
+            hide_index=True,
+            use_container_width=True,
+            key="table_contratos_registrados"
+        )
+
+
 def render_repasses_dashboard(
     show_title: bool = True, show_caption: bool = True
 ) -> None:
@@ -784,10 +866,13 @@ def render_repasses_dashboard(
     
     # --- RENDERIZAÇÃO POR ABAS ---
     
-    tab1, tab2 = st.tabs(["📊 Visão Geral (Carteira)", "⏱️ Análise de Workflow (Tempo)"])
+    tab1, tab2, tab3 = st.tabs(["📊 Visão Geral (Carteira)", "✅ Contratos Registrados", "⏱️ Análise de Workflow (Tempo)"])
     
     with tab1:
         render_visao_geral(df_repasses_final)
-        
+
     with tab2:
+        render_contratos_registrados(df_repasses_final)
+        
+    with tab3:
         render_analise_workflow(df_workflow_final)
