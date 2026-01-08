@@ -224,6 +224,17 @@ def prepare_workflow(df: pd.DataFrame) -> pd.DataFrame:
     if "situacao_detalhada" in df.columns:
         df["situacao_detalhada"] = df["situacao_detalhada"].fillna("Outros")
 
+    # Filtro para remover 'venda a investidor' e 'cessão' (normalizando para minúsculas para garantir)
+    # Ajuste solicitado: carregar todas as situações menos "venda a investidor" e "cessão"
+    # Como já carregamos, filtramos aqui no prepare
+    
+    exclusion_list = ["venda a investidor", "cessão", "cessao"]
+    
+    if "situacao_detalhada" in df.columns:
+        # Normaliza a coluna temporariamente para filtro
+        mask = ~df["situacao_detalhada"].astype(str).apply(lambda x: normalize_text(x)).isin(exclusion_list)
+        df = df[mask]
+
     return df
 
 
@@ -659,10 +670,15 @@ def render_analise_workflow(df_workflow_filtered: pd.DataFrame, df_workflow_full
         # Se 'situacao_resumida' == Target, é a transição PARA o target.
         # Data dessa transição é a data de conclusão.
         
-        # Filtrar apenas linhas que são transição PARA 'entrada no registro'
+        # Target atualizado: "Contrato Registrado" (ou entrada no registro dependendo da semântica, mas pedido foi "até a etapa de contrato registrado")
+        # O usuário pediu: "vamos contabilizar até a etapa de contrato registrado"
+        # Ajustando target para 'contrato registrado'
+        target_stage_normalized = "contrato registrado"
+        
+        # Filtrar apenas linhas que são transição PARA 'contrato registrado'
         df_completed = df_sorted[
-            (df_sorted["situacao_resumida"].str.lower() == target_stage_normalized) |
-            (df_sorted["situacao_detalhada"].str.lower() == target_stage_normalized)
+            (df_sorted["situacao_resumida"].apply(normalize_text) == target_stage_normalized) |
+            (df_sorted["situacao_detalhada"].apply(normalize_text) == target_stage_normalized)
         ].copy()
         
         if not df_completed.empty:
@@ -702,9 +718,9 @@ def render_analise_workflow(df_workflow_filtered: pd.DataFrame, df_workflow_full
     col1, col2 = st.columns(2)
     with col1:
         st.metric(
-            "Lead Time Médio (até Entrada no Registro)", 
+            "Lead Time Médio (até Contrato Registrado)", 
             f"{lead_time_medio:.1f} dias",
-            help="Tempo médio acumulado desde o início do processo até a primeira entrada no status 'Entrada no Registro'. Considera apenas processos que atingiram este status no período selecionado."
+            help="Tempo médio acumulado desde o início do processo até a primeira entrada no status 'Contrato Registrado'. Considera apenas processos que atingiram este status no período selecionado."
         )
     # Card "Processos Registrados no Período" removido conforme solicitação
 
