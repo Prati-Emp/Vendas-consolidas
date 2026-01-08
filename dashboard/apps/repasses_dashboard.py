@@ -742,8 +742,7 @@ def render_analise_workflow(df_workflow_filtered: pd.DataFrame, df_workflow_full
     st.divider()
 
     # Tempo Médio por Situação (Abas Resumido e Detalhado)
-    st.subheader("Tempo Médio por Etapa")
-    st.caption("Quanto tempo, em média, um processo permanece em cada etapa específica.")
+    st.subheader("Tempo Médio por Etapa", help="Quanto tempo, em média, um processo permanece em cada etapa específica.")
     
     # Usamos o filtered para mostrar as etapas que ocorreram no período
     df_workflow = df_workflow_filtered
