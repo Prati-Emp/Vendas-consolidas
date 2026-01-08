@@ -246,9 +246,16 @@ def _render_situacao_chart(df: pd.DataFrame, col_name: str, order_list: Optional
     
     # Ordenação
     if order_list:
+        # Normalizar lista de ordem para comparação
+        status_order_normalized = [normalize_text(s) for s in order_list]
+        
+        # Aplicar normalização na coluna de situação para encontrar o índice correto
         situacao_analysis["ordem"] = situacao_analysis["Situação"].apply(
-            lambda x: order_list.index(x) if x in order_list else len(order_list)
+            lambda x: status_order_normalized.index(normalize_text(x)) 
+            if normalize_text(x) in status_order_normalized 
+            else len(status_order_normalized)
         )
+        
         # Ordenar inverso para gráfico horizontal (topo = primeiro da lista)
         situacao_analysis = situacao_analysis.sort_values("ordem", ascending=False)
     else:
@@ -308,6 +315,8 @@ def _render_situacao_chart(df: pd.DataFrame, col_name: str, order_list: Optional
     
     # Tabela Detalhada
     if order_list:
+        # Ordenar crescente para tabela (primeiro da lista no topo)
+        # Reutilizando a lógica de ordenação normalizada já aplicada no dataframe situacao_analysis
         situacao_analysis_table = situacao_analysis.sort_values("ordem", ascending=True).copy()
     else:
         # Para tabela, queremos o maior no topo
