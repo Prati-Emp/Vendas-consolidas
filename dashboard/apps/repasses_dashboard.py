@@ -571,7 +571,7 @@ def render_visao_geral(df: pd.DataFrame):
             
     with tab_detalhado:
         if "situacao_detalhada" in df.columns:
-            _render_situacao_chart(df, "situacao_detalhada")
+            _render_situacao_chart(df, "situacao_detalhada", STATUS_ORDER_WORKFLOW)
         else:
             st.warning("Dados de situação detalhada não disponíveis.")
 
