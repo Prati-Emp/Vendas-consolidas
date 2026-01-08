@@ -669,7 +669,7 @@ def render_visao_geral(df: pd.DataFrame):
         st.info("Colunas detalhadas não disponíveis para exibição.")
 
 
-def render_analise_workflow(df_workflow_filtered: pd.DataFrame, df_workflow_full: Optional[pd.DataFrame] = None, start_date_filter: date = None, end_date_filter: date = None, df_repasses_full: Optional[pd.DataFrame] = None):
+def render_analise_workflow(df_workflow_filtered: pd.DataFrame, df_workflow_full: Optional[pd.DataFrame] = None, start_date_filter: date = None, end_date_filter: date = None):
     """Renderiza a aba de Análise de Workflow (Tempo)."""
     
     if df_workflow_filtered.empty and (df_workflow_full is None or df_workflow_full.empty):
@@ -679,67 +679,67 @@ def render_analise_workflow(df_workflow_filtered: pd.DataFrame, df_workflow_full
     st.subheader("⏱️ Análise de Tempos (SLA)")
     st.caption("Análise de eficiência operacional e tempos de processamento das etapas de repasse.")
     
-    # --- CÁLCULO DE LEAD TIME (Início -> Contrato Registrado) ---
-    # AJUSTE: Usando df_repasses_full (tabela principal) devido à incompletude da tabela de workflow.
-    # A tabela de workflow tem apenas ~46 registros de 'Contrato Registrado', enquanto a principal tem ~462.
+    # --- CÁLCULO DE LEAD TIME (Início -> Entrada no Registro) ---
+    # Precisamos do histórico completo (df_workflow_full) para calcular o tempo acumulado
     
     lead_time_medio = 0.0
-    df_lead_time_evolucao = pd.DataFrame()
     qtd_considerada = 0
+    df_lead_time_evolucao = pd.DataFrame()
     
-    # Tenta usar a tabela de repasses principal se disponível
-    if df_repasses_full is not None and not df_repasses_full.empty:
-        target_status = "Contrato Registrado"
+    if df_workflow_full is not None and not df_workflow_full.empty:
+        # Agrupar por repasse para reconstruir a história
+        # Ordenar por data para garantir sequencia correta
+        df_sorted = df_workflow_full.sort_values(["referencia", "data_cad"])
         
-        # Filtra registros que estão no status alvo na tabela atual
-        # Assumindo que data_alteracao_status é a data de conclusão
-        mask_status = pd.Series(False, index=df_repasses_full.index)
-        if "situacao_resumida" in df_repasses_full.columns:
-            mask_status |= (df_repasses_full["situacao_resumida"].apply(normalize_text) == normalize_text(target_status))
-        if "situacao_detalhada" in df_repasses_full.columns:
-            mask_status |= (df_repasses_full["situacao_detalhada"].apply(normalize_text) == normalize_text(target_status))
-            
-        df_completed = df_repasses_full[mask_status].copy()
+        target_stage_normalized = "entrada no registro"
         
-        if not df_completed.empty and "data_alteracao_status" in df_completed.columns and "data_cad" in df_completed.columns:
-            # Garante formato de data
-            df_completed["completion_date"] = pd.to_datetime(df_completed["data_alteracao_status"])
-            df_completed["start_date"] = pd.to_datetime(df_completed["data_cad"])
+        # Identificar repasses que atingiram o alvo
+        df_completed = df_sorted[
+            (df_sorted["situacao_resumida"].apply(normalize_text) == target_stage_normalized) |
+            (df_sorted["situacao_detalhada"].apply(normalize_text) == target_stage_normalized)
+        ].copy()
+        
+        if not df_completed.empty:
+            # Pegar a PRIMEIRA vez que atingiu o status por referencia
+            completion_events = df_completed.groupby("referencia")["data_cad"].min().reset_index()
+            completion_events.rename(columns={"data_cad": "completion_date"}, inplace=True)
             
-            # Filtra pelo período selecionado (baseado na data de conclusão/registro)
+            # Precisamos calcular o Lead Time para TODOS os completions primeiro, para depois filtrar e fazer o gráfico
+            valid_refs = completion_events["referencia"].unique()
+            df_history = df_sorted[df_sorted["referencia"].isin(valid_refs)]
+            df_history = df_history.merge(completion_events, on="referencia", how="inner")
+            
+            # Somar tempo de etapas que ocorreram ANTES ou NA MESMA DATA da conclusão
+            df_history_valid = df_history[df_history["data_cad"] <= df_history["completion_date"]]
+            
+            # Calcular Lead Time por referencia
+            lead_time_per_ref = df_history_valid.groupby("referencia")["tempo"].sum().reset_index()
+            lead_time_per_ref.rename(columns={"tempo": "lead_time_days"}, inplace=True)
+            
+            # Juntar com a data de completion para saber quando o Lead Time "aconteceu"
+            df_lead_time_data = lead_time_per_ref.merge(completion_events, on="referencia")
+            
+            # --- KPI: Filtrar pelo período selecionado ---
+            df_kpi = df_lead_time_data.copy()
             if start_date_filter and end_date_filter:
-                df_completed = df_completed[
-                    (df_completed["completion_date"].dt.date >= start_date_filter) &
-                    (df_completed["completion_date"].dt.date <= end_date_filter)
+                df_kpi = df_kpi[
+                    (df_kpi["completion_date"].dt.date >= start_date_filter) &
+                    (df_kpi["completion_date"].dt.date <= end_date_filter)
                 ]
             
-            if not df_completed.empty:
-                # Calcula Lead Time (dias)
-                df_completed["lead_time_days"] = (df_completed["completion_date"] - df_completed["start_date"]).dt.total_seconds() / (24 * 3600)
+            if not df_kpi.empty:
+                lead_time_medio = df_kpi["lead_time_days"].mean()
+                qtd_considerada = len(df_kpi)
                 
-                # Remove valores negativos ou inconsistentes
-                df_completed = df_completed[df_completed["lead_time_days"] >= 0]
-                
-                if not df_completed.empty:
-                    lead_time_medio = df_completed["lead_time_days"].mean()
-                    df_lead_time_evolucao = df_completed.copy() # Para o gráfico
-                    qtd_considerada = len(df_completed)
-
-    # Fallback para lógica antiga de workflow APENAS se não conseguiu calcular com repasses
-    if qtd_considerada == 0 and df_workflow_full is not None and not df_workflow_full.empty:
-        # ... (Lógica antiga mantida como fallback, mas dificilmente será usada para Contrato Registrado dado o problema de dados)
-        # Agrupar por repasse para reconstruir a história
-        df_sorted = df_workflow_full.sort_values(["referencia", "data_cad"])
-        target_stage_normalized = "contrato registrado"
-        # ... (resto da lógica antiga, simplificada aqui pois vamos focar no fix)
-        pass # Mantendo zero se não achou na principal
+            # --- Gráfico Evolução: Dados para o gráfico (pode ser todo o histórico ou filtrado) ---
+            df_lead_time_evolucao = df_kpi.copy()
 
     col1, col2 = st.columns(2)
     with col1:
         st.metric(
-            "Lead Time Médio (até Contrato Registrado)", 
+            "Lead Time Médio (até Entrada no Registro)", 
             f"{lead_time_medio:.1f} dias",
-            help=f"Tempo total médio (Cadastro -> Registro). Calculado com base em {qtd_considerada} contratos registrados no período selecionado (Fonte: Tabela Principal)."
+            help="Tempo total médio decorrido desde o início do processo até a etapa de 'Entrada no Registro'. Considera a soma dos tempos de todas as etapas anteriores para os processos concluídos no período selecionado."
         )
 
     st.divider()
@@ -769,11 +769,11 @@ def render_analise_workflow(df_workflow_filtered: pd.DataFrame, df_workflow_full
     
     # Evolução Temporal do Lead Time
     st.subheader("Evolução do Lead Time Médio (Mensal)")
-    st.caption("Tendência do tempo total de processamento (início ao registro) para processos concluídos em cada mês.")
+    st.caption("Tendência do tempo total de processamento (início até Entrada no Registro) para processos concluídos em cada mês.")
     
     if not df_lead_time_evolucao.empty:
-        # Usa data de conclusão ou registro dependendo da fonte
-        date_col = "completion_date" if "completion_date" in df_lead_time_evolucao.columns else "data_cad" # Fallback
+        # Usa data de conclusão (já garantida no cálculo acima)
+        date_col = "completion_date"
         
         df_lead_time_evolucao["mes_ano"] = df_lead_time_evolucao[date_col].dt.to_period("M").dt.to_timestamp()
         
@@ -794,7 +794,7 @@ def render_analise_workflow(df_workflow_filtered: pd.DataFrame, df_workflow_full
         fig_evol.update_layout(yaxis_title="Dias", xaxis_title="Mês de Conclusão")
         st.plotly_chart(fig_evol, use_container_width=True, key="workflow_evolution")
     else:
-        st.info("Sem dados suficientes de 'Contrato Registrado' no período selecionado para gerar o gráfico de evolução do Lead Time.")
+        st.info("Sem dados suficientes de 'Entrada no Registro' no período selecionado para gerar o gráfico de evolução do Lead Time.")
 
 
 
@@ -1069,11 +1069,10 @@ def render_repasses_dashboard(
         
     with tab3:
         # Passando df completo para calculo de Lead Time e as datas selecionadas
-        # Agora passando também df_repasses_prep (tabela principal) para cálculo correto de Lead Time
+        # Voltando a usar a lógica original de workflow (até 'Entrada no Registro'), sem passar df_repasses_full
         render_analise_workflow(
             df_workflow_filtered=df_workflow_final,
             df_workflow_full=df_workflow_prep, 
             start_date_filter=start_date,
-            end_date_filter=end_date,
-            df_repasses_full=df_repasses_prep
+            end_date_filter=end_date
         )
