@@ -55,8 +55,6 @@ STATUS_ORDER_WORKFLOW = [
     "Assinado Caixa",
     "Recolhimento de Custas",
     "Entrada no Registro",
-    "Contrato Registrado",
-    "Venda a Investidor",
 ]
 
 # Mapeamento de colunas possíveis para nomes canônicos
@@ -227,9 +225,9 @@ def prepare_workflow(df: pd.DataFrame) -> pd.DataFrame:
 
     # Filtro para remover 'venda a investidor' e 'cessão' (normalizando para minúsculas para garantir)
     # Ajuste solicitado: carregar todas as situações menos "venda a investidor" e "cessão"
-    # Como já carregamos, filtramos aqui no prepare
+    # Ajuste adicional: remover 'contrato registrado' do workflow também
     
-    exclusion_list = ["venda a investidor", "cessão", "cessao"]
+    exclusion_list = ["venda a investidor", "cessão", "cessao", "contrato registrado"]
     
     if "situacao_detalhada" in df.columns:
         # Normaliza a coluna temporariamente para filtro
