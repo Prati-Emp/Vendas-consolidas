@@ -55,6 +55,7 @@ STATUS_ORDER_WORKFLOW = [
     "Assinado Caixa",
     "Recolhimento de Custas",
     "Entrada no Registro",
+    "Contrato Registrado",
     "Venda a Investidor",
 ]
 
