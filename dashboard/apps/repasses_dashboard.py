@@ -438,7 +438,17 @@ def _render_workflow_chart(df: pd.DataFrame, col_name: str, order_list: Optional
     
     # Tabela
     if order_list:
-        tabela_ordenada = tempo_por_situacao.sort_values("ordem", ascending=True)
+        # Normalizar lista de ordem para comparação
+        status_order_normalized = [normalize_text(s) for s in order_list]
+        
+        # Aplicar normalização na coluna de situação para encontrar o índice correto
+        tabela_ordenada = tempo_por_situacao.copy()
+        tabela_ordenada["ordem"] = tabela_ordenada["situacao"].apply(
+            lambda x: status_order_normalized.index(normalize_text(x)) 
+            if normalize_text(x) in status_order_normalized 
+            else len(status_order_normalized)
+        )
+        tabela_ordenada = tabela_ordenada.sort_values("ordem", ascending=True)
     else:
         # Tabela ordenada por tempo médio decrescente (piores primeiro)
         tabela_ordenada = tempo_por_situacao.sort_values("Média (dias)", ascending=False)
