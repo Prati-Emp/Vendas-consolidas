@@ -12,6 +12,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
+import unicodedata
 
 from dashboard.utils.md_conn import get_md_connection
 
@@ -324,6 +325,18 @@ def _render_situacao_chart(df: pd.DataFrame, col_name: str, order_list: Optional
     )
 
 
+def normalize_text(text: str) -> str:
+    """Remove acentos e coloca em minúsculas para comparação robusta."""
+    if not isinstance(text, str):
+        return str(text).lower()
+    
+    # Normalize unicode characters to decomposed form (NFD)
+    text = unicodedata.normalize('NFD', text)
+    # Filter out non-spacing mark characters (accents)
+    text = "".join(c for c in text if unicodedata.category(c) != 'Mn')
+    return text.lower().strip()
+
+
 def _render_workflow_chart(df: pd.DataFrame, col_name: str, order_list: Optional[List[str]] = None, key_suffix: str = ""):
     """Helper para renderizar gráfico e tabela de tempo médio (Workflow)."""
     
@@ -352,10 +365,16 @@ def _render_workflow_chart(df: pd.DataFrame, col_name: str, order_list: Optional
     
     # Ordenação
     if order_list:
-        status_order_normalized = [s.lower().strip() for s in order_list]
+        # Normalizar lista de ordem para comparação
+        status_order_normalized = [normalize_text(s) for s in order_list]
+        
+        # Aplicar normalização na coluna de situação para encontrar o índice correto
         tempo_por_situacao["ordem"] = tempo_por_situacao["situacao"].apply(
-            lambda x: status_order_normalized.index(x.lower().strip()) if x.lower().strip() in status_order_normalized else len(status_order_normalized)
+            lambda x: status_order_normalized.index(normalize_text(x)) 
+            if normalize_text(x) in status_order_normalized 
+            else len(status_order_normalized)
         )
+        
         # Ordenar inverso para gráfico horizontal (topo = primeiro da lista)
         tempo_por_situacao = tempo_por_situacao.sort_values("ordem", ascending=False)
     else:
