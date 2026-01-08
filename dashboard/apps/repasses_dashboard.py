@@ -29,29 +29,32 @@ STATUS_ORDER = [
 
 # Ordem específica de workflow (Funil Lógico Workflow)
 STATUS_ORDER_WORKFLOW = [
-    "Em espera",
-    "Espera - sem análise",
-    "Espera - Analisando Credito",
-    "Espera - Analise reprovada",
-    "Espera - Analise Aprovada",
+    "Em Espera",
+    "Espera - Sem Análise",
+    "Espera - Analisando Crédito",
+    "Espera - Análise Reprovada",
+    "Espera - Análise Aprovada",
     "Renegociação",
     "Aprovação de Aditivo",
     "Elaboração de Aditivo",
+    "Em assinatura Aditivo",
     "Aditivo Assinado",
     "Prazo de contrato - sem análise",
-    "Espera - Demanda mínima",
+    "Prazo de contrato - com análise",
+    "Espera - Demanda Mínima",
     "Enviado ao correspondente",
-    "Aguardando projeto e alvará",
-    "vistoria da engenharia",
-    "validação cohapar",
-    "aguardando assinatura formulários",
-    "inconforme",
-    "conformidade aprovada",
-    "confecção de contrato caixa",
-    "assinatura caixa",
-    "recolhimento de custas",
-    "Entrada no registro",
-    "venda investidor",
+    "Aguardando projeto e Alvará",
+    "Vistoria da Engenharia",
+    "Validação Cohapar",
+    "Aguardando Assinatura Formularios",
+    "Análise de Conformidade",
+    "Inconforme",
+    "Conformidade Aprovada",
+    "Confecção de Contrato Caixa",
+    "Assinado Caixa",
+    "Recolhimento de Custas",
+    "Entrada no Registro",
+    "Venda a Investidor",
 ]
 
 # Mapeamento de colunas possíveis para nomes canônicos
@@ -596,31 +599,99 @@ def render_visao_geral(df: pd.DataFrame):
         st.info("Colunas detalhadas não disponíveis para exibição.")
 
 
-def render_analise_workflow(df_workflow: pd.DataFrame):
+def render_analise_workflow(df_workflow_filtered: pd.DataFrame, df_workflow_full: Optional[pd.DataFrame] = None, start_date_filter: date = None, end_date_filter: date = None):
     """Renderiza a aba de Análise de Workflow (Tempo)."""
     
-    if df_workflow.empty:
+    if df_workflow_filtered.empty and (df_workflow_full is None or df_workflow_full.empty):
         st.warning("Sem dados de workflow para o período selecionado.")
         return
 
     st.subheader("⏱️ Análise de Tempos (SLA)")
     
-    # KPI Geral de Tempo (Considerando apenas tempos > 0 para evitar distorção por registros instantâneos/erros)
-    df_workflow_nonzero = df_workflow[df_workflow["tempo"] > 0.001]
+    # --- CÁLCULO DE LEAD TIME (Início -> Entrada no Registro) ---
+    # Precisamos do histórico completo (df_workflow_full) para calcular o tempo acumulado
     
-    if not df_workflow_nonzero.empty:
-        tempo_medio_geral = df_workflow_nonzero["tempo"].mean()
-    else:
-        tempo_medio_geral = 0.0
+    lead_time_medio = 0.0
+    qtd_registrados_periodo = 0
+    
+    if df_workflow_full is not None and not df_workflow_full.empty:
+        # Agrupar por repasse para reconstruir a história
+        # Ordenar por data para garantir sequencia correta
+        df_sorted = df_workflow_full.sort_values(["referencia", "data_cad"])
+        
+        lead_times = []
+        target_stage_normalized = "entrada no registro"
+        
+        # Iterar por grupo é lento, mas mais seguro para lógica complexa. 
+        # Como o volume não deve ser gigantesco no Streamlit, ok. 
+        # Otimização: Vetorizar se possível.
+        
+        # Identificar repasses que atingiram o alvo
+        # Vamos olhar para 'situacao_detalhada' ou 'situacao_resumida' (Para)
+        # Se 'situacao_resumida' == Target, é a transição PARA o target.
+        # Data dessa transição é a data de conclusão.
+        
+        # Filtrar apenas linhas que são transição PARA 'entrada no registro'
+        df_completed = df_sorted[
+            (df_sorted["situacao_resumida"].str.lower() == target_stage_normalized) |
+            (df_sorted["situacao_detalhada"].str.lower() == target_stage_normalized)
+        ].copy()
+        
+        if not df_completed.empty:
+            # Pegar a PRIMEIRA vez que atingiu o status por referencia
+            completion_events = df_completed.groupby("referencia")["data_cad"].min().reset_index()
+            completion_events.rename(columns={"data_cad": "completion_date"}, inplace=True)
+            
+            # Filtrar completions que ocorreram DENTRO do período selecionado
+            if start_date_filter and end_date_filter:
+                completion_events = completion_events[
+                    (completion_events["completion_date"].dt.date >= start_date_filter) &
+                    (completion_events["completion_date"].dt.date <= end_date_filter)
+                ]
+            
+            qtd_registrados_periodo = len(completion_events)
+            
+            if qtd_registrados_periodo > 0:
+                # Agora calcular a soma dos tempos ANTERIORES à data de conclusão para esses caras
+                valid_refs = completion_events["referencia"].unique()
+                
+                # Filtrar o DF completo apenas para os refs válidos
+                df_history = df_sorted[df_sorted["referencia"].isin(valid_refs)]
+                
+                # Merge com a data de conclusão
+                df_history = df_history.merge(completion_events, on="referencia", how="inner")
+                
+                # Somar tempo de etapas que ocorreram ANTES ou NA MESMA DATA da conclusão
+                # (Considerando que se a linha é a transição PARA, o tempo nela é o tempo da etapa ANTERIOR, então soma-se)
+                # Se a linha for POSTERIOR, descarta.
+                df_history_valid = df_history[df_history["data_cad"] <= df_history["completion_date"]]
+                
+                # Calcular Lead Time por referencia
+                lead_time_per_ref = df_history_valid.groupby("referencia")["tempo"].sum()
+                
+                lead_time_medio = lead_time_per_ref.mean()
     
     col1, col2 = st.columns(2)
     with col1:
-        st.metric("Tempo Médio Geral (etapas com espera)", f"{tempo_medio_geral:.1f} dias")
+        st.metric(
+            "Lead Time Médio (até Entrada no Registro)", 
+            f"{lead_time_medio:.1f} dias",
+            help="Tempo médio acumulado desde o início do processo até a primeira entrada no status 'Entrada no Registro'. Considera apenas processos que atingiram este status no período selecionado."
+        )
+    with col2:
+         st.metric(
+            "Processos Registrados no Período", 
+            f"{qtd_registrados_periodo}",
+            help="Quantidade de processos que chegaram na etapa 'Entrada no Registro' dentro do período de data selecionado."
+        )
 
     st.divider()
 
     # Tempo Médio por Situação (Abas Resumido e Detalhado)
     st.subheader("Tempo Médio por Etapa")
+    
+    # Usamos o filtered para mostrar as etapas que ocorreram no período
+    df_workflow = df_workflow_filtered
     
     tab_resumido, tab_detalhado = st.tabs(["Resumido", "Detalhado"])
     
@@ -925,4 +996,10 @@ def render_repasses_dashboard(
         render_contratos_registrados(df_repasses_prep, selected_empreendimentos)
         
     with tab3:
-        render_analise_workflow(df_workflow_final)
+        # Passando df completo para calculo de Lead Time e as datas selecionadas
+        render_analise_workflow(
+            df_workflow_filtered=df_workflow_final,
+            df_workflow_full=df_workflow_prep, 
+            start_date_filter=start_date,
+            end_date_filter=end_date
+        )
