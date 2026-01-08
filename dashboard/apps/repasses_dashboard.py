@@ -787,9 +787,40 @@ def render_analise_workflow(df_workflow_filtered: pd.DataFrame, df_workflow_full
             x="Mês",
             y="Lead Time Médio (dias)",
             markers=True,
-            title="Evolução do Tempo Total de Processamento (Lead Time)"
+            title="Evolução do Tempo Total de Processamento (Lead Time)",
+            text=evolucao["Lead Time Médio (dias)"].apply(lambda x: f"{x:.1f}")
         )
-        fig_evol.update_layout(yaxis_title="Dias", xaxis_title="Mês de Conclusão")
+        
+        fig_evol.update_traces(
+            line_color="#0EA5E9", # Azul moderno
+            line_width=3,
+            marker_size=8,
+            marker_color="white",
+            marker_line_width=2,
+            marker_line_color="#0EA5E9",
+            textposition="top center",
+            hovertemplate="<b>%{x|%B/%Y}</b><br>Lead Time Médio: <b>%{y:.1f} dias</b><extra></extra>"
+        )
+        
+        fig_evol.update_layout(
+            yaxis_title="Dias", 
+            xaxis_title=None,
+            hovermode="x unified",
+            showlegend=False,
+            height=450,
+            xaxis=dict(
+                tickformat="%b/%Y",
+                showgrid=False,
+                showline=True,
+                linecolor='rgba(255, 255, 255, 0.2)'
+            ),
+            yaxis=dict(
+                showgrid=True,
+                gridcolor='rgba(128, 128, 128, 0.1)',
+                zeroline=False
+            ),
+            margin=dict(t=50, l=50, r=50, b=50)
+        )
         st.plotly_chart(fig_evol, use_container_width=True, key="workflow_evolution")
     else:
         st.info("Sem dados suficientes de 'Entrada no Registro' no período selecionado para gerar o gráfico de evolução do Lead Time.")
