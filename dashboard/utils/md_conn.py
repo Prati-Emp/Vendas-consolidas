@@ -288,30 +288,30 @@ def get_metas_data() -> pd.DataFrame:
     SELECT 
         "Empreendiemento" as nome_empreendimento,
         "Codigo empreendimento" as codigo_empreendimento,
-        "jan/25" as meta_janeiro_25,
-        "fev/25" as meta_fevereiro_25,
-        "mar/25" as meta_marco_25,
-        "abr/25" as meta_abril_25,
-        "mai/25" as meta_maio_25,
-        "jun/25" as meta_junho_25,
-        "jul/25" as meta_julho_25,
-        "ago/25" as meta_agosto_25,
-        "set/25" as meta_setembro_25,
-        "out/25" as meta_outubro_25,
-        "nov/25" as meta_novembro_25,
-        "dez/25" as meta_dezembro_25,
-        "jan/26" as meta_janeiro_26,
-        "fev/26" as meta_fevereiro_26,
-        "mar/26" as meta_marco_26,
-        "abr/26" as meta_abril_26,
-        "mai/26" as meta_maio_26,
-        "jun/26" as meta_junho_26,
-        "jul/26" as meta_julho_26,
-        "ago/26" as meta_agosto_26,
-        "set/26" as meta_setembro_26,
-        "out/26" as meta_outubro_26,
-        "nov/26" as meta_novembro_26,
-        "dez/26" as meta_dezembro_26
+        "jan/25",
+        "fev/25",
+        "mar/25",
+        "abr/25",
+        "mai/25",
+        "jun/25",
+        "jul/25",
+        "ago/25",
+        "set/25",
+        "out/25",
+        "nov/25",
+        "dez/25",
+        "jan/26",
+        "fev/26",
+        "mar/26",
+        "abr/26",
+        "mai/26",
+        "jun/26",
+        "jul/26",
+        "ago/26",
+        "set/26",
+        "out/26",
+        "nov/26",
+        "dez/26"
     FROM informacoes_consolidadas.meta_vendas
     """
     
@@ -579,14 +579,10 @@ def get_metas_periodo(start_date: str, end_date: str,
         SELECT 
             "Codigo empreendimento" as codigo_empreendimento,
             "Empreendiemento" as nome_empreendimento,
-            "jan/25" as meta_janeiro_25, "fev/25" as meta_fevereiro_25, "mar/25" as meta_marco_25,
-            "abr/25" as meta_abril_25, "mai/25" as meta_maio_25, "jun/25" as meta_junho_25,
-            "jul/25" as meta_julho_25, "ago/25" as meta_agosto_25, "set/25" as meta_setembro_25,
-            "out/25" as meta_outubro_25, "nov/25" as meta_novembro_25, "dez/25" as meta_dezembro_25,
-            "jan/26" as meta_janeiro_26, "fev/26" as meta_fevereiro_26, "mar/26" as meta_marco_26,
-            "abr/26" as meta_abril_26, "mai/26" as meta_maio_26, "jun/26" as meta_junho_26,
-            "jul/26" as meta_julho_26, "ago/26" as meta_agosto_26, "set/26" as meta_setembro_26,
-            "out/26" as meta_outubro_26, "nov/26" as meta_novembro_26, "dez/26" as meta_dezembro_26
+            "jan/25", "fev/25", "mar/25", "abr/25", "mai/25", "jun/25",
+            "jul/25", "ago/25", "set/25", "out/25", "nov/25", "dez/25",
+            "jan/26", "fev/26", "mar/26", "abr/26", "mai/26", "jun/26",
+            "jul/26", "ago/26", "set/26", "out/26", "nov/26", "dez/26"
         FROM informacoes_consolidadas.meta_vendas
         WHERE "Codigo empreendimento" = '{enterprise_id}'
         """
@@ -596,14 +592,10 @@ def get_metas_periodo(start_date: str, end_date: str,
         SELECT 
             "Codigo empreendimento" as codigo_empreendimento,
             "Empreendiemento" as nome_empreendimento,
-            "jan/25" as meta_janeiro_25, "fev/25" as meta_fevereiro_25, "mar/25" as meta_marco_25,
-            "abr/25" as meta_abril_25, "mai/25" as meta_maio_25, "jun/25" as meta_junho_25,
-            "jul/25" as meta_julho_25, "ago/25" as meta_agosto_25, "set/25" as meta_setembro_25,
-            "out/25" as meta_outubro_25, "nov/25" as meta_novembro_25, "dez/25" as meta_dezembro_25,
-            "jan/26" as meta_janeiro_26, "fev/26" as meta_fevereiro_26, "mar/26" as meta_marco_26,
-            "abr/26" as meta_abril_26, "mai/26" as meta_maio_26, "jun/26" as meta_junho_26,
-            "jul/26" as meta_julho_26, "ago/26" as meta_agosto_26, "set/26" as meta_setembro_26,
-            "out/26" as meta_outubro_26, "nov/26" as meta_novembro_26, "dez/26" as meta_dezembro_26
+            "jan/25", "fev/25", "mar/25", "abr/25", "mai/25", "jun/25",
+            "jul/25", "ago/25", "set/25", "out/25", "nov/25", "dez/25",
+            "jan/26", "fev/26", "mar/26", "abr/26", "mai/26", "jun/26",
+            "jul/26", "ago/26", "set/26", "out/26", "nov/26", "dez/26"
         FROM informacoes_consolidadas.meta_vendas
         """
     
@@ -613,8 +605,8 @@ def get_metas_periodo(start_date: str, end_date: str,
         return 0.0
     
     total_meta = 0.0
-    meses_nomes = ['janeiro', 'fevereiro', 'marco', 'abril', 'maio', 'junho', 
-                   'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro']
+    meses_abreviacoes = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 
+                         'jul', 'ago', 'set', 'out', 'nov', 'dez']
     
     # Gerar todas as datas no período
     from datetime import date
@@ -627,7 +619,7 @@ def get_metas_periodo(start_date: str, end_date: str,
         
         # Só processar se for 2025 ou 2026
         if ano in [2025, 2026]:
-            col_name = f"meta_{meses_nomes[mes-1]}_{ano % 100}"
+            col_name = f"{meses_abreviacoes[mes-1]}/{ano % 100}"
             
             for _, row in result.iterrows():
                 meta_valor = row[col_name]
