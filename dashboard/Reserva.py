@@ -102,6 +102,29 @@ MESES_COLUNAS_2025 = {
     12: "dez/25",
 }
 
+MESES_COLUNAS_2026 = {
+    1: "jan/26",
+    2: "fev/26",
+    3: "mar/26",
+    4: "abr/26",
+    5: "mai/26",
+    6: "jun/26",
+    7: "jul/26",
+    8: "ago/26",
+    9: "set/26",
+    10: "out/26",
+    11: "nov/26",
+    12: "dez/26",
+}
+
+def get_coluna_meta_atual(ano: int, mes: int) -> str:
+    """Retorna a coluna de meta baseada no ano e mês."""
+    if ano == 2025:
+        return MESES_COLUNAS_2025.get(mes, "")
+    elif ano == 2026:
+        return MESES_COLUNAS_2026.get(mes, "")
+    return ""
+
 MESES_NOME_PT = {
     1: "janeiro",
     2: "fevereiro",
@@ -824,32 +847,27 @@ if st.sidebar.checkbox("🔍 Debug Taxa de Conversão", value=False):
 
 # Calcular metas do mês atual
 meta_total = 0.0
-coluna_meta_atual = MESES_COLUNAS_2025.get(datetime.now().month)
-mes_referencia_label = MESES_NOME_PT.get(datetime.now().month, "mês atual")
-mes_referencia_display = f"{mes_referencia_label} de {datetime.now().year}"
+ano_atual = datetime.now().year
+mes_atual = datetime.now().month
+coluna_meta_atual = get_coluna_meta_atual(ano_atual, mes_atual)
+mes_referencia_label = MESES_NOME_PT.get(mes_atual, "mês atual")
+mes_referencia_display = f"{mes_referencia_label} de {ano_atual}"
 mes_referencia_curto = f"{mes_referencia_label.capitalize()}" if mes_referencia_label else "Mês atual"
 
 metas_df = pd.DataFrame()
 if coluna_meta_atual:
     try:
         conn_meta = get_motherduck_connection()
+        # Buscar todas as colunas de 2025 e 2026
         metas_df = conn_meta.sql("""
             SELECT 
                 "Empreendiemento" AS nome_empreendimento,
                 "Codigo empreendimento" AS codigo_empreendimento,
-                "jan/25",
-                "fev/25",
-                "mar/25",
-                "abr/25",
-                "mai/25",
-                "jun/25",
-                "jul/25",
-                "ago/25",
-                "set/25",
-                "out/25",
-                "nov/25",
-                "dez/25"
-            FROM informacoes_consolidadas.meta_vendas_2025
+                "jan/25", "fev/25", "mar/25", "abr/25", "mai/25", "jun/25",
+                "jul/25", "ago/25", "set/25", "out/25", "nov/25", "dez/25",
+                "jan/26", "fev/26", "mar/26", "abr/26", "mai/26", "jun/26",
+                "jul/26", "ago/26", "set/26", "out/26", "nov/26", "dez/26"
+            FROM informacoes_consolidadas.meta_vendas
         """).df()
 
         if not metas_df.empty:
@@ -1033,7 +1051,7 @@ st.markdown(
             <li><strong>Reservas Atuais:</strong> Inclui apenas reservas ativas (excluídas <code>Cancelada</code>, <code>Vendida</code> e <code>Distrato</code>).</li>
             <li><strong>Taxa de Conversão:</strong> Calculada com base nos últimos 6 meses para refletir a eficiência recente.</li>
             <li><strong>Vendas Realizadas:</strong> Sempre olha para as vendas concluídas no mês corrente.</li>
-            <li><strong>Metas:</strong> Utilizam os valores cadastrados para o mês atual no arquivo <code>meta_vendas_2025</code>.</li>
+            <li><strong>Metas:</strong> Utilizam os valores cadastrados para o mês atual na view <code>informacoes_consolidadas.meta_vendas</code> (suporta 2025 e 2026).</li>
             <li><strong>Cobertura &amp; Potencial:</strong> Calculados com base no total de reservas ativas e na taxa de conversão geral, projetando o potencial de vendas.</li>
           </ul>
         </div>
