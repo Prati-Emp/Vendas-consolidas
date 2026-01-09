@@ -727,8 +727,7 @@ def render_saldo_em_caixa_dashboard(
                 x='Data',
                 y='Valor',
                 markers=True,
-                title='Evolução do Saldo Acumulado',
-                text=df_acum['Valor'].apply(lambda x: format_currency_short(x))
+                title='Evolução do Saldo Acumulado'
             )
             
             fig_acum.update_traces(
@@ -738,7 +737,6 @@ def render_saldo_em_caixa_dashboard(
                 marker_color="white",
                 marker_line_width=2,
                 marker_line_color="#0EA5E9",
-                textposition="top center",
                 hovertemplate="<b>%{x|%d/%m/%Y}</b><br>Saldo Acumulado: <b>R$ %{y:,.2f}</b><extra></extra>"
             )
             
