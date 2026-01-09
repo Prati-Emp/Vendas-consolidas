@@ -784,8 +784,7 @@ def render_saldo_em_caixa_dashboard(
                     x='Data',
                     y='Valor',
                     markers=True,
-                    title='Evolução Diária de Recebimentos',
-                    text=df_receb['Valor'].apply(lambda x: format_currency_short(x))
+                    title='Evolução Diária de Recebimentos'
                 )
                 
                 fig_receb.update_traces(
@@ -795,7 +794,6 @@ def render_saldo_em_caixa_dashboard(
                     marker_color="white",
                     marker_line_width=2,
                     marker_line_color="#10B981",
-                    textposition="top center",
                     hovertemplate="<b>%{x|%d/%m/%Y}</b><br>Recebimentos: <b>R$ %{y:,.2f}</b><extra></extra>"
                 )
                 
@@ -842,8 +840,7 @@ def render_saldo_em_caixa_dashboard(
                     x='Data',
                     y='Valor',
                     markers=True,
-                    title='Evolução Diária de Pagamentos',
-                    text=df_pag['Valor'].apply(lambda x: format_currency_short(x))
+                    title='Evolução Diária de Pagamentos'
                 )
                 
                 fig_pag.update_traces(
@@ -853,7 +850,6 @@ def render_saldo_em_caixa_dashboard(
                     marker_color="white",
                     marker_line_width=2,
                     marker_line_color="#EF4444",
-                    textposition="top center",
                     hovertemplate="<b>%{x|%d/%m/%Y}</b><br>Pagamentos: <b>R$ %{y:,.2f}</b><extra></extra>"
                 )
                 
@@ -901,8 +897,7 @@ def render_saldo_em_caixa_dashboard(
                     x='Data',
                     y='Valor',
                     markers=True,
-                    title='Evolução do Saldo de Investimentos',
-                    text=df_inv_saldo['Valor'].apply(lambda x: format_currency_short(x))
+                    title='Evolução do Saldo de Investimentos'
                 )
                 
                 fig_inv_saldo.update_traces(
@@ -912,7 +907,6 @@ def render_saldo_em_caixa_dashboard(
                     marker_color="white",
                     marker_line_width=2,
                     marker_line_color="#3B82F6",
-                    textposition="top center",
                     hovertemplate="<b>%{x|%d/%m/%Y}</b><br>Saldo de Investimentos: <b>R$ %{y:,.2f}</b><extra></extra>"
                 )
                 
@@ -971,7 +965,7 @@ def render_saldo_em_caixa_dashboard(
                     fig_inv_mov.add_trace(go.Scatter(
                         x=df_cat['Data'],
                         y=df_cat['Valor'],
-                        mode='lines+markers+text',
+                        mode='lines+markers',
                         name=categoria,
                         line=dict(color=cor, width=3),
                         marker=dict(
@@ -979,8 +973,6 @@ def render_saldo_em_caixa_dashboard(
                             color="white",
                             line=dict(width=2, color=cor)
                         ),
-                        text=df_cat['Valor'].apply(lambda x: format_currency_short(x)),
-                        textposition="top center",
                         hovertemplate=f"<b>%{{x|%d/%m/%Y}}</b><br>{categoria}: <b>R$ %{{y:,.2f}}</b><extra></extra>"
                     ))
                 
