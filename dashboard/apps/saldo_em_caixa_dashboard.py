@@ -696,12 +696,6 @@ def render_saldo_em_caixa_dashboard(
     
     # --- RENDERIZAÇÃO ---
     
-    # Resumo Semanal e Detalhamento Semanal no topo (fora das tabs)
-    render_resumo_semanal(df_filtered, df_for_kpi, start_date)
-    render_detalhamento_semanal(df_filtered)
-    
-    st.divider()
-    
     # Tabs para análises específicas
     tab_geral, tab_receb, tab_pag, tab_inv, tab2 = st.tabs([
         "📊 Geral", 
@@ -1019,3 +1013,8 @@ def render_saldo_em_caixa_dashboard(
             use_container_width=True,
             height=500
         )
+    
+    # Resumo Semanal e Detalhamento Semanal no final da página
+    st.divider()
+    render_resumo_semanal(df_filtered, df_for_kpi, start_date)
+    render_detalhamento_semanal(df_filtered)
