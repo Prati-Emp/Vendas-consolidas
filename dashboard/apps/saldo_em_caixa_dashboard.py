@@ -721,10 +721,10 @@ def render_charts_and_tables(df_input: pd.DataFrame, df_completo: pd.DataFrame =
             barmode='group',
             hovermode='x unified',
             xaxis=dict(
-                tickformat="%d/%m/%Y",
-                tickangle=-45,
-                showgrid=True,
-                gridcolor='rgba(128, 128, 128, 0.2)'
+                tickformat="%d/%m",
+                showgrid=False,
+                showline=True,
+                linecolor='rgba(255, 255, 255, 0.2)'
             ),
             yaxis=dict(
                 tickformat=",.0f",
