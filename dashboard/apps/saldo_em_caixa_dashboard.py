@@ -101,6 +101,50 @@ def get_category_type(categoria: str) -> str:
         return 'Saída'
     return 'Outros'
 
+def filter_dates_with_valid_data(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Filtra o dataframe para considerar apenas datas que tenham pelo menos uma das 
+    categorias (Pagamentos, Recebimentos ou Resgates) com valores preenchidos.
+    
+    Args:
+        df: DataFrame com colunas 'Data', 'Categoria' e 'Valor'
+        
+    Returns:
+        DataFrame filtrado apenas com datas que têm dados válidos
+    """
+    if df.empty or 'Data' not in df.columns or 'Categoria' not in df.columns or 'Valor' not in df.columns:
+        return df
+    
+    df = df.copy()
+    
+    # Identificar categorias válidas (Pagamentos, Recebimentos, Resgates)
+    cats_validas = []
+    for cat in df['Categoria'].unique():
+        cat_lower = str(cat).lower()
+        if 'pagamento' in cat_lower or 'recebimento' in cat_lower or 'resgate' in cat_lower:
+            cats_validas.append(cat)
+    
+    if not cats_validas:
+        return df
+    
+    # Filtrar apenas registros com categorias válidas e valores > 0
+    df_validos = df[
+        (df['Categoria'].isin(cats_validas)) &
+        (df['Valor'].notna()) &
+        (df['Valor'] != 0)
+    ].copy()
+    
+    if df_validos.empty:
+        return df
+    
+    # Obter lista de datas que têm pelo menos uma categoria válida preenchida
+    datas_validas = df_validos['Data'].dt.date.unique()
+    
+    # Filtrar o dataframe original para manter apenas essas datas
+    df_filtrado = df[df['Data'].dt.date.isin(datas_validas)].copy()
+    
+    return df_filtrado
+
 def calculate_kpis(df: pd.DataFrame, start_date: date, end_date: date) -> Dict:
     """Calcula KPIs comparando com período anterior."""
     
@@ -653,11 +697,18 @@ def render_saldo_em_caixa_dashboard(
         st.warning("⚠️ Nenhum dado válido encontrado após preparação.")
         return
     
+    # Filtrar apenas datas com dados válidos (Pagamentos, Recebimentos ou Resgates)
+    df_prep = filter_dates_with_valid_data(df_prep)
+    
+    if df_prep.empty:
+        st.warning("⚠️ Nenhum dado válido encontrado após filtro de datas.")
+        return
+    
     # --- FILTROS GLOBAIS ---
     with st.sidebar:
         st.header("🔧 Filtros Globais")
         
-        # Data
+        # Data - usar apenas datas que têm dados válidos
         if df_prep['Data'].notna().any():
             min_date = df_prep['Data'].min().date()
             max_date = df_prep['Data'].max().date()
