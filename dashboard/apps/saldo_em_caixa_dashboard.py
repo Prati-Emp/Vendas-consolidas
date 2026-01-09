@@ -777,9 +777,52 @@ def render_saldo_em_caixa_dashboard(
         if cats_receb:
             # Agrupar por dia para gráfico de linha
             df_receb = df_filtered[df_filtered['Categoria'].isin(cats_receb)].groupby('Data')['Valor'].sum().reset_index()
+            df_receb = df_receb.sort_values('Data')
             if not df_receb.empty:
-                fig_receb = px.line(df_receb, x='Data', y='Valor', title='Evolução Diária de Recebimentos', markers=True)
-                fig_receb.update_layout(yaxis=dict(tickformat=",.0f", tickprefix="R$ "))
+                fig_receb = px.line(
+                    df_receb,
+                    x='Data',
+                    y='Valor',
+                    markers=True,
+                    title='Evolução Diária de Recebimentos',
+                    text=df_receb['Valor'].apply(lambda x: format_currency_short(x))
+                )
+                
+                fig_receb.update_traces(
+                    line_color="#10B981",  # Verde (entrada de dinheiro)
+                    line_width=3,
+                    marker_size=8,
+                    marker_color="white",
+                    marker_line_width=2,
+                    marker_line_color="#10B981",
+                    textposition="top center",
+                    hovertemplate="<b>%{x|%d/%m/%Y}</b><br>Recebimentos: <b>R$ %{y:,.2f}</b><extra></extra>"
+                )
+                
+                fig_receb.update_layout(
+                    yaxis_title="Valor (R$)",
+                    xaxis_title=None,
+                    hovermode="x unified",
+                    showlegend=False,
+                    height=450,
+                    xaxis=dict(
+                        tickformat="%d/%m",
+                        showgrid=False,
+                        showline=True,
+                        linecolor='rgba(255, 255, 255, 0.2)'
+                    ),
+                    yaxis=dict(
+                        tickformat=",.0f",
+                        tickprefix="R$ ",
+                        showgrid=True,
+                        gridcolor='rgba(128, 128, 128, 0.1)',
+                        zeroline=False
+                    ),
+                    margin=dict(t=50, l=50, r=50, b=50),
+                    plot_bgcolor='rgba(0,0,0,0)',
+                    paper_bgcolor='rgba(0,0,0,0)'
+                )
+                
                 st.plotly_chart(fig_receb, use_container_width=True)
             else:
                 st.info("Sem dados de Recebimentos para o período selecionado.")
@@ -792,9 +835,52 @@ def render_saldo_em_caixa_dashboard(
         if cats_pag:
             # Agrupar por dia
             df_pag = df_filtered[df_filtered['Categoria'].isin(cats_pag)].groupby('Data')['Valor'].sum().reset_index()
+            df_pag = df_pag.sort_values('Data')
             if not df_pag.empty:
-                fig_pag = px.line(df_pag, x='Data', y='Valor', title='Evolução Diária de Pagamentos', markers=True)
-                fig_pag.update_layout(yaxis=dict(tickformat=",.0f", tickprefix="R$ "))
+                fig_pag = px.line(
+                    df_pag,
+                    x='Data',
+                    y='Valor',
+                    markers=True,
+                    title='Evolução Diária de Pagamentos',
+                    text=df_pag['Valor'].apply(lambda x: format_currency_short(x))
+                )
+                
+                fig_pag.update_traces(
+                    line_color="#EF4444",  # Vermelho (saída de dinheiro)
+                    line_width=3,
+                    marker_size=8,
+                    marker_color="white",
+                    marker_line_width=2,
+                    marker_line_color="#EF4444",
+                    textposition="top center",
+                    hovertemplate="<b>%{x|%d/%m/%Y}</b><br>Pagamentos: <b>R$ %{y:,.2f}</b><extra></extra>"
+                )
+                
+                fig_pag.update_layout(
+                    yaxis_title="Valor (R$)",
+                    xaxis_title=None,
+                    hovermode="x unified",
+                    showlegend=False,
+                    height=450,
+                    xaxis=dict(
+                        tickformat="%d/%m",
+                        showgrid=False,
+                        showline=True,
+                        linecolor='rgba(255, 255, 255, 0.2)'
+                    ),
+                    yaxis=dict(
+                        tickformat=",.0f",
+                        tickprefix="R$ ",
+                        showgrid=True,
+                        gridcolor='rgba(128, 128, 128, 0.1)',
+                        zeroline=False
+                    ),
+                    margin=dict(t=50, l=50, r=50, b=50),
+                    plot_bgcolor='rgba(0,0,0,0)',
+                    paper_bgcolor='rgba(0,0,0,0)'
+                )
+                
                 st.plotly_chart(fig_pag, use_container_width=True)
             else:
                 st.info("Sem dados de Pagamentos para o período selecionado.")
@@ -808,9 +894,52 @@ def render_saldo_em_caixa_dashboard(
         cats_inv_saldo = [c for c in df_filtered['Categoria'].unique() if 'saldo' in str(c).lower() and ('investimento' in str(c).lower() or 'aplica' in str(c).lower())]
         if cats_inv_saldo:
             df_inv_saldo = df_filtered[df_filtered['Categoria'].isin(cats_inv_saldo)].groupby('Data')['Valor'].sum().reset_index()
+            df_inv_saldo = df_inv_saldo.sort_values('Data')
             if not df_inv_saldo.empty:
-                fig_inv_saldo = px.line(df_inv_saldo, x='Data', y='Valor', title='Evolução do Saldo de Investimentos', markers=True)
-                fig_inv_saldo.update_layout(yaxis=dict(tickformat=",.0f", tickprefix="R$ "))
+                fig_inv_saldo = px.line(
+                    df_inv_saldo,
+                    x='Data',
+                    y='Valor',
+                    markers=True,
+                    title='Evolução do Saldo de Investimentos',
+                    text=df_inv_saldo['Valor'].apply(lambda x: format_currency_short(x))
+                )
+                
+                fig_inv_saldo.update_traces(
+                    line_color="#3B82F6",  # Azul (investimentos)
+                    line_width=3,
+                    marker_size=8,
+                    marker_color="white",
+                    marker_line_width=2,
+                    marker_line_color="#3B82F6",
+                    textposition="top center",
+                    hovertemplate="<b>%{x|%d/%m/%Y}</b><br>Saldo de Investimentos: <b>R$ %{y:,.2f}</b><extra></extra>"
+                )
+                
+                fig_inv_saldo.update_layout(
+                    yaxis_title="Valor (R$)",
+                    xaxis_title=None,
+                    hovermode="x unified",
+                    showlegend=False,
+                    height=450,
+                    xaxis=dict(
+                        tickformat="%d/%m",
+                        showgrid=False,
+                        showline=True,
+                        linecolor='rgba(255, 255, 255, 0.2)'
+                    ),
+                    yaxis=dict(
+                        tickformat=",.0f",
+                        tickprefix="R$ ",
+                        showgrid=True,
+                        gridcolor='rgba(128, 128, 128, 0.1)',
+                        zeroline=False
+                    ),
+                    margin=dict(t=50, l=50, r=50, b=50),
+                    plot_bgcolor='rgba(0,0,0,0)',
+                    paper_bgcolor='rgba(0,0,0,0)'
+                )
+                
                 st.plotly_chart(fig_inv_saldo, use_container_width=True)
         
         # 2. Aplicações e Resgates (Barras ou Linhas)
@@ -819,9 +948,74 @@ def render_saldo_em_caixa_dashboard(
         
         if cats_inv_mov:
             df_inv_mov = df_filtered[df_filtered['Categoria'].isin(cats_inv_mov)].groupby(['Data', 'Categoria'])['Valor'].sum().reset_index()
+            df_inv_mov = df_inv_mov.sort_values(['Data', 'Categoria'])
             if not df_inv_mov.empty:
-                fig_inv_mov = px.line(df_inv_mov, x='Data', y='Valor', color='Categoria', title='Aplicações vs Resgates', markers=True)
-                fig_inv_mov.update_layout(yaxis=dict(tickformat=",.0f", tickprefix="R$ "))
+                # Identificar categorias
+                cats_aplic = [c for c in cats_inv_mov if 'aplica' in str(c).lower()]
+                cats_resgate = [c for c in cats_inv_mov if 'resgate' in str(c).lower()]
+                
+                fig_inv_mov = go.Figure()
+                
+                # Adicionar linha para cada categoria
+                for categoria in df_inv_mov['Categoria'].unique():
+                    df_cat = df_inv_mov[df_inv_mov['Categoria'] == categoria].sort_values('Data')
+                    
+                    # Determinar cor baseada na categoria
+                    if any(aplic in str(categoria).lower() for aplic in ['aplica', 'aplicação']):
+                        cor = "#3B82F6"  # Azul para aplicações
+                    elif 'resgate' in str(categoria).lower():
+                        cor = "#F59E0B"  # Laranja para resgates
+                    else:
+                        cor = "#0EA5E9"  # Azul padrão
+                    
+                    fig_inv_mov.add_trace(go.Scatter(
+                        x=df_cat['Data'],
+                        y=df_cat['Valor'],
+                        mode='lines+markers+text',
+                        name=categoria,
+                        line=dict(color=cor, width=3),
+                        marker=dict(
+                            size=8,
+                            color="white",
+                            line=dict(width=2, color=cor)
+                        ),
+                        text=df_cat['Valor'].apply(lambda x: format_currency_short(x)),
+                        textposition="top center",
+                        hovertemplate=f"<b>%{{x|%d/%m/%Y}}</b><br>{categoria}: <b>R$ %{{y:,.2f}}</b><extra></extra>"
+                    ))
+                
+                fig_inv_mov.update_layout(
+                    title='Aplicações vs Resgates',
+                    yaxis_title="Valor (R$)",
+                    xaxis_title=None,
+                    hovermode="x unified",
+                    showlegend=True,
+                    height=450,
+                    legend=dict(
+                        orientation="h",
+                        yanchor="bottom",
+                        y=1.02,
+                        xanchor="right",
+                        x=1
+                    ),
+                    xaxis=dict(
+                        tickformat="%d/%m",
+                        showgrid=False,
+                        showline=True,
+                        linecolor='rgba(255, 255, 255, 0.2)'
+                    ),
+                    yaxis=dict(
+                        tickformat=",.0f",
+                        tickprefix="R$ ",
+                        showgrid=True,
+                        gridcolor='rgba(128, 128, 128, 0.1)',
+                        zeroline=False
+                    ),
+                    margin=dict(t=50, l=50, r=50, b=50),
+                    plot_bgcolor='rgba(0,0,0,0)',
+                    paper_bgcolor='rgba(0,0,0,0)'
+                )
+                
                 st.plotly_chart(fig_inv_mov, use_container_width=True)
             else:
                 st.info("Sem movimentações de investimento no período.")
