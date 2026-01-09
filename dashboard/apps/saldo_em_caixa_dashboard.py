@@ -719,8 +719,53 @@ def render_saldo_em_caixa_dashboard(
         cats_acum = [c for c in df_filtered['Categoria'].unique() if 'saldo acumulado' in str(c).lower()]
         if cats_acum:
             df_acum = df_filtered[df_filtered['Categoria'].isin(cats_acum)].groupby('Data')['Valor'].sum().reset_index()
-            fig_acum = px.line(df_acum, x='Data', y='Valor', title='Evolução do Saldo Acumulado', markers=True)
-            fig_acum.update_layout(yaxis=dict(tickformat=",.0f", tickprefix="R$ "))
+            df_acum = df_acum.sort_values('Data')
+            
+            # Criar gráfico melhorado seguindo padrão do Lead Time
+            fig_acum = px.line(
+                df_acum,
+                x='Data',
+                y='Valor',
+                markers=True,
+                title='Evolução do Saldo Acumulado',
+                text=df_acum['Valor'].apply(lambda x: format_currency_short(x))
+            )
+            
+            fig_acum.update_traces(
+                line_color="#0EA5E9",  # Azul moderno
+                line_width=3,
+                marker_size=8,
+                marker_color="white",
+                marker_line_width=2,
+                marker_line_color="#0EA5E9",
+                textposition="top center",
+                hovertemplate="<b>%{x|%d/%m/%Y}</b><br>Saldo Acumulado: <b>R$ %{y:,.2f}</b><extra></extra>"
+            )
+            
+            fig_acum.update_layout(
+                yaxis_title="Valor (R$)",
+                xaxis_title=None,
+                hovermode="x unified",
+                showlegend=False,
+                height=450,
+                xaxis=dict(
+                    tickformat="%d/%m",
+                    showgrid=False,
+                    showline=True,
+                    linecolor='rgba(255, 255, 255, 0.2)'
+                ),
+                yaxis=dict(
+                    tickformat=",.0f",
+                    tickprefix="R$ ",
+                    showgrid=True,
+                    gridcolor='rgba(128, 128, 128, 0.1)',
+                    zeroline=False
+                ),
+                margin=dict(t=50, l=50, r=50, b=50),
+                plot_bgcolor='rgba(0,0,0,0)',
+                paper_bgcolor='rgba(0,0,0,0)'
+            )
+            
             st.plotly_chart(fig_acum, use_container_width=True)
         
         # Análise de Movimentações também na aba Geral
