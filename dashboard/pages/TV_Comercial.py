@@ -421,19 +421,42 @@ TERMOMETRO_SITUACOES_INATIVAS = {situacao.lower() for situacao in ["Cancelada", 
 TERMOMETRO_DATA_INICIO = date(2025, 1, 1)
 
 MESES_COLUNAS_2025 = {
-    1: "meta_janeiro",
-    2: "meta_fevereiro",
-    3: "meta_marco",
-    4: "meta_abril",
-    5: "meta_maio",
-    6: "meta_junho",
-    7: "meta_julho",
-    8: "meta_agosto",
-    9: "meta_setembro",
-    10: "meta_outubro",
-    11: "meta_novembro",
-    12: "meta_dezembro",
+    1: "jan/25",
+    2: "fev/25",
+    3: "mar/25",
+    4: "abr/25",
+    5: "mai/25",
+    6: "jun/25",
+    7: "jul/25",
+    8: "ago/25",
+    9: "set/25",
+    10: "out/25",
+    11: "nov/25",
+    12: "dez/25",
 }
+
+MESES_COLUNAS_2026 = {
+    1: "jan/26",
+    2: "fev/26",
+    3: "mar/26",
+    4: "abr/26",
+    5: "mai/26",
+    6: "jun/26",
+    7: "jul/26",
+    8: "ago/26",
+    9: "set/26",
+    10: "out/26",
+    11: "nov/26",
+    12: "dez/26",
+}
+
+def get_coluna_meta_atual(ano: int, mes: int) -> str:
+    """Retorna a coluna de meta baseada no ano e mês."""
+    if ano == 2025:
+        return MESES_COLUNAS_2025.get(mes, "")
+    elif ano == 2026:
+        return MESES_COLUNAS_2026.get(mes, "")
+    return ""
 
 MESES_NOME_PT = {
     1: "janeiro",
@@ -834,7 +857,9 @@ tempo_medio_outras_dias, tempo_medio_outras_base = calcular_tempo_medio_conversa
 potencial_vendas_valor = valor_total_reservas * taxa_conversao_geral
 
 
-coluna_meta_atual = MESES_COLUNAS_2025.get(datetime.now().month)
+ano_atual = datetime.now().year
+mes_atual = datetime.now().month
+coluna_meta_atual = get_coluna_meta_atual(ano_atual, mes_atual)
 meta_total = 0.0
 
 metas_df = load_metas()
