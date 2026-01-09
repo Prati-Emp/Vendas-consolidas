@@ -242,6 +242,89 @@ def calculate_kpis(df: pd.DataFrame, start_date: date, end_date: date) -> Dict:
     
     return kpis
 
+def get_last_date_saldos(df: pd.DataFrame, end_date: date) -> Dict[str, float]:
+    """
+    Obtém os saldos da última data disponível no período.
+    
+    Args:
+        df: DataFrame com dados filtrados
+        end_date: Data final do período selecionado
+        
+    Returns:
+        Dicionário com saldo_acumulado, saldo_investimento e saldo_atual
+    """
+    if df.empty:
+        return {
+            'saldo_acumulado': 0.0,
+            'saldo_investimento': 0.0,
+            'saldo_atual': 0.0,
+            'ultima_data': None
+        }
+    
+    # Filtrar apenas datas até a data final
+    df_periodo = df[df['Data'].dt.date <= end_date].copy()
+    
+    if df_periodo.empty:
+        return {
+            'saldo_acumulado': 0.0,
+            'saldo_investimento': 0.0,
+            'saldo_atual': 0.0,
+            'ultima_data': None
+        }
+    
+    # Encontrar a última data disponível
+    ultima_data = df_periodo['Data'].max()
+    df_ultima_data = df_periodo[df_periodo['Data'] == ultima_data].copy()
+    
+    # Identificar categorias
+    cats_acumulado = [c for c in df['Categoria'].unique() if 'saldo acumulado' in str(c).lower()]
+    cats_investimento = [c for c in df['Categoria'].unique() if 'saldo' in str(c).lower() and ('investimento' in str(c).lower() or 'aplica' in str(c).lower())]
+    cats_atual = [c for c in df['Categoria'].unique() if 'saldo atual' in str(c).lower()]
+    
+    # Calcular saldos
+    saldo_acumulado = df_ultima_data[df_ultima_data['Categoria'].isin(cats_acumulado)]['Valor'].sum() if cats_acumulado else 0.0
+    saldo_investimento = df_ultima_data[df_ultima_data['Categoria'].isin(cats_investimento)]['Valor'].sum() if cats_investimento else 0.0
+    saldo_atual = df_ultima_data[df_ultima_data['Categoria'].isin(cats_atual)]['Valor'].sum() if cats_atual else 0.0
+    
+    return {
+        'saldo_acumulado': float(saldo_acumulado),
+        'saldo_investimento': float(saldo_investimento),
+        'saldo_atual': float(saldo_atual),
+        'ultima_data': ultima_data.date() if pd.notna(ultima_data) else None
+    }
+
+def render_last_date_cards(df: pd.DataFrame, end_date: date):
+    """Renderiza cards com saldos da última data disponível no período."""
+    saldos = get_last_date_saldos(df, end_date)
+    
+    if saldos['ultima_data'] is None:
+        return
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.metric(
+            "Saldo Acumulado",
+            format_currency_short(saldos['saldo_acumulado']),
+            help=f"Saldo acumulado em {saldos['ultima_data'].strftime('%d/%m/%Y')}"
+        )
+    
+    with col2:
+        st.metric(
+            "Saldo Investimento",
+            format_currency_short(saldos['saldo_investimento']),
+            help=f"Saldo de investimentos em {saldos['ultima_data'].strftime('%d/%m/%Y')}"
+        )
+    
+    with col3:
+        st.metric(
+            "Saldo Atual",
+            format_currency_short(saldos['saldo_atual']),
+            help=f"Saldo atual em {saldos['ultima_data'].strftime('%d/%m/%Y')}"
+        )
+    
+    st.caption(f"📅 Última data disponível no período: {saldos['ultima_data'].strftime('%d/%m/%Y')}")
+
 def render_kpi_cards(kpis: Dict):
     """Renderiza os cards de KPI no topo."""
     col1, col2, col3, col4 = st.columns(4)
@@ -757,6 +840,10 @@ def render_saldo_em_caixa_dashboard(
     ])
     
     with tab_geral:
+        # Cards com saldos da última data
+        render_last_date_cards(df_filtered, end_date)
+        st.divider()
+        
         # Fluxo de Caixa Acumulado na aba Geral
         st.subheader("Fluxo de Caixa Acumulado")
         # Waterfall simplificado ou Gráfico de Saldo
@@ -815,6 +902,10 @@ def render_saldo_em_caixa_dashboard(
         render_charts_and_tables(df_filtered, df_for_kpi, start_date)
         
     with tab_receb:
+        # Cards com saldos da última data
+        render_last_date_cards(df_filtered, end_date)
+        st.divider()
+        
         st.subheader("Evolução de Recebimentos")
         cats_receb = [c for c in df_filtered['Categoria'].unique() if 'recebimento' in str(c).lower()]
         if cats_receb:
@@ -871,6 +962,10 @@ def render_saldo_em_caixa_dashboard(
             st.info("Nenhuma categoria de Recebimentos encontrada.")
 
     with tab_pag:
+        # Cards com saldos da última data
+        render_last_date_cards(df_filtered, end_date)
+        st.divider()
+        
         st.subheader("Evolução de Pagamentos")
         cats_pag = [c for c in df_filtered['Categoria'].unique() if 'pagamento' in str(c).lower()]
         if cats_pag:
@@ -927,6 +1022,10 @@ def render_saldo_em_caixa_dashboard(
             st.info("Nenhuma categoria de Pagamentos encontrada.")
 
     with tab_inv:
+        # Cards com saldos da última data
+        render_last_date_cards(df_filtered, end_date)
+        st.divider()
+        
         st.subheader("Análise de Investimentos")
         
         # 1. Saldo de Investimentos (Linha)
