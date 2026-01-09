@@ -199,31 +199,14 @@ def get_base_data(start_date: str, end_date: str,
 
 def get_metas_data() -> pd.DataFrame:
     """
-    Obtém dados da tabela meta_vendas_2025.
+    Obtém dados da tabela planilhas.metas_vendas.
     
     Returns:
         DataFrame com dados de metas
     """
     md_conn = get_md_connection()
     
-    sql = """
-    SELECT 
-        "Empreendiemento" as nome_empreendimento,
-        "Codigo empreendimento" as codigo_empreendimento,
-        "jan/25" as meta_janeiro,
-        "fev/25" as meta_fevereiro,
-        "mar/25" as meta_marco,
-        "abr/25" as meta_abril,
-        "mai/25" as meta_maio,
-        "jun/25" as meta_junho,
-        "jul/25" as meta_julho,
-        "ago/25" as meta_agosto,
-        "set/25" as meta_setembro,
-        "out/25" as meta_outubro,
-        "nov/25" as meta_novembro,
-        "dez/25" as meta_dezembro
-    FROM informacoes_consolidadas.meta_vendas_2025
-    """
+    sql = "SELECT * FROM planilhas.metas_vendas"
     
     return md_conn.run_query(sql)
 
@@ -275,37 +258,46 @@ def get_vendas_with_metas(start_date: str, end_date: str,
     ),
     metas AS (
         SELECT 
-            "Codigo empreendimento" as codigo_empreendimento,
-            "Empreendiemento" as nome_empreendimento,
-            "jan/25" as meta_janeiro,
-            "fev/25" as meta_fevereiro,
-            "mar/25" as meta_marco,
-            "abr/25" as meta_abril,
-            "mai/25" as meta_maio,
-            "jun/25" as meta_junho,
-            "jul/25" as meta_julho,
-            "ago/25" as meta_agosto,
-            "set/25" as meta_setembro,
-            "out/25" as meta_outubro,
-            "nov/25" as meta_novembro,
-            "dez/25" as meta_dezembro
-        FROM informacoes_consolidadas.meta_vendas_2025
+            codigo_empreendimento,
+            empreendiemento as nome_empreendimento,
+            "2025_01_01_00_00_00" as meta_janeiro_25, "2025_02_01_00_00_00" as meta_fevereiro_25, "2025_03_01_00_00_00" as meta_marco_25,
+            "2025_04_01_00_00_00" as meta_abril_25, "2025_05_01_00_00_00" as meta_maio_25, "2025_06_01_00_00_00" as meta_junho_25,
+            "2025_07_01_00_00_00" as meta_julho_25, "2025_08_01_00_00_00" as meta_agosto_25, "2025_09_01_00_00_00" as meta_setembro_25,
+            "2025_10_01_00_00_00" as meta_outubro_25, "2025_11_01_00_00_00" as meta_novembro_25, "2025_12_01_00_00_00" as meta_dezembro_25,
+            "2026_01_01_00_00_00" as meta_janeiro_26, "2026_02_01_00_00_00" as meta_fevereiro_26, "2026_03_01_00_00_00" as meta_marco_26,
+            "2026_04_01_00_00_00" as meta_abril_26, "2026_05_01_00_00_00" as meta_maio_26, "2026_06_01_00_00_00" as meta_junho_26,
+            "2026_07_01_00_00_00" as meta_julho_26, "2026_08_01_00_00_00" as meta_agosto_26, "2026_09_01_00_00_00" as meta_setembro_26,
+            "2026_10_01_00_00_00" as meta_outubro_26, "2026_11_01_00_00_00" as meta_novembro_26, "2026_12_01_00_00_00" as meta_dezembro_26
+        FROM planilhas.metas_vendas
     )
     SELECT 
         v.*,
-        CASE v.mes
-            WHEN 1 THEN CAST(m.meta_janeiro AS VARCHAR)
-            WHEN 2 THEN CAST(m.meta_fevereiro AS VARCHAR)
-            WHEN 3 THEN CAST(m.meta_marco AS VARCHAR)
-            WHEN 4 THEN CAST(m.meta_abril AS VARCHAR)
-            WHEN 5 THEN CAST(m.meta_maio AS VARCHAR)
-            WHEN 6 THEN CAST(m.meta_junho AS VARCHAR)
-            WHEN 7 THEN CAST(m.meta_julho AS VARCHAR)
-            WHEN 8 THEN CAST(m.meta_agosto AS VARCHAR)
-            WHEN 9 THEN CAST(m.meta_setembro AS VARCHAR)
-            WHEN 10 THEN CAST(m.meta_outubro AS VARCHAR)
-            WHEN 11 THEN CAST(m.meta_novembro AS VARCHAR)
-            WHEN 12 THEN CAST(m.meta_dezembro AS VARCHAR)
+        CASE 
+            WHEN v.ano = 2025 AND v.mes = 1 THEN CAST(m.meta_janeiro_25 AS VARCHAR)
+            WHEN v.ano = 2025 AND v.mes = 2 THEN CAST(m.meta_fevereiro_25 AS VARCHAR)
+            WHEN v.ano = 2025 AND v.mes = 3 THEN CAST(m.meta_marco_25 AS VARCHAR)
+            WHEN v.ano = 2025 AND v.mes = 4 THEN CAST(m.meta_abril_25 AS VARCHAR)
+            WHEN v.ano = 2025 AND v.mes = 5 THEN CAST(m.meta_maio_25 AS VARCHAR)
+            WHEN v.ano = 2025 AND v.mes = 6 THEN CAST(m.meta_junho_25 AS VARCHAR)
+            WHEN v.ano = 2025 AND v.mes = 7 THEN CAST(m.meta_julho_25 AS VARCHAR)
+            WHEN v.ano = 2025 AND v.mes = 8 THEN CAST(m.meta_agosto_25 AS VARCHAR)
+            WHEN v.ano = 2025 AND v.mes = 9 THEN CAST(m.meta_setembro_25 AS VARCHAR)
+            WHEN v.ano = 2025 AND v.mes = 10 THEN CAST(m.meta_outubro_25 AS VARCHAR)
+            WHEN v.ano = 2025 AND v.mes = 11 THEN CAST(m.meta_novembro_25 AS VARCHAR)
+            WHEN v.ano = 2025 AND v.mes = 12 THEN CAST(m.meta_dezembro_25 AS VARCHAR)
+            WHEN v.ano = 2026 AND v.mes = 1 THEN CAST(m.meta_janeiro_26 AS VARCHAR)
+            WHEN v.ano = 2026 AND v.mes = 2 THEN CAST(m.meta_fevereiro_26 AS VARCHAR)
+            WHEN v.ano = 2026 AND v.mes = 3 THEN CAST(m.meta_marco_26 AS VARCHAR)
+            WHEN v.ano = 2026 AND v.mes = 4 THEN CAST(m.meta_abril_26 AS VARCHAR)
+            WHEN v.ano = 2026 AND v.mes = 5 THEN CAST(m.meta_maio_26 AS VARCHAR)
+            WHEN v.ano = 2026 AND v.mes = 6 THEN CAST(m.meta_junho_26 AS VARCHAR)
+            WHEN v.ano = 2026 AND v.mes = 7 THEN CAST(m.meta_julho_26 AS VARCHAR)
+            WHEN v.ano = 2026 AND v.mes = 8 THEN CAST(m.meta_agosto_26 AS VARCHAR)
+            WHEN v.ano = 2026 AND v.mes = 9 THEN CAST(m.meta_setembro_26 AS VARCHAR)
+            WHEN v.ano = 2026 AND v.mes = 10 THEN CAST(m.meta_outubro_26 AS VARCHAR)
+            WHEN v.ano = 2026 AND v.mes = 11 THEN CAST(m.meta_novembro_26 AS VARCHAR)
+            WHEN v.ano = 2026 AND v.mes = 12 THEN CAST(m.meta_dezembro_26 AS VARCHAR)
+            ELSE '0'
         END as meta_mes
     FROM vendas v
     LEFT JOIN metas m ON v.enterpriseId = m.codigo_empreendimento
@@ -432,7 +424,7 @@ def get_kpis(start_date: str, end_date: str,
 def get_metas_periodo(start_date: str, end_date: str, 
                      empreendimento: Optional[str] = None) -> float:
     """
-    Obtém meta total para o período selecionado.
+    Obtém meta total para o período selecionado (suporta 2025 e 2026).
     
     Args:
         start_date: Data inicial
@@ -446,8 +438,25 @@ def get_metas_periodo(start_date: str, end_date: str,
     
     # Converter datas para ano/mês
     from datetime import datetime
-    start_dt = datetime.strptime(start_date, '%Y-%m-%d')
-    end_dt = datetime.strptime(end_date, '%Y-%m-%d')
+    try:
+        start_dt = datetime.strptime(start_date, '%Y-%m-%d')
+        end_dt = datetime.strptime(end_date, '%Y-%m-%d')
+    except ValueError:
+        return 0.0
+    
+    # Definição das colunas de metas (2025 e 2026)
+    cols_metas = """
+        codigo_empreendimento,
+        empreendiemento as nome_empreendimento,
+        "2025_01_01_00_00_00" as meta_janeiro_25, "2025_02_01_00_00_00" as meta_fevereiro_25, "2025_03_01_00_00_00" as meta_marco_25,
+        "2025_04_01_00_00_00" as meta_abril_25, "2025_05_01_00_00_00" as meta_maio_25, "2025_06_01_00_00_00" as meta_junho_25,
+        "2025_07_01_00_00_00" as meta_julho_25, "2025_08_01_00_00_00" as meta_agosto_25, "2025_09_01_00_00_00" as meta_setembro_25,
+        "2025_10_01_00_00_00" as meta_outubro_25, "2025_11_01_00_00_00" as meta_novembro_25, "2025_12_01_00_00_00" as meta_dezembro_25,
+        "2026_01_01_00_00_00" as meta_janeiro_26, "2026_02_01_00_00_00" as meta_fevereiro_26, "2026_03_01_00_00_00" as meta_marco_26,
+        "2026_04_01_00_00_00" as meta_abril_26, "2026_05_01_00_00_00" as meta_maio_26, "2026_06_01_00_00_00" as meta_junho_26,
+        "2026_07_01_00_00_00" as meta_julho_26, "2026_08_01_00_00_00" as meta_agosto_26, "2026_09_01_00_00_00" as meta_setembro_26,
+        "2026_10_01_00_00_00" as meta_outubro_26, "2026_11_01_00_00_00" as meta_novembro_26, "2026_12_01_00_00_00" as meta_dezembro_26
+    """
     
     # Se empreendimento específico foi selecionado, precisamos buscar o enterpriseId correspondente
     if empreendimento and empreendimento != "Todos":
@@ -468,42 +477,16 @@ def get_metas_periodo(start_date: str, end_date: str,
         # Construir query para somar metas do período com filtro por enterpriseId
         sql = f"""
         SELECT 
-            "Codigo empreendimento" as codigo_empreendimento,
-            "Empreendiemento" as nome_empreendimento,
-            "jan/25" as meta_janeiro,
-            "fev/25" as meta_fevereiro,
-            "mar/25" as meta_marco,
-            "abr/25" as meta_abril,
-            "mai/25" as meta_maio,
-            "jun/25" as meta_junho,
-            "jul/25" as meta_julho,
-            "ago/25" as meta_agosto,
-            "set/25" as meta_setembro,
-            "out/25" as meta_outubro,
-            "nov/25" as meta_novembro,
-            "dez/25" as meta_dezembro
-        FROM informacoes_consolidadas.meta_vendas_2025
-        WHERE "Codigo empreendimento" = '{enterprise_id}'
+            {cols_metas}
+        FROM planilhas.metas_vendas
+        WHERE codigo_empreendimento = '{enterprise_id}'
         """
     else:
         # Construir query para somar metas do período (todos os empreendimentos)
-        sql = """
+        sql = f"""
         SELECT 
-            "Codigo empreendimento" as codigo_empreendimento,
-            "Empreendiemento" as nome_empreendimento,
-            "jan/25" as meta_janeiro,
-            "fev/25" as meta_fevereiro,
-            "mar/25" as meta_marco,
-            "abr/25" as meta_abril,
-            "mai/25" as meta_maio,
-            "jun/25" as meta_junho,
-            "jul/25" as meta_julho,
-            "ago/25" as meta_agosto,
-            "set/25" as meta_setembro,
-            "out/25" as meta_outubro,
-            "nov/25" as meta_novembro,
-            "dez/25" as meta_dezembro
-        FROM informacoes_consolidadas.meta_vendas_2025
+            {cols_metas}
+        FROM planilhas.metas_vendas
         """
     
     result = md_conn.run_query(sql)
@@ -513,18 +496,39 @@ def get_metas_periodo(start_date: str, end_date: str,
     
     total_meta = 0.0
     
+    mes_map = {
+        1: 'janeiro', 2: 'fevereiro', 3: 'marco', 4: 'abril', 5: 'maio', 6: 'junho',
+        7: 'julho', 8: 'agosto', 9: 'setembro', 10: 'outubro', 11: 'novembro', 12: 'dezembro'
+    }
+    
     for _, row in result.iterrows():
-        # Somar metas dos meses no período
-        for mes in range(1, 13):
-            if start_dt.month <= mes <= end_dt.month and start_dt.year <= 2025 <= end_dt.year:
-                col_name = f"meta_{['janeiro', 'fevereiro', 'marco', 'abril', 'maio', 'junho', 
-                                  'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'][mes-1]}"
-                meta_valor = row[col_name]
-                if pd.notna(meta_valor) and meta_valor != 0:
-                    # Tratar formato brasileiro (vírgula como separador decimal)
-                    if isinstance(meta_valor, str):
-                        meta_valor = meta_valor.replace(',', '.')
-                    total_meta += float(meta_valor)
+        # Iterar mês a mês do período selecionado
+        current_year = start_dt.year
+        current_month = start_dt.month
+        
+        while (current_year < end_dt.year) or (current_year == end_dt.year and current_month <= end_dt.month):
+            if current_year in [2025, 2026]:
+                col_name = f"meta_{mes_map[current_month]}_{str(current_year)[-2:]}"
+                if col_name in row:
+                    meta_valor = row[col_name]
+                    if pd.notna(meta_valor) and meta_valor != 0:
+                        # Tratar formato brasileiro (vírgula como separador decimal) e converter string
+                        if isinstance(meta_valor, str):
+                            meta_valor = meta_valor.replace(',', '.')
+                            # Remover caracteres não numéricos se necessário, mas replace deve bastar
+                            try:
+                                total_meta += float(meta_valor)
+                            except ValueError:
+                                pass # Ignorar valores inválidos
+                        else:
+                            total_meta += float(meta_valor)
+            
+            # Avançar para o próximo mês
+            if current_month == 12:
+                current_month = 1
+                current_year += 1
+            else:
+                current_month += 1
     
     return total_meta
 
