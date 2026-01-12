@@ -84,11 +84,11 @@ def format_compact_currency(value):
     """
     try:
         if value >= 1_000_000_000:  # Bilhões
-            return f"R$ {value/1_000_000_000:.1f}Bi"
+            return f"R$ {value/1_000_000_000:.3f}Bi"
         elif value >= 1_000_000:  # Milhões
-            return f"R$ {value/1_000_000:.1f}Mi"
+            return f"R$ {value/1_000_000:.3f}Mi"
         elif value >= 1_000:  # Milhares
-            return f"R$ {value/1_000:.1f}Mil"
+            return f"R$ {value/1_000:.3f}Mil"
         else:
             return f"R$ {value:.0f}"
     except (TypeError, ValueError):
