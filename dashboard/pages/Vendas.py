@@ -188,7 +188,7 @@ def render_kpis(kpis: dict):
     with col4:
         st.metric(
             "Maior Venda",
-            format_compact_currency(kpis.get('maior_venda', 0)),
+            format_compact_currency_no_decimals(kpis.get('maior_venda', 0)),
             help="Maior valor de venda individual"
         )
     
