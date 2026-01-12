@@ -48,6 +48,7 @@ from utils.formatters import (
     format_int, 
     format_percent, 
     format_compact_currency,
+    format_compact_currency_no_decimals,
     format_kpi_value,
     normalizar_nome_empreendimento
 )
@@ -180,7 +181,7 @@ def render_kpis(kpis: dict):
     with col3:
         st.metric(
             "Ticket Médio",
-            format_compact_currency(kpis.get('ticket_medio', 0)),
+            format_compact_currency_no_decimals(kpis.get('ticket_medio', 0)),
             help="Valor médio por venda"
         )
     
@@ -194,7 +195,7 @@ def render_kpis(kpis: dict):
     with col5:
         st.metric(
             "Menor Venda",
-            format_compact_currency(kpis.get('menor_venda', 0)),
+            format_compact_currency_no_decimals(kpis.get('menor_venda', 0)),
             help="Menor valor de venda individual"
         )
 

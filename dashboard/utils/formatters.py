@@ -94,6 +94,28 @@ def format_compact_currency(value):
     except (TypeError, ValueError):
         return f"R$ {value}"
 
+def format_compact_currency_no_decimals(value):
+    """
+    Formata valor monetário de forma compacta para KPIs sem casas decimais.
+    
+    Args:
+        value: Valor numérico a ser formatado
+        
+    Returns:
+        String formatada compacta sem decimais
+    """
+    try:
+        if value >= 1_000_000_000:  # Bilhões
+            return f"R$ {value/1_000_000_000:.0f}Bi"
+        elif value >= 1_000_000:  # Milhões
+            return f"R$ {value/1_000_000:.0f}Mi"
+        elif value >= 1_000:  # Milhares
+            return f"R$ {value/1_000:.0f}Mil"
+        else:
+            return f"R$ {value:.0f}"
+    except (TypeError, ValueError):
+        return f"R$ {value}"
+
 def format_kpi_value(value, format_type="currency"):
     """
     Formata valor para exibição em KPIs.
