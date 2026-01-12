@@ -609,11 +609,17 @@ def main():
         data_min = date(2025, 1, 1)
         data_max = date.today()
     
+    # Data inicial mínima travada em 2026/01/01
+    data_inicial_minima = date(2026, 1, 1)
+    # Garantir que o mínimo seja pelo menos 2026/01/01
+    if data_min < data_inicial_minima:
+        data_min = data_inicial_minima
+    
     # Filtros
     data_inicial = st.sidebar.date_input(
         "Data Inicial",
-        value=date(2025, 1, 1),
-        min_value=data_min,
+        value=data_inicial_minima,
+        min_value=data_inicial_minima,
         max_value=data_max
     )
     
