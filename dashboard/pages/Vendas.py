@@ -610,10 +610,16 @@ def main():
         data_min = date(2025, 1, 1)
         data_max = date.today()
     
+    # Data inicial padrão em 2026, mas permitindo voltar para datas anteriores
+    data_inicial_padrao = date(2026, 1, 1)
+    # Garantir que a data padrão não seja menor que a data mínima disponível
+    if data_inicial_padrao < data_min:
+        data_inicial_padrao = data_min
+    
     # Filtros
     data_inicial = st.sidebar.date_input(
         "Data Inicial",
-        value=data_min,
+        value=data_inicial_padrao,
         min_value=data_min,
         max_value=data_max
     )
