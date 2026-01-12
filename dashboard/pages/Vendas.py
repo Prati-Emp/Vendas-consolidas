@@ -36,6 +36,8 @@ from utils.md_conn import (
     get_unique_values,
     get_vendas_with_metas,
     get_metas_periodo,
+    get_metas_periodo_internas,
+    get_metas_periodo_externas,
     get_analytics_by_dimension,
     get_analytics_corretor,
     get_analytics_imobiliaria,
@@ -690,11 +692,24 @@ def main():
     data_inicial_str = data_inicial.strftime('%Y-%m-%d')
     data_final_str = data_final.strftime('%Y-%m-%d')
 
+    # Calcular metas para cada aba
     try:
         meta_total_periodo = get_metas_periodo(data_inicial_str, data_final_str, empreendimento_selecionado)
     except Exception as e:
-        st.error(f"❌ Erro ao calcular metas: {str(e)}")
+        st.error(f"❌ Erro ao calcular metas gerais: {str(e)}")
         meta_total_periodo = 0.0
+    
+    try:
+        meta_total_periodo_internas = get_metas_periodo_internas(data_inicial_str, data_final_str, empreendimento_selecionado)
+    except Exception as e:
+        st.error(f"❌ Erro ao calcular metas internas: {str(e)}")
+        meta_total_periodo_internas = 0.0
+    
+    try:
+        meta_total_periodo_externas = get_metas_periodo_externas(data_inicial_str, data_final_str, empreendimento_selecionado)
+    except Exception as e:
+        st.error(f"❌ Erro ao calcular metas externas: {str(e)}")
+        meta_total_periodo_externas = 0.0
 
     imobiliarias_internas, imobiliarias_externas = split_imobiliarias_por_origem(imobiliarias_disponiveis)
 
@@ -718,9 +733,9 @@ def main():
             midia_selecionada, tipovenda_selecionada,
             empreendimento_selecionado, corretor_selecionado,
             imobiliaria_selecionada,
-            meta_total_periodo,
+            meta_total_periodo_internas,
             imobiliarias_override=imobiliarias_internas,
-            meta_ratio=0.3,
+            meta_ratio=1.0,  # Meta já vem calculada corretamente (30% em 2025, 100% da meta específica em 2026+)
             mostrar_analise_imobiliaria=False,
             mostrar_house_analysis=False,
             mostrar_vpl_imobiliaria=False
@@ -733,9 +748,9 @@ def main():
             midia_selecionada, tipovenda_selecionada,
             empreendimento_selecionado, corretor_selecionado,
             imobiliaria_selecionada,
-            meta_total_periodo,
+            meta_total_periodo_externas,
             imobiliarias_override=imobiliarias_externas,
-            meta_ratio=0.7,
+            meta_ratio=1.0,  # Meta já vem calculada corretamente (70% em 2025, 100% da meta específica em 2026+)
             mostrar_house_analysis=False
         )
 

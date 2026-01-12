@@ -640,6 +640,320 @@ def get_metas_periodo(start_date: str, end_date: str,
     
     return total_meta
 
+def get_metas_periodo_internas(start_date: str, end_date: str, 
+                               empreendimento: Optional[str] = None) -> float:
+    """
+    Obtém meta total de vendas internas para o período selecionado.
+    A partir de 2026, usa a tabela específica de metas internas.
+    Até dez/2025, usa a meta geral (mesma lógica de get_metas_periodo).
+    
+    Args:
+        start_date: Data inicial
+        end_date: Data final
+        empreendimento: Nome do empreendimento (opcional)
+        
+    Returns:
+        Valor total da meta
+    """
+    md_conn = get_md_connection()
+    
+    # Converter datas para ano/mês
+    from datetime import datetime, date
+    start_dt = datetime.strptime(start_date, '%Y-%m-%d')
+    end_dt = datetime.strptime(end_date, '%Y-%m-%d')
+    
+    # Verificar se há datas em 2026 ou depois
+    tem_2026_ou_depois = end_dt.year >= 2026
+    tem_2025_ou_antes = start_dt.year <= 2025
+    
+    total_meta = 0.0
+    meses_abreviacoes = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 
+                         'jul', 'ago', 'set', 'out', 'nov', 'dez']
+    
+    # Se empreendimento específico foi selecionado, precisamos buscar o enterpriseId correspondente
+    enterprise_id = None
+    if empreendimento and empreendimento != "Todos":
+        sql_emp = """
+        SELECT DISTINCT enterpriseId 
+        FROM informacoes_consolidadas.sienge_vendas_consolidadas 
+        WHERE nome_empreendimento = ?
+        LIMIT 1
+        """
+        emp_result = md_conn.run_query(sql_emp, [empreendimento])
+        if len(emp_result) > 0:
+            enterprise_id = emp_result.iloc[0]['enterpriseId']
+    
+    # Processar período de 2025 ou antes (usar meta geral)
+    if tem_2025_ou_antes:
+        # Limitar end_date para dez/2025 se necessário
+        periodo_2025_end = min(end_dt.date(), date(2025, 12, 31))
+        
+        # Buscar da meta geral uma única vez
+        if enterprise_id:
+            sql = f"""
+            SELECT "jan/25", "fev/25", "mar/25", "abr/25", "mai/25", "jun/25",
+                   "jul/25", "ago/25", "set/25", "out/25", "nov/25", "dez/25"
+            FROM informacoes_consolidadas.meta_vendas
+            WHERE "Codigo empreendimento" = '{enterprise_id}'
+            """
+        else:
+            sql = """
+            SELECT "jan/25", "fev/25", "mar/25", "abr/25", "mai/25", "jun/25",
+                   "jul/25", "ago/25", "set/25", "out/25", "nov/25", "dez/25"
+            FROM informacoes_consolidadas.meta_vendas
+            """
+        
+        result = md_conn.run_query(sql)
+        
+        # Processar meses de 2025 no período
+        current_date = start_dt.date()
+        while current_date <= periodo_2025_end and current_date.year <= 2025:
+            ano = current_date.year
+            mes = current_date.month
+            
+            if ano == 2025:
+                col_name = f"{meses_abreviacoes[mes-1]}/25"
+                
+                for _, row in result.iterrows():
+                    if col_name in row.index:
+                        meta_valor = row[col_name]
+                        if pd.notna(meta_valor) and meta_valor != 0:
+                            if isinstance(meta_valor, str):
+                                meta_valor = meta_valor.replace(',', '.')
+                            try:
+                                # Aplicar ratio de 30% para vendas internas em 2025
+                                total_meta += float(meta_valor) * 0.3
+                            except (ValueError, TypeError):
+                                pass
+            
+            # Avançar para o próximo mês
+            if mes == 12:
+                current_date = date(ano + 1, 1, 1)
+            else:
+                current_date = date(ano, mes + 1, 1)
+    
+    # Processar período de 2026 ou depois (usar meta específica de vendas internas)
+    if tem_2026_ou_depois:
+        # Limitar start_date para jan/2026 se necessário
+        periodo_2026_start = max(start_dt.date(), date(2026, 1, 1))
+        end_date_obj = end_dt.date()
+        
+        # Determinar quais anos precisamos buscar (2026, 2027, etc.)
+        anos_necessarios = set()
+        current_date = periodo_2026_start
+        while current_date <= end_date_obj:
+            if current_date.year >= 2026:
+                anos_necessarios.add(current_date.year)
+            if current_date.month == 12:
+                current_date = date(current_date.year + 1, 1, 1)
+            else:
+                current_date = date(current_date.year, current_date.month + 1, 1)
+        
+        # Buscar dados para cada ano necessário
+        for ano in sorted(anos_necessarios):
+            ano_curto = ano % 100
+            colunas_ano = [f'"{mes}/{ano_curto}"' for mes in meses_abreviacoes]
+            colunas_str = ', '.join(colunas_ano)
+            
+            # Buscar da meta específica de vendas internas
+            if enterprise_id:
+                sql = f"""
+                SELECT {colunas_str}
+                FROM informacoes_consolidadas.metas_vendas_internas
+                WHERE "Codigo empreendimento" = '{enterprise_id}'
+                """
+            else:
+                sql = f"""
+                SELECT {colunas_str}
+                FROM informacoes_consolidadas.metas_vendas_internas
+                """
+            
+            result = md_conn.run_query(sql)
+            
+            # Processar meses do ano no período
+            current_date = max(periodo_2026_start, date(ano, 1, 1))
+            ano_end = min(end_date_obj, date(ano, 12, 31))
+            
+            while current_date <= ano_end and current_date.year == ano:
+                mes = current_date.month
+                col_name = f"{meses_abreviacoes[mes-1]}/{ano_curto}"
+                
+                for _, row in result.iterrows():
+                    if col_name in row.index:
+                        meta_valor = row[col_name]
+                        if pd.notna(meta_valor) and meta_valor != 0:
+                            if isinstance(meta_valor, str):
+                                meta_valor = meta_valor.replace(',', '.')
+                            try:
+                                total_meta += float(meta_valor)
+                            except (ValueError, TypeError):
+                                pass
+                
+                # Avançar para o próximo mês
+                if mes == 12:
+                    current_date = date(ano + 1, 1, 1)
+                else:
+                    current_date = date(ano, mes + 1, 1)
+    
+    return total_meta
+
+def get_metas_periodo_externas(start_date: str, end_date: str, 
+                               empreendimento: Optional[str] = None) -> float:
+    """
+    Obtém meta total de vendas externas para o período selecionado.
+    A partir de 2026, usa a tabela específica de metas externas.
+    Até dez/2025, usa a meta geral (mesma lógica de get_metas_periodo).
+    
+    Args:
+        start_date: Data inicial
+        end_date: Data final
+        empreendimento: Nome do empreendimento (opcional)
+        
+    Returns:
+        Valor total da meta
+    """
+    md_conn = get_md_connection()
+    
+    # Converter datas para ano/mês
+    from datetime import datetime, date
+    start_dt = datetime.strptime(start_date, '%Y-%m-%d')
+    end_dt = datetime.strptime(end_date, '%Y-%m-%d')
+    
+    # Verificar se há datas em 2026 ou depois
+    tem_2026_ou_depois = end_dt.year >= 2026
+    tem_2025_ou_antes = start_dt.year <= 2025
+    
+    total_meta = 0.0
+    meses_abreviacoes = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 
+                         'jul', 'ago', 'set', 'out', 'nov', 'dez']
+    
+    # Se empreendimento específico foi selecionado, precisamos buscar o enterpriseId correspondente
+    enterprise_id = None
+    if empreendimento and empreendimento != "Todos":
+        sql_emp = """
+        SELECT DISTINCT enterpriseId 
+        FROM informacoes_consolidadas.sienge_vendas_consolidadas 
+        WHERE nome_empreendimento = ?
+        LIMIT 1
+        """
+        emp_result = md_conn.run_query(sql_emp, [empreendimento])
+        if len(emp_result) > 0:
+            enterprise_id = emp_result.iloc[0]['enterpriseId']
+    
+    # Processar período de 2025 ou antes (usar meta geral)
+    if tem_2025_ou_antes:
+        # Limitar end_date para dez/2025 se necessário
+        periodo_2025_end = min(end_dt.date(), date(2025, 12, 31))
+        
+        # Buscar da meta geral uma única vez
+        if enterprise_id:
+            sql = f"""
+            SELECT "jan/25", "fev/25", "mar/25", "abr/25", "mai/25", "jun/25",
+                   "jul/25", "ago/25", "set/25", "out/25", "nov/25", "dez/25"
+            FROM informacoes_consolidadas.meta_vendas
+            WHERE "Codigo empreendimento" = '{enterprise_id}'
+            """
+        else:
+            sql = """
+            SELECT "jan/25", "fev/25", "mar/25", "abr/25", "mai/25", "jun/25",
+                   "jul/25", "ago/25", "set/25", "out/25", "nov/25", "dez/25"
+            FROM informacoes_consolidadas.meta_vendas
+            """
+        
+        result = md_conn.run_query(sql)
+        
+        # Processar meses de 2025 no período
+        current_date = start_dt.date()
+        while current_date <= periodo_2025_end and current_date.year <= 2025:
+            ano = current_date.year
+            mes = current_date.month
+            
+            if ano == 2025:
+                col_name = f"{meses_abreviacoes[mes-1]}/25"
+                
+                for _, row in result.iterrows():
+                    if col_name in row.index:
+                        meta_valor = row[col_name]
+                        if pd.notna(meta_valor) and meta_valor != 0:
+                            if isinstance(meta_valor, str):
+                                meta_valor = meta_valor.replace(',', '.')
+                            try:
+                                # Aplicar ratio de 70% para vendas externas em 2025
+                                total_meta += float(meta_valor) * 0.7
+                            except (ValueError, TypeError):
+                                pass
+            
+            # Avançar para o próximo mês
+            if mes == 12:
+                current_date = date(ano + 1, 1, 1)
+            else:
+                current_date = date(ano, mes + 1, 1)
+    
+    # Processar período de 2026 ou depois (usar meta específica de vendas externas)
+    if tem_2026_ou_depois:
+        # Limitar start_date para jan/2026 se necessário
+        periodo_2026_start = max(start_dt.date(), date(2026, 1, 1))
+        end_date_obj = end_dt.date()
+        
+        # Determinar quais anos precisamos buscar (2026, 2027, etc.)
+        anos_necessarios = set()
+        current_date = periodo_2026_start
+        while current_date <= end_date_obj:
+            if current_date.year >= 2026:
+                anos_necessarios.add(current_date.year)
+            if current_date.month == 12:
+                current_date = date(current_date.year + 1, 1, 1)
+            else:
+                current_date = date(current_date.year, current_date.month + 1, 1)
+        
+        # Buscar dados para cada ano necessário
+        for ano in sorted(anos_necessarios):
+            ano_curto = ano % 100
+            colunas_ano = [f'"{mes}/{ano_curto}"' for mes in meses_abreviacoes]
+            colunas_str = ', '.join(colunas_ano)
+            
+            # Buscar da meta específica de vendas externas
+            if enterprise_id:
+                sql = f"""
+                SELECT {colunas_str}
+                FROM informacoes_consolidadas.metas_vendas_externas
+                WHERE "Codigo empreendimento" = '{enterprise_id}'
+                """
+            else:
+                sql = f"""
+                SELECT {colunas_str}
+                FROM informacoes_consolidadas.metas_vendas_externas
+                """
+            
+            result = md_conn.run_query(sql)
+            
+            # Processar meses do ano no período
+            current_date = max(periodo_2026_start, date(ano, 1, 1))
+            ano_end = min(end_date_obj, date(ano, 12, 31))
+            
+            while current_date <= ano_end and current_date.year == ano:
+                mes = current_date.month
+                col_name = f"{meses_abreviacoes[mes-1]}/{ano_curto}"
+                
+                for _, row in result.iterrows():
+                    if col_name in row.index:
+                        meta_valor = row[col_name]
+                        if pd.notna(meta_valor) and meta_valor != 0:
+                            if isinstance(meta_valor, str):
+                                meta_valor = meta_valor.replace(',', '.')
+                            try:
+                                total_meta += float(meta_valor)
+                            except (ValueError, TypeError):
+                                pass
+                
+                # Avançar para o próximo mês
+                if mes == 12:
+                    current_date = date(ano + 1, 1, 1)
+                else:
+                    current_date = date(ano, mes + 1, 1)
+    
+    return total_meta
+
 def get_top_empreendimentos(start_date: str, end_date: str,
                            midia: Optional[List[str]] = None,
                            tipovenda: Optional[List[str]] = None,
