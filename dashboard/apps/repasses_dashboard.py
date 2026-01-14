@@ -784,7 +784,8 @@ def render_analise_workflow(
 
 
 def render_contratos_registrados(
-    df_filtered_global: pd.DataFrame, 
+    df_filtered_global: pd.DataFrame,
+    df_prep_completo: pd.DataFrame,
     empreendimentos_filter: List[str] = None,
     start_date_global: date = None,
     end_date_global: date = None
@@ -792,33 +793,47 @@ def render_contratos_registrados(
     """Renderiza a aba de Contratos Registrados com filtros específicos."""
     
     st.subheader("✅ Contratos Registrados")
-    st.caption("Visualização dedicada aos contratos finalizados, com filtros baseados na data de registro.")
+    st.caption("Visualização dedicada aos contratos finalizados.")
     
-    # Aplicar filtro global primeiro (já vem aplicado em df_filtered_global)
-    df_filtered = df_filtered_global.copy()
-    
-    # 1. Filtro de Empreendimento (Global) - já aplicado, mas verificando se precisa ajustar
-    if empreendimentos_filter:
-        df_filtered = df_filtered[df_filtered["empreendimento"].isin(empreendimentos_filter)]
-        
-    # 2. Filtro de Situação (Fixo: Contrato Registrado)
-    target_status = "Contrato Registrado"
-    if "situacao_resumida" in df_filtered.columns:
-        df_registrado = df_filtered[df_filtered["situacao_resumida"] == target_status]
-    elif "situacao_detalhada" in df_filtered.columns:
-        df_registrado = df_filtered[df_filtered["situacao_detalhada"] == target_status]
-    else:
-        df_registrado = pd.DataFrame()
-    
-    # --- Filtros Específicos Opcionais para esta aba ---
-    st.markdown("#### Filtros Opcionais (Data de Registro)")
-    st.caption("Use os filtros abaixo para filtrar por data de registro. Se não preencher, serão considerados todos os contratos registrados do período global selecionado.")
+    # --- Filtros Opcionais para esta aba ---
+    st.markdown("#### Filtro Opcional (Data de Registro)")
+    st.caption(
+        "**Filtro padrão:** Os contratos são filtrados pela data de venda ou data de cadastro conforme o filtro global selecionado.\n\n"
+        "**Filtro opcional:** Ative o filtro abaixo para visualizar todos os títulos registrados no período selecionado, "
+        "independente da data de venda ou cadastro. Isso permite analisar quantos contratos foram registrados em um período específico."
+    )
     
     usar_filtro_registro = st.checkbox(
-        "Usar filtro de data de registro",
+        "Usar filtro de data de registro (independente da data de venda)",
         value=False,
         key="usar_filtro_registro"
     )
+    
+    # Decidir qual dataframe usar baseado no filtro opcional
+    if usar_filtro_registro:
+        # Quando o filtro opcional está ativo, usar dados completos (antes do filtro global de data)
+        # Aplicar apenas filtros de empreendimento e situação
+        df_base = df_prep_completo.copy()
+        
+        # Aplicar filtro de empreendimento se houver
+        if empreendimentos_filter:
+            df_base = df_base[df_base["empreendimento"].isin(empreendimentos_filter)]
+    else:
+        # Quando o filtro opcional está inativo, usar dados já filtrados pelo filtro global
+        df_base = df_filtered_global.copy()
+        
+        # Aplicar filtro de empreendimento se houver (pode já estar aplicado, mas garantindo)
+        if empreendimentos_filter:
+            df_base = df_base[df_base["empreendimento"].isin(empreendimentos_filter)]
+    
+    # Filtro de Situação (Fixo: Contrato Registrado)
+    target_status = "Contrato Registrado"
+    if "situacao_resumida" in df_base.columns:
+        df_registrado = df_base[df_base["situacao_resumida"] == target_status]
+    elif "situacao_detalhada" in df_base.columns:
+        df_registrado = df_base[df_base["situacao_detalhada"] == target_status]
+    else:
+        df_registrado = pd.DataFrame()
     
     start_date_reg = None
     end_date_reg = None
@@ -826,12 +841,12 @@ def render_contratos_registrados(
     if usar_filtro_registro:
         col_filtros1, col_filtros2 = st.columns(2)
         
-        # Determinar intervalo padrão para o filtro específico
+        # Determinar intervalo padrão para o filtro específico baseado em todos os dados
         min_date_esp = date.today()
         max_date_esp = date.today()
         
-        if "data_alteracao_status" in df_registrado.columns:
-            valid_dates = df_registrado["data_alteracao_status"].dropna()
+        if "data_alteracao_status" in df_prep_completo.columns:
+            valid_dates = df_prep_completo["data_alteracao_status"].dropna()
             if not valid_dates.empty:
                 min_date_esp = valid_dates.min().date()
                 max_date_esp = valid_dates.max().date()
@@ -858,7 +873,7 @@ def render_contratos_registrados(
         
     st.divider()
         
-    # 3. Filtro de Data Específico (Data de Alteração de Status) - Opcional
+    # Aplicar filtro de Data de Registro se o filtro opcional estiver ativo
     if usar_filtro_registro and "data_alteracao_status" in df_registrado.columns and start_date_reg and end_date_reg:
         df_registrado = df_registrado[
             (df_registrado["data_alteracao_status"].dt.date >= start_date_reg) &
@@ -1067,9 +1082,11 @@ def render_repasses_dashboard(
         render_visao_geral(df_repasses_final)
 
     with tab2:
-        # Passar df_repasses_final (já filtrado pelos filtros globais) e os filtros de empreendimento e datas globais
+        # Passar df_repasses_final (já filtrado pelos filtros globais) e df_repasses_prep (completo) 
+        # para permitir que o filtro opcional seja independente
         render_contratos_registrados(
             df_filtered_global=df_repasses_final,
+            df_prep_completo=df_repasses_prep,
             empreendimentos_filter=selected_empreendimentos,
             start_date_global=start_date,
             end_date_global=end_date
