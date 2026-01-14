@@ -487,28 +487,6 @@ def render_visao_geral(df: pd.DataFrame):
     valor_total = df["valor_contrato"].sum() if "valor_contrato" in df.columns else 0.0
     valor_medio = df["valor_contrato"].mean() if "valor_contrato" in df.columns else 0.0
 
-    # Calcular KPIs para Contrato Registrado
-    target_status = "Contrato Registrado"
-    if "situacao_resumida" in df.columns:
-        df_registrado = df[df["situacao_resumida"] == target_status]
-    elif "situacao_detalhada" in df.columns:
-        df_registrado = df[df["situacao_detalhada"] == target_status]
-    else:
-        df_registrado = pd.DataFrame()
-        
-    if not df_registrado.empty:
-        total_repasses_reg = df_registrado["referencia"].nunique() if "referencia" in df_registrado.columns else len(df_registrado)
-        valor_total_reg = df_registrado["valor_contrato"].sum() if "valor_contrato" in df_registrado.columns else 0.0
-        valor_medio_reg = df_registrado["valor_contrato"].mean() if "valor_contrato" in df_registrado.columns else 0.0
-    else:
-        total_repasses_reg = 0
-        valor_total_reg = 0.0
-        valor_medio_reg = 0.0
-
-    # Calcular percentuais de representatividade
-    pct_qtd = (total_repasses_reg / total_repasses * 100) if total_repasses > 0 else 0.0
-    pct_val = (valor_total_reg / valor_total * 100) if valor_total > 0 else 0.0
-
     st.subheader("📊 Indicadores de Carteira")
     
     col1, col2, col3 = st.columns(3)
@@ -532,37 +510,6 @@ def render_visao_geral(df: pd.DataFrame):
             "Ticket Médio",
             f"R$ {valor_medio:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."),
             help="Valor médio dos contratos de repasse."
-        )
-
-    # Linha para Indicadores de Contrato Registrado (integrado)
-    st.markdown("#### Contratos Registrados")
-    st.caption("Indicadores específicos para processos que atingiram a etapa de 'Contrato Registrado'.")
-    
-    col1_reg, col2_reg, col3_reg = st.columns(3)
-    
-    with col1_reg:
-        st.metric(
-            "Total Registrados", 
-            f"{total_repasses_reg:,}",
-            delta=f"{pct_qtd:.1f}% do Total",
-            delta_color="off", # Cor neutra pois é informativo
-            help="Quantidade de contratos que estão na situação 'Contrato Registrado'."
-        )
-        
-    with col2_reg:
-        st.metric(
-            "Valor Carteira (Registrado)",
-            f"R$ {valor_total_reg:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."),
-            delta=f"{pct_val:.1f}% do Total",
-            delta_color="off",
-            help="Valor total dos contratos registrados."
-        )
-        
-    with col3_reg:
-        st.metric(
-            "Ticket Médio (Registrado)",
-            f"R$ {valor_medio_reg:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."),
-            help="Valor médio dos contratos registrados."
         )
 
     st.divider()
