@@ -798,13 +798,13 @@ def render_contratos_registrados(
     # --- Filtros Opcionais para esta aba ---
     st.markdown("#### Filtro Opcional (Data de Registro)")
     st.caption(
-        "**Filtro padrão:** Os contratos são filtrados pela data de venda ou data de cadastro conforme o filtro global selecionado.\n\n"
+        "**Filtro padrão:** Os contratos são filtrados pela data de cadastro conforme o filtro global selecionado.\n\n"
         "**Filtro opcional:** Ative o filtro abaixo para visualizar todos os títulos registrados no período selecionado, "
-        "independente da data de venda ou cadastro. Isso permite analisar quantos contratos foram registrados em um período específico."
+        "independente da data de cadastro. Isso permite analisar quantos contratos foram registrados em um período específico."
     )
     
     usar_filtro_registro = st.checkbox(
-        "Usar filtro de data de registro (independente da data de venda)",
+        "Usar filtro de data de registro (independente da data de cadastro)",
         value=False,
         key="usar_filtro_registro"
     )
