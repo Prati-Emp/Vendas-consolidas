@@ -614,76 +614,90 @@ def render_visao_geral(df: pd.DataFrame):
         st.info("Colunas detalhadas não disponíveis para exibição.")
 
 
-def render_analise_workflow(df_workflow_filtered: pd.DataFrame, df_workflow_full: Optional[pd.DataFrame] = None, start_date_filter: date = None, end_date_filter: date = None):
+def render_analise_workflow(
+    df_workflow_filtered: pd.DataFrame, 
+    df_workflow_full: Optional[pd.DataFrame] = None, 
+    df_repasses_filtered: Optional[pd.DataFrame] = None,
+    start_date_filter: date = None, 
+    end_date_filter: date = None
+):
     """Renderiza a aba de Análise de Workflow (Tempo)."""
     
-    if df_workflow_filtered.empty and (df_workflow_full is None or df_workflow_full.empty):
-        st.warning("Sem dados de workflow para o período selecionado.")
-        return
-
     st.subheader("⏱️ Análise de Tempos (SLA)")
     
-    # --- CÁLCULO DE LEAD TIME (Início -> Entrada no Registro) ---
-    # Precisamos do histórico completo (df_workflow_full) para calcular o tempo acumulado
+    # Verificar se temos dados para trabalhar
+    if (df_workflow_filtered.empty and (df_workflow_full is None or df_workflow_full.empty) and
+        (df_repasses_filtered is None or df_repasses_filtered.empty)):
+        st.warning("Sem dados disponíveis para o período selecionado.")
+        return
     
-    lead_time_medio = 0.0
+    # --- CÁLCULO DE SLA (Data de Registro - Data de Venda) ---
+    # Usando a tabela de repasses para calcular o SLA
+    sla_medio = 0.0
     qtd_considerada = 0
-    df_lead_time_evolucao = pd.DataFrame()
+    df_sla_evolucao = pd.DataFrame()
     
-    if df_workflow_full is not None and not df_workflow_full.empty:
-        # Agrupar por repasse para reconstruir a história
-        # Ordenar por data para garantir sequencia correta
-        df_sorted = df_workflow_full.sort_values(["referencia", "data_cad"])
+    if df_repasses_filtered is not None and not df_repasses_filtered.empty:
+        # Filtrar apenas contratos registrados
+        target_status = "Contrato Registrado"
+        df_registrados = pd.DataFrame()
         
-        target_stage_normalized = "entrada no registro"
+        if "situacao_resumida" in df_repasses_filtered.columns:
+            df_registrados = df_repasses_filtered[df_repasses_filtered["situacao_resumida"] == target_status].copy()
+        elif "situacao_detalhada" in df_repasses_filtered.columns:
+            df_registrados = df_repasses_filtered[df_repasses_filtered["situacao_detalhada"] == target_status].copy()
         
-        # Identificar repasses que atingiram o alvo
-        df_completed = df_sorted[
-            (df_sorted["situacao_resumida"].apply(normalize_text) == target_stage_normalized) |
-            (df_sorted["situacao_detalhada"].apply(normalize_text) == target_stage_normalized)
-        ].copy()
-        
-        if not df_completed.empty:
-            # Pegar a PRIMEIRA vez que atingiu o status por referencia
-            completion_events = df_completed.groupby("referencia")["data_cad"].min().reset_index()
-            completion_events.rename(columns={"data_cad": "completion_date"}, inplace=True)
-            
-            # Precisamos calcular o Lead Time para TODOS os completions primeiro, para depois filtrar e fazer o gráfico
-            valid_refs = completion_events["referencia"].unique()
-            df_history = df_sorted[df_sorted["referencia"].isin(valid_refs)]
-            df_history = df_history.merge(completion_events, on="referencia", how="inner")
-            
-            # Somar tempo de etapas que ocorreram ANTES ou NA MESMA DATA da conclusão
-            df_history_valid = df_history[df_history["data_cad"] <= df_history["completion_date"]]
-            
-            # Calcular Lead Time por referencia
-            lead_time_per_ref = df_history_valid.groupby("referencia")["tempo"].sum().reset_index()
-            lead_time_per_ref.rename(columns={"tempo": "lead_time_days"}, inplace=True)
-            
-            # Juntar com a data de completion para saber quando o Lead Time "aconteceu"
-            df_lead_time_data = lead_time_per_ref.merge(completion_events, on="referencia")
-            
-            # --- KPI: Filtrar pelo período selecionado ---
-            df_kpi = df_lead_time_data.copy()
-            if start_date_filter and end_date_filter:
-                df_kpi = df_kpi[
-                    (df_kpi["completion_date"].dt.date >= start_date_filter) &
-                    (df_kpi["completion_date"].dt.date <= end_date_filter)
-                ]
-            
-            if not df_kpi.empty:
-                lead_time_medio = df_kpi["lead_time_days"].mean()
-                qtd_considerada = len(df_kpi)
+        if not df_registrados.empty:
+            # Verificar se temos as colunas necessárias
+            if "data_alteracao_status" in df_registrados.columns and "data_venda" in df_registrados.columns:
+                # Calcular SLA: diferença entre data de registro e data de venda
+                df_registrados = df_registrados[
+                    df_registrados["data_alteracao_status"].notna() & 
+                    df_registrados["data_venda"].notna()
+                ].copy()
                 
-            # --- Gráfico Evolução: Dados para o gráfico (pode ser todo o histórico ou filtrado) ---
-            df_lead_time_evolucao = df_kpi.copy()
+                if not df_registrados.empty:
+                    # Calcular diferença em dias
+                    df_registrados["sla_dias"] = (
+                        df_registrados["data_alteracao_status"] - df_registrados["data_venda"]
+                    ).dt.days
+                    
+                    # Filtrar pelo período selecionado (usando data de registro)
+                    df_sla_filtrado = df_registrados.copy()
+                    if start_date_filter and end_date_filter:
+                        df_sla_filtrado = df_sla_filtrado[
+                            (df_sla_filtrado["data_alteracao_status"].dt.date >= start_date_filter) &
+                            (df_sla_filtrado["data_alteracao_status"].dt.date <= end_date_filter)
+                        ]
+                    
+                    if not df_sla_filtrado.empty:
+                        # Remover valores negativos ou muito grandes (possíveis erros de data)
+                        df_sla_filtrado = df_sla_filtrado[
+                            (df_sla_filtrado["sla_dias"] >= 0) & 
+                            (df_sla_filtrado["sla_dias"] <= 3650)  # Máximo 10 anos
+                        ]
+                        
+                        if not df_sla_filtrado.empty:
+                            sla_medio = df_sla_filtrado["sla_dias"].mean()
+                            qtd_considerada = len(df_sla_filtrado)
+                            
+                            # Preparar dados para gráfico de evolução
+                            df_sla_evolucao = df_sla_filtrado.copy()
+                            df_sla_evolucao["data_registro"] = df_sla_evolucao["data_alteracao_status"]
 
     col1, col2 = st.columns(2)
     with col1:
         st.metric(
-            "Lead Time Médio (até Entrada no Registro)", 
-            f"{lead_time_medio:.1f} dias",
-            help="Tempo total médio decorrido desde o início do processo até a etapa de 'Entrada no Registro'. Considera a soma dos tempos de todas as etapas anteriores para os processos concluídos no período selecionado."
+            "SLA Médio (Registro - Venda)", 
+            f"{sla_medio:.1f} dias",
+            help="Tempo médio decorrido entre a data de venda e a data de registro do contrato. Calculado como diferença entre Data de Registro e Data de Venda para contratos registrados no período selecionado."
+        )
+    
+    with col2:
+        st.metric(
+            "Quantidade Considerada",
+            f"{qtd_considerada:,}",
+            help="Quantidade de contratos registrados utilizados no cálculo do SLA."
         )
 
     st.divider()
@@ -710,29 +724,27 @@ def render_analise_workflow(df_workflow_filtered: pd.DataFrame, df_workflow_full
     
     st.divider()
     
-    # Evolução Temporal do Lead Time
-    st.subheader("Evolução do Lead Time Médio (Mensal)")
+    # Evolução Temporal do SLA
+    st.subheader("Evolução do SLA Médio (Mensal)")
+    st.caption("Evolução mensal do tempo médio entre data de venda e data de registro dos contratos.")
     
-    if not df_lead_time_evolucao.empty:
-        # Usa data de conclusão (já garantida no cálculo acima)
-        date_col = "completion_date"
-        
-        df_lead_time_evolucao["mes_ano"] = df_lead_time_evolucao[date_col].dt.to_period("M").dt.to_timestamp()
+    if not df_sla_evolucao.empty and "data_registro" in df_sla_evolucao.columns:
+        df_sla_evolucao["mes_ano"] = df_sla_evolucao["data_registro"].dt.to_period("M").dt.to_timestamp()
         
         evolucao = (
-            df_lead_time_evolucao.groupby("mes_ano")["lead_time_days"]
+            df_sla_evolucao.groupby("mes_ano")["sla_dias"]
             .mean()
             .reset_index()
-            .rename(columns={"mes_ano": "Mês", "lead_time_days": "Lead Time Médio (dias)"})
+            .rename(columns={"mes_ano": "Mês", "sla_dias": "SLA Médio (dias)"})
         )
         
         fig_evol = px.line(
             evolucao,
             x="Mês",
-            y="Lead Time Médio (dias)",
+            y="SLA Médio (dias)",
             markers=True,
-            title="Evolução do Tempo Total de Processamento (Lead Time)",
-            text=evolucao["Lead Time Médio (dias)"].apply(lambda x: f"{x:.1f}")
+            title="Evolução do SLA (Data de Registro - Data de Venda)",
+            text=evolucao["SLA Médio (dias)"].apply(lambda x: f"{x:.1f}")
         )
         
         fig_evol.update_traces(
@@ -743,7 +755,7 @@ def render_analise_workflow(df_workflow_filtered: pd.DataFrame, df_workflow_full
             marker_line_width=2,
             marker_line_color="#0EA5E9",
             textposition="top center",
-            hovertemplate="<b>%{x|%B/%Y}</b><br>Lead Time Médio: <b>%{y:.1f} dias</b><extra></extra>"
+            hovertemplate="<b>%{x|%B/%Y}</b><br>SLA Médio: <b>%{y:.1f} dias</b><br>(Registro - Venda)<extra></extra>"
         )
         
         fig_evol.update_layout(
@@ -765,9 +777,9 @@ def render_analise_workflow(df_workflow_filtered: pd.DataFrame, df_workflow_full
             ),
             margin=dict(t=50, l=50, r=50, b=50)
         )
-        st.plotly_chart(fig_evol, use_container_width=True, key="workflow_evolution")
+        st.plotly_chart(fig_evol, use_container_width=True, key="sla_evolution")
     else:
-        st.info("Sem dados suficientes de 'Entrada no Registro' no período selecionado para gerar o gráfico de evolução do Lead Time.")
+        st.info("Sem dados suficientes de contratos registrados no período selecionado para gerar o gráfico de evolução do SLA.")
 
 
 
@@ -1064,11 +1076,11 @@ def render_repasses_dashboard(
         )
         
     with tab3:
-        # Passando df completo para calculo de Lead Time e as datas selecionadas
-        # Voltando a usar a lógica original de workflow (até 'Entrada no Registro'), sem passar df_repasses_full
+        # Passando df de repasses filtrado para cálculo de SLA (diferença entre data de registro e data de venda)
         render_analise_workflow(
             df_workflow_filtered=df_workflow_final,
-            df_workflow_full=df_workflow_prep, 
+            df_workflow_full=df_workflow_prep,
+            df_repasses_filtered=df_repasses_final,
             start_date_filter=start_date,
             end_date_filter=end_date
         )
