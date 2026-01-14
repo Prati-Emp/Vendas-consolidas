@@ -771,51 +771,21 @@ def render_analise_workflow(df_workflow_filtered: pd.DataFrame, df_workflow_full
 
 
 
-def render_contratos_registrados(df_raw: pd.DataFrame, empreendimentos_filter: List[str] = None):
+def render_contratos_registrados(
+    df_filtered_global: pd.DataFrame, 
+    empreendimentos_filter: List[str] = None,
+    start_date_global: date = None,
+    end_date_global: date = None
+):
     """Renderiza a aba de Contratos Registrados com filtros específicos."""
     
     st.subheader("✅ Contratos Registrados")
     st.caption("Visualização dedicada aos contratos finalizados, com filtros baseados na data de registro.")
     
-    # --- Filtros Específicos para esta aba ---
-    col_filtros1, col_filtros2 = st.columns(2)
+    # Aplicar filtro global primeiro (já vem aplicado em df_filtered_global)
+    df_filtered = df_filtered_global.copy()
     
-    # Determinar intervalo padrão para o filtro específico
-    min_date_esp = date.today()
-    max_date_esp = date.today()
-    
-    if "data_alteracao_status" in df_raw.columns:
-        valid_dates = df_raw["data_alteracao_status"].dropna()
-        if not valid_dates.empty:
-            min_date_esp = valid_dates.min().date()
-            max_date_esp = valid_dates.max().date()
-            
-    default_start_esp = date(max_date_esp.year, 1, 1)
-
-    with col_filtros1:
-        start_date_reg = st.date_input(
-            "Data Inicial (Registro)",
-            value=default_start_esp,
-            min_value=min_date_esp,
-            max_value=max_date_esp,
-            key="start_date_contratos_reg"
-        )
-        
-    with col_filtros2:
-        end_date_reg = st.date_input(
-            "Data Final (Registro)",
-            value=max_date_esp,
-            min_value=min_date_esp,
-            max_value=max_date_esp,
-            key="end_date_contratos_reg"
-        )
-        
-    st.divider()
-
-    # --- Aplicação dos Filtros ---
-    df_filtered = df_raw.copy()
-    
-    # 1. Filtro de Empreendimento (Global)
+    # 1. Filtro de Empreendimento (Global) - já aplicado, mas verificando se precisa ajustar
     if empreendimentos_filter:
         df_filtered = df_filtered[df_filtered["empreendimento"].isin(empreendimentos_filter)]
         
@@ -827,9 +797,57 @@ def render_contratos_registrados(df_raw: pd.DataFrame, empreendimentos_filter: L
         df_registrado = df_filtered[df_filtered["situacao_detalhada"] == target_status]
     else:
         df_registrado = pd.DataFrame()
+    
+    # --- Filtros Específicos Opcionais para esta aba ---
+    st.markdown("#### Filtros Opcionais (Data de Registro)")
+    st.caption("Use os filtros abaixo para filtrar por data de registro. Se não preencher, serão considerados todos os contratos registrados do período global selecionado.")
+    
+    usar_filtro_registro = st.checkbox(
+        "Usar filtro de data de registro",
+        value=False,
+        key="usar_filtro_registro"
+    )
+    
+    start_date_reg = None
+    end_date_reg = None
+    
+    if usar_filtro_registro:
+        col_filtros1, col_filtros2 = st.columns(2)
         
-    # 3. Filtro de Data Específico (Data de Alteração de Status)
-    if "data_alteracao_status" in df_registrado.columns and start_date_reg and end_date_reg:
+        # Determinar intervalo padrão para o filtro específico
+        min_date_esp = date.today()
+        max_date_esp = date.today()
+        
+        if "data_alteracao_status" in df_registrado.columns:
+            valid_dates = df_registrado["data_alteracao_status"].dropna()
+            if not valid_dates.empty:
+                min_date_esp = valid_dates.min().date()
+                max_date_esp = valid_dates.max().date()
+                
+        default_start_esp = date(max_date_esp.year, 1, 1)
+
+        with col_filtros1:
+            start_date_reg = st.date_input(
+                "Data Inicial (Registro)",
+                value=default_start_esp,
+                min_value=min_date_esp,
+                max_value=max_date_esp,
+                key="start_date_contratos_reg"
+            )
+            
+        with col_filtros2:
+            end_date_reg = st.date_input(
+                "Data Final (Registro)",
+                value=max_date_esp,
+                min_value=min_date_esp,
+                max_value=max_date_esp,
+                key="end_date_contratos_reg"
+            )
+        
+    st.divider()
+        
+    # 3. Filtro de Data Específico (Data de Alteração de Status) - Opcional
+    if usar_filtro_registro and "data_alteracao_status" in df_registrado.columns and start_date_reg and end_date_reg:
         df_registrado = df_registrado[
             (df_registrado["data_alteracao_status"].dt.date >= start_date_reg) &
             (df_registrado["data_alteracao_status"].dt.date <= end_date_reg)
@@ -1037,8 +1055,13 @@ def render_repasses_dashboard(
         render_visao_geral(df_repasses_final)
 
     with tab2:
-        # Passar df_repasses_prep (antes dos filtros de data global) e os filtros de empreendimento selecionados
-        render_contratos_registrados(df_repasses_prep, selected_empreendimentos)
+        # Passar df_repasses_final (já filtrado pelos filtros globais) e os filtros de empreendimento e datas globais
+        render_contratos_registrados(
+            df_filtered_global=df_repasses_final,
+            empreendimentos_filter=selected_empreendimentos,
+            start_date_global=start_date,
+            end_date_global=end_date
+        )
         
     with tab3:
         # Passando df completo para calculo de Lead Time e as datas selecionadas
