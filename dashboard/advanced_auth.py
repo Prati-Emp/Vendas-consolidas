@@ -132,6 +132,17 @@ USERS_DATABASE = {
         "active": True,
         "pages": ["tv_comercial"],  # Acesso restrito apenas à TV Comercial
         "subpages": []
+    },
+    "marlos.bendo@grupoprati.com": {
+        "password": "Pr@ti2025!Marlos",
+        "role": "analyst",
+        "name": "Marlos Bendo",
+        "department": "Administrativo",
+        "created": "2026-01-15",
+        "last_login": None,
+        "active": True,
+        "pages": ["administrativo"],  # Acesso restrito apenas ao dashboard administrativo
+        "subpages": ["administrativo.repasses", "administrativo.contas_pagas", "administrativo.saldo_em_caixa", "administrativo.rh"]
     }
 }
 
@@ -449,6 +460,7 @@ def setup_auth_environment():
             <li>André Pozza (analyst) - andre.pozza@grupoprati.com</li>
             <li>Raul Lunkes (analyst) - raul.lunkes@grupoprati.com</li>
             <li>Michael Seidenstucker (analyst) - michael.seidenstucker@grupoprati.com</li>
+            <li>Marlos Bendo (analyst) - marlos.bendo@grupoprati.com</li>
         </ul>
         <p><strong>⚠️ Importante:</strong> Senhas são fornecidas individualmente por segurança!</p>
     </div>
