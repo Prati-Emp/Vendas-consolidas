@@ -618,6 +618,7 @@ def render_analise_workflow(
     df_workflow_filtered: pd.DataFrame, 
     df_workflow_full: Optional[pd.DataFrame] = None, 
     df_repasses_filtered: Optional[pd.DataFrame] = None,
+    df_repasses_full: Optional[pd.DataFrame] = None,
     start_date_filter: date = None, 
     end_date_filter: date = None
 ):
@@ -627,25 +628,31 @@ def render_analise_workflow(
     
     # Verificar se temos dados para trabalhar
     if (df_workflow_filtered.empty and (df_workflow_full is None or df_workflow_full.empty) and
-        (df_repasses_filtered is None or df_repasses_filtered.empty)):
+        (df_repasses_filtered is None or df_repasses_filtered.empty) and
+        (df_repasses_full is None or df_repasses_full.empty)):
         st.warning("Sem dados disponíveis para o período selecionado.")
         return
     
     # --- CÁLCULO DE SLA (Data de Registro - Data de Venda) ---
-    # Usando a tabela de repasses para calcular o SLA
+    # Usando a tabela de repasses completa para calcular o SLA
+    # Filtrando apenas pela data de registro no intervalo do filtro global
     sla_medio = 0.0
     qtd_considerada = 0
     df_sla_evolucao = pd.DataFrame()
     
-    if df_repasses_filtered is not None and not df_repasses_filtered.empty:
+    # Usar df_repasses_full (dados completos) para calcular o SLA
+    # Similar ao que foi feito na aba "Contratos Registrados"
+    df_repasses_para_sla = df_repasses_full if df_repasses_full is not None and not df_repasses_full.empty else df_repasses_filtered
+    
+    if df_repasses_para_sla is not None and not df_repasses_para_sla.empty:
         # Filtrar apenas contratos registrados
         target_status = "Contrato Registrado"
         df_registrados = pd.DataFrame()
         
-        if "situacao_resumida" in df_repasses_filtered.columns:
-            df_registrados = df_repasses_filtered[df_repasses_filtered["situacao_resumida"] == target_status].copy()
-        elif "situacao_detalhada" in df_repasses_filtered.columns:
-            df_registrados = df_repasses_filtered[df_repasses_filtered["situacao_detalhada"] == target_status].copy()
+        if "situacao_resumida" in df_repasses_para_sla.columns:
+            df_registrados = df_repasses_para_sla[df_repasses_para_sla["situacao_resumida"] == target_status].copy()
+        elif "situacao_detalhada" in df_repasses_para_sla.columns:
+            df_registrados = df_repasses_para_sla[df_repasses_para_sla["situacao_detalhada"] == target_status].copy()
         
         if not df_registrados.empty:
             # Verificar se temos as colunas necessárias
@@ -662,7 +669,7 @@ def render_analise_workflow(
                         df_registrados["data_alteracao_status"] - df_registrados["data_venda"]
                     ).dt.days
                     
-                    # Filtrar pelo período selecionado (usando data de registro)
+                    # Filtrar pelo período selecionado no filtro global (usando data de registro)
                     df_sla_filtrado = df_registrados.copy()
                     if start_date_filter and end_date_filter:
                         df_sla_filtrado = df_sla_filtrado[
@@ -1093,11 +1100,13 @@ def render_repasses_dashboard(
         )
         
     with tab3:
-        # Passando df de repasses filtrado para cálculo de SLA (diferença entre data de registro e data de venda)
+        # Passando df de repasses completo para cálculo de SLA (diferença entre data de registro e data de venda)
+        # O SLA será calculado apenas para contratos registrados no intervalo do filtro global
         render_analise_workflow(
             df_workflow_filtered=df_workflow_final,
             df_workflow_full=df_workflow_prep,
             df_repasses_filtered=df_repasses_final,
+            df_repasses_full=df_repasses_prep,
             start_date_filter=start_date,
             end_date_filter=end_date
         )
