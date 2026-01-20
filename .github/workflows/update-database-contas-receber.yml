@@ -1,0 +1,51 @@
+name: Update Database - Sienge Contas a Receber (Diário)
+
+on:
+  schedule:
+    # Executar diariamente às 02:45 BRT (05:45 UTC)
+    - cron: '45 5 * * *'
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Razão para executar a atualização Sienge Contas a Receber'
+        required: false
+        default: 'Atualização manual Sienge Contas a Receber'
+        type: string
+
+jobs:
+  update-database-contas-receber:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install duckdb==1.4.1
+          pip install -r requirements.txt
+
+      - name: Set file permissions
+        run: chmod +x scripts/*.py
+
+      - name: Update database (Sienge Contas a Receber)
+        env:
+          MOTHERDUCK_TOKEN: ${{ secrets.MOTHERDUCK_TOKEN }}
+          SIENGE_TOKEN: ${{ secrets.SIENGE_TOKEN }}
+          PYTHONPATH: ${{ github.workspace }}/scripts:${{ github.workspace }}
+        run: |
+          echo "🌙 Iniciando atualização Sienge Contas a Receber do MotherDuck..."
+          python -u scripts/update_motherduck_contas_receber.py
+      
+      - name: Notify success
+        if: success()
+        run: echo "✅ Sienge Contas a Receber database updated successfully at $(date)"
+      
+      - name: Notify failure
+        if: failure()
+        run: echo "❌ Sienge Contas a Receber database update failed at $(date)"
