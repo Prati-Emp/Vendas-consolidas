@@ -192,6 +192,29 @@ class ContasReceberSiengeAPIClient:
                  lambda x: x.get('descrition') if isinstance(x, dict) else None
              )
 
+        # Extrai Centro de Custo (prioriza receiptsCategories, depois receipts)
+        def extrair_centro_custo(row):
+            # Tenta primeiro em receiptsCategories
+            if 'receiptsCategories' in row and isinstance(row['receiptsCategories'], list) and row['receiptsCategories']:
+                cat = row['receiptsCategories'][0]
+                return cat.get('costCenterId'), cat.get('costCenterName')
+            
+            # Se não tiver, tenta em receipts -> bankMovements -> financialCategories
+            if 'receipts' in row and isinstance(row['receipts'], list) and row['receipts']:
+                for rec in row['receipts']:
+                    if isinstance(rec, dict) and 'bankMovements' in rec:
+                        for bm in rec.get('bankMovements', []):
+                            if isinstance(bm, dict) and 'financialCategories' in bm:
+                                for fc in bm.get('financialCategories', []):
+                                    if isinstance(fc, dict):
+                                        return fc.get('costCenterId'), fc.get('costCenterName')
+            
+            return None, None
+        
+        centro_custo_data = df.apply(extrair_centro_custo, axis=1)
+        df['costCenterId'] = [d[0] for d in centro_custo_data]
+        df['costCenterName'] = [d[1] for d in centro_custo_data]
+
         # 3. Mapeamento de Colunas (API -> Relatório CSV)
         mapeamento = {
             'companyId': 'ID_Empresa',
@@ -214,6 +237,8 @@ class ContasReceberSiengeAPIClient:
             'correctedBalanceAmount': 'Valor_SaldoCorrigido',
             'defaulterSituation': 'Situacao_Inadimplencia',
             'condicao_pagamento_desc': 'Condicao_Pagamento',
+            'costCenterId': 'ID_Centro_Custo',
+            'costCenterName': 'Centro_Custo',
             # Calculados
             'data_recebimento_temp': 'Data_Recebimento',
             'valor_liquido_temp': 'Valor_Liquido',
@@ -234,6 +259,7 @@ class ContasReceberSiengeAPIClient:
             'ID_Cliente': 'Int64',
             'ID_Titulo': 'Int64',
             'ID_Parcela': 'Int64',
+            'ID_Centro_Custo': 'Int64',
             'Desconto': 'float64', 
             'Imposto': 'float64'
         }
@@ -252,6 +278,7 @@ class ContasReceberSiengeAPIClient:
         colunas_finais = [
             'ID_Titulo', 'Parcela', 'ID_Empresa', 'Empresa', 'ID_Cliente', 'Cliente',
             'Documento', 'N_Documento', 'Previsao_Financeira', 'Situacao_Inadimplencia', 'Condicao_Pagamento',
+            'ID_Centro_Custo', 'Centro_Custo',
             'Data_Vencimento', 'Valor_Original', 'Desconto', 'Imposto',
             'Valor_Liquido', 'Valor_Recebido', 'Valor_Saldo', 'Valor_SaldoCorrigido',
             'Data_Recebimento', 'Data_Emissao', 'Indexador',
