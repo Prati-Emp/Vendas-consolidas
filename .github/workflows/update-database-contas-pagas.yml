@@ -2,8 +2,8 @@ name: Update Database - Contas Pagas (Diário Madrugada)
 
 on:
   schedule:
-    # Executar diariamente às 02:00 BRT (05:00 UTC) - madrugada
-    - cron: '0 5 * * *'  # Todo dia às 05:00 UTC (02:00 BRT)
+    # Executar diariamente às 03:00 BRT (06:00 UTC) - madrugada
+    - cron: '0 6 * * *'  # Todo dia às 06:00 UTC (02:00 BRT)
   workflow_dispatch:
     inputs:
       reason:
