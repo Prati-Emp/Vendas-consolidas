@@ -264,7 +264,6 @@ class ContasReceberSiengeAPIClient:
             'ID_Titulo': 'Int64',
             'ID_Parcela': 'Int64',
             'ID_Centro_Custo': 'Int64',
-            'Codigo_Condicao_Pagamento': 'Int64',
             'Desconto': 'float64', 
             'Imposto': 'float64'
         }
@@ -278,6 +277,12 @@ class ContasReceberSiengeAPIClient:
                         df_renomeado[col] = pd.to_numeric(df_renomeado[col], errors='coerce')
                 except:
                     pass
+        
+        # Converte Codigo_Condicao_Pagamento para texto (pode conter números e texto)
+        if 'Codigo_Condicao_Pagamento' in df_renomeado.columns:
+            df_renomeado['Codigo_Condicao_Pagamento'] = df_renomeado['Codigo_Condicao_Pagamento'].apply(
+                lambda x: str(x) if pd.notna(x) and x is not None else None
+            )
 
         # Seleciona colunas finais
         colunas_finais = [
