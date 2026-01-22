@@ -186,8 +186,11 @@ class ContasReceberSiengeAPIClient:
                 
         df['dias_atraso_calc'] = df.apply(calcular_atraso, axis=1)
 
-        # Extrai descrição da condição de pagamento
+        # Extrai código e descrição da condição de pagamento
         if 'paymentTerm' in df.columns:
+             df['condicao_pagamento_codigo'] = df['paymentTerm'].apply(
+                 lambda x: x.get('id') if isinstance(x, dict) else None
+             )
              df['condicao_pagamento_desc'] = df['paymentTerm'].apply(
                  lambda x: x.get('descrition') if isinstance(x, dict) else None
              )
@@ -236,6 +239,7 @@ class ContasReceberSiengeAPIClient:
             'balanceAmount': 'Valor_Saldo',
             'correctedBalanceAmount': 'Valor_SaldoCorrigido',
             'defaulterSituation': 'Situacao_Inadimplencia',
+            'condicao_pagamento_codigo': 'Codigo_Condicao_Pagamento',
             'condicao_pagamento_desc': 'Condicao_Pagamento',
             'costCenterId': 'ID_Centro_Custo',
             'costCenterName': 'Centro_Custo',
@@ -260,6 +264,7 @@ class ContasReceberSiengeAPIClient:
             'ID_Titulo': 'Int64',
             'ID_Parcela': 'Int64',
             'ID_Centro_Custo': 'Int64',
+            'Codigo_Condicao_Pagamento': 'Int64',
             'Desconto': 'float64', 
             'Imposto': 'float64'
         }
@@ -277,7 +282,8 @@ class ContasReceberSiengeAPIClient:
         # Seleciona colunas finais
         colunas_finais = [
             'ID_Titulo', 'Parcela', 'ID_Empresa', 'Empresa', 'ID_Cliente', 'Cliente',
-            'Documento', 'N_Documento', 'Previsao_Financeira', 'Situacao_Inadimplencia', 'Condicao_Pagamento',
+            'Documento', 'N_Documento', 'Previsao_Financeira', 'Situacao_Inadimplencia', 
+            'Codigo_Condicao_Pagamento', 'Condicao_Pagamento',
             'ID_Centro_Custo', 'Centro_Custo',
             'Data_Vencimento', 'Valor_Original', 'Desconto', 'Imposto',
             'Valor_Liquido', 'Valor_Recebido', 'Valor_Saldo', 'Valor_SaldoCorrigido',
