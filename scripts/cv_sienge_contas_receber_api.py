@@ -119,36 +119,62 @@ class ContasReceberSiengeAPIClient:
             return df
 
         # 1. Extração de dados de recebimento (da lista 'receipts')
+        # Cria colunas temporárias
         df['data_recebimento_temp'] = None
         df['valor_recebido_temp'] = 0.0
         df['valor_liquido_temp'] = 0.0
+        df['valor_correcao_temp'] = 0.0
+        df['acrescimos_temp'] = 0.0
+        df['seguro_temp'] = 0.0
+        df['taxa_adm_temp'] = 0.0
+        df['operacao_temp'] = None
+        df['conta_corrente_temp'] = None
+        df['tipo_baixa_temp'] = None
         
         if 'receipts' in df.columns:
             def extrair_recebimento(receipts_list):
                 if not isinstance(receipts_list, list) or not receipts_list:
-                    return None, 0.0, 0.0
+                    return (None, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, None, None, None)
                 
                 try:
                     recebimentos_validos = [r for r in receipts_list if isinstance(r, dict)]
                     if not recebimentos_validos:
-                        return None, 0.0, 0.0
+                        return (None, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, None, None, None)
                         
-                    # Pega o último recebimento
+                    # Pega o último recebimento para dados únicos
                     ultimo_rec = sorted(recebimentos_validos, key=lambda x: x.get('paymentDate', ''), reverse=True)[0]
                     data_rec = ultimo_rec.get('paymentDate')
+                    operacao = ultimo_rec.get('operationTypeName')
+                    conta_corrente = ultimo_rec.get('accountNumber')
                     
-                    # Soma valores
+                    # Soma valores de todos os recebimentos
                     total_recebido = sum(float(r.get('grossAmount', 0) or 0) for r in recebimentos_validos)
                     total_liquido = sum(float(r.get('netAmount', 0) or 0) for r in recebimentos_validos)
+                    total_correcao = sum(float(r.get('monetaryCorrectionAmount', 0) or 0) for r in recebimentos_validos)
+                    total_acrescimos = sum(float(r.get('interestAmount', 0) or 0) + float(r.get('fineAmount', 0) or 0) + float(r.get('additionAmount', 0) or 0) for r in recebimentos_validos)
+                    total_seguro = sum(float(r.get('insuranceAmount', 0) or 0) for r in recebimentos_validos)
+                    total_taxa_adm = sum(float(r.get('dueAdmAmount', 0) or 0) for r in recebimentos_validos)
                     
-                    return data_rec, total_recebido, total_liquido
+                    # Tipo de baixa (pode ser baseado no operationTypeName ou accountType)
+                    tipo_baixa = operacao if operacao else None
+                    
+                    return (data_rec, total_recebido, total_liquido, total_correcao, 
+                           total_acrescimos, total_seguro, total_taxa_adm, 
+                           operacao, conta_corrente, tipo_baixa)
                 except:
-                    return None, 0.0, 0.0
+                    return (None, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, None, None, None)
 
             dados_rec = df['receipts'].apply(extrair_recebimento)
             df['data_recebimento_temp'] = [d[0] if d else None for d in dados_rec]
             df['valor_recebido_temp'] = [d[1] if d else 0.0 for d in dados_rec]
             df['valor_liquido_temp'] = [d[2] if d else 0.0 for d in dados_rec]
+            df['valor_correcao_temp'] = [d[3] if d else 0.0 for d in dados_rec]
+            df['acrescimos_temp'] = [d[4] if d else 0.0 for d in dados_rec]
+            df['seguro_temp'] = [d[5] if d else 0.0 for d in dados_rec]
+            df['taxa_adm_temp'] = [d[6] if d else 0.0 for d in dados_rec]
+            df['operacao_temp'] = [d[7] if d else None for d in dados_rec]
+            df['conta_corrente_temp'] = [d[8] if d else None for d in dados_rec]
+            df['tipo_baixa_temp'] = [d[9] if d else None for d in dados_rec]
 
         # 2. Definição do Status
         def definir_status(row):
@@ -189,7 +215,7 @@ class ContasReceberSiengeAPIClient:
         # Extrai código e descrição da condição de pagamento
         if 'paymentTerm' in df.columns:
              df['condicao_pagamento_codigo'] = df['paymentTerm'].apply(
-                 lambda x: x.get('id') if isinstance(x, dict) else None
+                 lambda x: str(x.get('id')) if isinstance(x, dict) and x.get('id') is not None else None
              )
              df['condicao_pagamento_desc'] = df['paymentTerm'].apply(
                  lambda x: x.get('descrition') if isinstance(x, dict) else None
@@ -218,37 +244,67 @@ class ContasReceberSiengeAPIClient:
         df['costCenterId'] = [d[0] for d in centro_custo_data]
         df['costCenterName'] = [d[1] for d in centro_custo_data]
 
+        # Adiciona campos que não existem na API como vazios
+        df['nosso_numero'] = None
+        df['serasa'] = None
+        df['spc'] = None
+        df['cadastrado_por'] = None
+        df['data_cadastro_parcela'] = None
+        df['observacao_titulo'] = None
+        df['observacao_baixa'] = None
+
         # 3. Mapeamento de Colunas (API -> Relatório CSV)
         mapeamento = {
-            'companyId': 'ID_Empresa',
+            'companyId': 'Cod_Empresa',
             'companyName': 'Empresa',
-            'clientId': 'ID_Cliente',
+            'clientId': 'Cod_Cliente',
             'clientName': 'Cliente',
-            'billId': 'ID_Titulo',
-            'installmentNumber': 'Parcela', # Número visual da parcela
+            'billId': 'Titulo',
+            'installmentNumber': 'Parcela_Sequencial', # Número visual da parcela
             'installmentId': 'ID_Parcela',
             'documentIdentificationName': 'Documento',
             'documentNumber': 'N_Documento',
             'documentForecast': 'Previsao_Financeira',
+            'originId': 'Origem',
             'originalAmount': 'Valor_Original',
-            'discountAmount': 'Desconto',
+            'discountAmount': 'Descontos',
             'taxAmount': 'Imposto',
             'indexerName': 'Indexador',
             'dueDate': 'Data_Vencimento',
             'issueDate': 'Data_Emissao',
-            'balanceAmount': 'Valor_Saldo',
-            'correctedBalanceAmount': 'Valor_SaldoCorrigido',
-            'defaulterSituation': 'Situacao_Inadimplencia',
-            'condicao_pagamento_codigo': 'Codigo_Condicao_Pagamento',
-            'condicao_pagamento_desc': 'Condicao_Pagamento',
-            'costCenterId': 'ID_Centro_Custo',
+            'billDate': 'Data_Contabil',
+            'installmentBaseDate': 'Data_Competencia',
+            'balanceAmount': 'Valor_Devido', # Saldo em aberto = Valor devido
+            'correctedBalanceAmount': 'Valor_Corrigido',
+            'defaulterSituation': 'Inadimplente',
+            'subJudicie': 'Subjudice',
+            'mainUnit': 'Unidade',
+            'bearerId': 'Portador',
+            'condicao_pagamento_codigo': 'Tipo_Condicao',
+            'condicao_pagamento_desc': 'Parcela_Condicao',
+            'costCenterId': 'Cod_Centro_Custo',
             'costCenterName': 'Centro_Custo',
-            # Calculados
-            'data_recebimento_temp': 'Data_Recebimento',
+            # Calculados/Extraídos de receipts
+            'data_recebimento_temp': 'Data_Baixa',
             'valor_liquido_temp': 'Valor_Liquido',
-            'valor_recebido_temp': 'Valor_Recebido', # Valor da baixa
-            'status_parcela_calc': 'Status',
-            'dias_atraso_calc': 'Dias_Atraso'
+            'valor_recebido_temp': 'Valor_Baixa',
+            'valor_correcao_temp': 'Valor_Correcao',
+            'acrescimos_temp': 'Acrescimos',
+            'seguro_temp': 'Seguro',
+            'taxa_adm_temp': 'Taxa_Administrativa',
+            'operacao_temp': 'Operacao',
+            'conta_corrente_temp': 'Conta_Corrente',
+            'tipo_baixa_temp': 'Tipo_Baixa',
+            'status_parcela_calc': 'Status_Parcela',
+            'dias_atraso_calc': 'Dias_Atraso',
+            # Campos que não existem na API (vazios)
+            'nosso_numero': 'Nosso_Numero',
+            'serasa': 'Serasa',
+            'spc': 'SPC',
+            'cadastrado_por': 'Cadastrado_Por',
+            'data_cadastro_parcela': 'Data_Cadastro_Parcela',
+            'observacao_titulo': 'Observacao_Titulo',
+            'observacao_baixa': 'Observacao_Baixa'
         }
         
         # Garante coluna Parcela se não vier installmentNumber
@@ -259,13 +315,24 @@ class ContasReceberSiengeAPIClient:
         
         # Tipagem
         conversoes = {
-            'ID_Empresa': 'Int64',
-            'ID_Cliente': 'Int64',
-            'ID_Titulo': 'Int64',
+            'Cod_Empresa': 'Int64',
+            'Cod_Cliente': 'Int64',
+            'Titulo': 'Int64',
             'ID_Parcela': 'Int64',
-            'ID_Centro_Custo': 'Int64',
-            'Desconto': 'float64', 
-            'Imposto': 'float64'
+            'Cod_Centro_Custo': 'Int64',
+            'Portador': 'Int64',
+            'Descontos': 'float', 
+            'Imposto': 'float',
+            'Valor_Original': 'float',
+            'Valor_Correcao': 'float',
+            'Valor_Corrigido': 'float',
+            'Valor_Devido': 'float',
+            'Valor_Baixa': 'float',
+            'Acrescimos': 'float',
+            'Seguro': 'float',
+            'Taxa_Administrativa': 'float',
+            'Valor_Liquido': 'float',
+            'Tipo_Condicao': 'string'
         }
         
         for col, dtype in conversoes.items():
@@ -273,27 +340,60 @@ class ContasReceberSiengeAPIClient:
                 try:
                     if dtype == 'Int64':
                         df_renomeado[col] = pd.to_numeric(df_renomeado[col], errors='coerce').astype('Int64')
+                    elif dtype == 'string':
+                        df_renomeado[col] = df_renomeado[col].astype(str)
                     else:
                         df_renomeado[col] = pd.to_numeric(df_renomeado[col], errors='coerce')
                 except:
                     pass
-        
-        # Converte Codigo_Condicao_Pagamento para texto (pode conter números e texto)
-        if 'Codigo_Condicao_Pagamento' in df_renomeado.columns:
-            df_renomeado['Codigo_Condicao_Pagamento'] = df_renomeado['Codigo_Condicao_Pagamento'].apply(
-                lambda x: str(x) if pd.notna(x) and x is not None else None
-            )
 
-        # Seleciona colunas finais
+        # Seleciona colunas finais (na ordem solicitada)
         colunas_finais = [
-            'ID_Titulo', 'Parcela', 'ID_Empresa', 'Empresa', 'ID_Cliente', 'Cliente',
-            'Documento', 'N_Documento', 'Previsao_Financeira', 'Situacao_Inadimplencia', 
-            'Codigo_Condicao_Pagamento', 'Condicao_Pagamento',
-            'ID_Centro_Custo', 'Centro_Custo',
-            'Data_Vencimento', 'Valor_Original', 'Desconto', 'Imposto',
-            'Valor_Liquido', 'Valor_Recebido', 'Valor_Saldo', 'Valor_SaldoCorrigido',
-            'Data_Recebimento', 'Data_Emissao', 'Indexador',
-            'Status', 'Dias_Atraso'
+            'Titulo',
+            'Parcela_Sequencial',
+            'Parcela_Condicao',
+            'Cod_Empresa',
+            'Empresa',
+            'Cod_Centro_Custo',
+            'Centro_Custo',
+            'Unidade',
+            'Cod_Cliente',
+            'Cliente',
+            'Documento',
+            'N_Documento',
+            'Origem',
+            'Status_Parcela',
+            'Nosso_Numero',
+            'Inadimplente',
+            'Serasa',
+            'SPC',
+            'Subjudice',
+            'Indexador',
+            'Tipo_Condicao',
+            'Portador',
+            'Operacao',
+            'Cadastrado_Por',
+            'Data_Emissao',
+            'Data_Vencimento',
+            'Data_Contabil',
+            'Data_Competencia',
+            'Data_Cadastro_Parcela',
+            'Valor_Original',
+            'Valor_Correcao',
+            'Valor_Corrigido',
+            'Valor_Devido',
+            'Data_Baixa',
+            'Valor_Baixa',
+            'Acrescimos',
+            'Descontos',
+            'Seguro',
+            'Taxa_Administrativa',
+            'Valor_Liquido',
+            'Tipo_Baixa',
+            'Conta_Corrente',
+            'Observacao_Titulo',
+            'Observacao_Baixa',
+            'Dias_Atraso'
         ]
         
         cols_existentes = [c for c in colunas_finais if c in df_renomeado.columns]
