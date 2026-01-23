@@ -141,7 +141,7 @@ USERS_DATABASE = {
         "created": "2026-01-15",
         "last_login": None,
         "active": True,
-        "pages": ["administrativo"],  # Acesso restrito apenas ao dashboard administrativo
+        "pages": ["vendas", "leads", "reservas", "motivo_fora_prazo", "administrativo"],  # Acesso ao dashboard de reservas e administrativo
         "subpages": ["administrativo.repasses", "administrativo.contas_pagas", "administrativo.saldo_em_caixa", "administrativo.rh"]
     }
 }
