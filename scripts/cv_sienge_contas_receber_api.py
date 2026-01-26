@@ -414,9 +414,10 @@ class ContasReceberSiengeAPIClient:
             logger.info(f"Data inicial definida automaticamente para: {data_inicio}")
         
         if data_fim is None:
-            # Data fim fixa em 23/01/2036
-            data_fim = "2036-01-23"
-            logger.info(f"Data final definida automaticamente para: {data_fim}")
+            # Data fim dinâmica: mantém dia e mês de hoje, soma 10 anos ao ano
+            data_fim_obj = date(hoje.year + 10, hoje.month, hoje.day)
+            data_fim = data_fim_obj.strftime("%Y-%m-%d")
+            logger.info(f"Data final definida automaticamente para: {data_fim} (hoje + 10 anos)")
             
         if correction_date is None:
             correction_date = hoje_str
