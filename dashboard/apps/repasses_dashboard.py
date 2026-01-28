@@ -710,26 +710,27 @@ def render_analise_workflow(
     st.divider()
 
     # Tempo Médio por Situação (Abas Resumido e Detalhado)
-    st.subheader("Tempo Médio por Etapa", help="Quanto tempo, em média, um processo permanece em cada etapa específica.")
-    
-    # Usamos o filtered para mostrar as etapas que ocorreram no período
-    df_workflow = df_workflow_filtered
-    
-    tab_resumido, tab_detalhado = st.tabs(["Resumido", "Detalhado"])
-    
-    with tab_resumido:
-        if "situacao_resumida" in df_workflow.columns:
-            _render_workflow_chart(df_workflow, "situacao_resumida", STATUS_ORDER, key_suffix="resumido")
-        else:
-            st.warning("Dados de situação resumida não disponíveis para o Workflow.")
-            
-    with tab_detalhado:
-        if "situacao_detalhada" in df_workflow.columns:
-            _render_workflow_chart(df_workflow, "situacao_detalhada", STATUS_ORDER_WORKFLOW, key_suffix="detalhado")
-        else:
-            st.warning("Dados de situação detalhada não disponíveis para o Workflow.")
-    
-    st.divider()
+    # COMENTADO TEMPORARIAMENTE - Aguardando debug das informações do workflow tempo
+    # st.subheader("Tempo Médio por Etapa", help="Quanto tempo, em média, um processo permanece em cada etapa específica.")
+    # 
+    # # Usamos o filtered para mostrar as etapas que ocorreram no período
+    # df_workflow = df_workflow_filtered
+    # 
+    # tab_resumido, tab_detalhado = st.tabs(["Resumido", "Detalhado"])
+    # 
+    # with tab_resumido:
+    #     if "situacao_resumida" in df_workflow.columns:
+    #         _render_workflow_chart(df_workflow, "situacao_resumida", STATUS_ORDER, key_suffix="resumido")
+    #     else:
+    #         st.warning("Dados de situação resumida não disponíveis para o Workflow.")
+    #         
+    # with tab_detalhado:
+    #     if "situacao_detalhada" in df_workflow.columns:
+    #         _render_workflow_chart(df_workflow, "situacao_detalhada", STATUS_ORDER_WORKFLOW, key_suffix="detalhado")
+    #     else:
+    #         st.warning("Dados de situação detalhada não disponíveis para o Workflow.")
+    # 
+    # st.divider()
     
     # Evolução Temporal do SLA
     st.subheader("Evolução do SLA Médio (Mensal)")
