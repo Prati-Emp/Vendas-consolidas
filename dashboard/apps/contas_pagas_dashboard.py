@@ -34,7 +34,12 @@ def format_currency_short(value: float) -> str:
 
 @st.cache_data(ttl=600)
 def load_contas_pagas_raw() -> pd.DataFrame:
-    """Carrega os dados crus da tabela sienge_contas_pagas_e_a_pagar no MotherDuck."""
+    """
+    Carrega os dados crus da tabela sienge_contas_pagas_e_a_pagar no MotherDuck.
+    
+    Exclui documentos de PREVISÃO (previsões financeiras) pois não representam 
+    pagamentos efetivos, apenas projeções futuras.
+    """
     md_conn = get_md_connection()
     
     sql = """
@@ -70,6 +75,8 @@ def load_contas_pagas_raw() -> pd.DataFrame:
         processado_em
     FROM administracao.sienge_contas_pagas_e_a_pagar
     WHERE Titulo IS NOT NULL
+      AND UPPER(TRIM(Documento)) NOT LIKE 'PREVISÃO%'
+      AND UPPER(TRIM(Documento)) NOT LIKE 'PREVISAO%'
     """
     
     try:
@@ -144,12 +151,23 @@ def render_visao_geral(df: pd.DataFrame):
     # KPIs Principais
     st.subheader("📊 Indicadores Financeiros")
     
+    # Informação sobre exclusão de previsões
+    st.info(
+        "ℹ️ **Nota:** Documentos de PREVISÃO (previsões financeiras) são desconsiderados dos cálculos, "
+        "pois representam projeções futuras e não pagamentos efetivos.",
+        icon="ℹ️"
+    )
+    
     # Todos os KPIs em uma única linha (4 colunas)
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
         valor_total = df["Valor_bruto"].sum() if "Valor_bruto" in df.columns else 0.0
-        st.metric("Valor Total Pago", format_currency_short(valor_total), help="Valor bruto pago (antes de descontos e impostos)")
+        st.metric(
+            "Valor Total Pago", 
+            format_currency_short(valor_total), 
+            help="Valor bruto pago (antes de descontos e impostos). Documentos de PREVISÃO são desconsiderados."
+        )
         
     with col2:
         total_titulos = df["Titulo"].nunique() if "Titulo" in df.columns else len(df)
@@ -437,6 +455,13 @@ def render_analise_temporal(df: pd.DataFrame):
     end_date = st.session_state.get("contas_filtro_fim")
     
     st.subheader("📅 Evolução Temporal de Pagamentos")
+    
+    # Informação sobre exclusão de previsões
+    st.info(
+        "ℹ️ **Nota:** Documentos de PREVISÃO (previsões financeiras) são desconsiderados dos cálculos, "
+        "pois representam projeções futuras e não pagamentos efetivos.",
+        icon="ℹ️"
+    )
     
     # Análise mensal de pagamentos (respeita data de pagamento)
     if "Mes_pagamento" in df.columns:
