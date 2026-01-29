@@ -162,11 +162,11 @@ def render_visao_geral(df: pd.DataFrame):
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-        valor_total = df["Valor_bruto"].sum() if "Valor_bruto" in df.columns else 0.0
+        valor_total = df["Valor_liquido"].sum() if "Valor_liquido" in df.columns else 0.0
         st.metric(
             "Valor Total Pago", 
             format_currency_short(valor_total), 
-            help="Valor bruto pago (antes de descontos e impostos). Documentos de PREVISÃO são desconsiderados."
+            help="Valor líquido pago (após descontos e impostos). Documentos de PREVISÃO são desconsiderados."
         )
         
     with col2:
@@ -212,11 +212,11 @@ def render_visao_geral(df: pd.DataFrame):
                 )
             
             with col2:
-                valor_pago_atraso = df_pagas_com_atraso["Valor_bruto"].sum()
+                valor_pago_atraso = df_pagas_com_atraso["Valor_liquido"].sum()
                 st.metric(
                     "Valor Pago com Atraso",
                     format_currency_short(valor_pago_atraso),
-                    help="Valor total das contas que foram pagas com atraso"
+                    help="Valor líquido total das contas que foram pagas com atraso (após descontos e impostos)"
                 )
             
             with col3:
@@ -234,14 +234,14 @@ def render_visao_geral(df: pd.DataFrame):
                     df_pagas_com_atraso.groupby("Credor")
                     .agg({
                         "Titulo": "nunique",
-                        "Valor_bruto": "sum",
+                        "Valor_liquido": "sum",
                         "Dias_atraso": "mean"
                     })
                     .reset_index()
                     .rename(columns={
                         "Credor": "Credor",
                         "Titulo": "Qtd Títulos",
-                        "Valor_bruto": "Valor Total",
+                        "Valor_liquido": "Valor Total",
                         "Dias_atraso": "Dias Médio"
                     })
                 )
@@ -276,7 +276,7 @@ def render_visao_geral(df: pd.DataFrame):
                             ),
                             "Valor Pago com Atraso": st.column_config.TextColumn(
                                 "Valor Pago com Atraso",
-                                help="Valor total (em R$) das contas deste credor que foram pagas com atraso, formatado em mil ou milhões"
+                                help="Valor líquido total (em R$) das contas deste credor que foram pagas com atraso, após descontos e impostos, formatado em mil ou milhões"
                             ),
                             "Dias Médio Atraso": st.column_config.TextColumn(
                                 "Dias Médio Atraso",
@@ -312,7 +312,7 @@ def render_visao_geral(df: pd.DataFrame):
                             ),
                             "Valor Pago com Atraso": st.column_config.TextColumn(
                                 "Valor Pago com Atraso",
-                                help="Valor total (em R$) das contas deste credor que foram pagas com atraso, formatado em mil ou milhões"
+                                help="Valor líquido total (em R$) das contas deste credor que foram pagas com atraso, após descontos e impostos, formatado em mil ou milhões"
                             ),
                             "Dias Médio Atraso": st.column_config.TextColumn(
                                 "Dias Médio Atraso",
@@ -334,13 +334,13 @@ def render_visao_geral(df: pd.DataFrame):
             df.groupby("Empresa")
             .agg({
                 "Titulo": "nunique",
-                "Valor_bruto": "sum"
+                "Valor_liquido": "sum"
             })
             .reset_index()
             .rename(columns={
                 "Empresa": "Empresa",
                 "Titulo": "Qtd Títulos",
-                "Valor_bruto": "Valor Total"
+                "Valor_liquido": "Valor Total"
             })
         )
         
@@ -357,7 +357,7 @@ def render_visao_geral(df: pd.DataFrame):
             column_config={
                 "Empresa": st.column_config.TextColumn("Empresa"),
                 "Qtd Títulos": st.column_config.NumberColumn("Qtd. Títulos", format="%d", help="Quantidade de títulos pagos"),
-                "Valor": st.column_config.TextColumn("Valor Total", help="Valor total pago pela empresa")
+                "Valor": st.column_config.TextColumn("Valor Total", help="Valor líquido total pago pela empresa (após descontos e impostos)")
             }
         )
     
@@ -372,13 +372,13 @@ def render_visao_geral(df: pd.DataFrame):
             df.groupby("Credor")
             .agg({
                 "Titulo": "nunique",
-                "Valor_bruto": "sum"
+                "Valor_liquido": "sum"
             })
             .reset_index()
             .rename(columns={
                 "Credor": "Credor",
                 "Titulo": "Qtd Títulos",
-                "Valor_bruto": "Valor Total"
+                "Valor_liquido": "Valor Total"
             })
         )
         
@@ -395,7 +395,7 @@ def render_visao_geral(df: pd.DataFrame):
             column_config={
                 "Credor": st.column_config.TextColumn("Credor"),
                 "Qtd Títulos": st.column_config.NumberColumn("Qtd. Títulos", format="%d", help="Quantidade de títulos pagos"),
-                "Valor": st.column_config.TextColumn("Valor Total", help="Valor total pago ao credor")
+                "Valor": st.column_config.TextColumn("Valor Total", help="Valor líquido total pago ao credor (após descontos e impostos)")
             }
         )
     
@@ -411,7 +411,7 @@ def render_visao_geral(df: pd.DataFrame):
         "Credor": "Credor",
         "Data_vencimento": "Data Vencimento",
         "Data_pagamento": "Data Pagamento",
-        "Valor_bruto": "Valor Bruto",
+        "Valor_liquido": "Valor Líquido",
         "Status_parcela": "Status",
         "Dias_atraso": "Dias Atraso",
         "Documento": "Documento",
@@ -432,8 +432,8 @@ def render_visao_geral(df: pd.DataFrame):
                 df_table[col] = df_table[col].dt.strftime("%d/%m/%Y")
         
         # Formatar Valor
-        if "Valor Bruto" in df_table.columns:
-            df_table["Valor Bruto"] = df_table["Valor Bruto"].apply(format_currency_short)
+        if "Valor Líquido" in df_table.columns:
+            df_table["Valor Líquido"] = df_table["Valor Líquido"].apply(format_currency_short)
         
         st.dataframe(
             df_table,
@@ -479,13 +479,13 @@ def render_analise_temporal(df: pd.DataFrame):
                 df_filtrado.groupby("Mes_pagamento")
                 .agg({
                     "Titulo": "nunique",
-                    "Valor_bruto": "sum"
+                    "Valor_liquido": "sum"
                 })
                 .reset_index()
                 .rename(columns={
                     "Mes_pagamento": "Mês",
                     "Titulo": "Quantidade",
-                    "Valor_bruto": "Valor Total"
+                    "Valor_liquido": "Valor Total"
                 })
             )
             
@@ -571,13 +571,13 @@ def render_analise_temporal(df: pd.DataFrame):
                 df_venc.groupby("Mes_vencimento")
                 .agg({
                     "Titulo": "nunique",
-                    "Valor_bruto": "sum"
+                    "Valor_liquido": "sum"
                 })
                 .reset_index()
                 .rename(columns={
                     "Mes_vencimento": "Mês",
                     "Titulo": "Quantidade",
-                    "Valor_bruto": "Valor Total"
+                    "Valor_liquido": "Valor Total"
                 })
             )
             
