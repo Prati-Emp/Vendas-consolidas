@@ -270,8 +270,8 @@ def main():
     print("OK: Variaveis de ambiente configuradas")
     
     try:
-        # Executar com timeout de 15 minutos
-        sucesso = asyncio.run(asyncio.wait_for(sistema_diario(), timeout=900.0))
+        # Executar com timeout de 20 minutos
+        sucesso = asyncio.run(asyncio.wait_for(sistema_diario(), timeout=1200.0))
         
         if sucesso:
             print("\nOK: ATUALIZACAO DIARIA CONCLUIDA COM SUCESSO!")

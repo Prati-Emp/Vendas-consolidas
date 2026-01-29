@@ -34,6 +34,7 @@ jobs:
         run: chmod +x scripts/*.py
 
       - name: Update database (Daily APIs)
+        timeout-minutes: 20
         env:
           MOTHERDUCK_TOKEN: ${{ secrets.MOTHERDUCK_TOKEN }}
           CVCRM_EMAIL: ${{ secrets.CVCRM_EMAIL }}
