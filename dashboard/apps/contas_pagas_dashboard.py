@@ -149,7 +149,7 @@ def render_visao_geral(df: pd.DataFrame):
     
     with col1:
         valor_total = df["Valor_bruto"].sum() if "Valor_bruto" in df.columns else 0.0
-        st.metric("Valor Total Pago", format_currency_short(valor_total))
+        st.metric("Valor Total Pago", format_currency_short(valor_total), help="Valor bruto pago (antes de descontos e impostos)")
         
     with col2:
         total_titulos = df["Titulo"].nunique() if "Titulo" in df.columns else len(df)
