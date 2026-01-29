@@ -2,8 +2,8 @@ name: Update Database - Daily (Non-Sienge)
 
 on:
   schedule:
-    # Executar diariamente às 05:00 BRT (08:00 UTC) - antes das 06:00
-    - cron: '0 8 * * *'  # Diariamente às 08:00 UTC (05:00 BRT)
+    # Executar diariamente às 01:00 BRT (04:00 UTC) 
+    - cron: '0 4 * * *'  # Diariamente às 04:00 UTC (01:00 BRT)
   workflow_dispatch:
     inputs:
       reason:
