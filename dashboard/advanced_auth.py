@@ -153,7 +153,7 @@ USERS_DATABASE = {
         "last_login": None,
         "active": True,
         "pages": ["vendas", "leads", "reservas", "motivo_fora_prazo", "administrativo"],  # Acesso ao dashboard de reservas e administrativo
-        "subpages": ["administrativo.repasses", "administrativo.contas_pagas", "administrativo.saldo_em_caixa"]  # RH oculto
+        "subpages": ["administrativo.repasses", "administrativo.saldo_em_caixa"]  # Contas Pagas e RH ocultos
     }
 }
 
