@@ -142,7 +142,18 @@ USERS_DATABASE = {
         "last_login": None,
         "active": True,
         "pages": ["vendas", "leads", "reservas", "motivo_fora_prazo", "administrativo"],  # Acesso ao dashboard de reservas e administrativo
-        "subpages": ["administrativo.repasses", "administrativo.contas_pagas", "administrativo.saldo_em_caixa", "administrativo.rh"]
+        "subpages": ["administrativo.repasses", "administrativo.contas_pagas", "administrativo.saldo_em_caixa"]  # RH oculto
+    },
+    "ricardo@grupoprati.com": {
+        "password": "Pr@ti2025!Ricardo",
+        "role": "analyst",
+        "name": "Ricardo",
+        "department": "Administrativo",
+        "created": "2026-01-29",
+        "last_login": None,
+        "active": True,
+        "pages": ["vendas", "leads", "reservas", "motivo_fora_prazo", "administrativo"],  # Acesso ao dashboard de reservas e administrativo
+        "subpages": ["administrativo.repasses", "administrativo.contas_pagas", "administrativo.saldo_em_caixa"]  # RH oculto
     }
 }
 
@@ -461,6 +472,7 @@ def setup_auth_environment():
             <li>Raul Lunkes (analyst) - raul.lunkes@grupoprati.com</li>
             <li>Michael Seidenstucker (analyst) - michael.seidenstucker@grupoprati.com</li>
             <li>Marlos Bendo (analyst) - marlos.bendo@grupoprati.com</li>
+            <li>Ricardo (analyst) - ricardo@grupoprati.com</li>
         </ul>
         <p><strong>⚠️ Importante:</strong> Senhas são fornecidas individualmente por segurança!</p>
     </div>

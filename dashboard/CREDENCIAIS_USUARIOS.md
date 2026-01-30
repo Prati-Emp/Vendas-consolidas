@@ -20,6 +20,8 @@
 | José Aquino | jose.aquino@grupoprati.com | `Pr@ti2024!Jose` | Analyst |
 | Evelyn Padilha | evelyn.padilha@grupoprati.com | `Pr@ti2024!Evelyn` | Analyst |
 | João Fantinel | joao.fantinel@grupoprati.com | `0sIOnX%d9@sz` | Analyst |
+| Marlos Bendo | marlos.bendo@grupoprati.com | `Pr@ti2025!Marlos` | Analyst |
+| Ricardo | ricardo@grupoprati.com | `Pr@ti2025!Ricardo` | Analyst |
 
 ---
 
