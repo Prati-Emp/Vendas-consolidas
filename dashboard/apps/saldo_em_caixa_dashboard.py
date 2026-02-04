@@ -320,35 +320,35 @@ def render_last_date_cards(df: pd.DataFrame, end_date: date):
         st.metric(
             "Pagamentos",
             format_currency_short(total_pagamentos),
-            help=f"Total de pagamentos em {saldos['ultima_data'].strftime('%d/%m/%Y')} (CEF + Sicredi)"
+            help=f"Total de pagamentos em {saldos['ultima_data'].strftime('%d/%m/%Y')} (Sicredi + Caixa)"
         )
     
     with col2:
         st.metric(
             "Recebimentos",
             format_currency_short(total_recebimentos),
-            help=f"Total de recebimentos em {saldos['ultima_data'].strftime('%d/%m/%Y')} (CEF + Sicredi)"
+            help=f"Total de recebimentos em {saldos['ultima_data'].strftime('%d/%m/%Y')} (Sicredi + Caixa)"
         )
     
     with col3:
         st.metric(
             "Saldo Atual",
             format_currency_short(saldos['saldo_atual']),
-            help=f"Saldo atual em {saldos['ultima_data'].strftime('%d/%m/%Y')}"
+            help=f"Saldo atual em {saldos['ultima_data'].strftime('%d/%m/%Y')} (Sicredi + Caixa)"
         )
     
     with col4:
         st.metric(
             "Saldo Investimento",
             format_currency_short(saldos['saldo_investimento']),
-            help=f"Saldo de investimentos em {saldos['ultima_data'].strftime('%d/%m/%Y')}"
+            help=f"Saldo de investimentos em {saldos['ultima_data'].strftime('%d/%m/%Y')} (Sicredi + Caixa)"
         )
     
     with col5:
         st.metric(
             "Saldo Acumulado",
             format_currency_short(saldos['saldo_acumulado']),
-            help=f"Saldo acumulado em {saldos['ultima_data'].strftime('%d/%m/%Y')}"
+            help=f"Saldo acumulado em {saldos['ultima_data'].strftime('%d/%m/%Y')} (Sicredi + Caixa)"
         )
     
     st.caption(f"📅 Última data disponível no período: {saldos['ultima_data'].strftime('%d/%m/%Y')}")
