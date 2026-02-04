@@ -23,11 +23,11 @@ def format_currency_short(value: float) -> str:
     v = abs(value)
 
     if v >= 1_000_000:
-        return f"{sign}R$ {v/1_000_000:.1f}Mi"
+        return f"{sign}R$ {v/1_000_000:.2f}Mi"
     elif v >= 1_000:
-        return f"{sign}R$ {v/1_000:.1f}Mil"
+        return f"{sign}R$ {v/1_000:.2f}Mil"
     else:
-        return f"{sign}R$ {v:,.0f}".replace(",", ".")
+        return f"{sign}R$ {v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 def format_currency_full(value: float) -> str:
     """Formata valores monetários completos com separadores de milhar."""
@@ -300,30 +300,6 @@ def render_last_date_cards(df: pd.DataFrame, end_date: date):
     if saldos['ultima_data'] is None:
         return
     
-    # Todos os cards na mesma linha
-    col1, col2, col3, col4, col5 = st.columns(5)
-    
-    with col1:
-        st.metric(
-            "Saldo Acumulado",
-            format_currency_short(saldos['saldo_acumulado']),
-            help=f"Saldo acumulado em {saldos['ultima_data'].strftime('%d/%m/%Y')}"
-        )
-    
-    with col2:
-        st.metric(
-            "Saldo Investimento",
-            format_currency_short(saldos['saldo_investimento']),
-            help=f"Saldo de investimentos em {saldos['ultima_data'].strftime('%d/%m/%Y')}"
-        )
-    
-    with col3:
-        st.metric(
-            "Saldo Atual",
-            format_currency_short(saldos['saldo_atual']),
-            help=f"Saldo atual em {saldos['ultima_data'].strftime('%d/%m/%Y')}"
-        )
-    
     # Calcular recebimentos e pagamentos da última data disponível (unificando bancos)
     # Filtrar dados da última data disponível
     ultima_data_dt = pd.Timestamp(saldos['ultima_data'])
@@ -337,18 +313,42 @@ def render_last_date_cards(df: pd.DataFrame, end_date: date):
     total_recebimentos = df_ultima_data[df_ultima_data['Categoria'].isin(cats_receb)]['Valor'].sum() if cats_receb else 0.0
     total_pagamentos = df_ultima_data[df_ultima_data['Categoria'].isin(cats_pag)]['Valor'].sum() if cats_pag else 0.0
     
-    with col4:
+    # Todos os cards na mesma linha - ordem: Pagamentos, Recebimentos, Saldo Atual, Saldo Investimento, Saldo Acumulado
+    col1, col2, col3, col4, col5 = st.columns(5)
+    
+    with col1:
+        st.metric(
+            "Pagamentos",
+            format_currency_short(total_pagamentos),
+            help=f"Total de pagamentos em {saldos['ultima_data'].strftime('%d/%m/%Y')} (CEF + Sicredi)"
+        )
+    
+    with col2:
         st.metric(
             "Recebimentos",
             format_currency_short(total_recebimentos),
             help=f"Total de recebimentos em {saldos['ultima_data'].strftime('%d/%m/%Y')} (CEF + Sicredi)"
         )
     
+    with col3:
+        st.metric(
+            "Saldo Atual",
+            format_currency_short(saldos['saldo_atual']),
+            help=f"Saldo atual em {saldos['ultima_data'].strftime('%d/%m/%Y')}"
+        )
+    
+    with col4:
+        st.metric(
+            "Saldo Investimento",
+            format_currency_short(saldos['saldo_investimento']),
+            help=f"Saldo de investimentos em {saldos['ultima_data'].strftime('%d/%m/%Y')}"
+        )
+    
     with col5:
         st.metric(
-            "Pagamentos",
-            format_currency_short(total_pagamentos),
-            help=f"Total de pagamentos em {saldos['ultima_data'].strftime('%d/%m/%Y')} (CEF + Sicredi)"
+            "Saldo Acumulado",
+            format_currency_short(saldos['saldo_acumulado']),
+            help=f"Saldo acumulado em {saldos['ultima_data'].strftime('%d/%m/%Y')}"
         )
     
     st.caption(f"📅 Última data disponível no período: {saldos['ultima_data'].strftime('%d/%m/%Y')}")
