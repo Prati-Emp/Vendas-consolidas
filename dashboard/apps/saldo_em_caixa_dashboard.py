@@ -324,13 +324,18 @@ def render_last_date_cards(df: pd.DataFrame, end_date: date):
             help=f"Saldo atual em {saldos['ultima_data'].strftime('%d/%m/%Y')}"
         )
     
-    # Segunda linha: Recebimentos e Pagamentos (total do período)
-    # Calcular totais de recebimentos e pagamentos no período
+    # Segunda linha: Recebimentos e Pagamentos (da última data disponível, unificando bancos)
+    # Filtrar dados da última data disponível
+    ultima_data_dt = pd.Timestamp(saldos['ultima_data'])
+    df_ultima_data = df[df['Data'] == ultima_data_dt].copy()
+    
+    # Identificar categorias de recebimentos e pagamentos
     cats_receb = [c for c in df['Categoria'].unique() if 'recebimento' in str(c).lower() or 'resgate' in str(c).lower()]
     cats_pag = [c for c in df['Categoria'].unique() if 'pagamento' in str(c).lower() and 'saldo' not in str(c).lower()]
     
-    total_recebimentos = df[df['Categoria'].isin(cats_receb)]['Valor'].sum() if cats_receb else 0.0
-    total_pagamentos = df[df['Categoria'].isin(cats_pag)]['Valor'].sum() if cats_pag else 0.0
+    # Calcular totais da última data (soma de todos os bancos - CEF + Sicredi)
+    total_recebimentos = df_ultima_data[df_ultima_data['Categoria'].isin(cats_receb)]['Valor'].sum() if cats_receb else 0.0
+    total_pagamentos = df_ultima_data[df_ultima_data['Categoria'].isin(cats_pag)]['Valor'].sum() if cats_pag else 0.0
     
     col4, col5 = st.columns(2)
     
@@ -338,14 +343,14 @@ def render_last_date_cards(df: pd.DataFrame, end_date: date):
         st.metric(
             "Recebimentos",
             format_currency_short(total_recebimentos),
-            help=f"Total de recebimentos no período selecionado"
+            help=f"Total de recebimentos em {saldos['ultima_data'].strftime('%d/%m/%Y')} (CEF + Sicredi)"
         )
     
     with col5:
         st.metric(
             "Pagamentos",
             format_currency_short(total_pagamentos),
-            help=f"Total de pagamentos no período selecionado"
+            help=f"Total de pagamentos em {saldos['ultima_data'].strftime('%d/%m/%Y')} (CEF + Sicredi)"
         )
     
     st.caption(f"📅 Última data disponível no período: {saldos['ultima_data'].strftime('%d/%m/%Y')}")
