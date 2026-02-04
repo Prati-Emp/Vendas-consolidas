@@ -300,8 +300,8 @@ def render_last_date_cards(df: pd.DataFrame, end_date: date):
     if saldos['ultima_data'] is None:
         return
     
-    # Primeira linha: Saldos
-    col1, col2, col3 = st.columns(3)
+    # Todos os cards na mesma linha
+    col1, col2, col3, col4, col5 = st.columns(5)
     
     with col1:
         st.metric(
@@ -324,7 +324,7 @@ def render_last_date_cards(df: pd.DataFrame, end_date: date):
             help=f"Saldo atual em {saldos['ultima_data'].strftime('%d/%m/%Y')}"
         )
     
-    # Segunda linha: Recebimentos e Pagamentos (da última data disponível, unificando bancos)
+    # Calcular recebimentos e pagamentos da última data disponível (unificando bancos)
     # Filtrar dados da última data disponível
     ultima_data_dt = pd.Timestamp(saldos['ultima_data'])
     df_ultima_data = df[df['Data'] == ultima_data_dt].copy()
@@ -336,8 +336,6 @@ def render_last_date_cards(df: pd.DataFrame, end_date: date):
     # Calcular totais da última data (soma de todos os bancos - CEF + Sicredi)
     total_recebimentos = df_ultima_data[df_ultima_data['Categoria'].isin(cats_receb)]['Valor'].sum() if cats_receb else 0.0
     total_pagamentos = df_ultima_data[df_ultima_data['Categoria'].isin(cats_pag)]['Valor'].sum() if cats_pag else 0.0
-    
-    col4, col5 = st.columns(2)
     
     with col4:
         st.metric(
