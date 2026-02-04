@@ -22,6 +22,7 @@
 | João Fantinel | joao.fantinel@grupoprati.com | `0sIOnX%d9@sz` | Analyst |
 | Marlos Bendo | marlos.bendo@grupoprati.com | `Pr@ti2025!Marlos` | Analyst |
 | Ricardo | ricardo@grupoprati.com | `Pr@ti2025!Ricardo` | Analyst |
+| Gustavo Prati | GustavoPrati@Pratiemp318.onmicrosoft.com | `Pr@ti2025!GustavoP` | Analyst |
 
 ---
 
