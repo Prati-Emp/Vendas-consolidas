@@ -53,9 +53,9 @@ class ComissoesAPIClient:
         if a_partir_de is None:
             a_partir_de = "01/01/2025"
         if ate is None:
-            # Data final: hoje + 1 ano
+            # Data final: hoje
             hoje = date.today()
-            ate = hoje.replace(year=hoje.year + 1).strftime("%d/%m/%Y")
+            ate = hoje.strftime("%d/%m/%Y")
         
         page = 1
         results: List[Dict] = []
