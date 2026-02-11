@@ -11,7 +11,7 @@ import logging
 import os
 import sys
 import time
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from typing import List, Dict, Any, Optional
 import pandas as pd
 import requests
@@ -49,15 +49,16 @@ class ComissoesAPIClient:
         Busca comissões paginando e retorna todos os dados detalhados.
         Explode a estrutura: Comissão -> Beneficiários -> Programação
         """
-        # Se não fornecidas, usa datas padrão conforme código de referência
-        # O código de referência usava ate="10/02/2026" como padrão fixo e funcionou
+        # Se não fornecidas, usa datas padrão
+        hoje = date.today()
+        
         if a_partir_de is None:
             a_partir_de = "01/01/2025"
             
         if ate is None:
-            # Data final: usar data fixa como no código de referência que funcionou
-            # O código de referência usava "10/02/2026"
-            ate = "10/02/2026"
+            # Data final: ontem (dinâmico) para evitar erro 500 com dados do dia atual
+            ontem = hoje - timedelta(days=1)
+            ate = ontem.strftime("%d/%m/%Y")
         
         page = 1
         results: List[Dict] = []
@@ -223,7 +224,7 @@ def obter_dados_cv_comissoes(a_partir_de: str = None, ate: str = None) -> pd.Dat
     
     Args:
         a_partir_de: Data inicial no formato DD/MM/YYYY (padrão: 01/01/2025)
-        ate: Data final no formato DD/MM/YYYY (padrão: hoje)
+        ate: Data final no formato DD/MM/YYYY (padrão: ontem)
     """
     try:
         client = ComissoesAPIClient()
