@@ -49,12 +49,14 @@ class ComissoesAPIClient:
         Busca comissões paginando e retorna todos os dados detalhados.
         Explode a estrutura: Comissão -> Beneficiários -> Programação
         """
-        # Se não fornecidas, usa datas padrão
+        # Se não fornecidas, usa datas padrão conforme código de referência
+        hoje = date.today()
+        
         if a_partir_de is None:
             a_partir_de = "01/01/2025"
+            
         if ate is None:
             # Data final: hoje
-            hoje = date.today()
             ate = hoje.strftime("%d/%m/%Y")
         
         page = 1
@@ -75,116 +77,112 @@ class ComissoesAPIClient:
             logger.info(f"Fazendo requisição para página {page}...")
             logger.info(f"Parâmetros: a_partir_de={a_partir_de}, ate={ate}")
             
-            try:
-                resp = requests.get(self.base_url, headers=self.headers, params=payload, timeout=60)
-                resp.raise_for_status()
-                
-                data = resp.json()
-                
-                dados = data.get("comissoes", [])
-                total = data.get("total", 0)
-                limit = data.get("limit", page_size)
-                offset_returned = data.get("offset", 0)
-                
-                logger.info(f"Dados recebidos: {len(dados)}")
-                logger.info(f"Total de registros: {total}, Limit: {limit}, Offset: {offset_returned}")
-                
-                if not isinstance(dados, list) or len(dados) == 0:
-                    logger.info("Nenhum dado encontrado, parando paginação.")
-                    break
+            resp = requests.get(self.base_url, headers=self.headers, params=payload, timeout=60)
+            logger.info(f"Status da resposta: {resp.status_code}")
+            
+            if resp.status_code != 200:
+                raise RuntimeError(f"HTTP {resp.status_code}: {resp.text}")
 
-                # Processa cada comissão
-                for item in dados:
-                    total_processed += 1
-                    
-                    # Dados base da comissão
-                    base_row = {
-                        "idcomissao_cv": item.get("idcomissao_cv"),
-                        "idcomissao_int": item.get("idcomissao_int"),
-                        "data_cad_comissao": item.get("data_cad"),
-                        "idsituacao_comissao": item.get("idsituacao"),
-                        "idreserva_cv": item.get("idreserva_cv"),
-                        "numero_venda": item.get("numero_venda"),
-                        "empreendimento": item.get("empreendimento"),
-                        "etapa": item.get("etapa"),
-                        "bloco": item.get("bloco"),
-                        "unidade": item.get("unidade"),
-                        "valor_comissao_total": item.get("valor_comissao"),
-                        "pagador_nome": item.get("pagador", {}).get("nome") if item.get("pagador") else None,
-                        "pagador_doc": item.get("pagador", {}).get("documento") if item.get("pagador") else None,
-                    }
-                    
-                    beneficiarios = item.get("beneficiarios", [])
-                    
-                    if beneficiarios:
-                        for ben in beneficiarios:
-                            ben_row = base_row.copy()
-                            ben_row.update({
-                                "beneficiario_nome": ben.get("nome"),
-                                "beneficiario_doc": ben.get("documento"),
-                                "beneficiario_tipo": ben.get("para"),
-                                "beneficiario_valor_total": ben.get("valor"),
-                            })
-                            
-                            programacao = ben.get("programacao", [])
-                            
-                            if programacao:
-                                for prog in programacao:
-                                    row = ben_row.copy()
-                                    row.update({
-                                        "idpagamento": prog.get("idpagamento"),
-                                        "situacao_pagamento": prog.get("situacao"),
-                                        "valor_parcela": prog.get("valor"),
-                                        "data_pagamento": prog.get("vencimento"),  # Renomeia vencimento para data_pagamento
-                                        "vencimento": prog.get("vencimento"),  # Mantém também o original
-                                        "data_medicao": prog.get("data_medicao"),
-                                        "observacoes_pagamento": prog.get("observacoes")
-                                    })
-                                    results.append(row)
-                            else:
-                                # Beneficiário sem programação
+            data = resp.json()
+            
+            dados = data.get("comissoes", [])
+            total = data.get("total", 0)
+            limit = data.get("limit", page_size)
+            offset_returned = data.get("offset", 0)
+            
+            logger.info(f"Dados recebidos: {len(dados)}")
+            logger.info(f"Total de registros: {total}, Limit: {limit}, Offset: {offset_returned}")
+            
+            if not isinstance(dados, list) or len(dados) == 0:
+                logger.info("Nenhum dado encontrado, parando paginação.")
+                break
+
+            # Processa cada comissão
+            for item in dados:
+                total_processed += 1
+                
+                # Dados base da comissão
+                base_row = {
+                    "idcomissao_cv": item.get("idcomissao_cv"),
+                    "idcomissao_int": item.get("idcomissao_int"),
+                    "data_cad_comissao": item.get("data_cad"),
+                    "idsituacao_comissao": item.get("idsituacao"),
+                    "idreserva_cv": item.get("idreserva_cv"),
+                    "numero_venda": item.get("numero_venda"),
+                    "empreendimento": item.get("empreendimento"),
+                    "etapa": item.get("etapa"),
+                    "bloco": item.get("bloco"),
+                    "unidade": item.get("unidade"),
+                    "valor_comissao_total": item.get("valor_comissao"),
+                    "pagador_nome": item.get("pagador", {}).get("nome") if item.get("pagador") else None,
+                    "pagador_doc": item.get("pagador", {}).get("documento") if item.get("pagador") else None,
+                }
+                
+                beneficiarios = item.get("beneficiarios", [])
+                
+                if beneficiarios:
+                    for ben in beneficiarios:
+                        ben_row = base_row.copy()
+                        ben_row.update({
+                            "beneficiario_nome": ben.get("nome"),
+                            "beneficiario_doc": ben.get("documento"),
+                            "beneficiario_tipo": ben.get("para"),
+                            "beneficiario_valor_total": ben.get("valor"),
+                        })
+                        
+                        programacao = ben.get("programacao", [])
+                        
+                        if programacao:
+                            for prog in programacao:
                                 row = ben_row.copy()
                                 row.update({
-                                    "idpagamento": None,
-                                    "situacao_pagamento": None,
-                                    "valor_parcela": None,
-                                    "data_pagamento": None,
-                                    "vencimento": None,
-                                    "data_medicao": None,
-                                    "observacoes_pagamento": None
+                                    "idpagamento": prog.get("idpagamento"),
+                                    "situacao_pagamento": prog.get("situacao"),
+                                    "valor_parcela": prog.get("valor"),
+                                    "data_pagamento": prog.get("vencimento"),  # Renomeia vencimento para data_pagamento
+                                    "vencimento": prog.get("vencimento"),  # Mantém também o original
+                                    "data_medicao": prog.get("data_medicao"),
+                                    "observacoes_pagamento": prog.get("observacoes")
                                 })
                                 results.append(row)
-                    else:
-                        # Comissão sem beneficiários
-                        row = base_row.copy()
-                        # Preenche campos de beneficiário e pagamento com None
-                        for key in ["beneficiario_nome", "beneficiario_doc", "beneficiario_tipo", 
-                                   "beneficiario_valor_total", "idpagamento", "situacao_pagamento", 
-                                   "valor_parcela", "data_pagamento", "vencimento", "data_medicao", "observacoes_pagamento"]:
-                            row[key] = None
-                        results.append(row)
+                        else:
+                            # Beneficiário sem programação
+                            row = ben_row.copy()
+                            row.update({
+                                "idpagamento": None,
+                                "situacao_pagamento": None,
+                                "valor_parcela": None,
+                                "data_pagamento": None,  # Renomeia vencimento para data_pagamento
+                                "vencimento": None,
+                                "data_medicao": None,
+                                "observacoes_pagamento": None
+                            })
+                            results.append(row)
+                else:
+                    # Comissão sem beneficiários
+                    row = base_row.copy()
+                    # Preenche campos de beneficiário e pagamento com None
+                    for key in ["beneficiario_nome", "beneficiario_doc", "beneficiario_tipo", 
+                               "beneficiario_valor_total", "idpagamento", "situacao_pagamento", 
+                               "valor_parcela", "data_pagamento", "vencimento", "data_medicao", "observacoes_pagamento"]:
+                        row[key] = None
+                    results.append(row)
 
-                if len(dados) < page_size:
-                    logger.info("Página com menos registros que o tamanho da página, parando.")
-                    break
-                
-                if total_processed >= total:
-                    logger.info(f"Coletou todos os {total} registros, parando.")
-                    break
-                
-                if offset + len(dados) >= total:
-                    logger.info(f"Alcançou o total de registros ({total}), parando.")
-                    break
+            if len(dados) < page_size:
+                logger.info("Página com menos registros que o tamanho da página, parando.")
+                break
+            
+            if total_processed >= total:
+                logger.info(f"Coletou todos os {total} registros, parando.")
+                break
+            
+            if offset + len(dados) >= total:
+                logger.info(f"Alcançou o total de registros ({total}), parando.")
+                break
 
-                page += 1
-                if sleep_between_calls > 0:
-                    time.sleep(sleep_between_calls)
-                    
-            except requests.exceptions.RequestException as e:
-                logger.error(f"Erro na requisição: {e}")
-                if hasattr(e, 'response') and e.response is not None:
-                    logger.error(f"Response: {e.response.text}")
-                raise
+            page += 1
+            if sleep_between_calls > 0:
+                time.sleep(sleep_between_calls)
 
         logger.info(f"\n=== RESUMO ===")
         logger.info(f"Total de comissões processadas: {total_processed}")
@@ -222,6 +220,10 @@ class ComissoesAPIClient:
 def obter_dados_cv_comissoes(a_partir_de: str = None, ate: str = None) -> pd.DataFrame:
     """
     Função principal para obter dados de comissões do CV CRM
+    
+    Args:
+        a_partir_de: Data inicial no formato DD/MM/YYYY (padrão: 01/01/2025)
+        ate: Data final no formato DD/MM/YYYY (padrão: hoje)
     """
     try:
         client = ComissoesAPIClient()
