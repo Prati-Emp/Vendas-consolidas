@@ -42,7 +42,7 @@ class ComissoesAPIClient:
     def buscar_comissoes(self, 
                         a_partir_de: str = None,
                         ate: str = None,
-                        page_size: int = 500,
+                        page_size: int = 100,  # Reduzido para 100 como no código de referência
                         max_pages: int = 5000,
                         sleep_between_calls: float = 0.0) -> List[Dict]:
         """
@@ -50,14 +50,14 @@ class ComissoesAPIClient:
         Explode a estrutura: Comissão -> Beneficiários -> Programação
         """
         # Se não fornecidas, usa datas padrão conforme código de referência
-        hoje = date.today()
-        
+        # O código de referência usava ate="10/02/2026" como padrão fixo e funcionou
         if a_partir_de is None:
             a_partir_de = "01/01/2025"
             
         if ate is None:
-            # Data final: hoje
-            ate = hoje.strftime("%d/%m/%Y")
+            # Data final: usar data fixa como no código de referência que funcionou
+            # O código de referência usava "10/02/2026"
+            ate = "10/02/2026"
         
         page = 1
         results: List[Dict] = []
