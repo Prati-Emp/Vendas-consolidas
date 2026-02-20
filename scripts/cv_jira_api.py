@@ -58,6 +58,7 @@ FIELDS = [
     "priority",                    # F: Prioridade
     "status",                      # G: Status
     "resolution",                  # H: Resolução
+    "resolutiondate",              # Data da Resolução
     "duedate",                     # K: Data limite
     "description",                 # L: Descrição
     "parent",                      # AA: Pai
@@ -312,6 +313,7 @@ class JiraAPIClient:
                 "F - Prioridade": priority.get('name', ''),
                 "G - Status": status.get('name', ''),
                 "H - Resolução": resolution.get('name', ''),
+                "Data Resolução": self.formatar_data_simples(fields.get('resolutiondate')),
                 "I - Data original fim": self.formatar_data_simples(data_original_fim),
                 "J - Data original início": self.formatar_data_simples(data_original_inicio),
                 "K - Data limite": self.formatar_data_simples(fields.get('duedate')),
