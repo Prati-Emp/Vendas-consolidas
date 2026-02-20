@@ -249,7 +249,31 @@ def obter_dados_cv_comissoes(a_partir_de: str = None, ate: str = None) -> pd.Dat
         return pd.DataFrame()
 
 if __name__ == "__main__":
-    df = obter_dados_cv_comissoes()
+    import argparse
+    
+    parser = argparse.ArgumentParser(
+        description='Obtém dados de comissões do CV CRM'
+    )
+    parser.add_argument(
+        '--a_partir_de',
+        type=str,
+        default=None,
+        help='Data inicial no formato DD/MM/YYYY (padrão: 01/01/2025)'
+    )
+    parser.add_argument(
+        '--ate',
+        type=str,
+        default=None,
+        help='Data final no formato DD/MM/YYYY (padrão: ontem)'
+    )
+    
+    args = parser.parse_args()
+    
+    df = obter_dados_cv_comissoes(
+        a_partir_de=args.a_partir_de,
+        ate=args.ate
+    )
+    
     print(f"Registros obtidos: {len(df)}")
     if not df.empty:
         print(f"Colunas: {list(df.columns)}")
