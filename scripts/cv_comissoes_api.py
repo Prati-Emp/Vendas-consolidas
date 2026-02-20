@@ -42,8 +42,8 @@ class ComissoesAPIClient:
     def buscar_comissoes(self, 
                         a_partir_de: str = None,
                         ate: str = None,
-                        page_size: int = 100,  # Reduzido para 100 como no código de referência
-                        max_pages: int = 3000,
+                        page_size: int = 300,  # Aumentado de 100 para 300 diferente do código de referência
+                        max_pages: int = 5000,
                         sleep_between_calls: float = 0.0) -> List[Dict]:
         """
         Busca comissões paginando e retorna todos os dados detalhados.
