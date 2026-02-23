@@ -4,7 +4,18 @@
 
 O sistema utiliza GitHub Actions para automatizar a atualização dos dados no MotherDuck, executando às 01:15 UTC (04:15 BRT) nas segundas e quintas-feiras.
 
-## 📋 Workflow Atual
+## 📋 Workflows Mensais (dia 5 e dia 7)
+
+| Workflow | Arquivo | Agendamento | Descrição |
+|----------|---------|-------------|-----------|
+| **Stock Inventories** | `update-database-stock-inventories.yml` | Dia **5** de cada mês, 05:00 UTC | API Sienge Stock Inventories → `operacoes.sienge_stock_inventories` (atualização incremental por `Data_Snapshot`) |
+| **Medições** | `update-database-medicoes.yml` | Dia **7** de cada mês, 05:00 UTC | API Sienge Building Cost Estimation Items → `operacoes.sienge_medicoes` |
+
+Credenciais: `SIENGE_TOKEN` e `MOTHERDUCK_TOKEN` (mesmos já configurados no repositório). Stock Inventories não usa modo inicial; cada execução grava um snapshot com `Data_Snapshot` = último dia do mês anterior.
+
+---
+
+## 📋 Workflow Atual (principal)
 
 ### Arquivo: `.github/workflows/update-database.yml`
 

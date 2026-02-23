@@ -256,6 +256,26 @@ def get_api_config(api_name: str) -> Optional[APIConfig]:
             },
             rate_limit=50
         )
+
+    elif api_name == 'sienge_stock_inventories':
+        token = os.environ.get('SIENGE_TOKEN', '')
+        token = token.strip()
+        if token.startswith('sBasic '):
+            token = token[1:]
+        if token.startswith('Basic '):
+            auth_header = token
+        else:
+            auth_header = f'Basic {token}'
+        return APIConfig(
+            name='Sienge Stock Inventories',
+            base_url='https://api.sienge.com.br/pratiemp/public/api/v1',
+            headers={
+                'accept': 'application/json',
+                'authorization': auth_header,
+                'Content-Type': 'application/json'
+            },
+            rate_limit=50
+        )
     
     elif api_name == 'cv_comissoes':
         # Mesmas credenciais de CV Vendas, endpoint diferente
@@ -289,5 +309,6 @@ def get_all_rate_limits() -> Dict[str, int]:
         'sienge_medicoes': 50,
         'sienge_contas_pagas': 50,
         'sienge_contas_receber': 50,
+        'sienge_stock_inventories': 50,
         'jira': 30
     }
