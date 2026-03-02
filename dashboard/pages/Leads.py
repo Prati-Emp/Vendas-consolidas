@@ -33,7 +33,7 @@ st.session_state['current_page'] = __file__
 
 st.set_page_config(page_title="Leads - Funil de Vendas", page_icon="📊", layout="wide")
 
-st.title("📊 Funil de Leads (Versão Antiga)")
+st.title("📊 Funil de Leads")
 
 # Carregar token do MotherDuck de forma segura
 MOTHERDUCK_TOKEN = st.secrets.get("MOTHERDUCK_TOKEN", os.getenv("MOTHERDUCK_TOKEN", ""))
@@ -278,27 +278,27 @@ selected_corretores = st.sidebar.multiselect("Corretor", corretores, default=[],
 selected_imobiliarias = []
 
 # =============================================================================
-# FILTROS PARA LEADS NOVO (NOVO FUNIL)
+# FILTROS PARA LEADS NOVO (NOVO FUNIL) - comentado junto com o funil Versão Nova
 # =============================================================================
-st.sidebar.markdown("---")
-st.sidebar.header("Filtros - Leads Novo")
-
-# Filtros de data para o novo funil
-data_inicio_novo = st.sidebar.date_input(
-    "Data Inicial (Leads Novo)", 
-    value=datetime(2025, 10, 22).date(),
-    min_value=datetime(2025, 10, 22).date(),
-    max_value=datetime.now().date(),
-    help="Data inicial (mínimo: 22/10/2025, máximo: hoje)"
-)
-
-data_fim_novo = st.sidebar.date_input(
-    "Data Final (Leads Novo)", 
-    value=datetime.now().date(),
-    min_value=data_inicio_novo,
-    max_value=datetime.now().date(),
-    help="Data final (máximo: hoje)"
-)
+# st.sidebar.markdown("---")
+# st.sidebar.header("Filtros - Leads Novo")
+#
+# # Filtros de data para o novo funil
+# data_inicio_novo = st.sidebar.date_input(
+#     "Data Inicial (Leads Novo)",
+#     value=datetime(2025, 10, 22).date(),
+#     min_value=datetime(2025, 10, 22).date(),
+#     max_value=datetime.now().date(),
+#     help="Data inicial (mínimo: 22/10/2025, máximo: hoje)"
+# )
+#
+# data_fim_novo = st.sidebar.date_input(
+#     "Data Final (Leads Novo)",
+#     value=datetime.now().date(),
+#     min_value=data_inicio_novo,
+#     max_value=datetime.now().date(),
+#     help="Data final (máximo: hoje)"
+# )
 
 # Apply filters using data_consolidada
 filtered_df = leads_df[
