@@ -423,88 +423,88 @@ col4.metric(label="Com reserva", value=etapa_counts[3], help=tooltip_texts['Com 
 col5.metric(label="Venda realizada", value=etapa_counts[4], help=tooltip_texts['Venda realizada'])
 
 # =============================================================================
-# NOVO FUNIL - VERSÃO COM COLUNAS DE STATUS
+# NOVO FUNIL - VERSÃO COM COLUNAS DE STATUS (comentado - reativar se necessário)
 # =============================================================================
-st.markdown("---")
-st.markdown("## 📊 Funil de Leads (Versão Nova)")
-
-# Filtros específicos para o novo funil (movidos para sidebar)
-# Será implementado na sidebar
-
-# Aplicar filtros específicos para o novo funil
-filtered_df_novo = leads_df[
-    (leads_df['data_consolidada'].dt.date >= data_inicio_novo) &
-    (leads_df['data_consolidada'].dt.date <= data_fim_novo)
-].copy()
-
-# Aplicar outros filtros (empreendimento, mídia, corretor) se selecionados
-if selected_empreendimento != "Todos":
-    filtered_df_novo = filtered_df_novo[filtered_df_novo['empreendimento_ultimo'] == selected_empreendimento]
-
-if selected_midias:
-    filtered_df_novo = filtered_df_novo[filtered_df_novo['midia_consolidada'].isin(selected_midias)]
-
-if selected_corretores:
-    filtered_df_novo = filtered_df_novo[filtered_df_novo['corretor_consolidado'].isin(selected_corretores)]
-
-if selected_imobiliarias:
-    filtered_df_novo = filtered_df_novo[filtered_df_novo['imobiliaria'].isin(selected_imobiliarias)]
-
-# Funil baseado nas novas colunas de status
-def render_novo_funil_status():
-    # Contar leads por status usando as novas colunas (com filtros específicos)
-    total_leads = len(filtered_df_novo)
-    
-    
-    # Contar por status usando as colunas específicas (buscar por "sim" em qualquer variação)
-    em_atendimento = len(filtered_df_novo[filtered_df_novo.get('status_em_atendimento', '').str.lower() == 'sim'])
-    visita_realizada = len(filtered_df_novo[filtered_df_novo.get('status_visita_realizada', '').str.lower() == 'sim'])
-    com_reserva = len(filtered_df_novo[filtered_df_novo.get('status_reserva', '').str.lower() == 'sim'])
-    venda_realizada = len(filtered_df_novo[filtered_df_novo.get('status_venda_realizada', '').str.lower() == 'sim'])
-    
-    # Criar dados para o funil
-    funil_etapas_novo = ["Leads", "Em atendimento", "Visita realizada", "Com reserva", "Venda realizada"]
-    etapa_counts_novo = [total_leads, em_atendimento, visita_realizada, com_reserva, venda_realizada]
-    
-    # Criar gráfico de funil
-    fig_novo = go.Figure(go.Funnel(
-        y=funil_etapas_novo,
-        x=etapa_counts_novo,
-        textinfo="value+percent initial"
-    ))
-    
-    # Adicionar título e formatação
-    fig_novo.update_layout(
-        title="Funil de Leads (Baseado em Status)",
-        font=dict(size=12),
-        margin=dict(l=0, r=0, t=40, b=0)
-    )
-    
-    st.plotly_chart(fig_novo, use_container_width=True)
-    
-    # Cards de resumo
-    st.markdown("---")
-    col1, col2, col3, col4, col5 = st.columns(5)
-    
-    tooltip_texts_novo = {
-        "Leads": "Total de leads em todas as situações (mesmo cálculo atual).",
-        "Em atendimento": "Leads com status_em_atendimento = 'sim'.",
-        "Visita realizada": "Leads com status_visita_realizada = 'sim'.",
-        "Com reserva": "Leads com status_reserva = 'sim'.",
-        "Venda realizada": "Leads com status_venda_realizada = 'sim'."
-    }
-    
-    col1.metric(label="Leads", value=total_leads, help=tooltip_texts_novo['Leads'])
-    col2.metric(label="Em atendimento", value=em_atendimento, help=tooltip_texts_novo['Em atendimento'])
-    col3.metric(label="Visita realizada", value=visita_realizada, help=tooltip_texts_novo['Visita realizada'])
-    col4.metric(label="Com reserva", value=com_reserva, help=tooltip_texts_novo['Com reserva'])
-    col5.metric(label="Venda realizada", value=venda_realizada, help=tooltip_texts_novo['Venda realizada'])
-
-# Mostrar informações do período selecionado
-st.info(f"📊 **Período de Análise**: {data_inicio_novo.strftime('%d/%m/%Y')} a {data_fim_novo.strftime('%d/%m/%Y')} | **Total de Leads**: {len(filtered_df_novo):,}")
-
-# Renderizar o novo funil
-render_novo_funil_status()
+# st.markdown("---")
+# st.markdown("## 📊 Funil de Leads (Versão Nova)")
+#
+# # Filtros específicos para o novo funil (movidos para sidebar)
+# # Será implementado na sidebar
+#
+# # Aplicar filtros específicos para o novo funil
+# filtered_df_novo = leads_df[
+#     (leads_df['data_consolidada'].dt.date >= data_inicio_novo) &
+#     (leads_df['data_consolidada'].dt.date <= data_fim_novo)
+# ].copy()
+#
+# # Aplicar outros filtros (empreendimento, mídia, corretor) se selecionados
+# if selected_empreendimento != "Todos":
+#     filtered_df_novo = filtered_df_novo[filtered_df_novo['empreendimento_ultimo'] == selected_empreendimento]
+#
+# if selected_midias:
+#     filtered_df_novo = filtered_df_novo[filtered_df_novo['midia_consolidada'].isin(selected_midias)]
+#
+# if selected_corretores:
+#     filtered_df_novo = filtered_df_novo[filtered_df_novo['corretor_consolidado'].isin(selected_corretores)]
+#
+# if selected_imobiliarias:
+#     filtered_df_novo = filtered_df_novo[filtered_df_novo['imobiliaria'].isin(selected_imobiliarias)]
+#
+# # Funil baseado nas novas colunas de status
+# def render_novo_funil_status():
+#     # Contar leads por status usando as novas colunas (com filtros específicos)
+#     total_leads = len(filtered_df_novo)
+#
+#
+#     # Contar por status usando as colunas específicas (buscar por "sim" em qualquer variação)
+#     em_atendimento = len(filtered_df_novo[filtered_df_novo.get('status_em_atendimento', '').str.lower() == 'sim'])
+#     visita_realizada = len(filtered_df_novo[filtered_df_novo.get('status_visita_realizada', '').str.lower() == 'sim'])
+#     com_reserva = len(filtered_df_novo[filtered_df_novo.get('status_reserva', '').str.lower() == 'sim'])
+#     venda_realizada = len(filtered_df_novo[filtered_df_novo.get('status_venda_realizada', '').str.lower() == 'sim'])
+#
+#     # Criar dados para o funil
+#     funil_etapas_novo = ["Leads", "Em atendimento", "Visita realizada", "Com reserva", "Venda realizada"]
+#     etapa_counts_novo = [total_leads, em_atendimento, visita_realizada, com_reserva, venda_realizada]
+#
+#     # Criar gráfico de funil
+#     fig_novo = go.Figure(go.Funnel(
+#         y=funil_etapas_novo,
+#         x=etapa_counts_novo,
+#         textinfo="value+percent initial"
+#     ))
+#
+#     # Adicionar título e formatação
+#     fig_novo.update_layout(
+#         title="Funil de Leads (Baseado em Status)",
+#         font=dict(size=12),
+#         margin=dict(l=0, r=0, t=40, b=0)
+#     )
+#
+#     st.plotly_chart(fig_novo, use_container_width=True)
+#
+#     # Cards de resumo
+#     st.markdown("---")
+#     col1, col2, col3, col4, col5 = st.columns(5)
+#
+#     tooltip_texts_novo = {
+#         "Leads": "Total de leads em todas as situações (mesmo cálculo atual).",
+#         "Em atendimento": "Leads com status_em_atendimento = 'sim'.",
+#         "Visita realizada": "Leads com status_visita_realizada = 'sim'.",
+#         "Com reserva": "Leads com status_reserva = 'sim'.",
+#         "Venda realizada": "Leads com status_venda_realizada = 'sim'."
+#     }
+#
+#     col1.metric(label="Leads", value=total_leads, help=tooltip_texts_novo['Leads'])
+#     col2.metric(label="Em atendimento", value=em_atendimento, help=tooltip_texts_novo['Em atendimento'])
+#     col3.metric(label="Visita realizada", value=visita_realizada, help=tooltip_texts_novo['Visita realizada'])
+#     col4.metric(label="Com reserva", value=com_reserva, help=tooltip_texts_novo['Com reserva'])
+#     col5.metric(label="Venda realizada", value=venda_realizada, help=tooltip_texts_novo['Venda realizada'])
+#
+# # Mostrar informações do período selecionado
+# st.info(f"📊 **Período de Análise**: {data_inicio_novo.strftime('%d/%m/%Y')} a {data_fim_novo.strftime('%d/%m/%Y')} | **Total de Leads**: {len(filtered_df_novo):,}")
+#
+# # Renderizar o novo funil
+# render_novo_funil_status()
 
 
 # =============================================================================
