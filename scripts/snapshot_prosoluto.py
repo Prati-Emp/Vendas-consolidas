@@ -1,16 +1,14 @@
 #!/usr/bin/env python3
 """
 Snapshot Mensal de Pró-Soluto
-Calcula e persiste no MotherDuck (banco administracao) o estado histórico
-de pró-soluto no último dia de cada mês.
-
-Numerador  = parcelas abertas no último dia do mês,
-             Tipo_Condicao IN ('12','PM','AT','PB','PA','PI','PQ','PS'),
-             vinculadas a cv_vendas com tipovenda = 'Venda Financiamento'.
-Denominador = contratos cv_vendas tipovenda = 'Venda Financiamento'
-              com data_venda <= último dia do mês.
-
-Roda no 1º dia de cada mês via GitHub Actions.
+Roda todo dia 10 do mês. Captura o estado atual (sem data de corte),
+replicando exatamente a lógica das medidas padrão do Power BI:
+  - Valor_ProSoluto = parcelas abertas (Tipo_Baixa IS NULL) com
+    Tipo_Condicao IN ('12','PM','AT','PB','PA','PI','PQ','PS'),
+    vinculadas a cv_vendas com tipovenda = 'Venda Financiamento'
+  - Valor_Venda_Financiamento = SUM(valor_contrato) de cv_vendas tipovenda = 'Venda Financiamento'
+  - % ProSoluto = Valor_ProSoluto / Valor_Venda_Financiamento
+A foto é datada com o dia em que rodou (data_snapshot) e o mês de referência.
 """
 
 import asyncio
@@ -18,7 +16,6 @@ import os
 import sys
 from datetime import date, datetime
 from dotenv import load_dotenv
-from dateutil.relativedelta import relativedelta
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
@@ -27,8 +24,7 @@ from scripts.concurrency_control import check_concurrency, release_concurrency
 TIPOS_PROSOLUTO = "'12', 'PM', 'AT', 'PB', 'PA', 'PI', 'PQ', 'PS'"
 
 
-async def sistema_snapshot_prosoluto(meses_arg=None):
-    """Sistema de snapshot mensal de pró-soluto"""
+async def sistema_snapshot_prosoluto():
     print("SISTEMA DE SNAPSHOT MENSAL - PRO-SOLUTO")
     print("=" * 60)
     print(f"Timestamp: {datetime.now()}")
@@ -56,7 +52,6 @@ async def sistema_snapshot_prosoluto(meses_arg=None):
             CREATE TABLE IF NOT EXISTS snapshot_prosoluto_mensal (
                 data_snapshot                DATE    NOT NULL,
                 mes_referencia               VARCHAR NOT NULL,
-                data_corte                   DATE    NOT NULL,
                 idempreendimento             BIGINT,
                 empreendimento               VARCHAR,
                 codigointerno_empreendimento VARCHAR,
@@ -68,131 +63,108 @@ async def sistema_snapshot_prosoluto(meses_arg=None):
         """)
         print("OK: Tabela verificada/criada")
 
-        if meses_arg:
-            meses_para_processar = meses_arg
-        else:
-            primeiro_dia_mes_atual = date.today().replace(day=1)
-            mes_anterior = primeiro_dia_mes_atual - relativedelta(months=1)
-            meses_para_processar = [mes_anterior.strftime("%Y-%m")]
+        hoje = date.today()
+        hoje_str = hoje.strftime("%Y-%m-%d")
+        mes_ref = hoje.strftime("%Y-%m")
 
-        print(f"\n3. Processando meses: {', '.join(meses_para_processar)}")
+        count_existente = conn.execute(
+            "SELECT COUNT(*) FROM snapshot_prosoluto_mensal WHERE mes_referencia = ? AND idempreendimento IS NULL",
+            [mes_ref]
+        ).fetchone()[0]
 
-        total_inserido = 0
-        for mes_ref in meses_para_processar:
-            ano, mes = int(mes_ref.split("-")[0]), int(mes_ref.split("-")[1])
-            primeiro_dia_proximo = date(ano, mes, 1) + relativedelta(months=1)
-            data_corte = primeiro_dia_proximo - relativedelta(days=1)
-            data_corte_str = data_corte.strftime("%Y-%m-%d")
-            hoje = date.today().strftime("%Y-%m-%d")
+        if count_existente > 0:
+            print(f"\nSKIP: {mes_ref} ja foi processado neste mes.")
+            conn.close()
+            return True
 
-            count_existente = conn.execute(
-                "SELECT COUNT(*) FROM snapshot_prosoluto_mensal WHERE mes_referencia = ? AND idempreendimento IS NULL",
-                [mes_ref]
-            ).fetchone()[0]
+        print(f"\n3. Calculando snapshot para {mes_ref} (data: {hoje_str})...")
 
-            if count_existente > 0:
-                print(f"  SKIP: {mes_ref} ja processado")
-                continue
+        # TOTAL
+        conn.execute(f"""
+            INSERT OR IGNORE INTO snapshot_prosoluto_mensal
+            WITH parcelas AS (
+                SELECT cr.Valor_Devido
+                FROM contas_recebidas_receber cr
+                WHERE cr.Tipo_Baixa IS NULL
+                  AND cr.Tipo_Condicao IN ({TIPOS_PROSOLUTO})
+                  AND EXISTS (
+                      SELECT 1 FROM cv_vendas v
+                      WHERE v.tipovenda = 'Venda Financiamento'
+                        AND v.contrato_interno = cr.N_Documento
+                  )
+            ),
+            denom AS (
+                SELECT SUM(valor_contrato) AS total
+                FROM cv_vendas
+                WHERE tipovenda = 'Venda Financiamento'
+            )
+            SELECT
+                '{hoje_str}'::DATE AS data_snapshot,
+                '{mes_ref}'        AS mes_referencia,
+                NULL::BIGINT       AS idempreendimento,
+                'TOTAL'            AS empreendimento,
+                NULL               AS codigointerno_empreendimento,
+                (SELECT SUM(Valor_Devido) FROM parcelas) AS valor_prosoluto,
+                (SELECT total FROM denom)                AS valor_venda_financiamento,
+                CASE
+                    WHEN (SELECT total FROM denom) IS NULL OR (SELECT total FROM denom) = 0 THEN 0
+                    ELSE (SELECT SUM(Valor_Devido) FROM parcelas) / (SELECT total FROM denom)
+                END AS pct_prosoluto
+        """)
 
-            print(f"\n  Calculando {mes_ref} (corte: {data_corte_str})...")
+        # Por Empreendimento
+        conn.execute(f"""
+            INSERT OR IGNORE INTO snapshot_prosoluto_mensal
+            WITH parcelas_emp AS (
+                SELECT v.idempreendimento, v.empreendimento, v.codigointerno_empreendimento,
+                       SUM(cr.Valor_Devido) AS valor_prosoluto
+                FROM contas_recebidas_receber cr
+                INNER JOIN cv_vendas v
+                    ON v.tipovenda = 'Venda Financiamento'
+                   AND v.contrato_interno = cr.N_Documento
+                WHERE cr.Tipo_Baixa IS NULL
+                  AND cr.Tipo_Condicao IN ({TIPOS_PROSOLUTO})
+                GROUP BY v.idempreendimento, v.empreendimento, v.codigointerno_empreendimento
+            ),
+            denom_emp AS (
+                SELECT idempreendimento, empreendimento, codigointerno_empreendimento,
+                       SUM(valor_contrato) AS total
+                FROM cv_vendas
+                WHERE tipovenda = 'Venda Financiamento'
+                GROUP BY idempreendimento, empreendimento, codigointerno_empreendimento
+            )
+            SELECT
+                '{hoje_str}'::DATE AS data_snapshot,
+                '{mes_ref}'        AS mes_referencia,
+                d.idempreendimento,
+                d.empreendimento,
+                d.codigointerno_empreendimento,
+                COALESCE(p.valor_prosoluto, 0) AS valor_prosoluto,
+                d.total                        AS valor_venda_financiamento,
+                CASE WHEN d.total IS NULL OR d.total = 0 THEN 0
+                     ELSE COALESCE(p.valor_prosoluto, 0) / d.total
+                END AS pct_prosoluto
+            FROM denom_emp d
+            LEFT JOIN parcelas_emp p ON d.idempreendimento = p.idempreendimento
+        """)
 
-            cond_aberta_cr = f"""(
-                cr.Tipo_Baixa IS NULL
-                OR (cr.Data_Baixa IS NOT NULL
-                    AND TRY_CAST(cr.Data_Baixa AS DATE) IS NOT NULL
-                    AND TRY_CAST(cr.Data_Baixa AS DATE) > '{data_corte_str}'::DATE)
-            )"""
+        stats = conn.execute(
+            "SELECT COUNT(*), SUM(valor_prosoluto), SUM(valor_venda_financiamento) FROM snapshot_prosoluto_mensal WHERE mes_referencia = ?",
+            [mes_ref]
+        ).fetchone()
+        print(f"  OK: {stats[0]} linhas inseridas")
 
-            # TOTAL
-            conn.execute(f"""
-                INSERT OR IGNORE INTO snapshot_prosoluto_mensal
-                WITH parcelas AS (
-                    SELECT cr.Valor_Devido
-                    FROM contas_recebidas_receber cr
-                    WHERE TRY_CAST(cr.Data_Emissao AS DATE) <= '{data_corte_str}'::DATE
-                      AND cr.Tipo_Condicao IN ({TIPOS_PROSOLUTO})
-                      AND {cond_aberta_cr}
-                      AND EXISTS (
-                          SELECT 1 FROM cv_vendas v
-                          WHERE v.tipovenda = 'Venda Financiamento'
-                            AND v.contrato_interno = cr.N_Documento
-                      )
-                ),
-                denom AS (
-                    SELECT SUM(valor_contrato) AS total
-                    FROM cv_vendas
-                    WHERE tipovenda = 'Venda Financiamento'
-                      AND TRY_CAST(data_venda AS DATE) <= '{data_corte_str}'::DATE
-                )
-                SELECT
-                    '{hoje}'::DATE           AS data_snapshot,
-                    '{mes_ref}'              AS mes_referencia,
-                    '{data_corte_str}'::DATE AS data_corte,
-                    NULL::BIGINT             AS idempreendimento,
-                    'TOTAL'                  AS empreendimento,
-                    NULL                     AS codigointerno_empreendimento,
-                    (SELECT SUM(Valor_Devido) FROM parcelas) AS valor_prosoluto,
-                    (SELECT total FROM denom)                AS valor_venda_financiamento,
-                    CASE
-                        WHEN (SELECT total FROM denom) IS NULL OR (SELECT total FROM denom) = 0 THEN 0
-                        ELSE (SELECT SUM(Valor_Devido) FROM parcelas) / (SELECT total FROM denom)
-                    END AS pct_prosoluto
-            """)
-
-            # Por Empreendimento
-            conn.execute(f"""
-                INSERT OR IGNORE INTO snapshot_prosoluto_mensal
-                WITH parcelas_emp AS (
-                    SELECT v.idempreendimento, v.empreendimento, v.codigointerno_empreendimento,
-                           SUM(cr.Valor_Devido) AS valor_prosoluto
-                    FROM contas_recebidas_receber cr
-                    INNER JOIN cv_vendas v
-                        ON v.tipovenda = 'Venda Financiamento'
-                       AND v.contrato_interno = cr.N_Documento
-                    WHERE TRY_CAST(cr.Data_Emissao AS DATE) <= '{data_corte_str}'::DATE
-                      AND cr.Tipo_Condicao IN ({TIPOS_PROSOLUTO})
-                      AND {cond_aberta_cr}
-                    GROUP BY v.idempreendimento, v.empreendimento, v.codigointerno_empreendimento
-                ),
-                denom_emp AS (
-                    SELECT idempreendimento, empreendimento, codigointerno_empreendimento,
-                           SUM(valor_contrato) AS total
-                    FROM cv_vendas
-                    WHERE tipovenda = 'Venda Financiamento'
-                      AND TRY_CAST(data_venda AS DATE) <= '{data_corte_str}'::DATE
-                    GROUP BY idempreendimento, empreendimento, codigointerno_empreendimento
-                )
-                SELECT
-                    '{hoje}'::DATE           AS data_snapshot,
-                    '{mes_ref}'              AS mes_referencia,
-                    '{data_corte_str}'::DATE AS data_corte,
-                    d.idempreendimento,
-                    d.empreendimento,
-                    d.codigointerno_empreendimento,
-                    COALESCE(p.valor_prosoluto, 0) AS valor_prosoluto,
-                    d.total                        AS valor_venda_financiamento,
-                    CASE WHEN d.total IS NULL OR d.total = 0 THEN 0
-                         ELSE COALESCE(p.valor_prosoluto, 0) / d.total
-                    END AS pct_prosoluto
-                FROM denom_emp d
-                LEFT JOIN parcelas_emp p ON d.idempreendimento = p.idempreendimento
-            """)
-
-            stats = conn.execute(
-                "SELECT COUNT(*), SUM(valor_prosoluto), SUM(valor_venda_financiamento) FROM snapshot_prosoluto_mensal WHERE mes_referencia = ?",
-                [mes_ref]
-            ).fetchone()
-            pct = (stats[1] / stats[2] * 100) if stats[2] and stats[2] > 0 else 0
-            print(f"  OK: {stats[0]} linhas | Pro-Soluto: R$ {stats[1]:,.0f} | Venda Fin: R$ {stats[2]:,.0f} | %: {pct:.2f}%")
-            total_inserido += stats[0]
+        total_row = conn.execute(
+            "SELECT valor_prosoluto, valor_venda_financiamento, pct_prosoluto FROM snapshot_prosoluto_mensal WHERE mes_referencia = ? AND idempreendimento IS NULL",
+            [mes_ref]
+        ).fetchone()
+        if total_row:
+            print(f"  TOTAL: Pro-Soluto = R$ {total_row[0]:,.2f} | Venda Fin = R$ {total_row[1]:,.2f} | % = {total_row[2]*100:.2f}%")
 
         conn.close()
         duration = datetime.now() - start_time
-        print(f"\nSNAPSHOT PRO-SOLUTO CONCLUIDO!")
-        print(f"Duracao: {duration}")
-        print(f"   - Total de linhas inseridas: {total_inserido}")
-        print(f"   - Tabela: snapshot_prosoluto_mensal")
-        print(f"   - Banco: administracao (MotherDuck)")
+        print(f"\nSNAPSHOT PRO-SOLUTO CONCLUIDO em {duration}")
+        print(f"   Tabela: snapshot_prosoluto_mensal | Banco: administracao (MotherDuck)")
         return True
 
     except Exception as e:
@@ -225,11 +197,9 @@ def main():
         sys.exit(1)
     print("OK: Variaveis de ambiente configuradas")
 
-    meses_arg = sys.argv[1:] if len(sys.argv) > 1 else None
-
     try:
         sucesso = asyncio.run(
-            asyncio.wait_for(sistema_snapshot_prosoluto(meses_arg), timeout=1800.0)
+            asyncio.wait_for(sistema_snapshot_prosoluto(), timeout=1800.0)
         )
         if sucesso:
             print("\nOK: SNAPSHOT DE PRO-SOLUTO CONCLUIDO COM SUCESSO!")

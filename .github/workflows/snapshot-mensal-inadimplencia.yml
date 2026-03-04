@@ -2,15 +2,14 @@ name: Snapshot Mensal - Inadimplencia
 
 on:
   schedule:
-    # Roda no dia 1 de cada mes as 03:00 BRT (06:00 UTC)
-    # Captura o fechamento do mes anterior
-    - cron: '0 6 1 * *'
+    # Roda todo dia 10 do mes as 06:00 UTC (03:00 BRT)
+    - cron: '0 6 10 * *'
   workflow_dispatch:
     inputs:
-      meses:
-        description: 'Meses para processar (ex: 2025-10 2025-11 2025-12). Vazio = mes anterior.'
+      reason:
+        description: 'Razao para executar manualmente'
         required: false
-        default: ''
+        default: 'Execucao manual snapshot inadimplencia'
         type: string
 
 jobs:
@@ -40,17 +39,13 @@ jobs:
           PYTHONPATH: ${{ github.workspace }}/scripts:${{ github.workspace }}
         run: |
           echo "Iniciando snapshot mensal de inadimplencia..."
-          if [ -n "${{ github.event.inputs.meses }}" ]; then
-            python -u scripts/snapshot_inadimplencia.py ${{ github.event.inputs.meses }}
-          else
-            python -u scripts/snapshot_inadimplencia.py
-          fi
+          python -u scripts/snapshot_inadimplencia.py
 
       - name: Notify success
         if: success()
         run: |
           echo "Snapshot de inadimplencia concluido com sucesso em $(date)"
-      
+
       - name: Notify failure
         if: failure()
         run: |
