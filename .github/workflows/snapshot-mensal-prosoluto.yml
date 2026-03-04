@@ -1,14 +1,13 @@
-name: Snapshot Mensal - Pró-Soluto
+name: Snapshot Mensal - Pro-Soluto
 
 on:
   schedule:
-    # Roda no dia 1º de cada mês às 03:30 BRT (06:30 UTC)
-    # 30 minutos após o de inadimplência para evitar conflito de conexão
+    # Roda no dia 1 de cada mes as 03:30 BRT (06:30 UTC) - 30 min apos inadimplencia
     - cron: '30 6 1 * *'
   workflow_dispatch:
     inputs:
       meses:
-        description: 'Meses para processar (ex: 2025-10 2025-11 2025-12). Vazio = mês anterior.'
+        description: 'Meses para processar (ex: 2025-10 2025-11 2025-12). Vazio = mes anterior.'
         required: false
         default: ''
         type: string
@@ -28,18 +27,18 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install duckdb==1.4.1 python-dateutil
+          pip install duckdb==1.4.1
           pip install -r requirements.txt
 
       - name: Set file permissions
         run: chmod +x scripts/*.py
 
-      - name: Run snapshot pró-soluto
+      - name: Run snapshot pro-soluto
         env:
           MOTHERDUCK_TOKEN: ${{ secrets.MOTHERDUCK_TOKEN }}
           PYTHONPATH: ${{ github.workspace }}/scripts:${{ github.workspace }}
         run: |
-          echo "Iniciando snapshot mensal de pró-soluto..."
+          echo "Iniciando snapshot mensal de pro-soluto..."
           if [ -n "${{ github.event.inputs.meses }}" ]; then
             python -u scripts/snapshot_prosoluto.py ${{ github.event.inputs.meses }}
           else
@@ -48,8 +47,8 @@ jobs:
 
       - name: Notify success
         if: success()
-        run: echo "OK: Snapshot de pró-soluto concluído com sucesso em $(date)"
+        run: echo "OK: Snapshot de pro-soluto concluido com sucesso em $(date)"
 
       - name: Notify failure
         if: failure()
-        run: echo "ERRO: Snapshot de pró-soluto falhou em $(date)"
+        run: echo "ERRO: Snapshot de pro-soluto falhou em $(date)"

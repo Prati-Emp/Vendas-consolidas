@@ -9,6 +9,7 @@ plotly>=5.18.0
 aiohttp>=3.8.0
 asyncio
 numpy>=1.24.0
+python-dateutil>=2.8.0
 # Dependências para webscraping Sienge
 playwright>=1.40.0
 # Dependências para leitura de planilhas Excel
