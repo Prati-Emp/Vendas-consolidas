@@ -64,16 +64,11 @@ async def sistema_snapshot_inadimplencia():
         mes_anterior = hoje.replace(day=1) - relativedelta(months=1)
         mes_ref = mes_anterior.strftime("%Y-%m")
 
-        # Verificar se o mês já foi processado
-        count_existente = conn.execute(
-            "SELECT COUNT(*) FROM snapshot_inadimplencia_mensal_ WHERE mes_referencia = ? AND cod_centro_custo IS NULL",
+        # Remove dados existentes do mes_referencia (substitui no dia 10; historico de meses anteriores preservado)
+        conn.execute(
+            "DELETE FROM snapshot_inadimplencia_mensal_ WHERE mes_referencia = ?",
             [mes_ref]
-        ).fetchone()[0]
-
-        if count_existente > 0:
-            print(f"\nSKIP: {mes_ref} ja foi processado neste mes.")
-            conn.close()
-            return True
+        )
 
         print(f"\n3. Calculando fechamento de {mes_ref} (data snapshot: {hoje_str})...")
 
@@ -81,7 +76,7 @@ async def sistema_snapshot_inadimplencia():
 
         # TOTAL
         conn.execute(f"""
-            INSERT OR IGNORE INTO snapshot_inadimplencia_mensal_
+            INSERT INTO snapshot_inadimplencia_mensal_
             (data_snapshot, mes_referencia, cod_centro_custo, centro_custo, cr_valor_devido, valor_inadimplente, pct_inadimplencia)
             SELECT
                 '{hoje_str}'::DATE  AS data_snapshot,
@@ -102,7 +97,7 @@ async def sistema_snapshot_inadimplencia():
 
         # Por Centro de Custo
         conn.execute(f"""
-            INSERT OR IGNORE INTO snapshot_inadimplencia_mensal_
+            INSERT INTO snapshot_inadimplencia_mensal_
             (data_snapshot, mes_referencia, cod_centro_custo, centro_custo, cr_valor_devido, valor_inadimplente, pct_inadimplencia)
             SELECT
                 '{hoje_str}'::DATE  AS data_snapshot,

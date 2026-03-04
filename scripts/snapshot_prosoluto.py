@@ -74,21 +74,16 @@ async def sistema_snapshot_prosoluto():
         mes_anterior = hoje.replace(day=1) - relativedelta(months=1)
         mes_ref = mes_anterior.strftime("%Y-%m")
 
-        count_existente = conn.execute(
-            "SELECT COUNT(*) FROM snapshot_prosoluto_mensal_ WHERE mes_referencia = ? AND codigointerno_empreendimento IS NULL",
+        # Remove dados existentes do mes_referencia (substitui no dia 10; historico de meses anteriores preservado)
+        conn.execute(
+            "DELETE FROM snapshot_prosoluto_mensal_ WHERE mes_referencia = ?",
             [mes_ref]
-        ).fetchone()[0]
-
-        if count_existente > 0:
-            print(f"\nSKIP: {mes_ref} ja foi processado neste mes.")
-            conn.close()
-            return True
-
+        )
         print(f"\n3. Calculando fechamento de {mes_ref} (data snapshot: {hoje_str})...")
 
         # TOTAL
         conn.execute(f"""
-            INSERT OR IGNORE INTO snapshot_prosoluto_mensal_
+            INSERT INTO snapshot_prosoluto_mensal_
             WITH parcelas AS (
                 SELECT cr.Valor_Devido
                 FROM contas_recebidas_receber cr
@@ -121,7 +116,7 @@ async def sistema_snapshot_prosoluto():
 
         # Por Empreendimento (identificador: codigointerno_empreendimento = Cod_Centro_Custo)
         conn.execute(f"""
-            INSERT OR IGNORE INTO snapshot_prosoluto_mensal_
+            INSERT INTO snapshot_prosoluto_mensal_
             WITH parcelas_emp AS (
                 SELECT v.codigointerno_empreendimento, v.empreendimento,
                        SUM(cr.Valor_Devido) AS valor_prosoluto
