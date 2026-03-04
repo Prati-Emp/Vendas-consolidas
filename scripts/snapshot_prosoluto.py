@@ -48,9 +48,9 @@ async def sistema_snapshot_prosoluto():
         conn = duckdb.connect("md:administracao")
         print("OK: Conectado ao MotherDuck")
 
-        print("\n2. Verificando/criando tabela snapshot_prosoluto_mensal...")
+        print("\n2. Verificando/criando tabela snapshot_prosoluto_mensal_...")
         conn.execute("""
-            CREATE TABLE IF NOT EXISTS snapshot_prosoluto_mensal (
+            CREATE TABLE IF NOT EXISTS snapshot_prosoluto_mensal_ (
                 data_snapshot                DATE    NOT NULL,
                 mes_referencia               VARCHAR NOT NULL,
                 idempreendimento             BIGINT,
@@ -70,7 +70,7 @@ async def sistema_snapshot_prosoluto():
         mes_ref = mes_anterior.strftime("%Y-%m")
 
         count_existente = conn.execute(
-            "SELECT COUNT(*) FROM snapshot_prosoluto_mensal WHERE mes_referencia = ? AND idempreendimento IS NULL",
+            "SELECT COUNT(*) FROM snapshot_prosoluto_mensal_ WHERE mes_referencia = ? AND idempreendimento IS NULL",
             [mes_ref]
         ).fetchone()[0]
 
@@ -83,7 +83,7 @@ async def sistema_snapshot_prosoluto():
 
         # TOTAL
         conn.execute(f"""
-            INSERT OR IGNORE INTO snapshot_prosoluto_mensal
+            INSERT OR IGNORE INTO snapshot_prosoluto_mensal_
             WITH parcelas AS (
                 SELECT cr.Valor_Devido
                 FROM contas_recebidas_receber cr
@@ -92,7 +92,8 @@ async def sistema_snapshot_prosoluto():
                   AND EXISTS (
                       SELECT 1 FROM reservas.cv_vendas v
                       WHERE v.tipovenda = 'Venda Financiamento'
-                        AND v.contrato_interno = cr.N_Documento
+                        AND v.idcliente = cr.Cod_Cliente
+                        AND v.idempreendimento = cr.Cod_Centro_Custo
                   )
             ),
             denom AS (
@@ -116,14 +117,15 @@ async def sistema_snapshot_prosoluto():
 
         # Por Empreendimento
         conn.execute(f"""
-            INSERT OR IGNORE INTO snapshot_prosoluto_mensal
+            INSERT OR IGNORE INTO snapshot_prosoluto_mensal_
             WITH parcelas_emp AS (
                 SELECT v.idempreendimento, v.empreendimento, v.codigointerno_empreendimento,
                        SUM(cr.Valor_Devido) AS valor_prosoluto
                 FROM contas_recebidas_receber cr
                 INNER JOIN reservas.cv_vendas v
                     ON v.tipovenda = 'Venda Financiamento'
-                   AND v.contrato_interno = cr.N_Documento
+                   AND v.idcliente = cr.Cod_Cliente
+                   AND v.idempreendimento = cr.Cod_Centro_Custo
                 WHERE cr.Tipo_Baixa IS NULL
                   AND cr.Tipo_Condicao IN ({TIPOS_PROSOLUTO})
                 GROUP BY v.idempreendimento, v.empreendimento, v.codigointerno_empreendimento
@@ -151,13 +153,13 @@ async def sistema_snapshot_prosoluto():
         """)
 
         stats = conn.execute(
-            "SELECT COUNT(*), SUM(valor_prosoluto), SUM(valor_venda_financiamento) FROM snapshot_prosoluto_mensal WHERE mes_referencia = ?",
+            "SELECT COUNT(*), SUM(valor_prosoluto), SUM(valor_venda_financiamento) FROM snapshot_prosoluto_mensal_ WHERE mes_referencia = ?",
             [mes_ref]
         ).fetchone()
         print(f"  OK: {stats[0]} linhas inseridas")
 
         total_row = conn.execute(
-            "SELECT valor_prosoluto, valor_venda_financiamento, pct_prosoluto FROM snapshot_prosoluto_mensal WHERE mes_referencia = ? AND idempreendimento IS NULL",
+            "SELECT valor_prosoluto, valor_venda_financiamento, pct_prosoluto FROM snapshot_prosoluto_mensal_ WHERE mes_referencia = ? AND idempreendimento IS NULL",
             [mes_ref]
         ).fetchone()
         if total_row:
@@ -169,7 +171,7 @@ async def sistema_snapshot_prosoluto():
         conn.close()
         duration = datetime.now() - start_time
         print(f"\nSNAPSHOT PRO-SOLUTO CONCLUIDO em {duration}")
-        print(f"   Tabela: snapshot_prosoluto_mensal | Banco: administracao (MotherDuck)")
+        print(f"   Tabela: snapshot_prosoluto_mensal_ | Banco: administracao (MotherDuck)")
         return True
 
     except Exception as e:

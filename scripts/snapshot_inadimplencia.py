@@ -44,9 +44,9 @@ async def sistema_snapshot_inadimplencia():
         conn = duckdb.connect("md:administracao")
         print("OK: Conectado ao MotherDuck")
 
-        print("\n2. Verificando/criando tabela snapshot_inadimplencia_mensal...")
+        print("\n2. Verificando/criando tabela snapshot_inadimplencia_mensal_...")
         conn.execute("""
-            CREATE TABLE IF NOT EXISTS snapshot_inadimplencia_mensal (
+            CREATE TABLE IF NOT EXISTS snapshot_inadimplencia_mensal_ (
                 data_snapshot      DATE    NOT NULL,
                 mes_referencia     VARCHAR NOT NULL,
                 cod_centro_custo   INTEGER,
@@ -66,7 +66,7 @@ async def sistema_snapshot_inadimplencia():
 
         # Verificar se o mês já foi processado
         count_existente = conn.execute(
-            "SELECT COUNT(*) FROM snapshot_inadimplencia_mensal WHERE mes_referencia = ? AND cod_centro_custo IS NULL",
+            "SELECT COUNT(*) FROM snapshot_inadimplencia_mensal_ WHERE mes_referencia = ? AND cod_centro_custo IS NULL",
             [mes_ref]
         ).fetchone()[0]
 
@@ -81,7 +81,7 @@ async def sistema_snapshot_inadimplencia():
 
         # TOTAL
         conn.execute(f"""
-            INSERT OR IGNORE INTO snapshot_inadimplencia_mensal
+            INSERT OR IGNORE INTO snapshot_inadimplencia_mensal_
             (data_snapshot, mes_referencia, cod_centro_custo, centro_custo, cr_valor_devido, valor_inadimplente, pct_inadimplencia)
             SELECT
                 '{hoje_str}'::DATE  AS data_snapshot,
@@ -102,7 +102,7 @@ async def sistema_snapshot_inadimplencia():
 
         # Por Centro de Custo
         conn.execute(f"""
-            INSERT OR IGNORE INTO snapshot_inadimplencia_mensal
+            INSERT OR IGNORE INTO snapshot_inadimplencia_mensal_
             (data_snapshot, mes_referencia, cod_centro_custo, centro_custo, cr_valor_devido, valor_inadimplente, pct_inadimplencia)
             SELECT
                 '{hoje_str}'::DATE  AS data_snapshot,
@@ -124,14 +124,14 @@ async def sistema_snapshot_inadimplencia():
         """)
 
         stats = conn.execute(
-            "SELECT COUNT(*), SUM(cr_valor_devido), SUM(valor_inadimplente) FROM snapshot_inadimplencia_mensal WHERE mes_referencia = ?",
+            "SELECT COUNT(*), SUM(cr_valor_devido), SUM(valor_inadimplente) FROM snapshot_inadimplencia_mensal_ WHERE mes_referencia = ?",
             [mes_ref]
         ).fetchone()
         pct = (stats[1] / stats[2] * 100) if stats[2] and stats[2] > 0 else 0
         print(f"  OK: {stats[0]} linhas inseridas")
 
         total_row = conn.execute(
-            "SELECT cr_valor_devido, valor_inadimplente, pct_inadimplencia FROM snapshot_inadimplencia_mensal WHERE mes_referencia = ? AND cod_centro_custo IS NULL",
+            "SELECT cr_valor_devido, valor_inadimplente, pct_inadimplencia FROM snapshot_inadimplencia_mensal_ WHERE mes_referencia = ? AND cod_centro_custo IS NULL",
             [mes_ref]
         ).fetchone()
         if total_row:
@@ -143,7 +143,7 @@ async def sistema_snapshot_inadimplencia():
         conn.close()
         duration = datetime.now() - start_time
         print(f"\nSNAPSHOT INADIMPLENCIA CONCLUIDO em {duration}")
-        print(f"   Tabela: snapshot_inadimplencia_mensal | Banco: administracao (MotherDuck)")
+        print(f"   Tabela: snapshot_inadimplencia_mensal_ | Banco: administracao (MotherDuck)")
         return True
 
     except Exception as e:
