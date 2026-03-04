@@ -48,8 +48,10 @@ jobs:
 
       - name: Notify success
         if: success()
-        run: echo "OK: Snapshot de inadimplencia concluido com sucesso em $(date)"
-
+        run: |
+          echo "Snapshot de inadimplencia concluido com sucesso em $(date)"
+      
       - name: Notify failure
         if: failure()
-        run: echo "ERRO: Snapshot de inadimplencia falhou em $(date)"
+        run: |
+          echo "Snapshot de inadimplencia falhou em $(date)"

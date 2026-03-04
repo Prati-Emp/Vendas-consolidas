@@ -47,8 +47,10 @@ jobs:
 
       - name: Notify success
         if: success()
-        run: echo "OK: Snapshot de pro-soluto concluido com sucesso em $(date)"
-
+        run: |
+          echo "Snapshot de pro-soluto concluido com sucesso em $(date)"
+      
       - name: Notify failure
         if: failure()
-        run: echo "ERRO: Snapshot de pro-soluto falhou em $(date)"
+        run: |
+          echo "Snapshot de pro-soluto falhou em $(date)"
