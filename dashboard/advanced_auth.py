@@ -165,6 +165,17 @@ USERS_DATABASE = {
         "active": True,
         "pages": ["vendas", "leads", "reservas", "motivo_fora_prazo", "administrativo"],  # Acesso ao dashboard de reservas e administrativo
         "subpages": ["administrativo.repasses", "administrativo.saldo_em_caixa"]  # Contas Pagas e RH ocultos
+    },
+    "lucas.moura@grupoprati.com": {
+        "password": "Pr@ti2025!LucasM",
+        "role": "analyst",
+        "name": "Lucas Moura",
+        "department": "Vendas",
+        "created": "2026-03-02",
+        "last_login": None,
+        "active": True,
+        "pages": ["vendas", "leads", "reservas", "motivo_fora_prazo", "tv_comercial"],  # Sem acesso ao administrativo (Repasses, Contas pagas, Saldo em caixa)
+        "subpages": []
     }
 }
 
@@ -485,6 +496,7 @@ def setup_auth_environment():
             <li>Marlos Bendo (analyst) - marlos.bendo@grupoprati.com</li>
             <li>Ricardo (analyst) - ricardo@grupoprati.com</li>
             <li>Gustavo Prati (analyst) - GustavoPrati@Pratiemp318.onmicrosoft.com</li>
+            <li>Lucas Moura (analyst) - lucas.moura@grupoprati.com</li>
         </ul>
         <p><strong>⚠️ Importante:</strong> Senhas são fornecidas individualmente por segurança!</p>
     </div>
