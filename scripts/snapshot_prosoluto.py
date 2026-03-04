@@ -106,11 +106,11 @@ async def sistema_snapshot_prosoluto():
                 NULL::BIGINT       AS idempreendimento,
                 'Geral Prati'      AS empreendimento,
                 NULL               AS codigointerno_empreendimento,
-                (SELECT SUM(Valor_Devido) FROM parcelas) AS valor_prosoluto,
-                (SELECT total FROM denom)                AS valor_venda_financiamento,
+                COALESCE((SELECT SUM(Valor_Devido) FROM parcelas), 0) AS valor_prosoluto,
+                COALESCE((SELECT total FROM denom), 0)               AS valor_venda_financiamento,
                 CASE
                     WHEN (SELECT total FROM denom) IS NULL OR (SELECT total FROM denom) = 0 THEN 0
-                    ELSE (SELECT SUM(Valor_Devido) FROM parcelas) / (SELECT total FROM denom)
+                    ELSE COALESCE((SELECT SUM(Valor_Devido) FROM parcelas), 0) / (SELECT total FROM denom)
                 END AS pct_prosoluto
         """)
 
@@ -142,7 +142,7 @@ async def sistema_snapshot_prosoluto():
                 d.empreendimento,
                 d.codigointerno_empreendimento,
                 COALESCE(p.valor_prosoluto, 0) AS valor_prosoluto,
-                d.total                        AS valor_venda_financiamento,
+                COALESCE(d.total, 0)           AS valor_venda_financiamento,
                 CASE WHEN d.total IS NULL OR d.total = 0 THEN 0
                      ELSE COALESCE(p.valor_prosoluto, 0) / d.total
                 END AS pct_prosoluto
