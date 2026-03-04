@@ -5,7 +5,7 @@ Roda todo dia 10 do mês. Captura o estado atual (sem data de corte),
 replicando exatamente a lógica das medidas padrão do Power BI:
   - Valor_ProSoluto = parcelas abertas (Tipo_Baixa IS NULL) com
     Tipo_Condicao IN ('12','PM','AT','PB','PA','PI','PQ','PS'),
-    vinculadas a cv_vendas com tipovenda = 'Venda Financiamento'
+    vinculadas a cv_vendas via id2 = id1 (Cod_Centro_Custo & Unidade = codigointerno_empreendimento & unidade)
   - Valor_Venda_Financiamento = SUM(valor_contrato) de cv_vendas tipovenda = 'Venda Financiamento'
   - % ProSoluto = Valor_ProSoluto / Valor_Venda_Financiamento
 A foto é datada com o dia em que rodou (data_snapshot) e o mês de referência.
@@ -49,17 +49,22 @@ async def sistema_snapshot_prosoluto():
         print("OK: Conectado ao MotherDuck")
 
         print("\n2. Verificando/criando tabela snapshot_prosoluto_mensal_...")
+        try:
+            cols = [r[0] for r in conn.execute("DESCRIBE snapshot_prosoluto_mensal_").fetchall()]
+            if "idempreendimento" in cols:
+                conn.execute("DROP TABLE IF EXISTS snapshot_prosoluto_mensal_")
+        except Exception:
+            pass
         conn.execute("""
             CREATE TABLE IF NOT EXISTS snapshot_prosoluto_mensal_ (
                 data_snapshot                DATE    NOT NULL,
                 mes_referencia               VARCHAR NOT NULL,
-                idempreendimento             BIGINT,
-                empreendimento               VARCHAR,
                 codigointerno_empreendimento VARCHAR,
+                empreendimento               VARCHAR,
                 valor_prosoluto              DOUBLE,
                 valor_venda_financiamento    DOUBLE,
                 pct_prosoluto                DOUBLE,
-                UNIQUE (mes_referencia, idempreendimento)
+                UNIQUE (mes_referencia, codigointerno_empreendimento)
             )
         """)
         print("OK: Tabela verificada/criada")
@@ -70,7 +75,7 @@ async def sistema_snapshot_prosoluto():
         mes_ref = mes_anterior.strftime("%Y-%m")
 
         count_existente = conn.execute(
-            "SELECT COUNT(*) FROM snapshot_prosoluto_mensal_ WHERE mes_referencia = ? AND idempreendimento IS NULL",
+            "SELECT COUNT(*) FROM snapshot_prosoluto_mensal_ WHERE mes_referencia = ? AND codigointerno_empreendimento IS NULL",
             [mes_ref]
         ).fetchone()[0]
 
@@ -92,8 +97,8 @@ async def sistema_snapshot_prosoluto():
                   AND EXISTS (
                       SELECT 1 FROM reservas.cv_vendas v
                       WHERE v.tipovenda = 'Venda Financiamento'
-                        AND v.idcliente = cr.Cod_Cliente
-                        AND v.idempreendimento = cr.Cod_Centro_Custo
+                        AND (COALESCE(CAST(cr.Cod_Centro_Custo AS VARCHAR), '') || COALESCE(TRIM(CAST(cr.Unidade AS VARCHAR)), ''))
+                          = (COALESCE(CAST(v.codigointerno_empreendimento AS VARCHAR), '') || COALESCE(TRIM(CAST(v.unidade AS VARCHAR)), ''))
                   )
             ),
             denom AS (
@@ -104,9 +109,8 @@ async def sistema_snapshot_prosoluto():
             SELECT
                 '{hoje_str}'::DATE AS data_snapshot,
                 '{mes_ref}'        AS mes_referencia,
-                NULL::BIGINT       AS idempreendimento,
-                'Geral Prati'      AS empreendimento,
                 NULL               AS codigointerno_empreendimento,
+                'Geral Prati'      AS empreendimento,
                 COALESCE((SELECT SUM(Valor_Devido) FROM parcelas), 0) AS valor_prosoluto,
                 COALESCE((SELECT total FROM denom), 0)               AS valor_venda_financiamento,
                 CASE
@@ -115,41 +119,41 @@ async def sistema_snapshot_prosoluto():
                 END AS pct_prosoluto
         """)
 
-        # Por Empreendimento
+        # Por Empreendimento (identificador: codigointerno_empreendimento = Cod_Centro_Custo)
         conn.execute(f"""
             INSERT OR IGNORE INTO snapshot_prosoluto_mensal_
             WITH parcelas_emp AS (
-                SELECT v.idempreendimento, v.empreendimento, v.codigointerno_empreendimento,
+                SELECT v.codigointerno_empreendimento, v.empreendimento,
                        SUM(cr.Valor_Devido) AS valor_prosoluto
                 FROM contas_recebidas_receber cr
                 INNER JOIN reservas.cv_vendas v
                     ON v.tipovenda = 'Venda Financiamento'
-                   AND v.idcliente = cr.Cod_Cliente
-                   AND v.idempreendimento = cr.Cod_Centro_Custo
+                   AND (COALESCE(CAST(cr.Cod_Centro_Custo AS VARCHAR), '') || COALESCE(TRIM(CAST(cr.Unidade AS VARCHAR)), ''))
+                     = (COALESCE(CAST(v.codigointerno_empreendimento AS VARCHAR), '') || COALESCE(TRIM(CAST(v.unidade AS VARCHAR)), ''))
                 WHERE cr.Tipo_Baixa IS NULL
                   AND cr.Tipo_Condicao IN ({TIPOS_PROSOLUTO})
-                GROUP BY v.idempreendimento, v.empreendimento, v.codigointerno_empreendimento
+                GROUP BY v.codigointerno_empreendimento, v.empreendimento
             ),
             denom_emp AS (
-                SELECT idempreendimento, empreendimento, codigointerno_empreendimento,
+                SELECT codigointerno_empreendimento, empreendimento,
                        SUM(valor_contrato) AS total
                 FROM reservas.cv_vendas
                 WHERE tipovenda = 'Venda Financiamento'
-                GROUP BY idempreendimento, empreendimento, codigointerno_empreendimento
+                  AND codigointerno_empreendimento IS NOT NULL
+                GROUP BY codigointerno_empreendimento, empreendimento
             )
             SELECT
                 '{hoje_str}'::DATE AS data_snapshot,
                 '{mes_ref}'        AS mes_referencia,
-                d.idempreendimento,
-                d.empreendimento,
                 d.codigointerno_empreendimento,
+                d.empreendimento,
                 COALESCE(p.valor_prosoluto, 0) AS valor_prosoluto,
                 COALESCE(d.total, 0)           AS valor_venda_financiamento,
                 CASE WHEN d.total IS NULL OR d.total = 0 THEN 0
                      ELSE COALESCE(p.valor_prosoluto, 0) / d.total
                 END AS pct_prosoluto
             FROM denom_emp d
-            LEFT JOIN parcelas_emp p ON d.idempreendimento = p.idempreendimento
+            LEFT JOIN parcelas_emp p ON d.codigointerno_empreendimento = p.codigointerno_empreendimento
         """)
 
         stats = conn.execute(
@@ -159,7 +163,7 @@ async def sistema_snapshot_prosoluto():
         print(f"  OK: {stats[0]} linhas inseridas")
 
         total_row = conn.execute(
-            "SELECT valor_prosoluto, valor_venda_financiamento, pct_prosoluto FROM snapshot_prosoluto_mensal_ WHERE mes_referencia = ? AND idempreendimento IS NULL",
+            "SELECT valor_prosoluto, valor_venda_financiamento, pct_prosoluto FROM snapshot_prosoluto_mensal_ WHERE mes_referencia = ? AND codigointerno_empreendimento IS NULL",
             [mes_ref]
         ).fetchone()
         if total_row:
