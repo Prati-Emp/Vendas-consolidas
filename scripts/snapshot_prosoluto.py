@@ -88,14 +88,14 @@ async def sistema_snapshot_prosoluto():
                 WHERE cr.Tipo_Baixa IS NULL
                   AND cr.Tipo_Condicao IN ({TIPOS_PROSOLUTO})
                   AND EXISTS (
-                      SELECT 1 FROM cv_vendas v
+                      SELECT 1 FROM reservas.cv_vendas v
                       WHERE v.tipovenda = 'Venda Financiamento'
                         AND v.contrato_interno = cr.N_Documento
                   )
             ),
             denom AS (
                 SELECT SUM(valor_contrato) AS total
-                FROM cv_vendas
+                FROM reservas.cv_vendas
                 WHERE tipovenda = 'Venda Financiamento'
             )
             SELECT
@@ -119,7 +119,7 @@ async def sistema_snapshot_prosoluto():
                 SELECT v.idempreendimento, v.empreendimento, v.codigointerno_empreendimento,
                        SUM(cr.Valor_Devido) AS valor_prosoluto
                 FROM contas_recebidas_receber cr
-                INNER JOIN cv_vendas v
+                INNER JOIN reservas.cv_vendas v
                     ON v.tipovenda = 'Venda Financiamento'
                    AND v.contrato_interno = cr.N_Documento
                 WHERE cr.Tipo_Baixa IS NULL
@@ -129,7 +129,7 @@ async def sistema_snapshot_prosoluto():
             denom_emp AS (
                 SELECT idempreendimento, empreendimento, codigointerno_empreendimento,
                        SUM(valor_contrato) AS total
-                FROM cv_vendas
+                FROM reservas.cv_vendas
                 WHERE tipovenda = 'Venda Financiamento'
                 GROUP BY idempreendimento, empreendimento, codigointerno_empreendimento
             )
