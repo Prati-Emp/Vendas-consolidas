@@ -159,7 +159,10 @@ async def sistema_snapshot_prosoluto():
             [mes_ref]
         ).fetchone()
         if total_row:
-            print(f"  TOTAL: Pro-Soluto = R$ {total_row[0]:,.2f} | Venda Fin = R$ {total_row[1]:,.2f} | % = {total_row[2]*100:.2f}%")
+            vp = total_row[0] if total_row[0] is not None else 0
+            vf = total_row[1] if total_row[1] is not None else 0
+            pct = (total_row[2] * 100) if total_row[2] is not None else 0
+            print(f"  TOTAL: Pro-Soluto = R$ {vp:,.2f} | Venda Fin = R$ {vf:,.2f} | % = {pct:.2f}%")
 
         conn.close()
         duration = datetime.now() - start_time

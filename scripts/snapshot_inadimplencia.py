@@ -137,7 +137,10 @@ async def sistema_snapshot_inadimplencia():
             [mes_ref]
         ).fetchone()
         if total_row:
-            print(f"  TOTAL: CR Devido = R$ {total_row[0]:,.2f} | Inadimplente = R$ {total_row[1]:,.2f} | % = {total_row[2]*100:.2f}%")
+            cr = total_row[0] if total_row[0] is not None else 0
+            inad = total_row[1] if total_row[1] is not None else 0
+            pct = (total_row[2] * 100) if total_row[2] is not None else 0
+            print(f"  TOTAL: CR Devido = R$ {cr:,.2f} | Inadimplente = R$ {inad:,.2f} | % = {pct:.2f}%")
 
         conn.close()
         duration = datetime.now() - start_time
