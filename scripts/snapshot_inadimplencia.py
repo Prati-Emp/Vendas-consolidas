@@ -71,6 +71,15 @@ def calcular_e_inserir_snapshot(conn, data_corte: date):
 
     print(f"\n--- Calculando snapshot para {mes_referencia} (corte: {data_corte_str}) ---")
 
+    # Condição de parcela aberta: Tipo_Baixa é NULL (não foi paga)
+    # OU Data_Baixa existe e é depois da data de corte
+    cond_aberta = f"""(
+        Tipo_Baixa IS NULL
+        OR (Data_Baixa IS NOT NULL
+            AND TRY_CAST(Data_Baixa AS DATE) IS NOT NULL
+            AND TRY_CAST(Data_Baixa AS DATE) > '{data_corte_str}'::DATE)
+    )"""
+
     # Linha TOTAL
     total_sql = f"""
         INSERT OR IGNORE INTO snapshot_inadimplencia_mensal
@@ -83,53 +92,27 @@ def calcular_e_inserir_snapshot(conn, data_corte: date):
 
             -- Denominador: parcelas abertas no último dia do mês
             SUM(CASE
-                WHEN Data_Emissao::DATE <= '{data_corte_str}'::DATE
-                 AND (
-                     Tipo_Baixa IS NULL
-                     OR (Data_Baixa IS NOT NULL AND Data_Baixa <> ''
-                         AND Data_Baixa::DATE > '{data_corte_str}'::DATE)
-                 )
+                WHEN TRY_CAST(Data_Emissao AS DATE) <= '{data_corte_str}'::DATE
+                 AND {cond_aberta}
                 THEN Valor_Corrigido ELSE 0
             END)                                               AS cr_valor_devido,
 
             -- Numerador: abertas E vencidas até o último dia do mês
             SUM(CASE
-                WHEN Data_Vencimento::DATE <= '{data_corte_str}'::DATE
-                 AND Data_Emissao::DATE    <= '{data_corte_str}'::DATE
-                 AND (
-                     Tipo_Baixa IS NULL
-                     OR (Data_Baixa IS NOT NULL AND Data_Baixa <> ''
-                         AND Data_Baixa::DATE > '{data_corte_str}'::DATE)
-                 )
+                WHEN TRY_CAST(Data_Vencimento AS DATE) <= '{data_corte_str}'::DATE
+                 AND TRY_CAST(Data_Emissao AS DATE)    <= '{data_corte_str}'::DATE
+                 AND {cond_aberta}
                 THEN Valor_Corrigido ELSE 0
             END)                                               AS valor_inadimplente,
 
-            -- Percentual calculado direto
+            -- Percentual
             CASE
-                WHEN SUM(CASE
-                    WHEN Data_Emissao::DATE <= '{data_corte_str}'::DATE
-                     AND (Tipo_Baixa IS NULL
-                          OR (Data_Baixa IS NOT NULL AND Data_Baixa <> ''
-                              AND Data_Baixa::DATE > '{data_corte_str}'::DATE))
-                    THEN Valor_Corrigido ELSE 0 END) = 0 THEN 0
-                ELSE
-                    SUM(CASE
-                        WHEN Data_Vencimento::DATE <= '{data_corte_str}'::DATE
-                         AND Data_Emissao::DATE    <= '{data_corte_str}'::DATE
-                         AND (Tipo_Baixa IS NULL
-                              OR (Data_Baixa IS NOT NULL AND Data_Baixa <> ''
-                                  AND Data_Baixa::DATE > '{data_corte_str}'::DATE))
-                        THEN Valor_Corrigido ELSE 0 END)
-                    /
-                    SUM(CASE
-                        WHEN Data_Emissao::DATE <= '{data_corte_str}'::DATE
-                         AND (Tipo_Baixa IS NULL
-                              OR (Data_Baixa IS NOT NULL AND Data_Baixa <> ''
-                                  AND Data_Baixa::DATE > '{data_corte_str}'::DATE))
-                        THEN Valor_Corrigido ELSE 0 END)
+                WHEN SUM(CASE WHEN TRY_CAST(Data_Emissao AS DATE) <= '{data_corte_str}'::DATE AND {cond_aberta} THEN Valor_Corrigido ELSE 0 END) = 0 THEN 0
+                ELSE SUM(CASE WHEN TRY_CAST(Data_Vencimento AS DATE) <= '{data_corte_str}'::DATE AND TRY_CAST(Data_Emissao AS DATE) <= '{data_corte_str}'::DATE AND {cond_aberta} THEN Valor_Corrigido ELSE 0 END)
+                   / SUM(CASE WHEN TRY_CAST(Data_Emissao AS DATE) <= '{data_corte_str}'::DATE AND {cond_aberta} THEN Valor_Corrigido ELSE 0 END)
             END                                                AS pct_inadimplencia
 
-        FROM "contas_recebidas_receber- API"
+        FROM contas_recebidas_receber
         WHERE 1=1
     """
 
@@ -146,51 +129,25 @@ def calcular_e_inserir_snapshot(conn, data_corte: date):
             Centro_Custo                                        AS centro_custo,
 
             SUM(CASE
-                WHEN Data_Emissao::DATE <= '{data_corte_str}'::DATE
-                 AND (
-                     Tipo_Baixa IS NULL
-                     OR (Data_Baixa IS NOT NULL AND Data_Baixa <> ''
-                         AND Data_Baixa::DATE > '{data_corte_str}'::DATE)
-                 )
+                WHEN TRY_CAST(Data_Emissao AS DATE) <= '{data_corte_str}'::DATE
+                 AND {cond_aberta}
                 THEN Valor_Corrigido ELSE 0
             END)                                               AS cr_valor_devido,
 
             SUM(CASE
-                WHEN Data_Vencimento::DATE <= '{data_corte_str}'::DATE
-                 AND Data_Emissao::DATE    <= '{data_corte_str}'::DATE
-                 AND (
-                     Tipo_Baixa IS NULL
-                     OR (Data_Baixa IS NOT NULL AND Data_Baixa <> ''
-                         AND Data_Baixa::DATE > '{data_corte_str}'::DATE)
-                 )
+                WHEN TRY_CAST(Data_Vencimento AS DATE) <= '{data_corte_str}'::DATE
+                 AND TRY_CAST(Data_Emissao AS DATE)    <= '{data_corte_str}'::DATE
+                 AND {cond_aberta}
                 THEN Valor_Corrigido ELSE 0
             END)                                               AS valor_inadimplente,
 
             CASE
-                WHEN SUM(CASE
-                    WHEN Data_Emissao::DATE <= '{data_corte_str}'::DATE
-                     AND (Tipo_Baixa IS NULL
-                          OR (Data_Baixa IS NOT NULL AND Data_Baixa <> ''
-                              AND Data_Baixa::DATE > '{data_corte_str}'::DATE))
-                    THEN Valor_Corrigido ELSE 0 END) = 0 THEN 0
-                ELSE
-                    SUM(CASE
-                        WHEN Data_Vencimento::DATE <= '{data_corte_str}'::DATE
-                         AND Data_Emissao::DATE    <= '{data_corte_str}'::DATE
-                         AND (Tipo_Baixa IS NULL
-                              OR (Data_Baixa IS NOT NULL AND Data_Baixa <> ''
-                                  AND Data_Baixa::DATE > '{data_corte_str}'::DATE))
-                        THEN Valor_Corrigido ELSE 0 END)
-                    /
-                    SUM(CASE
-                        WHEN Data_Emissao::DATE <= '{data_corte_str}'::DATE
-                         AND (Tipo_Baixa IS NULL
-                              OR (Data_Baixa IS NOT NULL AND Data_Baixa <> ''
-                                  AND Data_Baixa::DATE > '{data_corte_str}'::DATE))
-                        THEN Valor_Corrigido ELSE 0 END)
+                WHEN SUM(CASE WHEN TRY_CAST(Data_Emissao AS DATE) <= '{data_corte_str}'::DATE AND {cond_aberta} THEN Valor_Corrigido ELSE 0 END) = 0 THEN 0
+                ELSE SUM(CASE WHEN TRY_CAST(Data_Vencimento AS DATE) <= '{data_corte_str}'::DATE AND TRY_CAST(Data_Emissao AS DATE) <= '{data_corte_str}'::DATE AND {cond_aberta} THEN Valor_Corrigido ELSE 0 END)
+                   / SUM(CASE WHEN TRY_CAST(Data_Emissao AS DATE) <= '{data_corte_str}'::DATE AND {cond_aberta} THEN Valor_Corrigido ELSE 0 END)
             END                                                AS pct_inadimplencia
 
-        FROM "contas_recebidas_receber- API"
+        FROM contas_recebidas_receber
         WHERE Cod_Centro_Custo IS NOT NULL
           AND Centro_Custo IS NOT NULL
         GROUP BY Cod_Centro_Custo, Centro_Custo

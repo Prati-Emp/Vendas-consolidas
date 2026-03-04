@@ -77,25 +77,23 @@ def calcular_e_inserir_snapshot(conn, data_corte: date):
 
     print(f"\n--- Calculando snapshot pró-soluto para {mes_referencia} (corte: {data_corte_str}) ---")
 
-    # Condição de parcela aberta no dia de corte (reutilizada nos dois queries)
-    cond_aberta = f"""
-        (
-            cr.Tipo_Baixa IS NULL
-            OR (cr.Data_Baixa IS NOT NULL AND cr.Data_Baixa <> ''
-                AND cr.Data_Baixa::DATE > '{data_corte_str}'::DATE)
-        )
-    """
+    # Condição de parcela aberta: Tipo_Baixa é NULL ou Data_Baixa depois do corte
+    cond_aberta_cr = f"""(
+        cr.Tipo_Baixa IS NULL
+        OR (cr.Data_Baixa IS NOT NULL
+            AND TRY_CAST(cr.Data_Baixa AS DATE) IS NOT NULL
+            AND TRY_CAST(cr.Data_Baixa AS DATE) > '{data_corte_str}'::DATE)
+    )"""
 
     # Linha TOTAL
     total_sql = f"""
         INSERT OR IGNORE INTO snapshot_prosoluto_mensal
         WITH parcelas_prosoluto AS (
             SELECT cr.Valor_Devido
-            FROM "contas_recebidas_receber- API" cr
-            WHERE cr.Data_Emissao::DATE <= '{data_corte_str}'::DATE
+            FROM contas_recebidas_receber cr
+            WHERE TRY_CAST(cr.Data_Emissao AS DATE) <= '{data_corte_str}'::DATE
               AND cr.Tipo_Condicao IN ({TIPOS_PROSOLUTO_SQL})
-              AND {cond_aberta}
-              -- Garante que o título está vinculado a uma Venda Financiamento
+              AND {cond_aberta_cr}
               AND EXISTS (
                   SELECT 1 FROM cv_vendas v
                   WHERE v.tipovenda = 'Venda Financiamento'
@@ -106,22 +104,21 @@ def calcular_e_inserir_snapshot(conn, data_corte: date):
             SELECT SUM(v.valor_contrato) AS valor_venda_fin
             FROM cv_vendas v
             WHERE v.tipovenda = 'Venda Financiamento'
-              AND v.data_venda::DATE <= '{data_corte_str}'::DATE
+              AND TRY_CAST(v.data_venda AS DATE) <= '{data_corte_str}'::DATE
         )
         SELECT
-            '{hoje}'::DATE          AS data_snapshot,
-            '{mes_referencia}'      AS mes_referencia,
+            '{hoje}'::DATE           AS data_snapshot,
+            '{mes_referencia}'       AS mes_referencia,
             '{data_corte_str}'::DATE AS data_corte,
-            NULL::BIGINT            AS idempreendimento,
-            'TOTAL'                 AS empreendimento,
-            NULL                    AS codigointerno_empreendimento,
+            NULL::BIGINT             AS idempreendimento,
+            'TOTAL'                  AS empreendimento,
+            NULL                     AS codigointerno_empreendimento,
             (SELECT SUM(Valor_Devido) FROM parcelas_prosoluto) AS valor_prosoluto,
-            (SELECT valor_venda_fin FROM denom)                AS valor_venda_financiamento,
+            (SELECT valor_venda_fin  FROM denom)               AS valor_venda_financiamento,
             CASE
-                WHEN (SELECT valor_venda_fin FROM denom) = 0 OR (SELECT valor_venda_fin FROM denom) IS NULL THEN 0
-                ELSE (SELECT SUM(Valor_Devido) FROM parcelas_prosoluto)
-                     / (SELECT valor_venda_fin FROM denom)
-            END                     AS pct_prosoluto
+                WHEN (SELECT valor_venda_fin FROM denom) IS NULL OR (SELECT valor_venda_fin FROM denom) = 0 THEN 0
+                ELSE (SELECT SUM(Valor_Devido) FROM parcelas_prosoluto) / (SELECT valor_venda_fin FROM denom)
+            END                      AS pct_prosoluto
     """
     conn.execute(total_sql)
 
@@ -134,13 +131,13 @@ def calcular_e_inserir_snapshot(conn, data_corte: date):
                 v.empreendimento,
                 v.codigointerno_empreendimento,
                 SUM(cr.Valor_Devido) AS valor_prosoluto
-            FROM "contas_recebidas_receber- API" cr
+            FROM contas_recebidas_receber cr
             INNER JOIN cv_vendas v
                 ON v.tipovenda = 'Venda Financiamento'
                AND v.contrato_interno = cr.N_Documento
-            WHERE cr.Data_Emissao::DATE <= '{data_corte_str}'::DATE
+            WHERE TRY_CAST(cr.Data_Emissao AS DATE) <= '{data_corte_str}'::DATE
               AND cr.Tipo_Condicao IN ({TIPOS_PROSOLUTO_SQL})
-              AND {cond_aberta}
+              AND {cond_aberta_cr}
             GROUP BY v.idempreendimento, v.empreendimento, v.codigointerno_empreendimento
         ),
         denom_por_emp AS (
@@ -151,7 +148,7 @@ def calcular_e_inserir_snapshot(conn, data_corte: date):
                 SUM(valor_contrato) AS valor_venda_fin
             FROM cv_vendas
             WHERE tipovenda = 'Venda Financiamento'
-              AND data_venda::DATE <= '{data_corte_str}'::DATE
+              AND TRY_CAST(data_venda AS DATE) <= '{data_corte_str}'::DATE
             GROUP BY idempreendimento, empreendimento, codigointerno_empreendimento
         )
         SELECT
@@ -161,12 +158,12 @@ def calcular_e_inserir_snapshot(conn, data_corte: date):
             d.idempreendimento,
             d.empreendimento,
             d.codigointerno_empreendimento,
-            COALESCE(p.valor_prosoluto, 0)  AS valor_prosoluto,
-            d.valor_venda_fin               AS valor_venda_financiamento,
+            COALESCE(p.valor_prosoluto, 0) AS valor_prosoluto,
+            d.valor_venda_fin              AS valor_venda_financiamento,
             CASE
-                WHEN d.valor_venda_fin = 0 OR d.valor_venda_fin IS NULL THEN 0
+                WHEN d.valor_venda_fin IS NULL OR d.valor_venda_fin = 0 THEN 0
                 ELSE COALESCE(p.valor_prosoluto, 0) / d.valor_venda_fin
-            END                             AS pct_prosoluto
+            END                            AS pct_prosoluto
         FROM denom_por_emp d
         LEFT JOIN parcelas_por_emp p
             ON d.idempreendimento = p.idempreendimento
