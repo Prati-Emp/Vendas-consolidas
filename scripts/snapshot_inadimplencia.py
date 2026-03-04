@@ -14,6 +14,7 @@ import os
 import sys
 from datetime import date, datetime
 from dotenv import load_dotenv
+from dateutil.relativedelta import relativedelta
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
@@ -60,7 +61,8 @@ async def sistema_snapshot_inadimplencia():
 
         hoje = date.today()
         hoje_str = hoje.strftime("%Y-%m-%d")
-        mes_ref = hoje.strftime("%Y-%m")
+        mes_anterior = hoje.replace(day=1) - relativedelta(months=1)
+        mes_ref = mes_anterior.strftime("%Y-%m")
 
         # Verificar se o mês já foi processado
         count_existente = conn.execute(
@@ -73,7 +75,7 @@ async def sistema_snapshot_inadimplencia():
             conn.close()
             return True
 
-        print(f"\n3. Calculando snapshot para {mes_ref} (data: {hoje_str})...")
+        print(f"\n3. Calculando fechamento de {mes_ref} (data snapshot: {hoje_str})...")
 
         # TOTAL
         conn.execute(f"""
@@ -82,7 +84,7 @@ async def sistema_snapshot_inadimplencia():
                 '{hoje_str}'::DATE  AS data_snapshot,
                 '{mes_ref}'         AS mes_referencia,
                 NULL::INTEGER       AS cod_centro_custo,
-                'TOTAL'             AS centro_custo,
+                'Geral Prati'       AS centro_custo,
                 SUM(CASE WHEN Tipo_Baixa IS NULL THEN Valor_Corrigido ELSE 0 END)
                     AS cr_valor_devido,
                 SUM(CASE WHEN Tipo_Baixa IS NULL

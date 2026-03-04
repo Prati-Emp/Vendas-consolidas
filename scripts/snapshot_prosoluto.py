@@ -16,6 +16,7 @@ import os
 import sys
 from datetime import date, datetime
 from dotenv import load_dotenv
+from dateutil.relativedelta import relativedelta
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
@@ -65,7 +66,8 @@ async def sistema_snapshot_prosoluto():
 
         hoje = date.today()
         hoje_str = hoje.strftime("%Y-%m-%d")
-        mes_ref = hoje.strftime("%Y-%m")
+        mes_anterior = hoje.replace(day=1) - relativedelta(months=1)
+        mes_ref = mes_anterior.strftime("%Y-%m")
 
         count_existente = conn.execute(
             "SELECT COUNT(*) FROM snapshot_prosoluto_mensal WHERE mes_referencia = ? AND idempreendimento IS NULL",
@@ -77,7 +79,7 @@ async def sistema_snapshot_prosoluto():
             conn.close()
             return True
 
-        print(f"\n3. Calculando snapshot para {mes_ref} (data: {hoje_str})...")
+        print(f"\n3. Calculando fechamento de {mes_ref} (data snapshot: {hoje_str})...")
 
         # TOTAL
         conn.execute(f"""
@@ -102,7 +104,7 @@ async def sistema_snapshot_prosoluto():
                 '{hoje_str}'::DATE AS data_snapshot,
                 '{mes_ref}'        AS mes_referencia,
                 NULL::BIGINT       AS idempreendimento,
-                'TOTAL'            AS empreendimento,
+                'Geral Prati'      AS empreendimento,
                 NULL               AS codigointerno_empreendimento,
                 (SELECT SUM(Valor_Devido) FROM parcelas) AS valor_prosoluto,
                 (SELECT total FROM denom)                AS valor_venda_financiamento,
