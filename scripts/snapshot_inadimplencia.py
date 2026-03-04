@@ -2,11 +2,12 @@
 """
 Snapshot Mensal de Inadimplência
 Roda todo dia 10 do mês. Captura o estado atual (sem data de corte),
-replicando exatamente a lógica das medidas padrão do Power BI:
+replicando a lógica das medidas padrão do Power BI:
   - CR_Valor_Devido  = parcelas abertas (Tipo_Baixa IS NULL)
   - Valor_Inadimplente = parcelas abertas com Data_Vencimento <= hoje
+  - valor_1_30, valor_31_60, valor_61_90, valor_mais_90 = inadimplência por faixa de dias em atraso
   - % Inadimplência = Valor_Inadimplente / CR_Valor_Devido
-A foto é datada com o dia em que rodou (data_snapshot) e o mês de referência.
+A foto é datada com o dia em que rodou (data_snapshot) e mes_referencia = fechamento do mês anterior.
 """
 
 import asyncio
@@ -53,10 +54,19 @@ async def sistema_snapshot_inadimplencia():
                 centro_custo       VARCHAR,
                 cr_valor_devido    DOUBLE,
                 valor_inadimplente DOUBLE,
+                valor_1_30         DOUBLE,
+                valor_31_60        DOUBLE,
+                valor_61_90        DOUBLE,
+                valor_mais_90      DOUBLE,
                 pct_inadimplencia  DOUBLE,
                 UNIQUE (mes_referencia, cod_centro_custo)
             )
         """)
+        for col in ["valor_1_30", "valor_31_60", "valor_61_90", "valor_mais_90"]:
+            try:
+                conn.execute(f"ALTER TABLE snapshot_inadimplencia_mensal ADD COLUMN {col} DOUBLE")
+            except Exception:
+                pass
         print("OK: Tabela verificada/criada")
 
         hoje = date.today()
@@ -77,9 +87,18 @@ async def sistema_snapshot_inadimplencia():
 
         print(f"\n3. Calculando fechamento de {mes_ref} (data snapshot: {hoje_str})...")
 
+        base_cond = "Tipo_Baixa IS NULL AND TRY_CAST(Data_Vencimento AS DATE) <= '{0}'::DATE"
+        dias = "('{0}'::DATE - TRY_CAST(Data_Vencimento AS DATE))"
+        cond_1_30 = base_cond.format(hoje_str) + f" AND {dias.format(hoje_str)} BETWEEN 1 AND 30"
+        cond_31_60 = base_cond.format(hoje_str) + f" AND {dias.format(hoje_str)} BETWEEN 31 AND 60"
+        cond_61_90 = base_cond.format(hoje_str) + f" AND {dias.format(hoje_str)} BETWEEN 61 AND 90"
+        cond_mais_90 = base_cond.format(hoje_str) + f" AND {dias.format(hoje_str)} > 90"
+        cond_inad = base_cond.format(hoje_str)
+
         # TOTAL
         conn.execute(f"""
             INSERT OR IGNORE INTO snapshot_inadimplencia_mensal
+            (data_snapshot, mes_referencia, cod_centro_custo, centro_custo, cr_valor_devido, valor_inadimplente, valor_1_30, valor_31_60, valor_61_90, valor_mais_90, pct_inadimplencia)
             SELECT
                 '{hoje_str}'::DATE  AS data_snapshot,
                 '{mes_ref}'         AS mes_referencia,
@@ -87,15 +106,15 @@ async def sistema_snapshot_inadimplencia():
                 'Geral Prati'       AS centro_custo,
                 SUM(CASE WHEN Tipo_Baixa IS NULL THEN Valor_Corrigido ELSE 0 END)
                     AS cr_valor_devido,
-                SUM(CASE WHEN Tipo_Baixa IS NULL
-                              AND TRY_CAST(Data_Vencimento AS DATE) <= '{hoje_str}'::DATE
-                         THEN Valor_Corrigido ELSE 0 END)
+                SUM(CASE WHEN {cond_inad} THEN Valor_Corrigido ELSE 0 END)
                     AS valor_inadimplente,
+                SUM(CASE WHEN {cond_1_30} THEN Valor_Corrigido ELSE 0 END) AS valor_1_30,
+                SUM(CASE WHEN {cond_31_60} THEN Valor_Corrigido ELSE 0 END) AS valor_31_60,
+                SUM(CASE WHEN {cond_61_90} THEN Valor_Corrigido ELSE 0 END) AS valor_61_90,
+                SUM(CASE WHEN {cond_mais_90} THEN Valor_Corrigido ELSE 0 END) AS valor_mais_90,
                 CASE
                     WHEN SUM(CASE WHEN Tipo_Baixa IS NULL THEN Valor_Corrigido ELSE 0 END) = 0 THEN 0
-                    ELSE SUM(CASE WHEN Tipo_Baixa IS NULL
-                                      AND TRY_CAST(Data_Vencimento AS DATE) <= '{hoje_str}'::DATE
-                                 THEN Valor_Corrigido ELSE 0 END)
+                    ELSE SUM(CASE WHEN {cond_inad} THEN Valor_Corrigido ELSE 0 END)
                        / SUM(CASE WHEN Tipo_Baixa IS NULL THEN Valor_Corrigido ELSE 0 END)
                 END AS pct_inadimplencia
             FROM contas_recebidas_receber
@@ -104,6 +123,7 @@ async def sistema_snapshot_inadimplencia():
         # Por Centro de Custo
         conn.execute(f"""
             INSERT OR IGNORE INTO snapshot_inadimplencia_mensal
+            (data_snapshot, mes_referencia, cod_centro_custo, centro_custo, cr_valor_devido, valor_inadimplente, valor_1_30, valor_31_60, valor_61_90, valor_mais_90, pct_inadimplencia)
             SELECT
                 '{hoje_str}'::DATE  AS data_snapshot,
                 '{mes_ref}'         AS mes_referencia,
@@ -111,15 +131,15 @@ async def sistema_snapshot_inadimplencia():
                 Centro_Custo        AS centro_custo,
                 SUM(CASE WHEN Tipo_Baixa IS NULL THEN Valor_Corrigido ELSE 0 END)
                     AS cr_valor_devido,
-                SUM(CASE WHEN Tipo_Baixa IS NULL
-                              AND TRY_CAST(Data_Vencimento AS DATE) <= '{hoje_str}'::DATE
-                         THEN Valor_Corrigido ELSE 0 END)
+                SUM(CASE WHEN {cond_inad} THEN Valor_Corrigido ELSE 0 END)
                     AS valor_inadimplente,
+                SUM(CASE WHEN {cond_1_30} THEN Valor_Corrigido ELSE 0 END) AS valor_1_30,
+                SUM(CASE WHEN {cond_31_60} THEN Valor_Corrigido ELSE 0 END) AS valor_31_60,
+                SUM(CASE WHEN {cond_61_90} THEN Valor_Corrigido ELSE 0 END) AS valor_61_90,
+                SUM(CASE WHEN {cond_mais_90} THEN Valor_Corrigido ELSE 0 END) AS valor_mais_90,
                 CASE
                     WHEN SUM(CASE WHEN Tipo_Baixa IS NULL THEN Valor_Corrigido ELSE 0 END) = 0 THEN 0
-                    ELSE SUM(CASE WHEN Tipo_Baixa IS NULL
-                                      AND TRY_CAST(Data_Vencimento AS DATE) <= '{hoje_str}'::DATE
-                                 THEN Valor_Corrigido ELSE 0 END)
+                    ELSE SUM(CASE WHEN {cond_inad} THEN Valor_Corrigido ELSE 0 END)
                        / SUM(CASE WHEN Tipo_Baixa IS NULL THEN Valor_Corrigido ELSE 0 END)
                 END AS pct_inadimplencia
             FROM contas_recebidas_receber
