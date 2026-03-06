@@ -6,10 +6,14 @@ replicando a lógica das medidas padrão do Power BI:
   - CR_Valor_Devido  = parcelas abertas (Tipo_Baixa IS NULL)
   - Valor_Inadimplente = parcelas abertas com Data_Vencimento <= hoje
   - % Inadimplência = Valor_Inadimplente / CR_Valor_Devido
+  - Filtro Tipo_Condicao: exclui CP, MC, FI, FG (mantém todo o resto)
 A foto é datada com o dia em que rodou (data_snapshot) e mes_referencia = fechamento do mês anterior.
 """
 
 import asyncio
+
+# Excluir do cálculo: Tipo_Condicao IN ('CP','MC','FI','FG')
+FILTRO_TIPO_CONDICAO = "(Tipo_Condicao IS NULL OR TRIM(Tipo_Condicao) NOT IN ('CP','MC','FI','FG'))"
 import os
 import sys
 from datetime import date, datetime
@@ -93,6 +97,7 @@ async def sistema_snapshot_inadimplencia():
                        / SUM(CASE WHEN Tipo_Baixa IS NULL THEN Valor_Corrigido ELSE 0 END)
                 END AS pct_inadimplencia
             FROM contas_recebidas_receber
+            WHERE {FILTRO_TIPO_CONDICAO}
         """)
 
         # Por Centro de Custo
@@ -115,6 +120,7 @@ async def sistema_snapshot_inadimplencia():
                 END AS pct_inadimplencia
             FROM contas_recebidas_receber
             WHERE Cod_Centro_Custo IS NOT NULL AND Centro_Custo IS NOT NULL
+              AND {FILTRO_TIPO_CONDICAO}
             GROUP BY Cod_Centro_Custo, Centro_Custo
         """)
 
