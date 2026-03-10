@@ -80,15 +80,30 @@ async def sistema_snapshot_inadimplencia():
         mes_anterior = hoje.replace(day=1) - relativedelta(months=1)
         mes_ref = mes_anterior.strftime("%Y-%m")
 
-        # Remove dados existentes do mes_referencia (substitui no dia 10; historico de meses anteriores preservado)
-        conn.execute(
+        # Data de corte para inadimplência alinhada à medida Valor_Inadimplente_Novo no Power BI:
+        # consideramos inadimplente tudo que venceu ANTES do primeiro dia do mês seguinte ao mes_referencia.
+        # Ex.: mes_ref = 2026-02 -> data_corte_inadimplente = 2026-03-01.
+        primeiro_dia_mes_seguinte = (mes_anterior + relativedelta(months=1)).replace(day=1)
+        data_corte_inadimplente_str = primeiro_dia_mes_seguinte.strftime("%Y-%m-%d")
+
+        # Substitui apenas o mes_referencia atual; demais meses (historico) nao sao alterados.
+        # Assim pode rodar de novo no mesmo dia 10 para corrigir/atualizar sem perder historico.
+        deleted = conn.execute(
             "DELETE FROM snapshot_inadimplencia_mensal_ WHERE mes_referencia = ?",
             [mes_ref]
         )
+        print(f"\n   Substituindo apenas mes_referencia = {mes_ref} (historico dos demais meses preservado).")
 
         print(f"\n3. Calculando fechamento de {mes_ref} (data snapshot: {hoje_str})...")
 
-        cond_inad = "Tipo_Baixa IS NULL AND TRY_CAST(Data_Vencimento AS DATE) <= '{0}'::DATE".format(hoje_str)
+        # Regra de inadimplência:
+        # - Parcelas abertas: Tipo_Baixa IS NULL
+        # - Data_Vencimento < primeiro dia do mês seguinte ao mes_referencia (data_corte_inadimplente_str)
+        # - Mesmo filtro de Tipo_Condicao utilizado nas medidas de CR/Inadimplência do Power BI
+        cond_inad = (
+            "Tipo_Baixa IS NULL AND "
+            f"TRY_CAST(Data_Vencimento AS DATE) < '{data_corte_inadimplente_str}'::DATE"
+        )
 
         # TOTAL
         conn.execute(f"""
