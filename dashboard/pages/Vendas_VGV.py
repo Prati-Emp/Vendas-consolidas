@@ -113,6 +113,16 @@ def main():
     })
     df_display = df_display.drop(columns=["venda_fin_pos"], errors="ignore")
 
+    # Ordem: VGV, Prosoluto valores (antes/pós lado a lado), % (antes/pós lado a lado), Venda financiamento
+    ordem_colunas = [
+        "ID", "Empreendimento",
+        "VGV Total", "VGV Vendido", "VGV Pendente",
+        "Prosoluto antes obra", "Prosoluto pós obra",
+        "% Prosoluto antes", "% Prosoluto pós",
+        "Venda financiamento",
+    ]
+    df_display = df_display[[c for c in ordem_colunas if c in df_display.columns]]
+
     st.dataframe(
         df_display,
         use_container_width=True,
