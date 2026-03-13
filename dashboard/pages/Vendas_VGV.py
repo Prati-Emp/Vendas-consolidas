@@ -117,9 +117,13 @@ def _montar_tabela_analise(df):
             return "color: #60a5fa; font-weight: 500"  # azul suave - só o valor
         return ""
 
-    styled = df_out.style.apply(
-        lambda s: [_cor_celula(i) for i in range(len(s))],
-        subset=["% Prosoluto pós chaves"],
+    colunas_centro = ["% total antes e pós chaves", "% Prosoluto antes chaves", "% Prosoluto pós chaves", "% VGV realizado"]
+    styled = (
+        df_out.style.apply(
+            lambda s: [_cor_celula(i) for i in range(len(s))],
+            subset=["% Prosoluto pós chaves"],
+        )
+        .set_properties(subset=colunas_centro, **{"text-align": "center"})
     )
     return styled
 
