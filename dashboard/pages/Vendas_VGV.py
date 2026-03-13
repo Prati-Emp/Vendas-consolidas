@@ -227,21 +227,41 @@ def main():
 
 
 def _render_barra_vgv(label: str, pct: float, vgv_vendido: float, vgv_total: float):
-    """Renderiza barra de evolução do VGV realizado."""
+    """Renderiza barra de evolução do VGV realizado (adaptada para tema claro e escuro)."""
     pct_clamped = min(100.0, max(0.0, pct))
     st.markdown(
+        """
+        <style>
+        .vgv-bar-container {
+            margin-top: 1.5rem; padding: 0.75rem 1rem; border-radius: 8px;
+            background: #f0f2f6; border: 1px solid #e5e7eb;
+        }
+        .vgv-bar-label { font-size: 0.9rem; margin-bottom: 0.4rem; color: #6b7280; }
+        .vgv-bar-value { font-weight: 600; min-width: 4rem; color: #1f2937; }
+        .vgv-bar-track { flex: 1; height: 20px; border-radius: 10px; overflow: hidden; background: #e5e7eb; }
+        .vgv-bar-fill { height: 100%; border-radius: 10px; transition: width 0.3s; background: linear-gradient(90deg, #10b981, #059669); }
+        .vgv-bar-caption { font-size: 0.8rem; margin-top: 0.35rem; color: #6b7280; }
+        @media (prefers-color-scheme: dark) {
+            .vgv-bar-container {
+                background: rgba(49,51,63,0.6); border-color: rgba(75,85,99,0.5);
+            }
+            .vgv-bar-label { color: #9ca3af; }
+            .vgv-bar-value { color: #e5e7eb; }
+            .vgv-bar-track { background: #374151; }
+            .vgv-bar-caption { color: #6b7280; }
+        }
+        </style>
+        """
         f"""
-        <div style="margin-top: 1.5rem; padding: 0.75rem 1rem; background: rgba(49,51,63,0.6); border-radius: 8px;">
-            <div style="font-size: 0.9rem; color: #9ca3af; margin-bottom: 0.4rem;">{label}</div>
+        <div class="vgv-bar-container">
+            <div class="vgv-bar-label">{label}</div>
             <div style="display: flex; align-items: center; gap: 0.75rem;">
-                <div style="flex: 1; height: 20px; background: #374151; border-radius: 10px; overflow: hidden;">
-                    <div style="height: 100%; width: {pct_clamped:.1f}%; background: linear-gradient(90deg, #10b981, #059669); border-radius: 10px; transition: width 0.3s;"></div>
+                <div class="vgv-bar-track">
+                    <div class="vgv-bar-fill" style="width: {pct_clamped:.1f}%;"></div>
                 </div>
-                <span style="font-weight: 600; color: #e5e7eb; min-width: 4rem;">{pct_clamped:.1f}%</span>
+                <span class="vgv-bar-value">{pct_clamped:.1f}%</span>
             </div>
-            <div style="font-size: 0.8rem; color: #6b7280; margin-top: 0.35rem;">
-                VGV realizado / VGV total
-            </div>
+            <div class="vgv-bar-caption">VGV realizado / VGV total</div>
         </div>
         """,
         unsafe_allow_html=True,
