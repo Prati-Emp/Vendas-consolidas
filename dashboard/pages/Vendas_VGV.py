@@ -135,7 +135,7 @@ def main():
     # Resumo rápido numérico abaixo
     valor_vendas = float(kpis.get("total_valor", 0) or 0.0)
     st.write(
-        f\"**VGV Contratado (bruto)** no período: {format_compact_currency(valor_vendas)}\"
+        f"**VGV Contratado (bruto)** no período: {format_compact_currency(valor_vendas)}"
     )
 
 
