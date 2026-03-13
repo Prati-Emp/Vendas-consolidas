@@ -83,7 +83,7 @@ def main():
     for c in ["pct_prosoluto_antes", "pct_prosoluto_pos"]:
         if c in df_prosoluto.columns:
             df_prosoluto[c] = df_prosoluto[c].fillna(0.0).apply(
-                lambda v: format_percent(v * 100 if 0 <= v <= 1 else v, decimal_sep_comma=True)
+                lambda v: format_percent(v, decimals=2, decimal_sep_comma=True)
             )
     df_prosoluto = df_prosoluto.rename(columns={
         "nome_empreendimento": "Empreendimento",
@@ -117,7 +117,7 @@ def main():
     for col in col_percentuais:
         if col in df_display.columns:
             df_display[col] = df_display[col].fillna(0.0).apply(
-                lambda v: format_percent(v * 100 if 0 <= v <= 1 else v, decimal_sep_comma=True)
+                lambda v: format_percent(v, decimals=2, decimal_sep_comma=True)
             )
 
     df_display = df_display.rename(columns={
