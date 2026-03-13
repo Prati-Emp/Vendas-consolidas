@@ -184,6 +184,13 @@ def main():
             (df_analise_base["pct_prosoluto_antes"].fillna(0) != 0)
             | (df_analise_base["pct_prosoluto_pos"].fillna(0) != 0)
         ]
+        mask_geral_analise = df_analise_base["nome_empreendimento"].str.strip().str.lower() == "geral prati"
+        if mask_geral_analise.any():
+            outros_analise = df_analise_base[~mask_geral_analise]
+            for col in ["vgv_total", "vgv_vendido"]:
+                if col in df_analise_base.columns:
+                    total = outros_analise[col].fillna(0.0).sum()
+                    df_analise_base.loc[mask_geral_analise, col] = total
         if df_analise_base.empty:
             st.info(
                 "Nenhum empreendimento encontrado. Esta aba exibe apenas empreendimentos com "
