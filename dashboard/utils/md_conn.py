@@ -602,7 +602,7 @@ def get_vgv_prosoluto_resumo() -> pd.DataFrame:
         GROUP BY id_empreendimento, nome_empreendimento
     )
     SELECT
-        COALESCE(v.id_empreendimento, p.id_empreendimento) AS id_empreendimento,
+        p.id_empreendimento AS id_empreendimento,
         COALESCE(v.nome_empreendimento, p.nome_empreendimento) AS nome_empreendimento,
         v.vgv_total,
         v.vgv_vendido,
@@ -615,7 +615,7 @@ def get_vgv_prosoluto_resumo() -> pd.DataFrame:
         p.pct_prosoluto_pos
     FROM vgv v
     FULL OUTER JOIN prosoluto_pivot p
-        ON v.id_empreendimento = p.id_empreendimento
+        ON TRIM(COALESCE(v.nome_empreendimento, '')) = TRIM(COALESCE(p.nome_empreendimento, ''))
     ORDER BY nome_empreendimento
     """
 
