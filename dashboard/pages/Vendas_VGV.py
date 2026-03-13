@@ -87,6 +87,10 @@ def _montar_tabela_analise(df):
     mask_vf = venda_fin > 0
     df.loc[mask_vf, "pct_total_prosoluto"] = (prosoluto_total[mask_vf] / venda_fin[mask_vf]).values
 
+    pct_pos = df["pct_prosoluto_pos"].fillna(0.0)
+    pct_antes = df["pct_prosoluto_antes"].fillna(0.0)
+    mask_pós_maior = pct_pos > pct_antes
+    mask_pós_menor = pct_pos < pct_antes
     for col in ["pct_prosoluto_antes", "pct_prosoluto_pos", "pct_vgv_realizado", "pct_total_prosoluto"]:
         if col in df.columns:
             df[col] = df[col].fillna(0.0).apply(
@@ -105,7 +109,19 @@ def _montar_tabela_analise(df):
         "% Prosoluto antes chaves", "% Prosoluto pós chaves",
         "% VGV realizado",
     ]
-    return df[[c for c in ordem if c in df.columns]]
+    df_out = df[[c for c in ordem if c in df.columns]]
+    def _cor_celula(i):
+        if mask_pós_maior.iloc[i]:
+            return "background-color: #fef3c7"  # âmbar (atenção)
+        if mask_pós_menor.iloc[i]:
+            return "background-color: #dbeafe"  # azul suave
+        return ""
+
+    styled = df_out.style.apply(
+        lambda s: [_cor_celula(i) for i in range(len(s))],
+        subset=["% Prosoluto pós chaves"],
+    )
+    return styled
 
 
 def main():
