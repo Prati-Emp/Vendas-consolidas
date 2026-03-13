@@ -114,7 +114,7 @@ def _montar_tabela_analise(df):
         if mask_pós_maior.iloc[i]:
             return "color: #d97706; font-weight: 500"  # âmbar (atenção) - só o valor
         if mask_pós_menor.iloc[i]:
-            return "color: #2563eb; font-weight: 500"  # azul suave - só o valor
+            return "color: #60a5fa; font-weight: 500"  # azul suave - só o valor
         return ""
 
     styled = df_out.style.apply(
