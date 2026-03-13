@@ -6,9 +6,7 @@ Reaproveita a mesma base de dados e filtros da página principal de Vendas.
 from datetime import datetime, date
 from pathlib import Path
 import sys
-from typing import List
 
-import pandas as pd
 import streamlit as st
 
 # Garantir acesso aos módulos compartilhados
@@ -18,7 +16,7 @@ if str(ROOT_DIR) not in sys.path:
 
 # Autenticação
 try:
-    from advanced_auth import require_auth, require_page_access  # type: ignore
+    from advanced_auth import require_auth, require_page_access, get_current_user  # type: ignore
 except Exception as e:  # pragma: no cover - fallback para ambientes sem auth
     st.error(f"Erro ao importar sistema de autenticação: {e}")
     st.stop()
@@ -29,7 +27,6 @@ from utils.md_conn import (  # noqa: E402
     get_kpis,
     get_metas_periodo,
 )
-from utils import display_navigation  # noqa: E402
 from utils.formatters import (  # noqa: E402
     format_compact_currency,
 )
@@ -50,6 +47,13 @@ def main():
     # Autenticação e permissão (mesma permissão da página de Vendas)
     require_auth()
     require_page_access("vendas")
+
+    # Restringir acesso apenas ao usuário Odair enquanto a página está em desenvolvimento
+    user = get_current_user()
+    if not user or user.get("email") != "odair.santos@grupoprati.com":
+        st.error("🚧 Página em desenvolvimento. Acesso restrito temporariamente.")
+        st.info("Entre em contato com o administrador para mais informações.")
+        st.stop()
 
     # Navegação global
     display_navigation()
@@ -131,7 +135,7 @@ def main():
     # Resumo rápido numérico abaixo
     valor_vendas = float(kpis.get("total_valor", 0) or 0.0)
     st.write(
-        f"**VGV Contratado (bruto)** no período: {format_compact_currency(valor_vendas)}"
+        f\"**VGV Contratado (bruto)** no período: {format_compact_currency(valor_vendas)}\"
     )
 
 
