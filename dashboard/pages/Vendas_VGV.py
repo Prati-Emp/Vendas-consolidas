@@ -33,10 +33,16 @@ def _formatar_tabela_geral(df, col_valores, col_percentuais):
     mask = venda_fin > 0
     df.loc[mask, "pct_total_prosoluto"] = (prosoluto_total[mask] / venda_fin[mask]).values
 
+    vgv_total = df["vgv_total"].fillna(0.0)
+    vgv_vendido = df["vgv_vendido"].fillna(0.0)
+    df["pct_vgv_realizado"] = 0.0
+    mask_vgv = vgv_total > 0
+    df.loc[mask_vgv, "pct_vgv_realizado"] = (vgv_vendido[mask_vgv] / vgv_total[mask_vgv]).values
+
     for col in col_valores:
         if col in df.columns:
             df[col] = df[col].fillna(0.0).apply(format_brl)
-    for col in col_percentuais + ["pct_total_prosoluto"]:
+    for col in col_percentuais + ["pct_total_prosoluto", "pct_vgv_realizado"]:
         if col in df.columns:
             df[col] = df[col].fillna(0.0).apply(
                 lambda v: format_percent(v, decimals=2, decimal_sep_comma=True)
@@ -53,10 +59,12 @@ def _formatar_tabela_geral(df, col_valores, col_percentuais):
         "prosoluto_pos": "Prosoluto pós chaves",
         "pct_prosoluto_pos": "% Prosoluto pós chaves",
         "pct_total_prosoluto": "% total prosoluto",
+        "pct_vgv_realizado": "% VGV realizado",
     })
     df = df.drop(columns=["venda_fin_pos"], errors="ignore")
     ordem = [
         "ID", "Empreendimento", "VGV Total", "VGV Vendido", "VGV Pendente",
+        "% VGV realizado",
         "Prosoluto antes chaves", "Prosoluto pós chaves",
         "% Prosoluto antes chaves", "% Prosoluto pós chaves", "% total prosoluto",
         "Venda financiamento",
