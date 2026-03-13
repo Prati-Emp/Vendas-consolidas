@@ -68,6 +68,35 @@ def main():
         st.warning("Não há dados de VGV / Prosoluto para exibir no momento.")
         return
 
+    # Valores retornados de Prosoluto (antes e pós obra) por empreendimento
+    st.markdown("#### Valor retornado de Prosoluto por empreendimento")
+    st.caption(
+        "Valores vindos da view **prosoluto_antes_e_pos_chaves**: valor de prosoluto **antes da obra** (vencimento ≤ data fim obra) "
+        "e **pós obra** (vencimento > data fim obra), por nome do empreendimento."
+    )
+    col_prosoluto = ["nome_empreendimento", "prosoluto_antes", "prosoluto_pos", "pct_prosoluto_antes", "pct_prosoluto_pos"]
+    df_prosoluto = df_resumo[[c for c in col_prosoluto if c in df_resumo.columns]].copy()
+    if "prosoluto_antes" in df_prosoluto.columns:
+        df_prosoluto["prosoluto_antes"] = df_prosoluto["prosoluto_antes"].fillna(0.0).apply(format_brl)
+    if "prosoluto_pos" in df_prosoluto.columns:
+        df_prosoluto["prosoluto_pos"] = df_prosoluto["prosoluto_pos"].fillna(0.0).apply(format_brl)
+    for c in ["pct_prosoluto_antes", "pct_prosoluto_pos"]:
+        if c in df_prosoluto.columns:
+            df_prosoluto[c] = df_prosoluto[c].fillna(0.0).apply(
+                lambda v: format_percent(v * 100 if 0 <= v <= 1 else v)
+            )
+    df_prosoluto = df_prosoluto.rename(columns={
+        "nome_empreendimento": "Empreendimento",
+        "prosoluto_antes": "Prosoluto antes da obra",
+        "prosoluto_pos": "Prosoluto pós obra",
+        "pct_prosoluto_antes": "% Prosoluto antes",
+        "pct_prosoluto_pos": "% Prosoluto pós",
+    })
+    st.dataframe(df_prosoluto, use_container_width=True, hide_index=True)
+
+    st.markdown("---")
+    st.markdown("#### Tabela completa (VGV + Prosoluto)")
+
     # Colunas numéricas para formatação
     col_valores = [
         "vgv_total",
@@ -90,6 +119,20 @@ def main():
             df_display[col] = df_display[col].fillna(0.0).apply(
                 lambda v: format_percent(v * 100 if 0 <= v <= 1 else v)
             )
+
+    df_display = df_display.rename(columns={
+        "id_empreendimento": "ID",
+        "nome_empreendimento": "Empreendimento",
+        "vgv_total": "VGV Total",
+        "vgv_vendido": "VGV Vendido",
+        "vgv_pendente": "VGV Pendente",
+        "prosoluto_antes": "Prosoluto antes obra",
+        "venda_fin_antes": "Venda financ. (antes)",
+        "pct_prosoluto_antes": "% Prosoluto antes",
+        "prosoluto_pos": "Prosoluto pós obra",
+        "venda_fin_pos": "Venda financ. (pós)",
+        "pct_prosoluto_pos": "% Prosoluto pós",
+    })
 
     st.dataframe(
         df_display,

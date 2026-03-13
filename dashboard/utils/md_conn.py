@@ -546,7 +546,9 @@ def get_vgv_prosoluto_resumo() -> pd.DataFrame:
     - Prosoluto antes e pós chaves (a partir da view prosoluto_antes_e_pos_chaves)
     - id e nome do empreendimento preenchidos a partir de dim_empreendimentos_dinamica quando vazios.
 
-    Observação: a classificação de "vendido" é baseada na coluna unidades.situacao.
+    Os valores de prosoluto e o nome do empreendimento são alinhados pela coluna nome_empreendimento
+    da view administracao.prosoluto_antes_e_pos_chaves, para permitir comparação direta com a view.
+    Observação: a classificação de "vendido" (VGV) é baseada na coluna unidades.situacao.
     """
     md_conn = get_md_connection()
 
@@ -594,7 +596,7 @@ def get_vgv_prosoluto_resumo() -> pd.DataFrame:
     base AS (
         SELECT
             p.id_empreendimento AS id_empreendimento,
-            COALESCE(v.nome_empreendimento, p.nome_empreendimento) AS nome_empreendimento,
+            COALESCE(p.nome_empreendimento, v.nome_empreendimento) AS nome_empreendimento,
             v.vgv_total,
             v.vgv_vendido,
             v.vgv_pendente,
@@ -606,9 +608,9 @@ def get_vgv_prosoluto_resumo() -> pd.DataFrame:
             p.valor_venda_financiamento AS venda_fin_pos,
             CASE WHEN COALESCE(p.valor_venda_financiamento, 0) > 0
                  THEN p.prosoluto_pos / p.valor_venda_financiamento ELSE 0 END AS pct_prosoluto_pos
-        FROM vgv v
-        FULL OUTER JOIN prosoluto_pivot p
-            ON TRIM(COALESCE(v.nome_empreendimento, '')) = TRIM(COALESCE(p.nome_empreendimento, ''))
+        FROM prosoluto_pivot p
+        FULL OUTER JOIN vgv v
+            ON TRIM(COALESCE(p.nome_empreendimento, '')) = TRIM(COALESCE(v.nome_empreendimento, ''))
     ),
     dim AS (
         SELECT
