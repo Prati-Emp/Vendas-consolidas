@@ -160,8 +160,27 @@ def main():
             "Prosoluto antes e pós chaves (valor e % sobre venda financiamento) e VGV já realizado "
             "(valor e % sobre o VGV total do empreendimento)."
         )
-        df_analise = _montar_tabela_analise(df_resumo.copy())
-        st.dataframe(df_analise, use_container_width=True, hide_index=True)
+
+        empreendimentos = sorted(
+            df_resumo["nome_empreendimento"].dropna().astype(str).str.strip().unique()
+        )
+        empreendimentos_filtro = st.multiselect(
+            "Filtrar por empreendimento",
+            options=empreendimentos,
+            default=[],
+            placeholder="Selecione um ou mais empreendimentos (vazio = todos)",
+            help="Filtros para tomada de decisão pela diretoria.",
+        )
+        df_analise_base = df_resumo.copy()
+        if empreendimentos_filtro:
+            df_analise_base = df_analise_base[
+                df_analise_base["nome_empreendimento"].str.strip().isin(empreendimentos_filtro)
+            ]
+        if df_analise_base.empty:
+            st.info("Nenhum empreendimento encontrado para os filtros selecionados.")
+        else:
+            df_analise = _montar_tabela_analise(df_analise_base)
+            st.dataframe(df_analise, use_container_width=True, hide_index=True)
 
 
 if __name__ == "__main__":
