@@ -47,14 +47,17 @@ def _formatar_tabela_geral(df, col_valores, col_percentuais):
         "vgv_total": "VGV Total",
         "vgv_vendido": "VGV Vendido",
         "vgv_pendente": "VGV Pendente",
+        "prosoluto_antes": "Prosoluto antes chaves",
         "venda_fin_antes": "Venda financiamento",
         "pct_prosoluto_antes": "% Prosoluto antes chaves",
+        "prosoluto_pos": "Prosoluto pós chaves",
         "pct_prosoluto_pos": "% Prosoluto pós chaves",
         "pct_total_prosoluto": "% total prosoluto",
     })
-    df = df.drop(columns=["venda_fin_pos", "prosoluto_antes", "prosoluto_pos"], errors="ignore")
+    df = df.drop(columns=["venda_fin_pos"], errors="ignore")
     ordem = [
         "ID", "Empreendimento", "VGV Total", "VGV Vendido", "VGV Pendente",
+        "Prosoluto antes chaves", "Prosoluto pós chaves",
         "% Prosoluto antes chaves", "% Prosoluto pós chaves", "% total prosoluto",
         "Venda financiamento",
     ]
@@ -152,7 +155,7 @@ def main():
         )
         col_valores = [
             "vgv_total", "vgv_vendido", "vgv_pendente",
-            "venda_fin_antes",
+            "prosoluto_antes", "venda_fin_antes", "prosoluto_pos",
         ]
         col_percentuais = ["pct_prosoluto_antes", "pct_prosoluto_pos"]
         df_display = _formatar_tabela_geral(df_resumo.copy(), col_valores, col_percentuais)
