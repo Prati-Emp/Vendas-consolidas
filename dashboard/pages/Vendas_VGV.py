@@ -177,8 +177,12 @@ def main():
             "(percentual do VGV total já vendido no empreendimento)."
         )
 
+        df_com_prosoluto = df_resumo[
+            (df_resumo["pct_prosoluto_antes"].fillna(0) != 0)
+            | (df_resumo["pct_prosoluto_pos"].fillna(0) != 0)
+        ]
         empreendimentos = sorted(
-            df_resumo["nome_empreendimento"].dropna().astype(str).str.strip().unique()
+            df_com_prosoluto["nome_empreendimento"].dropna().astype(str).str.strip().unique()
         )
         empreendimentos_filtro = st.multiselect(
             "Filtrar por empreendimento",
