@@ -105,20 +105,20 @@ def main():
         "vgv_total": "VGV Total",
         "vgv_vendido": "VGV Vendido",
         "vgv_pendente": "VGV Pendente",
-        "prosoluto_antes": "Prosoluto antes obra",
+        "prosoluto_antes": "Prosoluto antes chaves",
         "venda_fin_antes": "Venda financiamento",
-        "pct_prosoluto_antes": "% Prosoluto antes",
-        "prosoluto_pos": "Prosoluto pós obra",
-        "pct_prosoluto_pos": "% Prosoluto pós",
+        "pct_prosoluto_antes": "% Prosoluto antes chaves",
+        "prosoluto_pos": "Prosoluto pós chaves",
+        "pct_prosoluto_pos": "% Prosoluto pós chaves",
     })
     df_display = df_display.drop(columns=["venda_fin_pos"], errors="ignore")
 
-    # Ordem: VGV, Prosoluto valores (antes/pós lado a lado), % (antes/pós lado a lado), Venda financiamento
+    # Ordem: VGV, Prosoluto valores (antes/pós chaves lado a lado), % (antes/pós chaves lado a lado), Venda financiamento
     ordem_colunas = [
         "ID", "Empreendimento",
         "VGV Total", "VGV Vendido", "VGV Pendente",
-        "Prosoluto antes obra", "Prosoluto pós obra",
-        "% Prosoluto antes", "% Prosoluto pós",
+        "Prosoluto antes chaves", "Prosoluto pós chaves",
+        "% Prosoluto antes chaves", "% Prosoluto pós chaves",
         "Venda financiamento",
     ]
     df_display = df_display[[c for c in ordem_colunas if c in df_display.columns]]
