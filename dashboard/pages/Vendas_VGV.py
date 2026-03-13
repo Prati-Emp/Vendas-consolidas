@@ -212,6 +212,37 @@ def main():
             df_analise = _montar_tabela_analise(df_analise_base)
             st.dataframe(df_analise, use_container_width=True, hide_index=True)
 
+            vgv_total_sum = df_analise_base["vgv_total"].fillna(0.0).sum()
+            vgv_vendido_sum = df_analise_base["vgv_vendido"].fillna(0.0).sum()
+            pct_bar = (vgv_vendido_sum / vgv_total_sum * 100) if vgv_total_sum > 0 else 0.0
+            label_bar = "Geral Prati" if not empreendimentos_filtro else (
+                empreendimentos_filtro[0] if len(empreendimentos_filtro) == 1
+                else f"{len(empreendimentos_filtro)} empreendimentos selecionados"
+            )
+            _render_barra_vgv(label_bar, pct_bar, vgv_vendido_sum, vgv_total_sum)
+
+
+def _render_barra_vgv(label: str, pct: float, vgv_vendido: float, vgv_total: float):
+    """Renderiza barra de evolução do VGV realizado."""
+    pct_clamped = min(100.0, max(0.0, pct))
+    st.markdown(
+        f"""
+        <div style="margin-top: 1.5rem; padding: 0.75rem 1rem; background: rgba(49,51,63,0.6); border-radius: 8px;">
+            <div style="font-size: 0.9rem; color: #9ca3af; margin-bottom: 0.4rem;">{label}</div>
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+                <div style="flex: 1; height: 20px; background: #374151; border-radius: 10px; overflow: hidden;">
+                    <div style="height: 100%; width: {pct_clamped:.1f}%; background: linear-gradient(90deg, #10b981, #059669); border-radius: 10px; transition: width 0.3s;"></div>
+                </div>
+                <span style="font-weight: 600; color: #e5e7eb; min-width: 4rem;">{pct_clamped:.1f}%</span>
+            </div>
+            <div style="font-size: 0.8rem; color: #6b7280; margin-top: 0.35rem;">
+                VGV realizado / VGV total
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
 
 if __name__ == "__main__":
     main()
