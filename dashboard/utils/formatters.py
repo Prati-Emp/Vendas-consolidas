@@ -53,22 +53,26 @@ def format_int(value):
     except (TypeError, ValueError):
         return str(value)
 
-def format_percent(value, decimals=1):
+def format_percent(value, decimals=1, decimal_sep_comma=False):
     """
     Formata percentual.
-    
+
     Args:
         value: Valor numérico (0-100 ou 0-1)
         decimals: Número de casas decimais
-        
+        decimal_sep_comma: Se True, usa vírgula como separador decimal (padrão BR)
+
     Returns:
-        String formatada (ex: "85.5%")
+        String formatada (ex: "85,5%" com decimal_sep_comma=True, ou "85.5%")
     """
     try:
         # Se o valor está entre 0 e 1, multiplica por 100
         if 0 <= value <= 1:
             value = value * 100
-        return f"{value:.{decimals}f}%"
+        s = f"{value:.{decimals}f}%"
+        if decimal_sep_comma:
+            s = s.replace(".", ",")
+        return s
     except (TypeError, ValueError):
         return f"{value}%"
 
