@@ -599,10 +599,6 @@ def render_vendas_tab(
     render_metas_section(kpis, meta_total_periodo, meta_ratio)
     st.markdown("---")
 
-    # Nova seção dedicada a informações de VGV
-    render_vgv_section(kpis, meta_total_periodo, meta_ratio)
-    st.markdown("---")
-
     render_top_empreendimentos(top_empreendimentos, key_suffix=key_suffix)
     st.markdown("---")
 
