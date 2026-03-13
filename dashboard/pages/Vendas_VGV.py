@@ -180,7 +180,7 @@ def main():
                 total = outros[col].fillna(0.0).sum()
                 df_resumo.loc[mask_geral, col] = total
 
-    tab_geral, tab_analise = st.tabs(["Aba geral", "Analise VGV"])
+    tab_analise, tab_geral = st.tabs(["Analise VGV", "Aba geral"])
 
     with tab_geral:
         st.markdown("### VGV x Prosoluto por Empreendimento")
