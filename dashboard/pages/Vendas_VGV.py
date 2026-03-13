@@ -68,7 +68,7 @@ def main():
         st.warning("Não há dados de VGV / Prosoluto para exibir no momento.")
         return
 
-    # Colunas numéricas para formatação
+    # Colunas numéricas para formatação (venda_fin_antes = venda_fin_pos, exibimos apenas uma)
     col_valores = [
         "vgv_total",
         "vgv_vendido",
@@ -76,7 +76,6 @@ def main():
         "prosoluto_antes",
         "venda_fin_antes",
         "prosoluto_pos",
-        "venda_fin_pos",
     ]
     col_percentuais = ["pct_prosoluto_antes", "pct_prosoluto_pos"]
 
@@ -98,12 +97,12 @@ def main():
         "vgv_vendido": "VGV Vendido",
         "vgv_pendente": "VGV Pendente",
         "prosoluto_antes": "Prosoluto antes obra",
-        "venda_fin_antes": "Venda financ. (antes)",
+        "venda_fin_antes": "Venda financiamento",
         "pct_prosoluto_antes": "% Prosoluto antes",
         "prosoluto_pos": "Prosoluto pós obra",
-        "venda_fin_pos": "Venda financ. (pós)",
         "pct_prosoluto_pos": "% Prosoluto pós",
     })
+    df_display = df_display.drop(columns=["venda_fin_pos"], errors="ignore")
 
     st.dataframe(
         df_display,
