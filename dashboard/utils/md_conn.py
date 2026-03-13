@@ -564,7 +564,7 @@ def get_vgv_prosoluto_resumo() -> pd.DataFrame:
                     ELSE 0
                 END
             ) AS vgv_vendido
-        FROM main.cv_vgv_empreendimentos
+        FROM reservas.cv_vgv_empreendimentos
         GROUP BY id_empreendimento, nome_empreendimento
     ),
     vgv AS (
