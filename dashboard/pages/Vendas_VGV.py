@@ -68,6 +68,15 @@ def main():
         st.warning("Não há dados de VGV / Prosoluto para exibir no momento.")
         return
 
+    # Totalizador: preencher Geral Prati com a soma de VGV dos demais empreendimentos
+    mask_geral = df_resumo["nome_empreendimento"].str.strip().str.lower() == "geral prati"
+    if mask_geral.any():
+        outros = df_resumo[~mask_geral]
+        for col in ["vgv_total", "vgv_vendido", "vgv_pendente"]:
+            if col in df_resumo.columns:
+                total = outros[col].fillna(0.0).sum()
+                df_resumo.loc[mask_geral, col] = total
+
     # Colunas numéricas para formatação (venda_fin_antes = venda_fin_pos, exibimos apenas uma)
     col_valores = [
         "vgv_total",
