@@ -58,7 +58,7 @@ def _formatar_tabela_geral(df, col_valores, col_percentuais):
         "pct_prosoluto_antes": "% Prosoluto antes chaves",
         "prosoluto_pos": "Prosoluto pós chaves",
         "pct_prosoluto_pos": "% Prosoluto pós chaves",
-        "pct_total_prosoluto": "% total prosoluto",
+        "pct_total_prosoluto": "% total antes e pós chaves",
         "pct_vgv_realizado": "% VGV realizado",
     })
     df = df.drop(columns=["venda_fin_pos"], errors="ignore")
@@ -66,7 +66,7 @@ def _formatar_tabela_geral(df, col_valores, col_percentuais):
         "ID", "Empreendimento", "VGV Total", "VGV Vendido", "VGV Pendente",
         "% VGV realizado",
         "Prosoluto antes chaves", "Prosoluto pós chaves",
-        "% Prosoluto antes chaves", "% Prosoluto pós chaves", "% total prosoluto",
+        "% Prosoluto antes chaves", "% Prosoluto pós chaves", "% total antes e pós chaves",
         "Venda financiamento",
     ]
     return df[[c for c in ordem if c in df.columns]]
@@ -96,12 +96,12 @@ def _montar_tabela_analise(df):
         "nome_empreendimento": "Empreendimento",
         "pct_prosoluto_antes": "% Prosoluto antes chaves",
         "pct_prosoluto_pos": "% Prosoluto pós chaves",
-        "pct_total_prosoluto": "% total prosoluto",
+        "pct_total_prosoluto": "% total antes e pós chaves",
         "pct_vgv_realizado": "% VGV realizado",
     })
     ordem = [
         "Empreendimento",
-        "% total prosoluto",
+        "% total antes e pós chaves",
         "% Prosoluto antes chaves", "% Prosoluto pós chaves",
         "% VGV realizado",
     ]
