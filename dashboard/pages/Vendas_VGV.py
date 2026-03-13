@@ -25,6 +25,73 @@ from utils.md_conn import get_vgv_prosoluto_resumo  # noqa: E402
 from utils.formatters import format_brl, format_percent  # noqa: E402
 
 
+def _formatar_tabela_geral(df, col_valores, col_percentuais):
+    """Formata e ordena a tabela da aba geral."""
+    for col in col_valores:
+        if col in df.columns:
+            df[col] = df[col].fillna(0.0).apply(format_brl)
+    for col in col_percentuais:
+        if col in df.columns:
+            df[col] = df[col].fillna(0.0).apply(
+                lambda v: format_percent(v, decimals=2, decimal_sep_comma=True)
+            )
+    df = df.rename(columns={
+        "id_empreendimento": "ID",
+        "nome_empreendimento": "Empreendimento",
+        "vgv_total": "VGV Total",
+        "vgv_vendido": "VGV Vendido",
+        "vgv_pendente": "VGV Pendente",
+        "prosoluto_antes": "Prosoluto antes chaves",
+        "venda_fin_antes": "Venda financiamento",
+        "pct_prosoluto_antes": "% Prosoluto antes chaves",
+        "prosoluto_pos": "Prosoluto pós chaves",
+        "pct_prosoluto_pos": "% Prosoluto pós chaves",
+    })
+    df = df.drop(columns=["venda_fin_pos"], errors="ignore")
+    ordem = [
+        "ID", "Empreendimento", "VGV Total", "VGV Vendido", "VGV Pendente",
+        "Prosoluto antes chaves", "Prosoluto pós chaves",
+        "% Prosoluto antes chaves", "% Prosoluto pós chaves",
+        "Venda financiamento",
+    ]
+    return df[[c for c in ordem if c in df.columns]]
+
+
+def _montar_tabela_analise(df):
+    """Monta tabela de análise: Prosoluto antes/pós chaves e VGV realizado (valor e %)."""
+    df = df.copy()
+    vgv_total = df["vgv_total"].fillna(0.0)
+    vgv_vendido = df["vgv_vendido"].fillna(0.0)
+    df["pct_vgv_realizado"] = 0.0
+    mask = vgv_total > 0
+    df.loc[mask, "pct_vgv_realizado"] = (vgv_vendido[mask] / vgv_total[mask]).values
+
+    for col in ["prosoluto_antes", "prosoluto_pos", "vgv_vendido"]:
+        if col in df.columns:
+            df[col] = df[col].fillna(0.0).apply(format_brl)
+    for col in ["pct_prosoluto_antes", "pct_prosoluto_pos", "pct_vgv_realizado"]:
+        if col in df.columns:
+            df[col] = df[col].fillna(0.0).apply(
+                lambda v: format_percent(v, decimals=2, decimal_sep_comma=True)
+            )
+    df = df.rename(columns={
+        "nome_empreendimento": "Empreendimento",
+        "prosoluto_antes": "Prosoluto antes chaves",
+        "pct_prosoluto_antes": "% Prosoluto antes chaves",
+        "prosoluto_pos": "Prosoluto pós chaves",
+        "pct_prosoluto_pos": "% Prosoluto pós chaves",
+        "vgv_vendido": "VGV realizado",
+        "pct_vgv_realizado": "% VGV realizado",
+    })
+    ordem = [
+        "Empreendimento",
+        "Prosoluto antes chaves", "% Prosoluto antes chaves",
+        "Prosoluto pós chaves", "% Prosoluto pós chaves",
+        "VGV realizado", "% VGV realizado",
+    ]
+    return df[[c for c in ordem if c in df.columns]]
+
+
 def main():
     """Renderiza a página dedicada de Informações VGV."""
     st.set_page_config(
@@ -54,13 +121,6 @@ def main():
         unsafe_allow_html=True,
     )
 
-    st.markdown("### VGV x Prosoluto por Empreendimento")
-    st.caption(
-        "Tabela consolidada por empreendimento usando a base de VGV (cv_vgv_empreendimentos) "
-        "e a view de prosoluto antes/pós chaves. A classificação de 'VGV vendido' usa a coluna "
-        "`unidades.situacao` da tabela de VGV."
-    )
-
     with st.spinner("Carregando resumo de VGV e Prosoluto por empreendimento..."):
         df_resumo = get_vgv_prosoluto_resumo()
 
@@ -77,57 +137,31 @@ def main():
                 total = outros[col].fillna(0.0).sum()
                 df_resumo.loc[mask_geral, col] = total
 
-    # Colunas numéricas para formatação (venda_fin_antes = venda_fin_pos, exibimos apenas uma)
-    col_valores = [
-        "vgv_total",
-        "vgv_vendido",
-        "vgv_pendente",
-        "prosoluto_antes",
-        "venda_fin_antes",
-        "prosoluto_pos",
-    ]
-    col_percentuais = ["pct_prosoluto_antes", "pct_prosoluto_pos"]
+    tab_geral, tab_analise = st.tabs(["Aba geral", "Analise VGV"])
 
-    df_display = df_resumo.copy()
-    for col in col_valores:
-        if col in df_display.columns:
-            df_display[col] = df_display[col].fillna(0.0).apply(format_brl)
+    with tab_geral:
+        st.markdown("### VGV x Prosoluto por Empreendimento")
+        st.caption(
+            "Tabela consolidada por empreendimento usando a base de VGV (cv_vgv_empreendimentos) "
+            "e a view de prosoluto antes/pós chaves. A classificação de 'VGV vendido' usa a coluna "
+            "`unidades.situacao` da tabela de VGV."
+        )
+        col_valores = [
+            "vgv_total", "vgv_vendido", "vgv_pendente",
+            "prosoluto_antes", "venda_fin_antes", "prosoluto_pos",
+        ]
+        col_percentuais = ["pct_prosoluto_antes", "pct_prosoluto_pos"]
+        df_display = _formatar_tabela_geral(df_resumo.copy(), col_valores, col_percentuais)
+        st.dataframe(df_display, use_container_width=True, hide_index=True)
 
-    for col in col_percentuais:
-        if col in df_display.columns:
-            df_display[col] = df_display[col].fillna(0.0).apply(
-                lambda v: format_percent(v, decimals=2, decimal_sep_comma=True)
-            )
-
-    df_display = df_display.rename(columns={
-        "id_empreendimento": "ID",
-        "nome_empreendimento": "Empreendimento",
-        "vgv_total": "VGV Total",
-        "vgv_vendido": "VGV Vendido",
-        "vgv_pendente": "VGV Pendente",
-        "prosoluto_antes": "Prosoluto antes chaves",
-        "venda_fin_antes": "Venda financiamento",
-        "pct_prosoluto_antes": "% Prosoluto antes chaves",
-        "prosoluto_pos": "Prosoluto pós chaves",
-        "pct_prosoluto_pos": "% Prosoluto pós chaves",
-    })
-    df_display = df_display.drop(columns=["venda_fin_pos"], errors="ignore")
-
-    # Ordem: VGV, Prosoluto valores (antes/pós chaves lado a lado), % (antes/pós chaves lado a lado), Venda financiamento
-    ordem_colunas = [
-        "ID", "Empreendimento",
-        "VGV Total", "VGV Vendido", "VGV Pendente",
-        "Prosoluto antes chaves", "Prosoluto pós chaves",
-        "% Prosoluto antes chaves", "% Prosoluto pós chaves",
-        "Venda financiamento",
-    ]
-    df_display = df_display[[c for c in ordem_colunas if c in df_display.columns]]
-
-    st.dataframe(
-        df_display,
-        use_container_width=True,
-        hide_index=True,
-    )
+    with tab_analise:
+        st.markdown("### Análise: Prosoluto e VGV Realizado")
+        st.caption(
+            "Prosoluto antes e pós chaves (valor e % sobre venda financiamento) e VGV já realizado "
+            "(valor e % sobre o VGV total do empreendimento)."
+        )
+        df_analise = _montar_tabela_analise(df_resumo.copy())
+        st.dataframe(df_analise, use_container_width=True, hide_index=True)
 
 
 if __name__ == "__main__":
