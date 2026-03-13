@@ -27,10 +27,16 @@ from utils.formatters import format_brl, format_percent  # noqa: E402
 
 def _formatar_tabela_geral(df, col_valores, col_percentuais):
     """Formata e ordena a tabela da aba geral."""
+    venda_fin = df["venda_fin_antes"].fillna(0.0)
+    prosoluto_total = df["prosoluto_antes"].fillna(0.0) + df["prosoluto_pos"].fillna(0.0)
+    df["pct_total_prosoluto"] = 0.0
+    mask = venda_fin > 0
+    df.loc[mask, "pct_total_prosoluto"] = (prosoluto_total[mask] / venda_fin[mask]).values
+
     for col in col_valores:
         if col in df.columns:
             df[col] = df[col].fillna(0.0).apply(format_brl)
-    for col in col_percentuais:
+    for col in col_percentuais + ["pct_total_prosoluto"]:
         if col in df.columns:
             df[col] = df[col].fillna(0.0).apply(
                 lambda v: format_percent(v, decimals=2, decimal_sep_comma=True)
@@ -41,24 +47,22 @@ def _formatar_tabela_geral(df, col_valores, col_percentuais):
         "vgv_total": "VGV Total",
         "vgv_vendido": "VGV Vendido",
         "vgv_pendente": "VGV Pendente",
-        "prosoluto_antes": "Prosoluto antes chaves",
         "venda_fin_antes": "Venda financiamento",
         "pct_prosoluto_antes": "% Prosoluto antes chaves",
-        "prosoluto_pos": "Prosoluto pós chaves",
         "pct_prosoluto_pos": "% Prosoluto pós chaves",
+        "pct_total_prosoluto": "% total prosoluto",
     })
-    df = df.drop(columns=["venda_fin_pos"], errors="ignore")
+    df = df.drop(columns=["venda_fin_pos", "prosoluto_antes", "prosoluto_pos"], errors="ignore")
     ordem = [
         "ID", "Empreendimento", "VGV Total", "VGV Vendido", "VGV Pendente",
-        "Prosoluto antes chaves", "Prosoluto pós chaves",
-        "% Prosoluto antes chaves", "% Prosoluto pós chaves",
+        "% Prosoluto antes chaves", "% Prosoluto pós chaves", "% total prosoluto",
         "Venda financiamento",
     ]
     return df[[c for c in ordem if c in df.columns]]
 
 
 def _montar_tabela_analise(df):
-    """Monta tabela de análise: Prosoluto antes/pós chaves e VGV realizado (valor e %)."""
+    """Monta tabela de análise: Prosoluto (apenas %) e VGV realizado (valor e %)."""
     df = df.copy()
     vgv_total = df["vgv_total"].fillna(0.0)
     vgv_vendido = df["vgv_vendido"].fillna(0.0)
@@ -66,27 +70,31 @@ def _montar_tabela_analise(df):
     mask = vgv_total > 0
     df.loc[mask, "pct_vgv_realizado"] = (vgv_vendido[mask] / vgv_total[mask]).values
 
-    for col in ["prosoluto_antes", "prosoluto_pos", "vgv_vendido"]:
+    venda_fin = df["venda_fin_antes"].fillna(0.0)
+    prosoluto_total = df["prosoluto_antes"].fillna(0.0) + df["prosoluto_pos"].fillna(0.0)
+    df["pct_total_prosoluto"] = 0.0
+    mask_vf = venda_fin > 0
+    df.loc[mask_vf, "pct_total_prosoluto"] = (prosoluto_total[mask_vf] / venda_fin[mask_vf]).values
+
+    for col in ["vgv_vendido"]:
         if col in df.columns:
             df[col] = df[col].fillna(0.0).apply(format_brl)
-    for col in ["pct_prosoluto_antes", "pct_prosoluto_pos", "pct_vgv_realizado"]:
+    for col in ["pct_prosoluto_antes", "pct_prosoluto_pos", "pct_vgv_realizado", "pct_total_prosoluto"]:
         if col in df.columns:
             df[col] = df[col].fillna(0.0).apply(
                 lambda v: format_percent(v, decimals=2, decimal_sep_comma=True)
             )
     df = df.rename(columns={
         "nome_empreendimento": "Empreendimento",
-        "prosoluto_antes": "Prosoluto antes chaves",
         "pct_prosoluto_antes": "% Prosoluto antes chaves",
-        "prosoluto_pos": "Prosoluto pós chaves",
         "pct_prosoluto_pos": "% Prosoluto pós chaves",
+        "pct_total_prosoluto": "% total prosoluto",
         "vgv_vendido": "VGV realizado",
         "pct_vgv_realizado": "% VGV realizado",
     })
     ordem = [
         "Empreendimento",
-        "Prosoluto antes chaves", "% Prosoluto antes chaves",
-        "Prosoluto pós chaves", "% Prosoluto pós chaves",
+        "% Prosoluto antes chaves", "% Prosoluto pós chaves", "% total prosoluto",
         "VGV realizado", "% VGV realizado",
     ]
     return df[[c for c in ordem if c in df.columns]]
@@ -148,7 +156,7 @@ def main():
         )
         col_valores = [
             "vgv_total", "vgv_vendido", "vgv_pendente",
-            "prosoluto_antes", "venda_fin_antes", "prosoluto_pos",
+            "venda_fin_antes",
         ]
         col_percentuais = ["pct_prosoluto_antes", "pct_prosoluto_pos"]
         df_display = _formatar_tabela_geral(df_resumo.copy(), col_valores, col_percentuais)
