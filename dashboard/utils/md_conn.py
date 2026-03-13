@@ -544,6 +544,7 @@ def get_vgv_prosoluto_resumo() -> pd.DataFrame:
     Retorna uma tabela consolidada por empreendimento com:
     - VGV total, vendido e pendente (a partir de cv_vgv_empreendimentos)
     - Prosoluto antes e pós chaves (a partir da view prosoluto_antes_e_pos_chaves)
+    - id e nome do empreendimento preenchidos a partir de dim_empreendimentos_dinamica quando vazios.
 
     Observação: a classificação de "vendido" é baseada na coluna unidades.situacao.
     """
@@ -600,22 +601,61 @@ def get_vgv_prosoluto_resumo() -> pd.DataFrame:
             ) AS pct_prosoluto_pos
         FROM administracao.prosoluto_antes_e_pos_chaves
         GROUP BY id_empreendimento, nome_empreendimento
+    ),
+    base AS (
+        SELECT
+            p.id_empreendimento AS id_empreendimento,
+            COALESCE(v.nome_empreendimento, p.nome_empreendimento) AS nome_empreendimento,
+            v.vgv_total,
+            v.vgv_vendido,
+            v.vgv_pendente,
+            p.prosoluto_antes,
+            p.venda_fin_antes,
+            p.pct_prosoluto_antes,
+            p.prosoluto_pos,
+            p.venda_fin_pos,
+            p.pct_prosoluto_pos
+        FROM vgv v
+        FULL OUTER JOIN prosoluto_pivot p
+            ON TRIM(COALESCE(v.nome_empreendimento, '')) = TRIM(COALESCE(p.nome_empreendimento, ''))
+    ),
+    dim AS (
+        SELECT
+            TRY_CAST(enterpriseId AS BIGINT) AS enterpriseId,
+            nome_empreendimento
+        FROM informacoes_consolidadas.dim_empreendimentos_dinamica
+        WHERE enterpriseId IS NOT NULL
+    ),
+    dim_por_nome AS (
+        SELECT
+            TRIM(nome_empreendimento) AS nome_trim,
+            MAX(enterpriseId) AS enterpriseId,
+            MAX(nome_empreendimento) AS nome_empreendimento
+        FROM dim
+        GROUP BY TRIM(nome_empreendimento)
     )
     SELECT
-        p.id_empreendimento AS id_empreendimento,
-        COALESCE(v.nome_empreendimento, p.nome_empreendimento) AS nome_empreendimento,
-        v.vgv_total,
-        v.vgv_vendido,
-        v.vgv_pendente,
-        p.prosoluto_antes,
-        p.venda_fin_antes,
-        p.pct_prosoluto_antes,
-        p.prosoluto_pos,
-        p.venda_fin_pos,
-        p.pct_prosoluto_pos
-    FROM vgv v
-    FULL OUTER JOIN prosoluto_pivot p
-        ON TRIM(COALESCE(v.nome_empreendimento, '')) = TRIM(COALESCE(p.nome_empreendimento, ''))
+        COALESCE(base.id_empreendimento, dim_nome.enterpriseId) AS id_empreendimento,
+        COALESCE(
+            NULLIF(TRIM(base.nome_empreendimento), ''),
+            dim_id.nome_empreendimento,
+            dim_nome.nome_empreendimento
+        ) AS nome_empreendimento,
+        base.vgv_total,
+        base.vgv_vendido,
+        base.vgv_pendente,
+        base.prosoluto_antes,
+        base.venda_fin_antes,
+        base.pct_prosoluto_antes,
+        base.prosoluto_pos,
+        base.venda_fin_pos,
+        base.pct_prosoluto_pos
+    FROM base
+    LEFT JOIN dim dim_id ON dim_id.enterpriseId = base.id_empreendimento
+    LEFT JOIN dim_por_nome dim_nome
+        ON dim_nome.nome_trim = TRIM(COALESCE(base.nome_empreendimento, ''))
+        AND base.nome_empreendimento IS NOT NULL
+        AND TRIM(base.nome_empreendimento) <> ''
     ORDER BY nome_empreendimento
     """
 
