@@ -124,8 +124,14 @@ def _montar_tabela_analise(df):
             subset=["% Prosoluto pós chaves"],
         )
         .set_properties(subset=colunas_centro, **{"text-align": "center"})
-        .hide_index()
     )
+    try:
+        styled = styled.hide(axis="index")
+    except AttributeError:
+        try:
+            styled = styled.hide_index()
+        except AttributeError:
+            pass
     return styled
 
 
