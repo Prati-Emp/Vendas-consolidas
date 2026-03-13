@@ -585,14 +585,9 @@ def get_vgv_prosoluto_resumo() -> pd.DataFrame:
                 CASE WHEN periodo = 'antes_chaves' THEN COALESCE(valor_prosoluto, 0) ELSE 0 END
             ) AS prosoluto_antes,
             SUM(
-                CASE WHEN periodo = 'antes_chaves' THEN COALESCE(valor_venda_financiamento, 0) ELSE 0 END
-            ) AS venda_fin_antes,
-            SUM(
                 CASE WHEN periodo = 'pos_chaves' THEN COALESCE(valor_prosoluto, 0) ELSE 0 END
             ) AS prosoluto_pos,
-            SUM(
-                CASE WHEN periodo = 'pos_chaves' THEN COALESCE(valor_venda_financiamento, 0) ELSE 0 END
-            ) AS venda_fin_pos
+            MAX(COALESCE(valor_venda_financiamento, 0)) AS valor_venda_financiamento
         FROM administracao.prosoluto_antes_e_pos_chaves
         GROUP BY id_empreendimento, nome_empreendimento
     ),
@@ -604,13 +599,13 @@ def get_vgv_prosoluto_resumo() -> pd.DataFrame:
             v.vgv_vendido,
             v.vgv_pendente,
             p.prosoluto_antes,
-            p.venda_fin_antes,
-            CASE WHEN COALESCE(p.venda_fin_antes, 0) > 0
-                 THEN p.prosoluto_antes / p.venda_fin_antes ELSE 0 END AS pct_prosoluto_antes,
+            p.valor_venda_financiamento AS venda_fin_antes,
+            CASE WHEN COALESCE(p.valor_venda_financiamento, 0) > 0
+                 THEN p.prosoluto_antes / p.valor_venda_financiamento ELSE 0 END AS pct_prosoluto_antes,
             p.prosoluto_pos,
-            p.venda_fin_pos,
-            CASE WHEN COALESCE(p.venda_fin_pos, 0) > 0
-                 THEN p.prosoluto_pos / p.venda_fin_pos ELSE 0 END AS pct_prosoluto_pos
+            p.valor_venda_financiamento AS venda_fin_pos,
+            CASE WHEN COALESCE(p.valor_venda_financiamento, 0) > 0
+                 THEN p.prosoluto_pos / p.valor_venda_financiamento ELSE 0 END AS pct_prosoluto_pos
         FROM vgv v
         FULL OUTER JOIN prosoluto_pivot p
             ON TRIM(COALESCE(v.nome_empreendimento, '')) = TRIM(COALESCE(p.nome_empreendimento, ''))
