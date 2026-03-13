@@ -112,9 +112,9 @@ def _montar_tabela_analise(df):
     df_out = df[[c for c in ordem if c in df.columns]]
     def _cor_celula(i):
         if mask_pós_maior.iloc[i]:
-            return "background-color: #fef3c7"  # âmbar (atenção)
+            return "color: #d97706; font-weight: 500"  # âmbar (atenção) - só o valor
         if mask_pós_menor.iloc[i]:
-            return "background-color: #dbeafe"  # azul suave
+            return "color: #2563eb; font-weight: 500"  # azul suave - só o valor
         return ""
 
     styled = df_out.style.apply(
