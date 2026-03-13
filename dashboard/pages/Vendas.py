@@ -266,6 +266,59 @@ def render_metas_section(kpis: dict, meta_total: float, meta_ratio: float = 1.0)
             help="Diferença entre vendas realizadas e meta"
         )
 
+
+def render_vgv_section(kpis: dict, meta_total: float, meta_ratio: float = 1.0):
+    """Renderiza seção específica com informações de VGV (Valor Geral de Vendas)."""
+    st.subheader("🏗️ Informações VGV")
+
+    valor_vendas = float(kpis.get("total_valor", 0) or 0.0)
+    meta_periodo = (meta_total or 0.0) * meta_ratio
+
+    # Cálculos básicos de VGV
+    vgv_contratado = valor_vendas
+    vgv_meta = meta_periodo
+    vgv_falta = max(vgv_meta - vgv_contratado, 0.0)
+    vgv_excedente = max(vgv_contratado - vgv_meta, 0.0)
+    atingimento = (vgv_contratado / vgv_meta * 100) if vgv_meta > 0 else 0.0
+
+    col1, col2, col3, col4 = st.columns(4)
+
+    with col1:
+        st.metric(
+            "VGV Contratado",
+            format_compact_currency(vgv_contratado),
+            help="Somatório do valor das vendas no período filtrado."
+        )
+
+    with col2:
+        st.metric(
+            "VGV Meta",
+            format_compact_currency(vgv_meta),
+            help="Meta de VGV para o período selecionado (após rateios de internas/externas, quando aplicável)."
+        )
+
+    with col3:
+        st.metric(
+            "Atingimento VGV",
+            f"{atingimento:.1f}%",
+            help="Percentual de VGV contratado em relação à meta de VGV."
+        )
+
+    with col4:
+        # Exibir falta ou excedente, o que for mais relevante
+        if vgv_excedente > 0:
+            label = "VGV Acima da Meta"
+            valor_display = format_compact_currency(vgv_excedente)
+        else:
+            label = "VGV a Cumprir"
+            valor_display = format_compact_currency(vgv_falta)
+
+        st.metric(
+            label,
+            valor_display,
+            help="Diferença entre o VGV contratado e a meta de VGV (positivo quando acima da meta)."
+        )
+
 def render_timeline(timeline_data: pd.DataFrame, key_suffix: str = ""):
     """Renderiza gráfico de timeline."""
     if timeline_data.empty:
@@ -544,6 +597,10 @@ def render_vendas_tab(
     st.markdown("---")
 
     render_metas_section(kpis, meta_total_periodo, meta_ratio)
+    st.markdown("---")
+
+    # Nova seção dedicada a informações de VGV
+    render_vgv_section(kpis, meta_total_periodo, meta_ratio)
     st.markdown("---")
 
     render_top_empreendimentos(top_empreendimentos, key_suffix=key_suffix)
