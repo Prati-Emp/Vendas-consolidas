@@ -2,8 +2,8 @@ name: Update Database - CV Comissões (Diário)
 
 on:
   schedule:
-    # Executar diariamente às 03:45 BRT (06:45 UTC)
-    - cron: '45 6 * * *'
+    # Executar diariamente às 03:45 BRT (07:45 UTC)
+    - cron: '45 7 * * *'
   workflow_dispatch:
     inputs:
       reason:
