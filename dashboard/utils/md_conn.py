@@ -654,6 +654,26 @@ def get_vgv_prosoluto_resumo() -> pd.DataFrame:
 
     return md_conn.run_query(sql)
 
+
+def get_vgv_por_situacao() -> pd.DataFrame:
+    """
+    Retorna VGV por empreendimento e situação (unidades.situacao).
+    Usado para tabela de VGV por situação na aba geral.
+    """
+    md_conn = get_md_connection()
+    sql = """
+    SELECT
+        id_empreendimento,
+        nome_empreendimento,
+        COALESCE(NULLIF(TRIM("unidades.situacao"), ''), 'Não informado') AS situacao,
+        SUM(COALESCE("unidades.valor_total", 0)) AS valor
+    FROM reservas.cv_vgv_empreendimentos
+    GROUP BY id_empreendimento, nome_empreendimento, COALESCE(NULLIF(TRIM("unidades.situacao"), ''), 'Não informado')
+    ORDER BY nome_empreendimento, situacao
+    """
+    return md_conn.run_query(sql)
+
+
 def get_metas_periodo(start_date: str, end_date: str, 
                      empreendimento: Optional[str] = None) -> float:
     """

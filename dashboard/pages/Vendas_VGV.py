@@ -6,6 +6,7 @@ Exibe apenas a tabela consolidada VGV x Prosoluto por empreendimento (sem uso de
 from pathlib import Path
 import sys
 
+import pandas as pd
 import streamlit as st
 
 # Garantir acesso aos módulos compartilhados
@@ -21,7 +22,7 @@ except Exception as e:  # pragma: no cover - fallback para ambientes sem auth
     st.stop()
 
 from utils import display_navigation  # noqa: E402
-from utils.md_conn import get_vgv_prosoluto_resumo  # noqa: E402
+from utils.md_conn import get_vgv_prosoluto_resumo, get_vgv_por_situacao  # noqa: E402
 from utils.formatters import format_brl, format_percent  # noqa: E402
 
 
@@ -58,7 +59,7 @@ def _formatar_tabela_geral(df, col_valores, col_percentuais):
         "pct_prosoluto_antes": "% Prosoluto antes chaves",
         "prosoluto_pos": "Prosoluto pós chaves",
         "pct_prosoluto_pos": "% Prosoluto pós chaves",
-        "pct_total_prosoluto": "% total antes e pós chaves",
+        "pct_total_prosoluto": "% total prosoluto",
         "pct_vgv_realizado": "% VGV realizado",
     })
     df = df.drop(columns=["venda_fin_pos"], errors="ignore")
@@ -66,7 +67,7 @@ def _formatar_tabela_geral(df, col_valores, col_percentuais):
         "ID", "Empreendimento", "VGV Total", "VGV Vendido", "VGV Pendente",
         "% VGV realizado",
         "Prosoluto antes chaves", "Prosoluto pós chaves",
-        "% Prosoluto antes chaves", "% Prosoluto pós chaves", "% total antes e pós chaves",
+        "% Prosoluto antes chaves", "% Prosoluto pós chaves", "% total prosoluto",
         "Venda financiamento",
     ]
     return df[[c for c in ordem if c in df.columns]]
@@ -100,12 +101,12 @@ def _montar_tabela_analise(df):
         "nome_empreendimento": "Empreendimento",
         "pct_prosoluto_antes": "% Prosoluto antes chaves",
         "pct_prosoluto_pos": "% Prosoluto pós chaves",
-        "pct_total_prosoluto": "% total antes e pós chaves",
+        "pct_total_prosoluto": "% total prosoluto",
         "pct_vgv_realizado": "% VGV realizado",
     })
     ordem = [
         "Empreendimento",
-        "% total antes e pós chaves",
+        "% total prosoluto",
         "% Prosoluto antes chaves", "% Prosoluto pós chaves",
         "% VGV realizado",
     ]
@@ -117,7 +118,7 @@ def _montar_tabela_analise(df):
             return "color: #60a5fa; font-weight: 500"  # azul suave - só o valor
         return ""
 
-    colunas_centro = ["% total antes e pós chaves", "% Prosoluto antes chaves", "% Prosoluto pós chaves", "% VGV realizado"]
+    colunas_centro = ["% total prosoluto", "% Prosoluto antes chaves", "% Prosoluto pós chaves", "% VGV realizado"]
     styled = (
         df_out.style.apply(
             lambda s: [_cor_celula(i) for i in range(len(s))],
@@ -183,6 +184,50 @@ def main():
     tab_analise, tab_geral = st.tabs(["Analise VGV", "Aba geral"])
 
     with tab_geral:
+        st.markdown("### VGV por Situação")
+        df_vgv_sit = get_vgv_por_situacao()
+        if not df_vgv_sit.empty:
+            mask_geral_sit = df_vgv_sit["nome_empreendimento"].str.strip().str.lower() == "geral prati"
+            if mask_geral_sit.any():
+                outros_sit = df_vgv_sit[~mask_geral_sit]
+                agg_outros = outros_sit.groupby("situacao", as_index=False)["valor"].sum()
+                agg_outros["nome_empreendimento"] = "Geral Prati"
+                agg_outros = agg_outros[["nome_empreendimento", "situacao", "valor"]]
+                df_vgv_sit = pd.concat([
+                    df_vgv_sit[~mask_geral_sit],
+                    agg_outros,
+                ], ignore_index=True)
+            situacoes_vendido = {"vendido", "vendida", "assinado", "escriturado"}
+            pivot = df_vgv_sit.pivot_table(
+                index=["nome_empreendimento"],
+                columns="situacao",
+                values="valor",
+                aggfunc="sum",
+                fill_value=0.0,
+            ).reset_index()
+            vgv_total_col = pivot.drop(columns=["nome_empreendimento"]).sum(axis=1)
+            cols_vendido = [
+                c for c in pivot.columns
+                if c != "nome_empreendimento" and str(c).strip().lower() in situacoes_vendido
+            ]
+            vgv_vendido_col = (
+                pivot[cols_vendido].sum(axis=1)
+                if cols_vendido
+                else pd.Series(0.0, index=pivot.index)
+            )
+            pivot.insert(1, "VGV Total", vgv_total_col)
+            pivot.insert(2, "VGV Vendido", vgv_vendido_col)
+            cols_situacao = [c for c in pivot.columns if c not in ("nome_empreendimento", "VGV Total", "VGV Vendido")]
+            for c in cols_situacao:
+                pivot = pivot.rename(columns={c: f"VGV {c}"})
+            pivot = pivot.rename(columns={"nome_empreendimento": "Empreendimento"})
+            for col in ["VGV Total", "VGV Vendido"] + [c for c in pivot.columns if c.startswith("VGV ") and c not in ("VGV Total", "VGV Vendido")]:
+                pivot[col] = pivot[col].fillna(0.0).apply(format_brl)
+            st.dataframe(pivot, use_container_width=True, hide_index=True)
+        else:
+            st.info("Nenhum dado de VGV por situação disponível.")
+
+        st.markdown("---")
         st.markdown("### VGV x Prosoluto por Empreendimento")
         st.caption(
             "Tabela consolidada por empreendimento usando a base de VGV (cv_vgv_empreendimentos) "
