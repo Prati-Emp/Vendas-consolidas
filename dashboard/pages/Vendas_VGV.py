@@ -188,15 +188,11 @@ def main():
         df_vgv_sit = get_vgv_por_situacao()
         if not df_vgv_sit.empty:
             mask_geral_sit = df_vgv_sit["nome_empreendimento"].str.strip().str.lower() == "geral prati"
-            if mask_geral_sit.any():
-                outros_sit = df_vgv_sit[~mask_geral_sit]
-                agg_outros = outros_sit.groupby("situacao", as_index=False)["valor"].sum()
-                agg_outros["nome_empreendimento"] = "Geral Prati"
-                agg_outros = agg_outros[["nome_empreendimento", "situacao", "valor"]]
-                df_vgv_sit = pd.concat([
-                    df_vgv_sit[~mask_geral_sit],
-                    agg_outros,
-                ], ignore_index=True)
+            outros_sit = df_vgv_sit[~mask_geral_sit]
+            agg_geral = outros_sit.groupby("situacao", as_index=False)["valor"].sum()
+            agg_geral["nome_empreendimento"] = "Geral Prati"
+            agg_geral = agg_geral[["nome_empreendimento", "situacao", "valor"]]
+            df_vgv_sit = pd.concat([outros_sit, agg_geral], ignore_index=True)
             situacoes_vendido = {"vendido", "vendida", "assinado", "escriturado"}
             pivot = df_vgv_sit.pivot_table(
                 index=["nome_empreendimento"],
@@ -205,6 +201,10 @@ def main():
                 aggfunc="sum",
                 fill_value=0.0,
             ).reset_index()
+            pivot["_ordem"] = pivot["nome_empreendimento"].str.strip().str.lower().apply(
+                lambda x: 0 if x == "geral prati" else 1
+            )
+            pivot = pivot.sort_values(["_ordem", "nome_empreendimento"]).drop(columns=["_ordem"])
             vgv_total_col = pivot.drop(columns=["nome_empreendimento"]).sum(axis=1)
             cols_vendido = [
                 c for c in pivot.columns
