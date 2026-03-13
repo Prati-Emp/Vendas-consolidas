@@ -124,6 +124,7 @@ def _montar_tabela_analise(df):
             subset=["% Prosoluto pós chaves"],
         )
         .set_properties(subset=colunas_centro, **{"text-align": "center"})
+        .hide_index()
     )
     return styled
 
@@ -229,16 +230,13 @@ def main():
             )
         else:
             df_analise = _montar_tabela_analise(df_analise_base)
-            st.dataframe(
-                df_analise,
-                use_container_width=True,
-                hide_index=True,
-                column_config={
-                    "% VGV realizado": st.column_config.TextColumn(
-                        "% VGV realizado",
-                        help="Valor realizado apenas das incorporações, sem loteamentos.",
-                    ),
-                },
+            # st.dataframe não aplica text-align do Styler; st.markdown com to_html() preserva
+            st.markdown(
+                '<div style="overflow-x: auto; width: 100%;">' + df_analise.to_html() + "</div>",
+                unsafe_allow_html=True,
+            )
+            st.caption(
+                "💡 % VGV realizado: valor realizado apenas das incorporações, sem loteamentos."
             )
 
             vgv_total_sum = df_analise_base["vgv_total"].fillna(0.0).sum()
