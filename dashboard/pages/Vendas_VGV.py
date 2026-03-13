@@ -62,7 +62,7 @@ def _formatar_tabela_geral(df, col_valores, col_percentuais):
 
 
 def _montar_tabela_analise(df):
-    """Monta tabela de análise: Prosoluto (apenas %) e VGV realizado (valor e %)."""
+    """Monta tabela de análise: Prosoluto (apenas %) e % VGV realizado."""
     df = df.copy()
     vgv_total = df["vgv_total"].fillna(0.0)
     vgv_vendido = df["vgv_vendido"].fillna(0.0)
@@ -76,9 +76,6 @@ def _montar_tabela_analise(df):
     mask_vf = venda_fin > 0
     df.loc[mask_vf, "pct_total_prosoluto"] = (prosoluto_total[mask_vf] / venda_fin[mask_vf]).values
 
-    for col in ["vgv_vendido"]:
-        if col in df.columns:
-            df[col] = df[col].fillna(0.0).apply(format_brl)
     for col in ["pct_prosoluto_antes", "pct_prosoluto_pos", "pct_vgv_realizado", "pct_total_prosoluto"]:
         if col in df.columns:
             df[col] = df[col].fillna(0.0).apply(
@@ -89,13 +86,12 @@ def _montar_tabela_analise(df):
         "pct_prosoluto_antes": "% Prosoluto antes chaves",
         "pct_prosoluto_pos": "% Prosoluto pós chaves",
         "pct_total_prosoluto": "% total prosoluto",
-        "vgv_vendido": "VGV realizado",
         "pct_vgv_realizado": "% VGV realizado",
     })
     ordem = [
         "Empreendimento",
         "% Prosoluto antes chaves", "% Prosoluto pós chaves", "% total prosoluto",
-        "VGV realizado", "% VGV realizado",
+        "% VGV realizado",
     ]
     return df[[c for c in ordem if c in df.columns]]
 
@@ -165,8 +161,8 @@ def main():
     with tab_analise:
         st.markdown("### Análise: Prosoluto e VGV Realizado")
         st.caption(
-            "Prosoluto antes e pós chaves (valor e % sobre venda financiamento) e VGV já realizado "
-            "(valor e % sobre o VGV total do empreendimento)."
+            "Prosoluto antes e pós chaves (% sobre venda financiamento) e % VGV realizado "
+            "(percentual do VGV total já vendido no empreendimento)."
         )
 
         empreendimentos = sorted(
