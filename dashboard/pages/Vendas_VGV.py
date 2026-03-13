@@ -69,7 +69,17 @@ def _formatar_tabela_geral(df, col_valores, col_percentuais):
         "% Prosoluto antes chaves", "% Prosoluto pós chaves", "% total antes e pós chaves",
         "Venda financiamento",
     ]
-    return df[[c for c in ordem if c in df.columns]]
+    df_out = df[[c for c in ordem if c in df.columns]]
+    colunas_centro = [c for c in df_out.columns if c != "Empreendimento"]
+    styled = df_out.style.set_properties(subset=colunas_centro, **{"text-align": "center"})
+    try:
+        styled = styled.hide(axis="index")
+    except AttributeError:
+        try:
+            styled = styled.hide_index()
+        except AttributeError:
+            pass
+    return styled
 
 
 def _montar_tabela_analise(df):
@@ -194,8 +204,11 @@ def main():
             "prosoluto_antes", "venda_fin_antes", "prosoluto_pos",
         ]
         col_percentuais = ["pct_prosoluto_antes", "pct_prosoluto_pos"]
-        df_display = _formatar_tabela_geral(df_resumo.copy(), col_valores, col_percentuais)
-        st.dataframe(df_display, use_container_width=True, hide_index=True)
+        df_geral = _formatar_tabela_geral(df_resumo.copy(), col_valores, col_percentuais)
+        st.markdown(
+            '<div style="overflow-x: auto; width: 100%;">' + df_geral.to_html() + "</div>",
+            unsafe_allow_html=True,
+        )
 
     with tab_analise:
         st.markdown("### Análise: Prosoluto e VGV Realizado")
