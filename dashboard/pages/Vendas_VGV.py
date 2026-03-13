@@ -180,8 +180,15 @@ def main():
             df_analise_base = df_analise_base[
                 df_analise_base["nome_empreendimento"].str.strip().isin(empreendimentos_filtro)
             ]
+        df_analise_base = df_analise_base[
+            (df_analise_base["pct_prosoluto_antes"].fillna(0) != 0)
+            | (df_analise_base["pct_prosoluto_pos"].fillna(0) != 0)
+        ]
         if df_analise_base.empty:
-            st.info("Nenhum empreendimento encontrado para os filtros selecionados.")
+            st.info(
+                "Nenhum empreendimento encontrado. Esta aba exibe apenas empreendimentos com "
+                "% Prosoluto antes ou pós chaves diferente de zero."
+            )
         else:
             df_analise = _montar_tabela_analise(df_analise_base)
             st.dataframe(df_analise, use_container_width=True, hide_index=True)
