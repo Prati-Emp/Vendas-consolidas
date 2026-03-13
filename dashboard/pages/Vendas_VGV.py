@@ -26,10 +26,9 @@ from utils.md_conn import (  # noqa: E402
     get_date_range,
     get_kpis,
     get_metas_periodo,
+    get_vgv_prosoluto_resumo,
 )
-from utils.formatters import (  # noqa: E402
-    format_compact_currency,
-)
+from utils.formatters import format_brl, format_percent, format_compact_currency  # noqa: E402
 
 # Reaproveitar função de VGV da página principal de Vendas
 from pages.Vendas import render_vgv_section  # type: ignore  # noqa: E402
@@ -136,6 +135,50 @@ def main():
     valor_vendas = float(kpis.get("total_valor", 0) or 0.0)
     st.write(
         f"**VGV Contratado (bruto)** no período: {format_compact_currency(valor_vendas)}"
+    )
+
+    st.markdown("---")
+    st.markdown("### VGV x Prosoluto por Empreendimento (sem filtro de data)")
+    st.caption(
+        "Tabela consolidada por empreendimento usando a base de VGV (cv_vgv_empreendimentos) "
+        "e a view de prosoluto antes/pós chaves. A classificação de 'VGV vendido' usa a coluna "
+        "`unidades.situacao` da tabela de VGV."
+    )
+
+    with st.spinner("Carregando resumo de VGV e Prosoluto por empreendimento..."):
+        df_resumo = get_vgv_prosoluto_resumo()
+
+    if df_resumo.empty:
+        st.warning("Não há dados de VGV / Prosoluto para exibir no momento.")
+        return
+
+    # Colunas numéricas para formatação
+    col_valores = [
+        "vgv_total",
+        "vgv_vendido",
+        "vgv_pendente",
+        "prosoluto_antes",
+        "venda_fin_antes",
+        "prosoluto_pos",
+        "venda_fin_pos",
+    ]
+    col_percentuais = ["pct_prosoluto_antes", "pct_prosoluto_pos"]
+
+    df_display = df_resumo.copy()
+    for col in col_valores:
+        if col in df_display.columns:
+            df_display[col] = df_display[col].fillna(0.0).apply(format_brl)
+
+    for col in col_percentuais:
+        if col in df_display.columns:
+            df_display[col] = df_display[col].fillna(0.0).apply(
+                lambda v: format_percent(v * 100 if 0 <= v <= 1 else v)
+            )
+
+    st.dataframe(
+        df_display,
+        use_container_width=True,
+        hide_index=True,
     )
 
 

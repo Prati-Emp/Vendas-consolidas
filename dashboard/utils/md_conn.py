@@ -538,6 +538,89 @@ def get_kpis(start_date: str, end_date: str,
             'maior_venda': 0.0
         }
 
+
+def get_vgv_prosoluto_resumo() -> pd.DataFrame:
+    """
+    Retorna uma tabela consolidada por empreendimento com:
+    - VGV total, vendido e pendente (a partir de cv_vgv_empreendimentos)
+    - Prosoluto antes e pós chaves (a partir da view prosoluto_antes_e_pos_chaves)
+
+    Observação: a classificação de "vendido" é baseada na coluna unidades.situacao.
+    """
+    md_conn = get_md_connection()
+
+    sql = """
+    WITH vgv_base AS (
+        SELECT
+            id_empreendimento,
+            nome_empreendimento,
+            SUM(COALESCE("unidades.valor_total", 0)) AS vgv_total,
+            SUM(
+                CASE
+                    WHEN LOWER(COALESCE("unidades.situacao", '')) IN (
+                        'vendido', 'vendida', 'assinado', 'escriturado'
+                    )
+                    THEN COALESCE("unidades.valor_total", 0)
+                    ELSE 0
+                END
+            ) AS vgv_vendido
+        FROM main.cv_vgv_empreendimentos
+        GROUP BY id_empreendimento, nome_empreendimento
+    ),
+    vgv AS (
+        SELECT
+            id_empreendimento,
+            nome_empreendimento,
+            vgv_total,
+            vgv_vendido,
+            vgv_total - vgv_vendido AS vgv_pendente
+        FROM vgv_base
+    ),
+    prosoluto_pivot AS (
+        SELECT
+            id_empreendimento,
+            nome_empreendimento,
+            SUM(
+                CASE WHEN periodo = 'antes_chaves' THEN COALESCE(valor_prosoluto, 0) ELSE 0 END
+            ) AS prosoluto_antes,
+            SUM(
+                CASE WHEN periodo = 'antes_chaves' THEN COALESCE(valor_venda_financiamento, 0) ELSE 0 END
+            ) AS venda_fin_antes,
+            SUM(
+                CASE WHEN periodo = 'antes_chaves' THEN COALESCE(pct_prosoluto, 0) ELSE 0 END
+            ) AS pct_prosoluto_antes,
+            SUM(
+                CASE WHEN periodo = 'pos_chaves' THEN COALESCE(valor_prosoluto, 0) ELSE 0 END
+            ) AS prosoluto_pos,
+            SUM(
+                CASE WHEN periodo = 'pos_chaves' THEN COALESCE(valor_venda_financiamento, 0) ELSE 0 END
+            ) AS venda_fin_pos,
+            SUM(
+                CASE WHEN periodo = 'pos_chaves' THEN COALESCE(pct_prosoluto, 0) ELSE 0 END
+            ) AS pct_prosoluto_pos
+        FROM administracao.prosoluto_antes_e_pos_chaves
+        GROUP BY id_empreendimento, nome_empreendimento
+    )
+    SELECT
+        COALESCE(v.id_empreendimento, p.id_empreendimento) AS id_empreendimento,
+        COALESCE(v.nome_empreendimento, p.nome_empreendimento) AS nome_empreendimento,
+        v.vgv_total,
+        v.vgv_vendido,
+        v.vgv_pendente,
+        p.prosoluto_antes,
+        p.venda_fin_antes,
+        p.pct_prosoluto_antes,
+        p.prosoluto_pos,
+        p.venda_fin_pos,
+        p.pct_prosoluto_pos
+    FROM vgv v
+    FULL OUTER JOIN prosoluto_pivot p
+        ON v.id_empreendimento = p.id_empreendimento
+    ORDER BY nome_empreendimento
+    """
+
+    return md_conn.run_query(sql)
+
 def get_metas_periodo(start_date: str, end_date: str, 
                      empreendimento: Optional[str] = None) -> float:
     """
