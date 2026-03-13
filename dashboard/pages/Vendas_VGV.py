@@ -188,10 +188,6 @@ def main():
 
     with tab_analise:
         st.markdown("### Análise: Prosoluto e VGV Realizado")
-        st.caption(
-            "Prosoluto antes e pós chaves (% sobre venda financiamento) e % VGV realizado "
-            "(percentual do VGV total já vendido no empreendimento)."
-        )
 
         df_com_prosoluto = df_resumo[
             (df_resumo["pct_prosoluto_antes"].fillna(0) != 0)
@@ -205,7 +201,6 @@ def main():
             options=empreendimentos,
             default=[],
             placeholder="Selecione um ou mais empreendimentos (vazio = todos)",
-            help="Filtros para tomada de decisão pela diretoria.",
         )
         df_analise_base = df_resumo.copy()
         if empreendimentos_filtro:
@@ -230,7 +225,17 @@ def main():
             )
         else:
             df_analise = _montar_tabela_analise(df_analise_base)
-            st.dataframe(df_analise, use_container_width=True, hide_index=True)
+            st.dataframe(
+                df_analise,
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "% VGV realizado": st.column_config.TextColumn(
+                        "% VGV realizado",
+                        help="Valor realizado apenas das incorporações, sem loteamentos.",
+                    ),
+                },
+            )
 
             vgv_total_sum = df_analise_base["vgv_total"].fillna(0.0).sum()
             vgv_vendido_sum = df_analise_base["vgv_vendido"].fillna(0.0).sum()
