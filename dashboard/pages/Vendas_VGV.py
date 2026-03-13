@@ -101,7 +101,8 @@ def _montar_tabela_analise(df):
     })
     ordem = [
         "Empreendimento",
-        "% Prosoluto antes chaves", "% Prosoluto pós chaves", "% total prosoluto",
+        "% total prosoluto",
+        "% Prosoluto antes chaves", "% Prosoluto pós chaves",
         "% VGV realizado",
     ]
     return df[[c for c in ordem if c in df.columns]]
