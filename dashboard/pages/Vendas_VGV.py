@@ -22,8 +22,8 @@ except Exception as e:  # pragma: no cover - fallback para ambientes sem auth
     st.stop()
 
 from utils import display_navigation  # noqa: E402
-from utils.md_conn import get_vgv_prosoluto_resumo, get_vgv_por_situacao  # noqa: E402
-from utils.formatters import format_brl, format_percent  # noqa: E402
+from utils.md_conn import get_vgv_prosoluto_resumo, get_vgv_por_situacao, get_vgv_quantidade_por_situacao  # noqa: E402
+from utils.formatters import format_brl, format_percent, format_int  # noqa: E402
 
 
 def _formatar_tabela_geral(df, col_valores, col_percentuais):
@@ -226,6 +226,50 @@ def main():
             st.dataframe(pivot, use_container_width=True, hide_index=True)
         else:
             st.info("Nenhum dado de VGV por situação disponível.")
+
+        st.markdown("### Quantidade de Unidades por Situação")
+        df_qtd_sit = get_vgv_quantidade_por_situacao()
+        if not df_qtd_sit.empty:
+            outros_qtd = df_qtd_sit[
+                df_qtd_sit["nome_empreendimento"].str.strip().str.lower() != "geral prati"
+            ]
+            agg_geral_qtd = outros_qtd.groupby("situacao", as_index=False)["quantidade"].sum()
+            agg_geral_qtd["nome_empreendimento"] = "Geral Prati"
+            agg_geral_qtd = agg_geral_qtd[["nome_empreendimento", "situacao", "quantidade"]]
+            df_qtd_sit = pd.concat([outros_qtd, agg_geral_qtd], ignore_index=True)
+            situacoes_vendido = {"vendido", "vendida", "assinado", "escriturado"}
+            pivot_qtd = df_qtd_sit.pivot_table(
+                index=["nome_empreendimento"],
+                columns="situacao",
+                values="quantidade",
+                aggfunc="sum",
+                fill_value=0,
+            ).reset_index()
+            pivot_qtd["_ordem"] = pivot_qtd["nome_empreendimento"].str.strip().str.lower().apply(
+                lambda x: 0 if x == "geral prati" else 1
+            )
+            pivot_qtd = pivot_qtd.sort_values(["_ordem", "nome_empreendimento"]).drop(columns=["_ordem"])
+            qtd_total_col = pivot_qtd.drop(columns=["nome_empreendimento"]).sum(axis=1)
+            cols_vendido_qtd = [
+                c for c in pivot_qtd.columns
+                if c != "nome_empreendimento" and str(c).strip().lower() in situacoes_vendido
+            ]
+            qtd_vendido_col = (
+                pivot_qtd[cols_vendido_qtd].sum(axis=1)
+                if cols_vendido_qtd
+                else pd.Series(0, index=pivot_qtd.index)
+            )
+            pivot_qtd.insert(1, "Qtd Total", qtd_total_col)
+            pivot_qtd.insert(2, "Qtd Vendido", qtd_vendido_col)
+            cols_situacao_qtd = [c for c in pivot_qtd.columns if c not in ("nome_empreendimento", "Qtd Total", "Qtd Vendido")]
+            for c in cols_situacao_qtd:
+                pivot_qtd = pivot_qtd.rename(columns={c: f"Qtd {c}"})
+            pivot_qtd = pivot_qtd.rename(columns={"nome_empreendimento": "Empreendimento"})
+            for col in ["Qtd Total", "Qtd Vendido"] + [c for c in pivot_qtd.columns if c.startswith("Qtd ") and c not in ("Qtd Total", "Qtd Vendido")]:
+                pivot_qtd[col] = pivot_qtd[col].fillna(0).astype(int).apply(format_int)
+            st.dataframe(pivot_qtd, use_container_width=True, hide_index=True)
+        else:
+            st.info("Nenhum dado de quantidade por situação disponível.")
 
         st.markdown("---")
         st.markdown("### VGV x Prosoluto por Empreendimento")
