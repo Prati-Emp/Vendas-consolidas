@@ -43,6 +43,12 @@ TAB_DEFINITIONS = [
         "page_path": "pages/5_RH.py",
         "key": "rh",
     },
+    {
+        "label": "📊 Indicadores RH",
+        "permission": "administrativo.indicadores_rh",
+        "page_path": "pages/6_Indicadores_RH.py",
+        "key": "indicadores_rh",
+    },
 ]
 
 
