@@ -16,7 +16,7 @@ if str(ROOT_DIR) not in sys.path:
 
 # Autenticação
 try:
-    from advanced_auth import require_auth, require_page_access, get_current_user  # type: ignore
+    from advanced_auth import require_auth, require_page_access  # type: ignore
 except Exception as e:  # pragma: no cover - fallback para ambientes sem auth
     st.error(f"Erro ao importar sistema de autenticação: {e}")
     st.stop()
@@ -149,13 +149,6 @@ def main():
     require_auth()
     require_page_access("vendas")
 
-    # Restringir acesso apenas ao usuário Odair enquanto a página está em desenvolvimento
-    user = get_current_user()
-    if not user or user.get("email") != "odair.santos@grupoprati.com":
-        st.error("🚧 Página em desenvolvimento. Acesso restrito temporariamente.")
-        st.info("Entre em contato com o administrador para mais informações.")
-        st.stop()
-
     # Navegação global
     display_navigation()
     st.session_state["current_page"] = __file__
@@ -222,6 +215,10 @@ def main():
             for c in cols_situacao_qtd:
                 pivot_qtd = pivot_qtd.rename(columns={c: f"Qtd {c}"})
             pivot_qtd = pivot_qtd.rename(columns={"nome_empreendimento": "Empreendimento"})
+            pct_qtd = (qtd_vendido_col / qtd_total_col * 100).where(qtd_total_col > 0, 0.0)
+            pivot_qtd["% VGV realizado"] = pct_qtd.apply(
+                lambda v: format_percent(v, decimals=2, decimal_sep_comma=True)
+            )
             for col in ["Qtd Total", "Qtd Vendido"] + [c for c in pivot_qtd.columns if c.startswith("Qtd ") and c not in ("Qtd Total", "Qtd Vendido")]:
                 pivot_qtd[col] = pivot_qtd[col].fillna(0).astype(int).apply(format_int)
             if "Qtd Vendida" in pivot_qtd.columns:
@@ -268,6 +265,10 @@ def main():
             for c in cols_situacao:
                 pivot = pivot.rename(columns={c: f"VGV {c}"})
             pivot = pivot.rename(columns={"nome_empreendimento": "Empreendimento"})
+            pct_vgv = (vgv_vendido_col / vgv_total_col * 100).where(vgv_total_col > 0, 0.0)
+            pivot["% VGV realizado"] = pct_vgv.apply(
+                lambda v: format_percent(v, decimals=2, decimal_sep_comma=True)
+            )
             for col in ["VGV Total", "VGV Vendido"] + [c for c in pivot.columns if c.startswith("VGV ") and c not in ("VGV Total", "VGV Vendido")]:
                 pivot[col] = pivot[col].fillna(0.0).apply(format_brl)
             st.dataframe(pivot, use_container_width=True, hide_index=True)
