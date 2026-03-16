@@ -542,7 +542,7 @@ def get_kpis(start_date: str, end_date: str,
 def get_vgv_prosoluto_resumo() -> pd.DataFrame:
     """
     Retorna uma tabela consolidada por empreendimento com:
-    - VGV total, vendido e pendente (a partir de cv_vgv_empreendimentos)
+    - VGV total, vendido e pendente (a partir de cv_vgv_empreendimentos_consolidado)
     - Prosoluto antes e pós chaves (a partir da view prosoluto_antes_e_pos_chaves)
     - id e nome do empreendimento preenchidos a partir de dim_empreendimentos_dinamica quando vazios.
 
@@ -567,7 +567,7 @@ def get_vgv_prosoluto_resumo() -> pd.DataFrame:
                     ELSE 0
                 END
             ) AS vgv_vendido
-        FROM reservas.cv_vgv_empreendimentos
+        FROM informacoes_consolidadas.cv_vgv_empreendimentos_consolidado
         GROUP BY id_empreendimento, nome_empreendimento
     ),
     vgv AS (
@@ -667,7 +667,7 @@ def get_vgv_por_situacao() -> pd.DataFrame:
         nome_empreendimento,
         COALESCE(NULLIF(TRIM("unidades.situacao"), ''), 'Não informado') AS situacao,
         SUM(COALESCE("unidades.valor_total", 0)) AS valor
-    FROM reservas.cv_vgv_empreendimentos
+    FROM informacoes_consolidadas.cv_vgv_empreendimentos_consolidado
     GROUP BY id_empreendimento, nome_empreendimento, COALESCE(NULLIF(TRIM("unidades.situacao"), ''), 'Não informado')
     ORDER BY nome_empreendimento, situacao
     """

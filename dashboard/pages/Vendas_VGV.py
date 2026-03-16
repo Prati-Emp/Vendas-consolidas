@@ -230,7 +230,7 @@ def main():
         st.markdown("---")
         st.markdown("### VGV x Prosoluto por Empreendimento")
         st.caption(
-            "Tabela consolidada por empreendimento usando a base de VGV (cv_vgv_empreendimentos) "
+            "Tabela consolidada por empreendimento usando a base de VGV (cv_vgv_empreendimentos_consolidado) "
             "e a view de prosoluto antes/pós chaves. A classificação de 'VGV vendido' usa a coluna "
             "`unidades.situacao` da tabela de VGV."
         )
