@@ -184,49 +184,6 @@ def main():
     tab_analise, tab_geral = st.tabs(["Analise VGV", "Estoque VGV"])
 
     with tab_geral:
-        st.markdown("### VGV por Situação")
-        df_vgv_sit = get_vgv_por_situacao()
-        if not df_vgv_sit.empty:
-            mask_geral_sit = df_vgv_sit["nome_empreendimento"].str.strip().str.lower() == "geral prati"
-            outros_sit = df_vgv_sit[~mask_geral_sit]
-            agg_geral = outros_sit.groupby("situacao", as_index=False)["valor"].sum()
-            agg_geral["nome_empreendimento"] = "Geral Prati"
-            agg_geral = agg_geral[["nome_empreendimento", "situacao", "valor"]]
-            df_vgv_sit = pd.concat([outros_sit, agg_geral], ignore_index=True)
-            situacoes_vendido = {"vendido", "vendida", "assinado", "escriturado"}
-            pivot = df_vgv_sit.pivot_table(
-                index=["nome_empreendimento"],
-                columns="situacao",
-                values="valor",
-                aggfunc="sum",
-                fill_value=0.0,
-            ).reset_index()
-            pivot["_ordem"] = pivot["nome_empreendimento"].str.strip().str.lower().apply(
-                lambda x: 0 if x == "geral prati" else 1
-            )
-            pivot = pivot.sort_values(["_ordem", "nome_empreendimento"]).drop(columns=["_ordem"])
-            vgv_total_col = pivot.drop(columns=["nome_empreendimento"]).sum(axis=1)
-            cols_vendido = [
-                c for c in pivot.columns
-                if c != "nome_empreendimento" and str(c).strip().lower() in situacoes_vendido
-            ]
-            vgv_vendido_col = (
-                pivot[cols_vendido].sum(axis=1)
-                if cols_vendido
-                else pd.Series(0.0, index=pivot.index)
-            )
-            pivot.insert(1, "VGV Total", vgv_total_col)
-            pivot.insert(2, "VGV Vendido", vgv_vendido_col)
-            cols_situacao = [c for c in pivot.columns if c not in ("nome_empreendimento", "VGV Total", "VGV Vendido")]
-            for c in cols_situacao:
-                pivot = pivot.rename(columns={c: f"VGV {c}"})
-            pivot = pivot.rename(columns={"nome_empreendimento": "Empreendimento"})
-            for col in ["VGV Total", "VGV Vendido"] + [c for c in pivot.columns if c.startswith("VGV ") and c not in ("VGV Total", "VGV Vendido")]:
-                pivot[col] = pivot[col].fillna(0.0).apply(format_brl)
-            st.dataframe(pivot, use_container_width=True, hide_index=True)
-        else:
-            st.info("Nenhum dado de VGV por situação disponível.")
-
         st.markdown("### Quantidade de Unidades por Situação")
         df_qtd_sit = get_vgv_quantidade_por_situacao()
         if not df_qtd_sit.empty:
@@ -272,6 +229,50 @@ def main():
             st.dataframe(pivot_qtd, use_container_width=True, hide_index=True)
         else:
             st.info("Nenhum dado de quantidade por situação disponível.")
+
+        st.markdown("### VGV por Situação")
+        df_vgv_sit = get_vgv_por_situacao()
+        if not df_vgv_sit.empty:
+            outros_sit = df_vgv_sit[
+                df_vgv_sit["nome_empreendimento"].str.strip().str.lower() != "geral prati"
+            ]
+            agg_geral = outros_sit.groupby("situacao", as_index=False)["valor"].sum()
+            agg_geral["nome_empreendimento"] = "Geral Prati"
+            agg_geral = agg_geral[["nome_empreendimento", "situacao", "valor"]]
+            df_vgv_sit = pd.concat([outros_sit, agg_geral], ignore_index=True)
+            situacoes_vendido = {"vendido", "vendida", "assinado", "escriturado"}
+            pivot = df_vgv_sit.pivot_table(
+                index=["nome_empreendimento"],
+                columns="situacao",
+                values="valor",
+                aggfunc="sum",
+                fill_value=0.0,
+            ).reset_index()
+            pivot["_ordem"] = pivot["nome_empreendimento"].str.strip().str.lower().apply(
+                lambda x: 0 if x == "geral prati" else 1
+            )
+            pivot = pivot.sort_values(["_ordem", "nome_empreendimento"]).drop(columns=["_ordem"])
+            vgv_total_col = pivot.drop(columns=["nome_empreendimento"]).sum(axis=1)
+            cols_vendido = [
+                c for c in pivot.columns
+                if c != "nome_empreendimento" and str(c).strip().lower() in situacoes_vendido
+            ]
+            vgv_vendido_col = (
+                pivot[cols_vendido].sum(axis=1)
+                if cols_vendido
+                else pd.Series(0.0, index=pivot.index)
+            )
+            pivot.insert(1, "VGV Total", vgv_total_col)
+            pivot.insert(2, "VGV Vendido", vgv_vendido_col)
+            cols_situacao = [c for c in pivot.columns if c not in ("nome_empreendimento", "VGV Total", "VGV Vendido")]
+            for c in cols_situacao:
+                pivot = pivot.rename(columns={c: f"VGV {c}"})
+            pivot = pivot.rename(columns={"nome_empreendimento": "Empreendimento"})
+            for col in ["VGV Total", "VGV Vendido"] + [c for c in pivot.columns if c.startswith("VGV ") and c not in ("VGV Total", "VGV Vendido")]:
+                pivot[col] = pivot[col].fillna(0.0).apply(format_brl)
+            st.dataframe(pivot, use_container_width=True, hide_index=True)
+        else:
+            st.info("Nenhum dado de VGV por situação disponível.")
 
         st.markdown("---")
         st.markdown("### VGV x Prosoluto por Empreendimento")
