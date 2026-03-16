@@ -39,15 +39,41 @@ class ComissoesAPIClient:
         self.base_url = self.config.base_url
         self.headers = self.config.headers
     
+    def _fazer_requisicao_com_retry(
+        self, payload: dict, page: int, max_retries: int = 3
+    ) -> requests.Response:
+        """Faz requisição com retry em caso de HTTP 500/502/503 (erros transientes)."""
+        delays = [2, 5, 10]  # segundos entre tentativas
+        last_error = None
+        for attempt in range(max_retries):
+            resp = requests.get(
+                self.base_url, headers=self.headers, params=payload, timeout=90
+            )
+            if resp.status_code in (500, 502, 503):
+                last_error = resp
+                if attempt < max_retries - 1:
+                    wait = delays[attempt]
+                    logger.warning(
+                        f"HTTP {resp.status_code} na página {page}, tentativa {attempt + 1}/{max_retries}. "
+                        f"Aguardando {wait}s antes de tentar novamente..."
+                    )
+                    time.sleep(wait)
+                else:
+                    raise RuntimeError(f"HTTP {resp.status_code}: {resp.text}")
+            else:
+                return resp
+        raise RuntimeError(f"HTTP {last_error.status_code}: {last_error.text}")
+
     def buscar_comissoes(self, 
                         a_partir_de: str = None,
                         ate: str = None,
-                        page_size: int = 100,  # Reduzido para 100 para evitar erro 500
+                        page_size: int = 50,  # 50 reduz carga por página e evita erro 500 em offsets altos
                         max_pages: int = 5000,
-                        sleep_between_calls: float = 1.0) -> List[Dict]:
+                        sleep_between_calls: float = 1.5) -> List[Dict]:
         """
         Busca comissões paginando e retorna todos os dados detalhados.
         Explode a estrutura: Comissão -> Beneficiários -> Programação
+        Usa retry em HTTP 500/502/503 e page_size menor para mitigar instabilidade da API.
         """
         # Se não fornecidas, usa datas padrão
         hoje = date.today()
@@ -62,7 +88,6 @@ class ComissoesAPIClient:
         
         page = 1
         results: List[Dict] = []
-        total_pages = None
         total_processed = 0
 
         while page <= max_pages:
@@ -75,14 +100,11 @@ class ComissoesAPIClient:
                 "offset": offset
             }
 
-            logger.info(f"Fazendo requisição para página {page}...")
+            logger.info(f"Fazendo requisição para página {page} (offset={offset})...")
             logger.info(f"Parâmetros: a_partir_de={a_partir_de}, ate={ate}")
             
-            resp = requests.get(self.base_url, headers=self.headers, params=payload, timeout=60)
+            resp = self._fazer_requisicao_com_retry(payload, page)
             logger.info(f"Status da resposta: {resp.status_code}")
-            
-            if resp.status_code != 200:
-                raise RuntimeError(f"HTTP {resp.status_code}: {resp.text}")
 
             data = resp.json()
             
@@ -218,29 +240,85 @@ class ComissoesAPIClient:
         
         return df
 
-def obter_dados_cv_comissoes(a_partir_de: str = None, ate: str = None) -> pd.DataFrame:
+def _gerar_meses_entre_datas(a_partir_de: str, ate: str) -> List[tuple]:
+    """Gera lista de (inicio_mes, fim_mes) no formato DD/MM/YYYY para cada mês no intervalo."""
+    def parse_ddmmyyyy(s: str) -> date:
+        d, m, y = map(int, s.split("/"))
+        return date(y, m, d)
+
+    def fmt(d: date) -> str:
+        return d.strftime("%d/%m/%Y")
+
+    def ultimo_dia_mes(ano: int, mes: int) -> date:
+        if mes == 12:
+            return date(ano, 12, 31)
+        return date(ano, mes + 1, 1) - timedelta(days=1)
+
+    inicio = parse_ddmmyyyy(a_partir_de)
+    fim = parse_ddmmyyyy(ate)
+    meses = []
+    ano, mes = inicio.year, inicio.month
+    while date(ano, mes, 1) <= fim:
+        primeiro = date(ano, mes, 1)
+        ultimo = ultimo_dia_mes(ano, mes)
+        de = max(inicio, primeiro)
+        ate_d = min(fim, ultimo)
+        meses.append((fmt(de), fmt(ate_d)))
+        if mes == 12:
+            ano, mes = ano + 1, 1
+        else:
+            mes += 1
+    return meses
+
+
+def obter_dados_cv_comissoes(
+    a_partir_de: str = None,
+    ate: str = None,
+    chunk_por_mes: bool = True,
+) -> pd.DataFrame:
     """
-    Função principal para obter dados de comissões do CV CRM
-    
+    Função principal para obter dados de comissões do CV CRM.
+
     Args:
         a_partir_de: Data inicial no formato DD/MM/YYYY (padrão: 01/01/2025)
         ate: Data final no formato DD/MM/YYYY (padrão: ontem)
+        chunk_por_mes: Se True (padrão), busca mês a mês para reduzir carga por requisição
+                       e mitigar HTTP 500 em offsets altos.
     """
     try:
         client = ComissoesAPIClient()
-        dados = client.buscar_comissoes(a_partir_de=a_partir_de, ate=ate)
-        
+        hoje = date.today()
+        if a_partir_de is None:
+            a_partir_de = "01/01/2025"
+        if ate is None:
+            ate = (hoje - timedelta(days=1)).strftime("%d/%m/%Y")
+
+        if chunk_por_mes:
+            meses = _gerar_meses_entre_datas(a_partir_de, ate)
+            logger.info(f"Buscando comissões em {len(meses)} blocos mensais (mitigação HTTP 500)")
+            todos_dados = []
+            for i, (de, ate_mes) in enumerate(meses, 1):
+                try:
+                    logger.info(f"[{i}/{len(meses)}] Período: {de} a {ate_mes}")
+                    dados = client.buscar_comissoes(a_partir_de=de, ate=ate_mes)
+                    todos_dados.extend(dados)
+                    logger.info(f"  -> {len(dados)} registros obtidos")
+                except Exception as e:
+                    logger.error(f"  -> Erro no período {de}-{ate_mes}: {e}. Continuando...")
+            dados = todos_dados
+        else:
+            dados = client.buscar_comissoes(a_partir_de=a_partir_de, ate=ate)
+
         if not dados:
             return pd.DataFrame()
-        
+
         df = client.processar_dados(dados)
-        
+
         if not df.empty:
-            # Adiciona colunas padrão do sistema
-            df['fonte'] = 'cv_comissoes'
-            df['processado_em'] = datetime.now()
-            df['Data_Snapshot'] = pd.to_datetime(date.today())
-            
+            df["fonte"] = "cv_comissoes"
+            df["processado_em"] = datetime.now()
+            df["Data_Snapshot"] = pd.to_datetime(date.today())
+
         return df
     except Exception as e:
         logger.error(f"Erro ao obter dados: {e}")
