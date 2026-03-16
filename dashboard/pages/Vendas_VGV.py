@@ -223,7 +223,17 @@ def main():
                 pivot_qtd[col] = pivot_qtd[col].fillna(0).astype(int).apply(format_int)
             if "Qtd Vendida" in pivot_qtd.columns:
                 pivot_qtd = pivot_qtd.drop(columns=["Qtd Vendida"])
-            st.dataframe(pivot_qtd, use_container_width=True, hide_index=True)
+            st.dataframe(
+                pivot_qtd,
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "% VGV realizado": st.column_config.TextColumn(
+                        "% VGV realizado",
+                        help="Percentual de unidades já vendidas em relação ao total. Indica quanto do empreendimento já foi comercializado (unidades vendidas ÷ unidades total).",
+                    ),
+                },
+            )
         else:
             st.info("Nenhum dado de quantidade por situação disponível.")
 
@@ -271,7 +281,17 @@ def main():
             )
             for col in ["VGV Total", "VGV Vendido"] + [c for c in pivot.columns if c.startswith("VGV ") and c not in ("VGV Total", "VGV Vendido")]:
                 pivot[col] = pivot[col].fillna(0.0).apply(format_brl)
-            st.dataframe(pivot, use_container_width=True, hide_index=True)
+            st.dataframe(
+                pivot,
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "% VGV realizado": st.column_config.TextColumn(
+                        "% VGV realizado",
+                        help="Percentual do valor total (VGV) já realizado em vendas. Indica quanto do empreendimento já foi comercializado (VGV vendido ÷ VGV total).",
+                    ),
+                },
+            )
         else:
             st.info("Nenhum dado de VGV por situação disponível.")
 
