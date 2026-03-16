@@ -267,6 +267,8 @@ def main():
             pivot_qtd = pivot_qtd.rename(columns={"nome_empreendimento": "Empreendimento"})
             for col in ["Qtd Total", "Qtd Vendido"] + [c for c in pivot_qtd.columns if c.startswith("Qtd ") and c not in ("Qtd Total", "Qtd Vendido")]:
                 pivot_qtd[col] = pivot_qtd[col].fillna(0).astype(int).apply(format_int)
+            if "Qtd Vendida" in pivot_qtd.columns:
+                pivot_qtd = pivot_qtd.drop(columns=["Qtd Vendida"])
             st.dataframe(pivot_qtd, use_container_width=True, hide_index=True)
         else:
             st.info("Nenhum dado de quantidade por situação disponível.")
