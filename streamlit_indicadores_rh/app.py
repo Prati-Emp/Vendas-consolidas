@@ -1,6 +1,7 @@
 """
 Aplicativo principal do Indicadores RH.
 Projeto standalone baseado na estrutura do dashboard administrativo.
+v1.0.1 - 2025-02-20
 """
 
 import sys

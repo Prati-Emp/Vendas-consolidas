@@ -2,6 +2,8 @@
 
 Projeto standalone de Indicadores RH, baseado na estrutura do dashboard administrativo.
 
+> Última atualização: 2025-02-20
+
 ## Deploy no Streamlit Cloud
 
 | Campo | Valor |
