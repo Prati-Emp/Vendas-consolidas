@@ -121,8 +121,13 @@ def _render_kanban_board(df: pd.DataFrame, title: str) -> None:
         st.dataframe(df.head(20), use_container_width=True, hide_index=True)
         return
 
-    statuses = df[status_col].dropna().unique().tolist()
-    statuses = sorted([s for s in statuses if str(s).strip()], key=str)
+    statuses = [s for s in df[status_col].dropna().unique().tolist() if str(s).strip()]
+
+    def _sort_status(s):
+        s_str = str(s).strip()
+        return (0, s_str) if s_str.lower() == "backlog" else (1, s_str)
+
+    statuses = sorted(statuses, key=_sort_status)
 
     if not statuses:
         st.info("Nenhum status encontrado.")
