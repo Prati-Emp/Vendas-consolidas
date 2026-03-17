@@ -43,6 +43,18 @@ TAB_DEFINITIONS = [
         "page_path": "pages/5_RH.py",
         "key": "rh",
     },
+    {
+        "label": "📊 Indicadores Gestão de Pessoas",
+        "permission": "administrativo.indicadores_gestao_pessoas",
+        "page_path": "pages/6_Indicadores_Gestao_Pessoas.py",
+        "key": "indicadores_gestao_pessoas",
+    },
+    {
+        "label": "📋 Acompanhamento de Solicitações",
+        "permission": "administrativo.acompanhamento_solicitacoes",
+        "page_path": "pages/7_Acompanhamento_Solicitacoes.py",
+        "key": "acompanhamento_solicitacoes",
+    },
 ]
 
 
