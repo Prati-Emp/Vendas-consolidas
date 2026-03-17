@@ -42,6 +42,41 @@ BOARD_FILTERS: Dict[str, Dict[str, Any]] = {
     },
 }
 
+# Mapeamento de nomes de colunas/status para exibição (status_original → nome_exibido)
+# Ajuste conforme os nomes desejados para cada quadro
+STATUS_DISPLAY_NAMES: Dict[str, Dict[str, str]] = {
+    "treinamentos_td": {
+        "Backlog": "Backlog",
+        "SOLICITAÇÕES": "Solicitações",
+        "DIRETORIA": "Diretoria",
+        "PRESIDÊNCIA": "Presidência",
+        "APROVADO": "Aprovado",
+        "FINALIZADO": "Finalizado",
+        "REJEITADO": "Rejeitado",
+        "Aguardando Integração": "Aguardando Integração",
+        "Aprovação Diretoria": "Aprovação Diretoria",
+        "Aprovação Presidência": "Aprovação Presidência",
+        "Compliance": "Compliance",
+        "Documentos e Cadastro": "Documentos e Cadastro",
+        "Entrevista com Gestor": "Entrevista com Gestor",
+        "Exames Admissão": "Exames Admissão",
+        "Prospecção": "Prospecção",
+        "Triagem": "Triagem",
+        "provas": "Provas",
+    },
+    "rotinas_trabalhistas": {
+        "Backlog": "Backlog",
+        "SOLICITAÇÕES": "Solicitações",
+        "DIRETORIA": "Diretoria",
+        "PRESIDÊNCIA": "Presidência",
+        "APROVADO": "Aprovado",
+        "FINALIZADO": "Finalizado",
+        "REJEITADO": "Rejeitado",
+        "Aprovação Diretoria": "Aprovação Diretoria",
+        "Aprovação Presidência": "Aprovação Presidência",
+    },
+}
+
 
 @st.cache_data(ttl=600)
 def load_jira_dho_acompanhamento() -> pd.DataFrame:
@@ -74,6 +109,13 @@ def _filter_df_by_board(df: pd.DataFrame, board_key: str) -> pd.DataFrame:
         for term in config["fallback_contains"]:
             mask = mask | df_col.str.lower().str.contains(term, na=False, regex=False)
     return df[mask].copy()
+
+
+def _get_status_display_name(board_key: str, status_val: str) -> str:
+    """Retorna o nome de exibição do status, ou o original se não houver mapeamento."""
+    mapping = STATUS_DISPLAY_NAMES.get(board_key, {})
+    s = str(status_val).strip()
+    return mapping.get(status_val, mapping.get(s, s))
 
 
 def _get_status_column(df: pd.DataFrame) -> str:
@@ -109,7 +151,7 @@ def _build_kanban_column_html(
     return cards_html if cards_html else '<div style="color: #888; font-style: italic; padding: 8px;">Nenhum item</div>'
 
 
-def _render_kanban_board(df: pd.DataFrame, title: str) -> None:
+def _render_kanban_board(df: pd.DataFrame, title: str, board_key: str = "") -> None:
     """Renderiza um quadro Kanban completo com colunas por status e scroll horizontal."""
     if df.empty:
         st.info(f"Nenhum item encontrado para **{title}**.")
@@ -142,9 +184,10 @@ def _render_kanban_board(df: pd.DataFrame, title: str) -> None:
     for status_val in statuses:
         count = len(df[df[status_col] == status_val])
         cards = _build_kanban_column_html(df, status_col, status_val, chave_col, resumo_col, tipo_col)
+        display_name = _get_status_display_name(board_key, status_val)
         columns_html += f"""
         <div class="kanban-column">
-            <div class="kanban-column-title">{html.escape(str(status_val))} ({count})</div>
+            <div class="kanban-column-title">{html.escape(display_name)} ({count})</div>
             <hr style="border: none; border-top: 1px solid #dee2e6; margin: 0 0 12px 0;">
             {cards}
         </div>
@@ -219,7 +262,7 @@ def render_acompanhamento_solicitacoes_dashboard() -> None:
         st.warning("⚠️ Nenhum dado encontrado na view Jira_projeto_dho_consolidado.")
         return
 
-    # Sidebar: ajuda para configurar filtros
+    # Sidebar: ajuda para configurar filtros e nomes
     with st.sidebar:
         with st.expander("🔧 Configurar quadros"):
             tipo_col = "Motivo_da_Requisição" if "Motivo_da_Requisição" in df_raw.columns else None
@@ -229,6 +272,20 @@ def render_acompanhamento_solicitacoes_dashboard() -> None:
                 st.code(", ".join(f'"{v}"' for v in valores[:30]), language=None)
                 if len(valores) > 30:
                     st.caption(f"... e mais {len(valores) - 30}")
+        with st.expander("📝 Nomes das colunas (Treinamentos)"):
+            df_td = _filter_df_by_board(df_raw, "treinamentos_td")
+            status_col = _get_status_column(df_td) if not df_td.empty else None
+            if status_col:
+                statuses_td = sorted(df_td[status_col].dropna().astype(str).str.strip().unique().tolist())
+                st.caption("Status no Jira (use em STATUS_DISPLAY_NAMES):")
+                st.code(", ".join(f'"{v}"' for v in statuses_td[:25]), language=None)
+        with st.expander("📝 Nomes das colunas (Rotinas Trabalhistas)"):
+            df_rt = _filter_df_by_board(df_raw, "rotinas_trabalhistas")
+            status_col_rt = _get_status_column(df_rt) if not df_rt.empty else None
+            if status_col_rt:
+                statuses_rt = sorted(df_rt[status_col_rt].dropna().astype(str).str.strip().unique().tolist())
+                st.caption("Status no Jira (use em STATUS_DISPLAY_NAMES):")
+                st.code(", ".join(f'"{v}"' for v in statuses_rt[:25]), language=None)
 
     # 4 abas lado a lado
     tab_keys = list(BOARD_FILTERS.keys())
@@ -241,4 +298,4 @@ def render_acompanhamento_solicitacoes_dashboard() -> None:
                 # Fallback: se o primeiro quadro está vazio, mostrar todos os dados com aviso
                 st.info("💡 Nenhum item encontrado com os filtros atuais. Exibindo todos os itens. Ajuste **BOARD_FILTERS** em `acompanhamento_solicitacoes_dashboard.py` conforme os valores de **Tipo_de_item** no Jira.")
                 df_board = df_raw.copy()
-            _render_kanban_board(df_board, BOARD_FILTERS[board_key]["label"])
+            _render_kanban_board(df_board, BOARD_FILTERS[board_key]["label"], board_key)
