@@ -86,24 +86,19 @@ def _get_status_column(df: pd.DataFrame) -> str:
     return ""
 
 
-def _render_kanban_cards(df: pd.DataFrame, status_col: str, status_val: str) -> None:
-    """Renderiza os cards de um status em formato Kanban."""
+def _build_kanban_column_html(
+    df: pd.DataFrame, status_col: str, status_val: str, chave_col: str, resumo_col: str, tipo_col: str
+) -> str:
+    """Monta o HTML de uma coluna do Kanban."""
     df_status = df[df[status_col] == status_val]
-    if df_status.empty:
-        st.markdown("*Nenhum item*")
-        return
-
-    chave_col = "Chave" if "Chave" in df.columns else (df.columns[0] if len(df.columns) > 0 else "")
-    resumo_col = "Resumo" if "Resumo" in df.columns else ""
-    tipo_col = "Tipo_de_item" if "Tipo_de_item" in df.columns else ""
-
+    cards_html = ""
     for _, row in df_status.iterrows():
         chave = html.escape(str(row.get(chave_col, "")) if chave_col else "")
         resumo_raw = str(row.get(resumo_col, "")) if resumo_col else ""
-        resumo = html.escape(resumo_raw[:80] + ("..." if len(resumo_raw) > 80 else ""))
+        resumo = html.escape(resumo_raw[:120] + ("..." if len(resumo_raw) > 120 else ""))
         tipo = html.escape(str(row.get(tipo_col, "")) if tipo_col else "")
 
-        card_html = f"""
+        cards_html += f"""
         <div style="
             background: #fff;
             border: 1px solid #e0e0e0;
@@ -112,17 +107,18 @@ def _render_kanban_cards(df: pd.DataFrame, status_col: str, status_val: str) -> 
             margin-bottom: 10px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.08);
             font-size: 0.9rem;
+            min-width: 0;
         ">
             <div style="font-weight: 600; color: #1a73e8; margin-bottom: 4px;">{chave}</div>
-            <div style="color: #333; margin-bottom: 4px;">{resumo}</div>
+            <div style="color: #333; margin-bottom: 4px; word-wrap: break-word;">{resumo}</div>
             <div style="font-size: 0.8rem; color: #666;">{tipo}</div>
         </div>
         """
-        st.markdown(card_html, unsafe_allow_html=True)
+    return cards_html if cards_html else '<div style="color: #888; font-style: italic;">Nenhum item</div>'
 
 
 def _render_kanban_board(df: pd.DataFrame, title: str) -> None:
-    """Renderiza um quadro Kanban completo com colunas por status."""
+    """Renderiza um quadro Kanban completo com colunas por status e scroll horizontal."""
     if df.empty:
         st.info(f"Nenhum item encontrado para **{title}**.")
         return
@@ -140,14 +136,67 @@ def _render_kanban_board(df: pd.DataFrame, title: str) -> None:
         st.info("Nenhum status encontrado.")
         return
 
-    # Layout: uma coluna por status
-    cols = st.columns(len(statuses))
-    for i, status_val in enumerate(statuses):
-        with cols[i]:
-            count = len(df[df[status_col] == status_val])
-            st.markdown(f"**{status_val}** ({count})")
-            st.markdown("---")
-            _render_kanban_cards(df, status_col, status_val)
+    chave_col = "Chave" if "Chave" in df.columns else (df.columns[0] if len(df.columns) > 0 else "")
+    resumo_col = "Resumo" if "Resumo" in df.columns else ""
+    tipo_col = "Tipo_de_item" if "Tipo_de_item" in df.columns else ""
+
+    # Montar todo o Kanban em HTML com container scrollável
+    columns_html = ""
+    for status_val in statuses:
+        count = len(df[df[status_col] == status_val])
+        cards = _build_kanban_column_html(df, status_col, status_val, chave_col, resumo_col, tipo_col)
+        columns_html += f"""
+        <div class="kanban-column" style="
+            flex: 0 0 220px;
+            min-width: 220px;
+            max-width: 280px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 8px;
+            padding: 12px;
+            margin-right: 12px;
+        ">
+            <div style="font-weight: 600; margin-bottom: 8px; font-size: 0.95rem;">{html.escape(str(status_val))} ({count})</div>
+            <hr style="border-color: rgba(255,255,255,0.2); margin: 0 0 12px 0;">
+            {cards}
+        </div>
+        """
+
+    scroll_html = f"""
+    <style>
+    .kanban-scroll-container {{
+        overflow-x: auto;
+        overflow-y: hidden;
+        padding-bottom: 12px;
+        margin: 0 -1rem;
+    }}
+    .kanban-scroll-container::-webkit-scrollbar {{
+        height: 10px;
+    }}
+    .kanban-scroll-container::-webkit-scrollbar-track {{
+        background: rgba(255,255,255,0.1);
+        border-radius: 5px;
+    }}
+    .kanban-scroll-container::-webkit-scrollbar-thumb {{
+        background: rgba(255,255,255,0.3);
+        border-radius: 5px;
+    }}
+    .kanban-scroll-container::-webkit-scrollbar-thumb:hover {{
+        background: rgba(255,255,255,0.5);
+    }}
+    .kanban-board {{
+        display: flex;
+        flex-direction: row;
+        width: max-content;
+        min-width: 100%;
+    }}
+    </style>
+    <div class="kanban-scroll-container">
+        <div class="kanban-board">
+            {columns_html}
+        </div>
+    </div>
+    """
+    st.markdown(scroll_html, unsafe_allow_html=True)
 
 
 def render_acompanhamento_solicitacoes_dashboard() -> None:
