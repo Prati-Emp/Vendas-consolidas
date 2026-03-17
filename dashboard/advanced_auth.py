@@ -176,6 +176,17 @@ USERS_DATABASE = {
         "active": True,
         "pages": ["vendas", "leads", "reservas", "motivo_fora_prazo", "tv_comercial"],  # Sem acesso ao administrativo (Repasses, Contas pagas, Saldo em caixa)
         "subpages": []
+    },
+    "odair2d@hotmail.com": {
+        "password": "Pr@ti2025!Odair2",
+        "role": "analyst",
+        "name": "Odair Santos",
+        "department": "TI",
+        "created": "2026-02-20",
+        "last_login": None,
+        "active": True,
+        "pages": ["administrativo"],
+        "subpages": ["administrativo.indicadores_gestao_pessoas", "administrativo.acompanhamento_solicitacoes"]
     }
 }
 
