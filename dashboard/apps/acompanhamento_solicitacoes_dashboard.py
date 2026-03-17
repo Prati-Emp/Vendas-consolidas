@@ -10,6 +10,7 @@ from typing import Any, Dict, List, Optional
 
 import pandas as pd
 import streamlit as st
+import streamlit.components.v1 as components
 
 from dashboard.utils.md_conn import get_md_connection
 
@@ -99,22 +100,13 @@ def _build_kanban_column_html(
         tipo = html.escape(str(row.get(tipo_col, "")) if tipo_col else "")
 
         cards_html += f"""
-        <div style="
-            background: #fff;
-            border: 1px solid #e0e0e0;
-            border-radius: 8px;
-            padding: 12px;
-            margin-bottom: 10px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-            font-size: 0.9rem;
-            min-width: 0;
-        ">
-            <div style="font-weight: 600; color: #1a73e8; margin-bottom: 4px;">{chave}</div>
-            <div style="color: #333; margin-bottom: 4px; word-wrap: break-word;">{resumo}</div>
-            <div style="font-size: 0.8rem; color: #666;">{tipo}</div>
+        <div class="kanban-card">
+            <div class="kanban-card-chave">{chave}</div>
+            <div class="kanban-card-resumo">{resumo}</div>
+            <div class="kanban-card-tipo">{tipo}</div>
         </div>
         """
-    return cards_html if cards_html else '<div style="color: #888; font-style: italic;">Nenhum item</div>'
+    return cards_html if cards_html else '<div style="color: #888; font-style: italic; padding: 8px;">Nenhum item</div>'
 
 
 def _render_kanban_board(df: pd.DataFrame, title: str) -> None:
@@ -146,57 +138,70 @@ def _render_kanban_board(df: pd.DataFrame, title: str) -> None:
         count = len(df[df[status_col] == status_val])
         cards = _build_kanban_column_html(df, status_col, status_val, chave_col, resumo_col, tipo_col)
         columns_html += f"""
-        <div class="kanban-column" style="
-            flex: 0 0 220px;
-            min-width: 220px;
-            max-width: 280px;
-            background: rgba(255,255,255,0.03);
-            border-radius: 8px;
-            padding: 12px;
-            margin-right: 12px;
-        ">
-            <div style="font-weight: 600; margin-bottom: 8px; font-size: 0.95rem;">{html.escape(str(status_val))} ({count})</div>
-            <hr style="border-color: rgba(255,255,255,0.2); margin: 0 0 12px 0;">
+        <div class="kanban-column">
+            <div class="kanban-column-title">{html.escape(str(status_val))} ({count})</div>
+            <hr style="border: none; border-top: 1px solid #dee2e6; margin: 0 0 12px 0;">
             {cards}
         </div>
         """
 
     scroll_html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+    <meta charset="UTF-8">
     <style>
+    * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+    body {{ font-family: inherit; background: transparent; color: #333; }}
     .kanban-scroll-container {{
         overflow-x: auto;
         overflow-y: hidden;
         padding-bottom: 12px;
-        margin: 0 -1rem;
     }}
-    .kanban-scroll-container::-webkit-scrollbar {{
-        height: 10px;
-    }}
-    .kanban-scroll-container::-webkit-scrollbar-track {{
-        background: rgba(255,255,255,0.1);
-        border-radius: 5px;
-    }}
-    .kanban-scroll-container::-webkit-scrollbar-thumb {{
-        background: rgba(255,255,255,0.3);
-        border-radius: 5px;
-    }}
-    .kanban-scroll-container::-webkit-scrollbar-thumb:hover {{
-        background: rgba(255,255,255,0.5);
-    }}
+    .kanban-scroll-container::-webkit-scrollbar {{ height: 10px; }}
+    .kanban-scroll-container::-webkit-scrollbar-track {{ background: rgba(0,0,0,0.1); border-radius: 5px; }}
+    .kanban-scroll-container::-webkit-scrollbar-thumb {{ background: rgba(0,0,0,0.3); border-radius: 5px; }}
     .kanban-board {{
         display: flex;
         flex-direction: row;
         width: max-content;
         min-width: 100%;
+        padding: 8px 0;
     }}
+    .kanban-column {{
+        flex: 0 0 220px;
+        min-width: 220px;
+        max-width: 280px;
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 12px;
+        margin-right: 12px;
+    }}
+    .kanban-column-title {{ font-weight: 600; margin-bottom: 8px; font-size: 0.95rem; }}
+    .kanban-card {{
+        background: #fff;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 12px;
+        margin-bottom: 10px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        font-size: 0.9rem;
+    }}
+    .kanban-card-chave {{ font-weight: 600; color: #1a73e8; margin-bottom: 4px; }}
+    .kanban-card-resumo {{ color: #333; margin-bottom: 4px; word-wrap: break-word; }}
+    .kanban-card-tipo {{ font-size: 0.8rem; color: #666; }}
     </style>
+    </head>
+    <body>
     <div class="kanban-scroll-container">
         <div class="kanban-board">
             {columns_html}
         </div>
     </div>
+    </body>
+    </html>
     """
-    st.markdown(scroll_html, unsafe_allow_html=True)
+    components.html(scroll_html, height=520, scrolling=True)
 
 
 def render_acompanhamento_solicitacoes_dashboard() -> None:
