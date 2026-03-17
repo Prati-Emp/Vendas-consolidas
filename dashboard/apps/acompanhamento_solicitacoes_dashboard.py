@@ -13,35 +13,31 @@ import streamlit as st
 
 from dashboard.utils.md_conn import get_md_connection
 
-# Mapeamento: qual coluna e valores para cada quadro (baseado em Tipo_de_item ou Categoria)
-# Ajuste conforme os valores reais no Jira
+# Mapeamento: coluna "Motivo_da_Requisição" conforme filtros do Jira
+# Fonte: filtros dos quadros Kanban do Jira (RH/DHO)
 BOARD_FILTERS: Dict[str, Dict[str, Any]] = {
     "rotinas_trabalhistas": {
         "label": "📋 Rotinas Trabalhistas",
-        "col": "Tipo_de_item",  # ou "Categoria" se existir
-        "values": [
-            "Demissão", "Férias", "Admissão", "Afastamento", "Desligamento",
-            "Adiantamento", "Rescisão", "Aposentadoria", "Licença", "Alteração de Dados"
-        ],
-        "fallback_contains": ["demissão", "férias", "admissão", "afastamento", "desligamento", "rescisão"]
-    },
-    "movimentacoes_mc": {
-        "label": "🔄 Movimentações (MC)",
-        "col": "Tipo_de_item",
-        "values": ["Movimentação de Cargo", "Movimentação", "MC", "Alteração de Cargo"],
-        "fallback_contains": ["movimentação", "movimentacao", "mc", "cargo"]
-    },
-    "requisicao_vaga_rc": {
-        "label": "📝 Requisição de Vaga (RC)",
-        "col": "Tipo_de_item",
-        "values": ["Requisição de Vaga", "Requisição de Cargo", "RC", "Vaga"],
-        "fallback_contains": ["requisição", "requisicao", "vaga", "rc"]
+        "col": "Motivo_da_Requisição",
+        "values": ["Afastamento", "Demissão", "Férias"],
     },
     "treinamentos_td": {
         "label": "🎓 Treinamentos (T&D)",
-        "col": "Tipo_de_item",
-        "values": ["Treinamento", "T&D", "Capacitação", "Curso"],
-        "fallback_contains": ["treinamento", "capacitação", "curso", "t&d"]
+        "col": "Motivo_da_Requisição",
+        "values": ["Treinamentos"],
+    },
+    "movimentacoes_mc": {
+        "label": "🔄 Movimentações (MC)",
+        "col": "Motivo_da_Requisição",
+        "values": [
+            "Alteração Salarial", "Promoção", "Mudança de CNPJ",
+            "Mudança de horário", "Movimentação"
+        ],
+    },
+    "requisicao_vaga_rc": {
+        "label": "📝 Requisição de Vaga (RC)",
+        "col": "Motivo_da_Requisição",
+        "values": ["Aumento de Quadro", "Substituição"],
     },
 }
 
@@ -63,19 +59,18 @@ def _filter_df_by_board(df: pd.DataFrame, board_key: str) -> pd.DataFrame:
     if df.empty:
         return df
     config = BOARD_FILTERS.get(board_key, {})
-    col = config.get("col", "Tipo_de_item")
+    col = config.get("col", "Motivo_da_Requisição")
     values = config.get("values", [])
-    fallback = config.get("fallback_contains", [])
 
     if col not in df.columns:
-        col = "Categoria" if "Categoria" in df.columns else None
+        col = "Motivo_da_Requisição" if "Motivo_da_Requisição" in df.columns else None
     if col is None:
         return df
 
     df_col = df[col].astype(str).str.strip()
     mask = df_col.isin(values)
-    if not mask.any() and fallback:
-        for term in fallback:
+    if not mask.any() and config.get("fallback_contains"):
+        for term in config["fallback_contains"]:
             mask = mask | df_col.str.lower().str.contains(term, na=False, regex=False)
     return df[mask].copy()
 
@@ -170,10 +165,10 @@ def render_acompanhamento_solicitacoes_dashboard() -> None:
     # Sidebar: ajuda para configurar filtros
     with st.sidebar:
         with st.expander("🔧 Configurar quadros"):
-            tipo_col = "Tipo_de_item" if "Tipo_de_item" in df_raw.columns else ("Categoria" if "Categoria" in df_raw.columns else None)
+            tipo_col = "Motivo_da_Requisição" if "Motivo_da_Requisição" in df_raw.columns else None
             if tipo_col:
-                valores = sorted(df_raw[tipo_col].dropna().astype(str).unique().tolist())
-                st.caption(f"Valores em **{tipo_col}** (use em BOARD_FILTERS):")
+                valores = sorted(df_raw[tipo_col].dropna().astype(str).str.strip().unique().tolist())
+                st.caption(f"Valores em **{tipo_col}** (filtros do Jira):")
                 st.code(", ".join(f'"{v}"' for v in valores[:30]), language=None)
                 if len(valores) > 30:
                     st.caption(f"... e mais {len(valores) - 30}")
