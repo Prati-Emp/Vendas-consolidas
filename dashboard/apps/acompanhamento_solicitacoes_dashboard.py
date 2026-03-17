@@ -158,29 +158,7 @@ def _render_kanban_board(df: pd.DataFrame, title: str) -> None:
         overflow-y: hidden;
         padding-bottom: 16px;
     }}
-    .kanban-scroll-container::-webkit-scrollbar {{ height: 12px; }}
-    .kanban-scroll-container::-webkit-scrollbar-track {{
-        background: rgba(255,255,255,0.2);
-        border-radius: 6px;
-    }}
-    .kanban-scroll-container::-webkit-scrollbar-thumb {{
-        background: rgba(255,255,255,0.55);
-        border-radius: 6px;
-    }}
-    .kanban-scroll-container::-webkit-scrollbar-thumb:hover {{
-        background: rgba(255,255,255,0.8);
-    }}
-    @media (prefers-color-scheme: light) {{
-        .kanban-scroll-container::-webkit-scrollbar-track {{
-            background: #e9ecef;
-        }}
-        .kanban-scroll-container::-webkit-scrollbar-thumb {{
-            background: #6c757d;
-        }}
-        .kanban-scroll-container::-webkit-scrollbar-thumb:hover {{
-            background: #495057;
-        }}
-    }}
+    /* Usa scrollbar nativa do navegador (mesma lógica da vertical) - adapta automaticamente ao tema */
     .kanban-board {{
         display: flex;
         flex-direction: row;
