@@ -16,6 +16,9 @@ for path in (ROOT_DIR, DASHBOARD_DIR, APP_DIR):
 
 from advanced_auth import require_auth, require_page_access  # noqa: E402
 from navigation import render_administrativo_navigation  # noqa: E402
+from dashboard.apps.acompanhamento_solicitacoes_dashboard import (  # noqa: E402
+    render_acompanhamento_solicitacoes_dashboard,
+)
 
 st.set_page_config(
     page_title="Administrativo - Acompanhamento de Solicitações",
@@ -33,5 +36,4 @@ render_administrativo_navigation(current_key="acompanhamento_solicitacoes")
 
 st.markdown("---")
 
-st.subheader("📋 Acompanhamento de Solicitações")
-st.info("Página em construção. Conteúdo será desenvolvido em breve.")
+render_acompanhamento_solicitacoes_dashboard()
