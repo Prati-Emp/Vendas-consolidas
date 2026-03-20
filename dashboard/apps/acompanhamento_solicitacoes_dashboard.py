@@ -204,21 +204,25 @@ def _build_kanban_column_html(
 
     area_col = "Área" if "Área" in df.columns else _find_col_by_normalized(list(df.columns), "Area")
     motivo_col = "Motivo_da_Requisição" if "Motivo_da_Requisição" in df.columns else _find_col_by_normalized(list(df.columns), "Motivo_da_Requisicao")
+    colaborador_col = (
+        "Nome_do_colaborador"
+        if "Nome_do_colaborador" in df.columns
+        else _find_col_by_normalized(list(df.columns), "Nome_do_colaborador")
+    )
 
     for _, row in df_status.iterrows():
         chave = html.escape(str(row.get(chave_col, "")) if chave_col else "")
-        resumo_raw = str(row.get(resumo_col, "")) if resumo_col else ""
-        resumo = html.escape(resumo_raw[:120] + ("..." if len(resumo_raw) > 120 else ""))
         area = html.escape(str(row.get(area_col, "")) if area_col else "")
         motivo_raw = str(row.get(motivo_col, "")) if motivo_col else ""
         motivo = html.escape(motivo_raw[:120] + ("..." if len(motivo_raw) > 120 else ""))
+        colaborador = html.escape(str(row.get(colaborador_col, "")) if colaborador_col else "")
 
         cards_html += f"""
         <div class="kanban-card">
             <div class="kanban-card-chave">{chave}</div>
-            <div class="kanban-card-resumo">{resumo}</div>
-            <div class="kanban-card-area">{area}</div>
             <div class="kanban-card-motivo">{motivo}</div>
+            <div class="kanban-card-colaborador">{colaborador}</div>
+            <div class="kanban-card-area">{area}</div>
         </div>
         """
     return cards_html if cards_html else '<div style="color: #888; font-style: italic; padding: 8px;">Nenhum item</div>'
@@ -386,6 +390,7 @@ def _render_kanban_board(df: pd.DataFrame, title: str, board_key: str = "") -> N
     .kanban-card-resumo {{ color: #333; margin-bottom: 4px; word-wrap: break-word; }}
     .kanban-card-area {{ font-size: 0.8rem; color: #666; margin-bottom: 2px; word-wrap: break-word; }}
     .kanban-card-motivo {{ font-size: 0.8rem; color: #666; word-wrap: break-word; }}
+    .kanban-card-colaborador {{ font-size: 0.8rem; color: #666; margin-bottom: 2px; word-wrap: break-word; }}
     </style>
     </head>
     <body>
