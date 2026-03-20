@@ -350,7 +350,7 @@ def _render_kanban_board(df: pd.DataFrame, title: str, board_key: str = "") -> N
         padding: 12px;
         margin-right: 12px;
     }}
-    .kanban-column-title {{ font-weight: 600; margin-bottom: 8px; font-size: 0.95rem; }}
+    .kanban-column-title {{ font-weight: 600; margin-bottom: 8px; font-size: 0.95rem; text-align: center; }}
     .kanban-card {{
         background: #fff;
         border: 1px solid #e0e0e0;
