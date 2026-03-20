@@ -622,6 +622,27 @@ def render_acompanhamento_solicitacoes_dashboard() -> None:
         st.warning("⚠️ Nenhum dado encontrado na view Jira_projeto_dho_consolidado.")
         return
 
+    st.markdown(
+        """
+        <div style="
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(128,128,128,0.25);
+            border-radius: 8px;
+            padding: 10px 12px;
+            margin: 8px 0 14px 0;
+            font-size: 0.85rem;
+        ">
+            <strong>Legenda:</strong>
+            <span style="margin-left: 10px;">👤 Colaborador</span>
+            <span style="margin-left: 10px;">📌 Cargo</span>
+            <span style="margin-left: 10px;">🏢 Supervisão/Área</span>
+            <span style="margin-left: 10px;">⏱ Tempo desde criação</span>
+            <span style="margin-left: 10px;">Resp: Responsável</span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
     # Sidebar: ajuda para configurar filtros e nomes
     with st.sidebar:
         with st.expander("🔧 Configurar quadros"):
