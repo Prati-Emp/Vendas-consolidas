@@ -262,7 +262,8 @@ def _build_kanban_column_html(
             local_raw = area_raw.strip()
         area = html.escape(local_raw)
         motivo_raw = _clean_text(row.get(motivo_col, "")) if motivo_col else ""
-        motivo = html.escape(motivo_raw[:120] + ("..." if len(motivo_raw) > 120 else ""))
+        motivo_text = motivo_raw[:120] + ("..." if len(motivo_raw) > 120 else "")
+        motivo = html.escape(f"Motivo solic: {motivo_text}") if motivo_text else ""
         colaborador_raw = _clean_text(row.get(colaborador_col, "")) if colaborador_col else ""
         colaborador = html.escape(f"Nome colab: {colaborador_raw}") if colaborador_raw else ""
 
@@ -286,7 +287,7 @@ def _build_kanban_column_html(
         else:
             life_text = ""
 
-        resp_line = f"Resp. {responsavel}" if responsavel else ""
+        resp_line = f"Resp: {responsavel}" if responsavel else ""
 
         resumo_html = f'<div class="kanban-card-resumo">{resumo}</div>' if resumo else ""
         motivo_html = f'<div class="kanban-card-motivo">{motivo}</div>' if motivo else ""
@@ -304,8 +305,8 @@ def _build_kanban_column_html(
             {cargo_html}
             {area_html}
             <div class="kanban-card-footer">
-                <div class="kanban-card-life">{life_text}</div>
                 {resp_html}
+                <div class="kanban-card-life">{life_text}</div>
             </div>
         </div>
         """
