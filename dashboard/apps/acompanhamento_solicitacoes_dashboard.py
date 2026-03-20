@@ -202,6 +202,11 @@ def _build_kanban_column_html(
             norm_to_col[c_norm] = str(c)
         return norm_to_col.get(desired_norm, "")
 
+    supervisao_col = (
+        "Supervisão"
+        if "Supervisão" in df.columns
+        else _find_col_by_normalized(list(df.columns), "Supervisao")
+    )
     area_col = "Área" if "Área" in df.columns else _find_col_by_normalized(list(df.columns), "Area")
     cargo_col = "Cargo" if "Cargo" in df.columns else _find_col_by_normalized(list(df.columns), "Cargo")
     motivo_col = "Motivo_da_Requisição" if "Motivo_da_Requisição" in df.columns else _find_col_by_normalized(list(df.columns), "Motivo_da_Requisicao")
@@ -237,7 +242,10 @@ def _build_kanban_column_html(
         resumo_raw = str(row.get(resumo_col, "")) if resumo_col else ""
         resumo = html.escape(resumo_raw[:120] + ("..." if len(resumo_raw) > 120 else ""))
         cargo = html.escape(str(row.get(cargo_col, "")) if cargo_col else "")
-        area = html.escape(str(row.get(area_col, "")) if area_col else "")
+        supervisao_raw = str(row.get(supervisao_col, "")) if supervisao_col else ""
+        area_raw = str(row.get(area_col, "")) if area_col else ""
+        local_raw = supervisao_raw.strip() if supervisao_raw and supervisao_raw.strip() else area_raw.strip()
+        area = html.escape(local_raw)
         motivo_raw = str(row.get(motivo_col, "")) if motivo_col else ""
         motivo = html.escape(motivo_raw[:120] + ("..." if len(motivo_raw) > 120 else ""))
         colaborador = html.escape(str(row.get(colaborador_col, "")) if colaborador_col else "")
