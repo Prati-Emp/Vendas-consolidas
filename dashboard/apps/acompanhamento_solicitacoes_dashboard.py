@@ -213,6 +213,77 @@ def _build_kanban_column_html(
             return ""
         return text
 
+    def _to_display_case(value: str) -> str:
+        """
+        Normaliza textos muito gritados (CAIXA ALTA / caixa baixa)
+        para um formato mais legível, preservando siglas comuns.
+        """
+        text = _clean_text(value)
+        if not text:
+            return ""
+
+        has_lower = any(ch.islower() for ch in text)
+        has_upper = any(ch.isupper() for ch in text)
+
+        # Se já vier em formato misto, preserva como está.
+        if has_lower and has_upper:
+            return text
+
+        acronyms = {
+            "rh": "RH",
+            "dho": "DHO",
+            "rc": "RC",
+            "mc": "MC",
+            "ti": "TI",
+            "ia": "IA",
+            "t&d": "T&D",
+            "cnpj": "CNPJ",
+            "bim": "BIM",
+        }
+        small_words = {"de", "da", "do", "das", "dos", "e", "em", "com", "para"}
+        roman = {"i", "ii", "iii", "iv", "v", "vi", "vii", "viii", "ix", "x"}
+
+        def repl(match: re.Match[str]) -> str:
+            token = match.group(0)
+            lower = token.lower()
+            if lower in acronyms:
+                return acronyms[lower]
+            if lower in roman:
+                return lower.upper()
+            return token.capitalize()
+
+        normalized = re.sub(r"[A-Za-zÀ-ÿ0-9&/().-]+", repl, text.lower())
+
+        for word in small_words:
+            normalized = re.sub(rf"\b{word.capitalize()}\b", word, normalized)
+
+        # Primeira palavra sempre começa com maiúscula
+        if normalized:
+            normalized = normalized[0].upper() + normalized[1:]
+
+        return normalized
+
+    def _get_motivo_color(motivo: str) -> str:
+        motivo_norm = unicodedata.normalize("NFKD", motivo.strip()).lower()
+        motivo_norm = "".join(c for c in motivo_norm if not unicodedata.combining(c))
+
+        if any(k in motivo_norm for k in ["demissao", "desligamento"]):
+            return "#EF4444"
+        if any(k in motivo_norm for k in ["promocao", "treinamento", "ferias"]):
+            return "#10B981"
+        if any(k in motivo_norm for k in ["movimentacao", "mudanca", "transferencia"]):
+            return "#3B82F6"
+        if any(k in motivo_norm for k in ["afastamento", "substituicao", "aumento de quadro"]):
+            return "#F59E0B"
+        return "#6366F1"
+
+    def _get_life_badge(life_days: int) -> tuple[str, str]:
+        if life_days <= 2:
+            return "#DCFCE7", "#166534"
+        if life_days <= 5:
+            return "#FEF3C7", "#92400E"
+        return "#FEE2E2", "#991B1B"
+
     supervisao_col = (
         "Supervisão"
         if "Supervisão" in df.columns
@@ -250,24 +321,24 @@ def _build_kanban_column_html(
 
     for _, row in df_status.iterrows():
         chave = html.escape(_clean_text(row.get(chave_col, "")) if chave_col else "")
-        resumo_raw = _clean_text(row.get(resumo_col, "")) if resumo_col else ""
+        resumo_raw = _to_display_case(row.get(resumo_col, "")) if resumo_col else ""
         resumo = html.escape(resumo_raw[:120] + ("..." if len(resumo_raw) > 120 else ""))
-        cargo_raw = _clean_text(row.get(cargo_col, "")) if cargo_col else ""
-        cargo = html.escape(f"Cargo: {cargo_raw}") if cargo_raw else ""
-        supervisao_raw = _clean_text(row.get(supervisao_col, "")) if supervisao_col else ""
-        area_raw = _clean_text(row.get(area_col, "")) if area_col else ""
+        cargo_raw = _to_display_case(row.get(cargo_col, "")) if cargo_col else ""
+        cargo = html.escape(cargo_raw) if cargo_raw else ""
+        supervisao_raw = _to_display_case(row.get(supervisao_col, "")) if supervisao_col else ""
+        area_raw = _to_display_case(row.get(area_col, "")) if area_col else ""
         if supervisao_raw and supervisao_raw.strip():
             local_raw = f"Supervisão: {supervisao_raw.strip()}"
         else:
             local_raw = area_raw.strip()
         area = html.escape(local_raw)
-        motivo_raw = _clean_text(row.get(motivo_col, "")) if motivo_col else ""
+        motivo_raw = _to_display_case(row.get(motivo_col, "")) if motivo_col else ""
         motivo_text = motivo_raw[:120] + ("..." if len(motivo_raw) > 120 else "")
-        motivo = html.escape(f"Motivo: {motivo_text}") if motivo_text else ""
-        colaborador_raw = _clean_text(row.get(colaborador_col, "")) if colaborador_col else ""
-        colaborador = html.escape(f"Colaborador: {colaborador_raw}") if colaborador_raw else ""
+        motivo = html.escape(motivo_text) if motivo_text else ""
+        colaborador_raw = _to_display_case(row.get(colaborador_col, "")) if colaborador_col else ""
+        colaborador = html.escape(colaborador_raw) if colaborador_raw else ""
 
-        responsavel_raw = _clean_text(row.get(responsavel_col, "")) if responsavel_col else ""
+        responsavel_raw = _to_display_case(row.get(responsavel_col, "")) if responsavel_col else ""
         responsavel = html.escape(responsavel_raw.strip())
         start_date_raw = row.get(start_date_col, None) if start_date_col else None
         start_dt = pd.to_datetime(start_date_raw, errors="coerce")
@@ -283,30 +354,42 @@ def _build_kanban_column_html(
             life_days = int((end_dt - start_dt.normalize()).days)
             if life_days < 0:
                 life_days = 0
-            life_text = f"{life_days} dias desde a criação"
+            life_text = f"{life_days} dias desde criação"
         else:
             life_text = ""
+            life_days = 0
 
         resp_line = f"Resp: {responsavel}" if responsavel else ""
+        motivo_color = _get_motivo_color(motivo_text)
+        tempo_bg, tempo_fg = _get_life_badge(life_days)
 
         resumo_html = f'<div class="kanban-card-resumo">{resumo}</div>' if resumo else ""
-        motivo_html = f'<div class="kanban-card-motivo">{motivo}</div>' if motivo else ""
-        colaborador_html = f'<div class="kanban-card-colaborador">{colaborador}</div>' if colaborador else ""
-        cargo_html = f'<div class="kanban-card-cargo">{cargo}</div>' if cargo else ""
-        area_html = f'<div class="kanban-card-area">{area}</div>' if area else ""
+        motivo_html = (
+            f'<div class="kanban-card-badge kanban-card-badge-motivo" style="background:{motivo_color};">{motivo}</div>'
+            if motivo else ""
+        )
+        tempo_html = (
+            f'<div class="kanban-card-badge kanban-card-badge-tempo" style="background:{tempo_bg}; color:{tempo_fg};">⏱ {life_text}</div>'
+            if life_text else ""
+        )
+        colaborador_html = f'<div class="kanban-card-colaborador">👤 {colaborador}</div>' if colaborador else ""
+        cargo_html = f'<div class="kanban-card-cargo">📌 {cargo}</div>' if cargo else ""
+        area_html = f'<div class="kanban-card-area">🏢 {area}</div>' if area else ""
         resp_html = f'<div class="kanban-card-resp">{resp_line}</div>' if resp_line else ""
 
         cards_html += f"""
-        <div class="kanban-card">
+        <div class="kanban-card" style="border-left: 4px solid {motivo_color};">
             <div class="kanban-card-chave">{chave}</div>
             {resumo_html}
-            {motivo_html}
+            <div class="kanban-card-meta">
+                {motivo_html}
+                {tempo_html}
+            </div>
             {colaborador_html}
             {cargo_html}
             {area_html}
             <div class="kanban-card-footer">
                 {resp_html}
-                <div class="kanban-card-life">{life_text}</div>
             </div>
         </div>
         """
@@ -470,30 +553,48 @@ def _render_kanban_board(df: pd.DataFrame, title: str, board_key: str = "") -> N
     .kanban-card-chave {{
         font-weight: 600;
         color: #1a73e8;
-        margin-bottom: 4px;
+        margin-bottom: 6px;
+        font-size: 0.85rem;
     }}
-    .kanban-card-resumo {{ color: #333; margin-bottom: 4px; word-wrap: break-word; }}
-    .kanban-card-area {{ font-size: 0.8rem; color: #666; margin-bottom: 2px; word-wrap: break-word; }}
+    .kanban-card-resumo {{
+        color: #1F2937;
+        margin-bottom: 8px;
+        word-wrap: break-word;
+        font-weight: 700;
+        line-height: 1.25;
+        font-size: 1rem;
+    }}
+    .kanban-card-meta {{
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-bottom: 10px;
+    }}
+    .kanban-card-badge {{
+        display: inline-flex;
+        align-items: center;
+        border-radius: 999px;
+        padding: 4px 8px;
+        font-size: 0.72rem;
+        font-weight: 600;
+        line-height: 1;
+    }}
+    .kanban-card-badge-motivo {{
+        color: #fff;
+    }}
+    .kanban-card-area {{ font-size: 0.8rem; color: #6B7280; margin-bottom: 4px; word-wrap: break-word; }}
     .kanban-card-motivo {{ font-size: 0.8rem; color: #666; word-wrap: break-word; }}
-    .kanban-card-colaborador {{ font-size: 0.8rem; color: #666; margin-bottom: 2px; word-wrap: break-word; }}
-    .kanban-card-cargo {{ font-size: 0.8rem; color: #666; margin-bottom: 2px; word-wrap: break-word; }}
+    .kanban-card-colaborador {{ font-size: 0.8rem; color: #6B7280; margin-bottom: 4px; word-wrap: break-word; }}
+    .kanban-card-cargo {{ font-size: 0.8rem; color: #6B7280; margin-bottom: 4px; word-wrap: break-word; }}
     .kanban-card-footer {{
         display: flex;
         flex-direction: column;
         gap: 6px;
         margin-top: 10px;
     }}
-    .kanban-card-life {{
-        background: rgba(0,0,0,0.85);
-        color: #fff;
-        font-size: 0.7rem;
-        padding: 6px 8px;
-        border-radius: 6px;
-        white-space: nowrap;
-    }}
     .kanban-card-resp {{
         font-size: 0.75rem;
-        color: #666;
+        color: #6B7280;
     }}
     </style>
     </head>
