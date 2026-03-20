@@ -364,7 +364,6 @@ def _render_kanban_board(df: pd.DataFrame, title: str, board_key: str = "") -> N
         font-weight: 600;
         color: #1a73e8;
         margin-bottom: 4px;
-        text-align: center;
     }}
     .kanban-card-resumo {{ color: #333; margin-bottom: 4px; word-wrap: break-word; }}
     .kanban-card-tipo {{ font-size: 0.8rem; color: #666; }}
