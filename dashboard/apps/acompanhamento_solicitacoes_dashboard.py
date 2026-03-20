@@ -103,6 +103,28 @@ def _filter_df_by_board(df: pd.DataFrame, board_key: str) -> pd.DataFrame:
 
     df_col = df[col].astype(str).str.strip()
     mask = df_col.isin(values)
+
+    # Ajuste manual solicitado: "Triagem" deve sair de Movimentações (MC)
+    # e passar para Requisições de Vagas (RC).
+    # Como o dashboard filtra por "Motivo_da_Requisição", fazemos uma exceção por STATUS.
+    triagem_norm_target = "triagem"
+    status_col = _get_status_column(df)
+    if status_col and status_col in df.columns:
+        df_status_norm = (
+            df[status_col]
+            .astype(str)
+            .str.strip()
+            .apply(lambda x: unicodedata.normalize("NFKD", x))
+            .apply(lambda x: "".join(c for c in x if not unicodedata.combining(c)))
+            .str.lower()
+        )
+        triagem_mask = df_status_norm == triagem_norm_target
+
+        if board_key == "movimentacoes_mc":
+            mask = mask & ~triagem_mask
+        elif board_key == "requisicao_vaga_rc":
+            mask = mask | triagem_mask
+
     if not mask.any() and config.get("fallback_contains"):
         for term in config["fallback_contains"]:
             mask = mask | df_col.str.lower().str.contains(term, na=False, regex=False)
