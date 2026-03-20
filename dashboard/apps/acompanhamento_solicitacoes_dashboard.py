@@ -222,6 +222,15 @@ def _build_kanban_column_html(
         )
     )
 
+    # Para calcular tempo de vida:
+    # - se houver "Data_de_finalização" (ou variações), usamos ela como data final
+    # - caso contrário, usamos a data de hoje
+    finalizacao_col = (
+        _find_col_by_normalized(list(df.columns), "Data_de_finalização")
+        or _find_col_by_normalized(list(df.columns), "Data_de_finalizacao")
+        or _find_col_by_normalized(list(df.columns), "Data_de_fechamento")
+    )
+
     for _, row in df_status.iterrows():
         chave = html.escape(str(row.get(chave_col, "")) if chave_col else "")
         resumo_raw = str(row.get(resumo_col, "")) if resumo_col else ""
@@ -233,17 +242,25 @@ def _build_kanban_column_html(
 
         responsavel_raw = str(row.get(responsavel_col, "")) if responsavel_col else ""
         responsavel = html.escape(responsavel_raw.strip())
-        responsavel_norm = responsavel_raw.strip().upper()
-        resp_bg = "#2ecc71" if responsavel_norm == "SM" else "#f39c12"
-
         start_date_raw = row.get(start_date_col, None) if start_date_col else None
         start_dt = pd.to_datetime(start_date_raw, errors="coerce")
         if pd.notna(start_dt):
-            today = pd.Timestamp.today().normalize()
-            life_days = int((today - start_dt.normalize()).days)
+            end_dt_raw = row.get(finalizacao_col, None) if finalizacao_col else None
+            end_dt = pd.to_datetime(end_dt_raw, errors="coerce")
+
+            if pd.notna(end_dt):
+                end_dt = end_dt.normalize()
+            else:
+                end_dt = pd.Timestamp.today().normalize()
+
+            life_days = int((end_dt - start_dt.normalize()).days)
+            if life_days < 0:
+                life_days = 0
             life_text = f"{life_days} dias desde a criação"
         else:
             life_text = ""
+
+        resp_line = f"Resp. {responsavel}" if responsavel else ""
 
         cards_html += f"""
         <div class="kanban-card">
@@ -254,7 +271,7 @@ def _build_kanban_column_html(
             <div class="kanban-card-area">{area}</div>
             <div class="kanban-card-footer">
                 <div class="kanban-card-life">{life_text}</div>
-                <div class="kanban-card-resp-badge" style="background: {resp_bg};">{responsavel}</div>
+                <div class="kanban-card-resp">{resp_line}</div>
             </div>
         </div>
         """
@@ -426,8 +443,8 @@ def _render_kanban_board(df: pd.DataFrame, title: str, board_key: str = "") -> N
     .kanban-card-colaborador {{ font-size: 0.8rem; color: #666; margin-bottom: 2px; word-wrap: break-word; }}
     .kanban-card-footer {{
         display: flex;
-        justify-content: space-between;
-        align-items: center;
+        flex-direction: column;
+        gap: 6px;
         margin-top: 10px;
     }}
     .kanban-card-life {{
@@ -438,16 +455,9 @@ def _render_kanban_board(df: pd.DataFrame, title: str, board_key: str = "") -> N
         border-radius: 6px;
         white-space: nowrap;
     }}
-    .kanban-card-resp-badge {{
-        width: 30px;
-        height: 30px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 700;
-        color: #000;
+    .kanban-card-resp {{
         font-size: 0.75rem;
+        color: #666;
     }}
     </style>
     </head>
