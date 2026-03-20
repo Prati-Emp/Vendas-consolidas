@@ -582,10 +582,10 @@ def _render_kanban_board(df: pd.DataFrame, title: str, board_key: str = "") -> N
     .kanban-card-badge-motivo {{
         color: #fff;
     }}
-    .kanban-card-area {{ font-size: 0.8rem; color: #6B7280; margin-bottom: 4px; word-wrap: break-word; }}
-    .kanban-card-motivo {{ font-size: 0.8rem; color: #666; word-wrap: break-word; }}
-    .kanban-card-colaborador {{ font-size: 0.8rem; color: #6B7280; margin-bottom: 4px; word-wrap: break-word; }}
-    .kanban-card-cargo {{ font-size: 0.8rem; color: #6B7280; margin-bottom: 4px; word-wrap: break-word; }}
+    .kanban-card-area {{ font-size: 0.8rem; color: #4B5563; margin-bottom: 4px; word-wrap: break-word; }}
+    .kanban-card-motivo {{ font-size: 0.8rem; color: #374151; word-wrap: break-word; }}
+    .kanban-card-colaborador {{ font-size: 0.8rem; color: #374151; margin-bottom: 4px; word-wrap: break-word; }}
+    .kanban-card-cargo {{ font-size: 0.8rem; color: #374151; margin-bottom: 4px; word-wrap: break-word; }}
     .kanban-card-footer {{
         display: flex;
         flex-direction: column;
@@ -594,7 +594,7 @@ def _render_kanban_board(df: pd.DataFrame, title: str, board_key: str = "") -> N
     }}
     .kanban-card-resp {{
         font-size: 0.75rem;
-        color: #6B7280;
+        color: #374151;
     }}
     </style>
     </head>
