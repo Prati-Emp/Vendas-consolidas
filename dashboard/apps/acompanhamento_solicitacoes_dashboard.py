@@ -204,10 +204,17 @@ def _build_kanban_column_html(
 
     area_col = "Área" if "Área" in df.columns else _find_col_by_normalized(list(df.columns), "Area")
     motivo_col = "Motivo_da_Requisição" if "Motivo_da_Requisição" in df.columns else _find_col_by_normalized(list(df.columns), "Motivo_da_Requisicao")
+    start_date_col = "Start_date" if "Start_date" in df.columns else _find_col_by_normalized(list(df.columns), "Start_date")
     colaborador_col = (
         "Nome_do_colaborador"
         if "Nome_do_colaborador" in df.columns
         else _find_col_by_normalized(list(df.columns), "Nome_do_colaborador")
+    )
+
+    responsavel_col = (
+        _find_col_by_normalized(list(df.columns), "Responsável")
+        or _find_col_by_normalized(list(df.columns), "Responsavel")
+        or ("Prioridade" if "Prioridade" in df.columns else "")
     )
 
     for _, row in df_status.iterrows():
@@ -219,6 +226,20 @@ def _build_kanban_column_html(
         motivo = html.escape(motivo_raw[:120] + ("..." if len(motivo_raw) > 120 else ""))
         colaborador = html.escape(str(row.get(colaborador_col, "")) if colaborador_col else "")
 
+        responsavel_raw = str(row.get(responsavel_col, "")) if responsavel_col else ""
+        responsavel = html.escape(responsavel_raw.strip())
+        responsavel_norm = responsavel_raw.strip().upper()
+        resp_bg = "#2ecc71" if responsavel_norm == "SM" else "#f39c12"
+
+        start_date_raw = row.get(start_date_col, None) if start_date_col else None
+        start_dt = pd.to_datetime(start_date_raw, errors="coerce")
+        if pd.notna(start_dt):
+            today = pd.Timestamp.today().normalize()
+            life_days = int((today - start_dt.normalize()).days)
+            life_text = f"{life_days} dias"
+        else:
+            life_text = ""
+
         cards_html += f"""
         <div class="kanban-card">
             <div class="kanban-card-chave">{chave}</div>
@@ -226,6 +247,10 @@ def _build_kanban_column_html(
             <div class="kanban-card-motivo">{motivo}</div>
             <div class="kanban-card-colaborador">{colaborador}</div>
             <div class="kanban-card-area">{area}</div>
+            <div class="kanban-card-footer">
+                <div class="kanban-card-life">{life_text}</div>
+                <div class="kanban-card-resp-badge" style="background: {resp_bg};">{responsavel}</div>
+            </div>
         </div>
         """
     return cards_html if cards_html else '<div style="color: #888; font-style: italic; padding: 8px;">Nenhum item</div>'
@@ -394,6 +419,31 @@ def _render_kanban_board(df: pd.DataFrame, title: str, board_key: str = "") -> N
     .kanban-card-area {{ font-size: 0.8rem; color: #666; margin-bottom: 2px; word-wrap: break-word; }}
     .kanban-card-motivo {{ font-size: 0.8rem; color: #666; word-wrap: break-word; }}
     .kanban-card-colaborador {{ font-size: 0.8rem; color: #666; margin-bottom: 2px; word-wrap: break-word; }}
+    .kanban-card-footer {{
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 10px;
+    }}
+    .kanban-card-life {{
+        background: rgba(0,0,0,0.85);
+        color: #fff;
+        font-size: 0.7rem;
+        padding: 6px 8px;
+        border-radius: 6px;
+        white-space: nowrap;
+    }}
+    .kanban-card-resp-badge {{
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        color: #000;
+        font-size: 0.75rem;
+    }}
     </style>
     </head>
     <body>
