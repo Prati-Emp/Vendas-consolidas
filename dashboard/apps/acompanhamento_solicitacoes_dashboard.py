@@ -73,6 +73,24 @@ STATUS_DISPLAY_NAMES: Dict[str, Dict[str, str]] = {
         "Finalizado": "FINALIZADO",
         "Rejeitado": "REJEITADO",
     },
+    "requisicao_vaga_rc": {
+        "Backlog": "SOLICITAÇÕES DE VAGA",
+        "Aprovação Diretoria": "DIRETORIA",
+        "Aprovação Presidência": "PRESIDÊNCIA",
+        "Triagem": "TRIAGEM",
+        "Prospecção": "PROSPECÇÃO",
+        "Entrevista RH": "ENTREVISTA RH",
+        "Provas": "PROVAS",
+        "Compliance": "COMPLIANCE",
+        "Entrevista com Gestor": "ENTREVISTA COM GESTOR",
+        "Aguardando Gestor": "AGUARDANDO GESTOR",
+        "Carta Proposta": "CARTA PROPOSTA",
+        "Documentos e Cadastro": "DOCUMENTOS",
+        "Exames Admissão": "EXAMES",
+        "Aguardando Integração": "AGUARDANDO INTEGRAÇÃO",
+        "Finalizado": "FINALIZADO",
+        "Rejeitado": "REJEITADO",
+    },
 }
 
 
@@ -245,6 +263,33 @@ def _render_kanban_board(df: pd.DataFrame, title: str, board_key: str = "") -> N
             return (desired_norm_index.get(n, 999), n)
 
         statuses = sorted(statuses, key=_sort_status_mov)
+    # Ordem fixa para Requisições de Vagas (de cima pra baixo) - sequência da imagem
+    elif board_key == "requisicao_vaga_rc":
+        desired_status_order = [
+            "Backlog",
+            "Aprovação Diretoria",
+            "Aprovação Presidência",
+            "Triagem",
+            "Prospecção",
+            "Entrevista RH",
+            "Provas",
+            "Compliance",
+            "Entrevista com Gestor",
+            "Aguardando Gestor",
+            "Carta Proposta",
+            "Documentos e Cadastro",
+            "Exames Admissão",
+            "Aguardando Integração",
+            "Finalizado",
+            "Rejeitado",
+        ]
+        desired_norm_index = { _normalize_for_compare(s): i for i, s in enumerate(desired_status_order) }
+
+        def _sort_status_rc(s: str) -> tuple[int, str]:
+            n = _normalize_for_compare(s)
+            return (desired_norm_index.get(n, 999), n)
+
+        statuses = sorted(statuses, key=_sort_status_rc)
     else:
         def _sort_status_default(s: str) -> tuple[int, str]:
             s_str = str(s).strip()
