@@ -212,9 +212,14 @@ def _build_kanban_column_html(
     )
 
     responsavel_col = (
-        _find_col_by_normalized(list(df.columns), "Responsável")
-        or _find_col_by_normalized(list(df.columns), "Responsavel")
-        or ("Prioridade" if "Prioridade" in df.columns else "")
+        "Responsável"
+        if "Responsável" in df.columns
+        else (
+            "Responsavel"
+            if "Responsavel" in df.columns
+            else _find_col_by_normalized(list(df.columns), "Responsável")
+            or _find_col_by_normalized(list(df.columns), "Responsavel")
+        )
     )
 
     for _, row in df_status.iterrows():
@@ -236,7 +241,7 @@ def _build_kanban_column_html(
         if pd.notna(start_dt):
             today = pd.Timestamp.today().normalize()
             life_days = int((today - start_dt.normalize()).days)
-            life_text = f"{life_days} dias"
+            life_text = f"{life_days} dias desde a criação"
         else:
             life_text = ""
 
