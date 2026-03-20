@@ -315,7 +315,6 @@ def _render_kanban_board(df: pd.DataFrame, title: str, board_key: str = "") -> N
         columns_html += f"""
         <div class="kanban-column">
             <div class="kanban-column-title">{html.escape(outer_label)}</div>
-            <div class="kanban-internal-status">{inner_status_label} ({count})</div>
             <hr style="border: none; border-top: 1px solid #dee2e6; margin: 0 0 12px 0;">
             {cards}
         </div>
@@ -352,16 +351,6 @@ def _render_kanban_board(df: pd.DataFrame, title: str, board_key: str = "") -> N
         margin-right: 12px;
     }}
     .kanban-column-title {{ font-weight: 600; margin-bottom: 8px; font-size: 0.95rem; }}
-    .kanban-internal-status {{
-        font-weight: 600;
-        font-size: 0.75rem;
-        color: #1a73e8;
-        background: rgba(26,115,232,0.06);
-        border: 1px solid rgba(26,115,232,0.25);
-        border-radius: 6px;
-        padding: 4px 8px;
-        margin: 0 0 12px 0;
-    }}
     .kanban-card {{
         background: #fff;
         border: 1px solid #e0e0e0;
@@ -371,7 +360,12 @@ def _render_kanban_board(df: pd.DataFrame, title: str, board_key: str = "") -> N
         box-shadow: 0 1px 3px rgba(0,0,0,0.08);
         font-size: 0.9rem;
     }}
-    .kanban-card-chave {{ font-weight: 600; color: #1a73e8; margin-bottom: 4px; }}
+    .kanban-card-chave {{
+        font-weight: 600;
+        color: #1a73e8;
+        margin-bottom: 4px;
+        text-align: center;
+    }}
     .kanban-card-resumo {{ color: #333; margin-bottom: 4px; word-wrap: break-word; }}
     .kanban-card-tipo {{ font-size: 0.8rem; color: #666; }}
     </style>
