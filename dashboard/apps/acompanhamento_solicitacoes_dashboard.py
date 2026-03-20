@@ -263,9 +263,9 @@ def _build_kanban_column_html(
         area = html.escape(local_raw)
         motivo_raw = _clean_text(row.get(motivo_col, "")) if motivo_col else ""
         motivo_text = motivo_raw[:120] + ("..." if len(motivo_raw) > 120 else "")
-        motivo = html.escape(f"Motivo solic: {motivo_text}") if motivo_text else ""
+        motivo = html.escape(f"Motivo: {motivo_text}") if motivo_text else ""
         colaborador_raw = _clean_text(row.get(colaborador_col, "")) if colaborador_col else ""
-        colaborador = html.escape(f"Nome colab: {colaborador_raw}") if colaborador_raw else ""
+        colaborador = html.escape(f"Colaborador: {colaborador_raw}") if colaborador_raw else ""
 
         responsavel_raw = _clean_text(row.get(responsavel_col, "")) if responsavel_col else ""
         responsavel = html.escape(responsavel_raw.strip())
