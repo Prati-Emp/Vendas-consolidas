@@ -63,6 +63,16 @@ STATUS_DISPLAY_NAMES: Dict[str, Dict[str, str]] = {
         "Finalizado": "FINALIZADO",
         "Rejeitado": "REJEITADO",
     },
+    "movimentacoes_mc": {
+        "Backlog": "SOLICITAÇÕES",
+        "Aprovação Diretoria": "DIRETORIA",
+        "Aprovação Presidência": "PRESIDÊNCIA",
+        "Aprovado": "APROVADO",
+        "Exames Gerais": "EXAMES",
+        "Documentação": "DOCUMENTAÇÃO E CADASTRO",
+        "Finalizado": "FINALIZADO",
+        "Rejeitado": "REJEITADO",
+    },
 }
 
 
@@ -194,6 +204,25 @@ def _render_kanban_board(df: pd.DataFrame, title: str, board_key: str = "") -> N
             return (desired_norm_index.get(n, 999), n)
 
         statuses = sorted(statuses, key=_sort_status_rotinas)
+    # Ordem fixa para Movimentações (de cima pra baixo) - sequência da imagem
+    elif board_key == "movimentacoes_mc":
+        desired_status_order = [
+            "Backlog",
+            "Aprovação Diretoria",
+            "Aprovação Presidência",
+            "Aprovado",
+            "Exames Gerais",
+            "Documentação",
+            "Finalizado",
+            "Rejeitado",
+        ]
+        desired_norm_index = { _normalize_for_compare(s): i for i, s in enumerate(desired_status_order) }
+
+        def _sort_status_mov(s: str) -> tuple[int, str]:
+            n = _normalize_for_compare(s)
+            return (desired_norm_index.get(n, 999), n)
+
+        statuses = sorted(statuses, key=_sort_status_mov)
     else:
         def _sort_status_default(s: str) -> tuple[int, str]:
             s_str = str(s).strip()
