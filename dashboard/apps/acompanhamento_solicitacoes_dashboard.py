@@ -255,7 +255,10 @@ def _build_kanban_column_html(
         cargo = html.escape(_clean_text(row.get(cargo_col, "")) if cargo_col else "")
         supervisao_raw = _clean_text(row.get(supervisao_col, "")) if supervisao_col else ""
         area_raw = _clean_text(row.get(area_col, "")) if area_col else ""
-        local_raw = supervisao_raw.strip() if supervisao_raw and supervisao_raw.strip() else area_raw.strip()
+        if supervisao_raw and supervisao_raw.strip():
+            local_raw = f"Sup. {supervisao_raw.strip()}"
+        else:
+            local_raw = area_raw.strip()
         area = html.escape(local_raw)
         motivo_raw = _clean_text(row.get(motivo_col, "")) if motivo_col else ""
         motivo = html.escape(motivo_raw[:120] + ("..." if len(motivo_raw) > 120 else ""))
