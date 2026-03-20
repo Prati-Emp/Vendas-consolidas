@@ -202,6 +202,17 @@ def _build_kanban_column_html(
             norm_to_col[c_norm] = str(c)
         return norm_to_col.get(desired_norm, "")
 
+    def _clean_text(value: Any) -> str:
+        """Normaliza valores para exibição sem mostrar None/nan."""
+        if value is None:
+            return ""
+        text = str(value).strip()
+        if not text:
+            return ""
+        if text.lower() in {"none", "nan", "nat", "<na>"}:
+            return ""
+        return text
+
     supervisao_col = (
         "Supervisão"
         if "Supervisão" in df.columns
@@ -238,19 +249,19 @@ def _build_kanban_column_html(
     )
 
     for _, row in df_status.iterrows():
-        chave = html.escape(str(row.get(chave_col, "")) if chave_col else "")
-        resumo_raw = str(row.get(resumo_col, "")) if resumo_col else ""
+        chave = html.escape(_clean_text(row.get(chave_col, "")) if chave_col else "")
+        resumo_raw = _clean_text(row.get(resumo_col, "")) if resumo_col else ""
         resumo = html.escape(resumo_raw[:120] + ("..." if len(resumo_raw) > 120 else ""))
-        cargo = html.escape(str(row.get(cargo_col, "")) if cargo_col else "")
-        supervisao_raw = str(row.get(supervisao_col, "")) if supervisao_col else ""
-        area_raw = str(row.get(area_col, "")) if area_col else ""
+        cargo = html.escape(_clean_text(row.get(cargo_col, "")) if cargo_col else "")
+        supervisao_raw = _clean_text(row.get(supervisao_col, "")) if supervisao_col else ""
+        area_raw = _clean_text(row.get(area_col, "")) if area_col else ""
         local_raw = supervisao_raw.strip() if supervisao_raw and supervisao_raw.strip() else area_raw.strip()
         area = html.escape(local_raw)
-        motivo_raw = str(row.get(motivo_col, "")) if motivo_col else ""
+        motivo_raw = _clean_text(row.get(motivo_col, "")) if motivo_col else ""
         motivo = html.escape(motivo_raw[:120] + ("..." if len(motivo_raw) > 120 else ""))
-        colaborador = html.escape(str(row.get(colaborador_col, "")) if colaborador_col else "")
+        colaborador = html.escape(_clean_text(row.get(colaborador_col, "")) if colaborador_col else "")
 
-        responsavel_raw = str(row.get(responsavel_col, "")) if responsavel_col else ""
+        responsavel_raw = _clean_text(row.get(responsavel_col, "")) if responsavel_col else ""
         responsavel = html.escape(responsavel_raw.strip())
         start_date_raw = row.get(start_date_col, None) if start_date_col else None
         start_dt = pd.to_datetime(start_date_raw, errors="coerce")
@@ -272,17 +283,24 @@ def _build_kanban_column_html(
 
         resp_line = f"Resp. {responsavel}" if responsavel else ""
 
+        resumo_html = f'<div class="kanban-card-resumo">{resumo}</div>' if resumo else ""
+        motivo_html = f'<div class="kanban-card-motivo">{motivo}</div>' if motivo else ""
+        colaborador_html = f'<div class="kanban-card-colaborador">{colaborador}</div>' if colaborador else ""
+        cargo_html = f'<div class="kanban-card-cargo">{cargo}</div>' if cargo else ""
+        area_html = f'<div class="kanban-card-area">{area}</div>' if area else ""
+        resp_html = f'<div class="kanban-card-resp">{resp_line}</div>' if resp_line else ""
+
         cards_html += f"""
         <div class="kanban-card">
             <div class="kanban-card-chave">{chave}</div>
-            <div class="kanban-card-resumo">{resumo}</div>
-            <div class="kanban-card-motivo">{motivo}</div>
-            <div class="kanban-card-colaborador">{colaborador}</div>
-            <div class="kanban-card-cargo">{cargo}</div>
-            <div class="kanban-card-area">{area}</div>
+            {resumo_html}
+            {motivo_html}
+            {colaborador_html}
+            {cargo_html}
+            {area_html}
             <div class="kanban-card-footer">
                 <div class="kanban-card-life">{life_text}</div>
-                <div class="kanban-card-resp">{resp_line}</div>
+                {resp_html}
             </div>
         </div>
         """
