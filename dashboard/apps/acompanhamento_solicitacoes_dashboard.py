@@ -212,6 +212,8 @@ def _build_kanban_column_html(
 
     for _, row in df_status.iterrows():
         chave = html.escape(str(row.get(chave_col, "")) if chave_col else "")
+        resumo_raw = str(row.get(resumo_col, "")) if resumo_col else ""
+        resumo = html.escape(resumo_raw[:120] + ("..." if len(resumo_raw) > 120 else ""))
         area = html.escape(str(row.get(area_col, "")) if area_col else "")
         motivo_raw = str(row.get(motivo_col, "")) if motivo_col else ""
         motivo = html.escape(motivo_raw[:120] + ("..." if len(motivo_raw) > 120 else ""))
@@ -220,6 +222,7 @@ def _build_kanban_column_html(
         cards_html += f"""
         <div class="kanban-card">
             <div class="kanban-card-chave">{chave}</div>
+            <div class="kanban-card-resumo">{resumo}</div>
             <div class="kanban-card-motivo">{motivo}</div>
             <div class="kanban-card-colaborador">{colaborador}</div>
             <div class="kanban-card-area">{area}</div>
