@@ -203,6 +203,7 @@ def _build_kanban_column_html(
         return norm_to_col.get(desired_norm, "")
 
     area_col = "Área" if "Área" in df.columns else _find_col_by_normalized(list(df.columns), "Area")
+    cargo_col = "Cargo" if "Cargo" in df.columns else _find_col_by_normalized(list(df.columns), "Cargo")
     motivo_col = "Motivo_da_Requisição" if "Motivo_da_Requisição" in df.columns else _find_col_by_normalized(list(df.columns), "Motivo_da_Requisicao")
     start_date_col = "Start_date" if "Start_date" in df.columns else _find_col_by_normalized(list(df.columns), "Start_date")
     colaborador_col = (
@@ -235,6 +236,7 @@ def _build_kanban_column_html(
         chave = html.escape(str(row.get(chave_col, "")) if chave_col else "")
         resumo_raw = str(row.get(resumo_col, "")) if resumo_col else ""
         resumo = html.escape(resumo_raw[:120] + ("..." if len(resumo_raw) > 120 else ""))
+        cargo = html.escape(str(row.get(cargo_col, "")) if cargo_col else "")
         area = html.escape(str(row.get(area_col, "")) if area_col else "")
         motivo_raw = str(row.get(motivo_col, "")) if motivo_col else ""
         motivo = html.escape(motivo_raw[:120] + ("..." if len(motivo_raw) > 120 else ""))
@@ -268,6 +270,7 @@ def _build_kanban_column_html(
             <div class="kanban-card-resumo">{resumo}</div>
             <div class="kanban-card-motivo">{motivo}</div>
             <div class="kanban-card-colaborador">{colaborador}</div>
+            <div class="kanban-card-cargo">{cargo}</div>
             <div class="kanban-card-area">{area}</div>
             <div class="kanban-card-footer">
                 <div class="kanban-card-life">{life_text}</div>
@@ -441,6 +444,7 @@ def _render_kanban_board(df: pd.DataFrame, title: str, board_key: str = "") -> N
     .kanban-card-area {{ font-size: 0.8rem; color: #666; margin-bottom: 2px; word-wrap: break-word; }}
     .kanban-card-motivo {{ font-size: 0.8rem; color: #666; word-wrap: break-word; }}
     .kanban-card-colaborador {{ font-size: 0.8rem; color: #666; margin-bottom: 2px; word-wrap: break-word; }}
+    .kanban-card-cargo {{ font-size: 0.8rem; color: #666; margin-bottom: 2px; word-wrap: break-word; }}
     .kanban-card-footer {{
         display: flex;
         flex-direction: column;
