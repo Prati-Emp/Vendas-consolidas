@@ -252,17 +252,19 @@ def _build_kanban_column_html(
         chave = html.escape(_clean_text(row.get(chave_col, "")) if chave_col else "")
         resumo_raw = _clean_text(row.get(resumo_col, "")) if resumo_col else ""
         resumo = html.escape(resumo_raw[:120] + ("..." if len(resumo_raw) > 120 else ""))
-        cargo = html.escape(_clean_text(row.get(cargo_col, "")) if cargo_col else "")
+        cargo_raw = _clean_text(row.get(cargo_col, "")) if cargo_col else ""
+        cargo = html.escape(f"Cargo: {cargo_raw}") if cargo_raw else ""
         supervisao_raw = _clean_text(row.get(supervisao_col, "")) if supervisao_col else ""
         area_raw = _clean_text(row.get(area_col, "")) if area_col else ""
         if supervisao_raw and supervisao_raw.strip():
-            local_raw = f"Sup. {supervisao_raw.strip()}"
+            local_raw = f"Supervisão: {supervisao_raw.strip()}"
         else:
             local_raw = area_raw.strip()
         area = html.escape(local_raw)
         motivo_raw = _clean_text(row.get(motivo_col, "")) if motivo_col else ""
         motivo = html.escape(motivo_raw[:120] + ("..." if len(motivo_raw) > 120 else ""))
-        colaborador = html.escape(_clean_text(row.get(colaborador_col, "")) if colaborador_col else "")
+        colaborador_raw = _clean_text(row.get(colaborador_col, "")) if colaborador_col else ""
+        colaborador = html.escape(f"Nome colab: {colaborador_raw}") if colaborador_raw else ""
 
         responsavel_raw = _clean_text(row.get(responsavel_col, "")) if responsavel_col else ""
         responsavel = html.escape(responsavel_raw.strip())
