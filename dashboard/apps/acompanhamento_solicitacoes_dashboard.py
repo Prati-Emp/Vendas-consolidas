@@ -6,6 +6,8 @@ Exibe 4 quadros: Rotinas Trabalhistas, Movimentações (MC), Requisição de Vag
 from __future__ import annotations
 
 import html
+import re
+import unicodedata
 from typing import Any, Dict, List, Optional
 
 import pandas as pd
@@ -46,34 +48,20 @@ BOARD_FILTERS: Dict[str, Dict[str, Any]] = {
 # Ajuste conforme os nomes desejados para cada quadro
 STATUS_DISPLAY_NAMES: Dict[str, Dict[str, str]] = {
     "treinamentos_td": {
-        "Backlog": "Backlog",
-        "SOLICITAÇÕES": "Solicitações",
-        "DIRETORIA": "Diretoria",
-        "PRESIDÊNCIA": "Presidência",
-        "APROVADO": "Aprovado",
-        "FINALIZADO": "Finalizado",
-        "REJEITADO": "Rejeitado",
-        "Aguardando Integração": "Aguardando Integração",
-        "Aprovação Diretoria": "Aprovação Diretoria",
-        "Aprovação Presidência": "Aprovação Presidência",
-        "Compliance": "Compliance",
-        "Documentos e Cadastro": "Documentos e Cadastro",
-        "Entrevista com Gestor": "Entrevista com Gestor",
-        "Exames Admissão": "Exames Admissão",
-        "Prospecção": "Prospecção",
-        "Triagem": "Triagem",
-        "provas": "Provas",
+        "Backlog": "SOLICITAÇÕES",
+        "Aprovação Diretoria": "DIRETORIA",
+        "Aprovação Presidência": "PRESIDÊNCIA",
+        "Aprovado": "APROVADO",
+        "Finalizado": "FINALIZADO",
+        "Rejeitado": "REJEITADO",
     },
     "rotinas_trabalhistas": {
-        "Backlog": "Backlog",
-        "SOLICITAÇÕES": "Solicitações",
-        "DIRETORIA": "Diretoria",
-        "PRESIDÊNCIA": "Presidência",
-        "APROVADO": "Aprovado",
-        "FINALIZADO": "Finalizado",
-        "REJEITADO": "Rejeitado",
-        "Aprovação Diretoria": "Aprovação Diretoria",
-        "Aprovação Presidência": "Aprovação Presidência",
+        "Backlog": "SOLICITAÇÕES",
+        "Aprovação Diretoria": "DIRETORIA",
+        "Aprovação Presidência": "PRESIDÊNCIA",
+        "Aprovado": "APROVADO",
+        "Finalizado": "FINALIZADO",
+        "Rejeitado": "REJEITADO",
     },
 }
 
@@ -114,8 +102,25 @@ def _filter_df_by_board(df: pd.DataFrame, board_key: str) -> pd.DataFrame:
 def _get_status_display_name(board_key: str, status_val: str) -> str:
     """Retorna o nome de exibição do status, ou o original se não houver mapeamento."""
     mapping = STATUS_DISPLAY_NAMES.get(board_key, {})
-    s = str(status_val).strip()
-    return mapping.get(status_val, mapping.get(s, s))
+    s_raw = str(status_val).strip()
+
+    def _normalize_for_mapping(x: str) -> str:
+        # Normaliza para comparar mesmo com variação de acentos/case do Jira.
+        x_norm = unicodedata.normalize("NFKD", str(x).strip())
+        x_norm = "".join(c for c in x_norm if not unicodedata.combining(c))
+        x_norm = x_norm.lower()
+        x_norm = re.sub(r"\s+", " ", x_norm)
+        return x_norm
+
+    if s_raw in mapping:
+        return mapping[s_raw]
+
+    s_norm = _normalize_for_mapping(s_raw)
+    for k, v in mapping.items():
+        if _normalize_for_mapping(k) == s_norm:
+            return v
+
+    return s_raw
 
 
 def _get_status_column(df: pd.DataFrame) -> str:
@@ -165,11 +170,36 @@ def _render_kanban_board(df: pd.DataFrame, title: str, board_key: str = "") -> N
 
     statuses = [s for s in df[status_col].dropna().unique().tolist() if str(s).strip()]
 
-    def _sort_status(s):
-        s_str = str(s).strip()
-        return (0, s_str) if s_str.lower() == "backlog" else (1, s_str)
+    def _normalize_for_compare(x: str) -> str:
+        x_norm = unicodedata.normalize("NFKD", str(x).strip())
+        x_norm = "".join(c for c in x_norm if not unicodedata.combining(c))
+        x_norm = x_norm.lower()
+        x_norm = re.sub(r"\s+", " ", x_norm)
+        return x_norm
 
-    statuses = sorted(statuses, key=_sort_status)
+    # Ordem fixa para Rotinas Trabalhistas (de cima pra baixo)
+    if board_key == "rotinas_trabalhistas":
+        desired_status_order = [
+            "Backlog",
+            "Aprovação Diretoria",
+            "Aprovação Presidência",
+            "Aprovado",
+            "Finalizado",
+            "Rejeitado",
+        ]
+        desired_norm_index = { _normalize_for_compare(s): i for i, s in enumerate(desired_status_order) }
+
+        def _sort_status_rotinas(s: str) -> tuple[int, str]:
+            n = _normalize_for_compare(s)
+            return (desired_norm_index.get(n, 999), n)
+
+        statuses = sorted(statuses, key=_sort_status_rotinas)
+    else:
+        def _sort_status_default(s: str) -> tuple[int, str]:
+            s_str = str(s).strip()
+            return (0, s_str) if _normalize_for_compare(s_str) == "backlog" else (1, _normalize_for_compare(s_str))
+
+        statuses = sorted(statuses, key=_sort_status_default)
 
     if not statuses:
         st.info("Nenhum status encontrado.")
@@ -184,10 +214,12 @@ def _render_kanban_board(df: pd.DataFrame, title: str, board_key: str = "") -> N
     for status_val in statuses:
         count = len(df[df[status_col] == status_val])
         cards = _build_kanban_column_html(df, status_col, status_val, chave_col, resumo_col, tipo_col)
-        display_name = _get_status_display_name(board_key, status_val)
+        outer_label = _get_status_display_name(board_key, status_val)
+        inner_status_label = html.escape(str(status_val).strip().upper())
         columns_html += f"""
         <div class="kanban-column">
-            <div class="kanban-column-title">{html.escape(display_name)} ({count})</div>
+            <div class="kanban-column-title">{html.escape(outer_label)}</div>
+            <div class="kanban-internal-status">{inner_status_label} ({count})</div>
             <hr style="border: none; border-top: 1px solid #dee2e6; margin: 0 0 12px 0;">
             {cards}
         </div>
@@ -224,6 +256,16 @@ def _render_kanban_board(df: pd.DataFrame, title: str, board_key: str = "") -> N
         margin-right: 12px;
     }}
     .kanban-column-title {{ font-weight: 600; margin-bottom: 8px; font-size: 0.95rem; }}
+    .kanban-internal-status {{
+        font-weight: 600;
+        font-size: 0.75rem;
+        color: #1a73e8;
+        background: rgba(26,115,232,0.06);
+        border: 1px solid rgba(26,115,232,0.25);
+        border-radius: 6px;
+        padding: 4px 8px;
+        margin: 0 0 12px 0;
+    }}
     .kanban-card {{
         background: #fff;
         border: 1px solid #e0e0e0;
