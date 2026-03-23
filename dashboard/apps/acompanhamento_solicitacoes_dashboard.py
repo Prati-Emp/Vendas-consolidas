@@ -15,6 +15,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 from dashboard.utils.md_conn import get_md_connection
+from advanced_auth import get_current_user
 
 # Mapeamento: coluna "Motivo_da_Requisição" conforme filtros do Jira
 # Fonte: filtros dos quadros Kanban do Jira (RH/DHO)
@@ -92,6 +93,89 @@ STATUS_DISPLAY_NAMES: Dict[str, Dict[str, str]] = {
         "Rejeitado": "REJEITADO",
     },
 }
+
+
+def _normalize_text_for_match(value: Any) -> str:
+    """Normaliza texto para comparação (ignora acentos e case)."""
+    if value is None:
+        return ""
+    s = str(value).strip()
+    if not s:
+        return ""
+    if s.lower() in {"none", "nan", "nat", "<na>"}:
+        return ""
+    s = unicodedata.normalize("NFKD", s)
+    s = "".join(c for c in s if not unicodedata.combining(c))
+    s = s.lower()
+    s = re.sub(r"\s+", " ", s)
+    return s
+
+
+def _find_column(df: pd.DataFrame, candidates: List[str]) -> str:
+    """Encontra a primeira coluna cuja normalização contém algum dos candidatos."""
+    if df.empty:
+        return ""
+    cols = list(df.columns)
+    normalized_cols = {c: _normalize_text_for_match(c) for c in cols}
+    for cand in candidates:
+        cand_norm = _normalize_text_for_match(cand)
+        for col, col_norm in normalized_cols.items():
+            if cand_norm and cand_norm in col_norm:
+                return col
+    return ""
+
+
+@st.cache_data(ttl=600)
+def load_quadro_rh_autorizacoes() -> pd.DataFrame:
+    """Carrega a tabela planilhas.quadro_rh_autorizacoes para governança."""
+    md_conn = get_md_connection()
+    sql = "SELECT * FROM planilhas.quadro_rh_autorizacoes"
+    try:
+        return md_conn.run_query(sql)
+    except Exception as e:
+        st.error(f"Erro ao carregar `planilhas.quadro_rh_autorizacoes`: {str(e)}")
+        return pd.DataFrame()
+
+
+def get_allowed_supervisoes_for_current_user() -> List[str]:
+    """Retorna lista de supervisões autorizadas para o usuário logado."""
+    user_data = get_current_user()
+    user_email = (user_data or {}).get("email") if user_data else None
+    if not user_email:
+        return []
+
+    auth_df = load_quadro_rh_autorizacoes()
+    if auth_df.empty:
+        return []
+
+    email_col = _find_column(auth_df, ["email", "e-mail", "mail"])
+    supervisao_col = _find_column(auth_df, ["supervisao", "supervisão", "supervis"])
+
+    if not email_col or not supervisao_col:
+        return []
+
+    user_email_norm = _normalize_text_for_match(user_email)
+    auth_subset = auth_df[
+        auth_df[email_col].astype(str).apply(_normalize_text_for_match) == user_email_norm
+    ]
+
+    allowed = (
+        auth_subset[supervisao_col]
+        .dropna()
+        .astype(str)
+        .map(lambda x: x.strip())
+        .tolist()
+    )
+    allowed = [a for a in allowed if a and a.lower() not in {"none", "nan", "nat", "<na>"}]
+    # normaliza para remover duplicatas por case/acento
+    seen = set()
+    deduped: List[str] = []
+    for a in allowed:
+        k = _normalize_text_for_match(a)
+        if k and k not in seen:
+            seen.add(k)
+            deduped.append(a)
+    return deduped
 
 
 @st.cache_data(ttl=600)
@@ -622,6 +706,19 @@ def render_acompanhamento_solicitacoes_dashboard() -> None:
         st.warning("⚠️ Nenhum dado encontrado na view Jira_projeto_dho_consolidado.")
         return
 
+    # Governança: filtrar por supervisão autorizada do usuário logado
+    allowed_supervisoes = get_allowed_supervisoes_for_current_user()
+    allowed_supervisoes_norm = {_normalize_text_for_match(v) for v in allowed_supervisoes if v}
+    if not allowed_supervisoes_norm:
+        st.error("Acesso negado: não foi possível encontrar supervisões autorizadas para seu usuário.")
+        return
+
+    supervisao_col_probe = _find_column(df_raw, ["supervisao", "supervisão", "supervis"])
+    area_col_probe = _find_column(df_raw, ["area", "área"])
+    if not (supervisao_col_probe or area_col_probe):
+        st.error("Acesso negado: colunas de `Supervisão`/`Área` não foram encontradas para aplicar governança.")
+        return
+
     st.markdown(
         """
         <div style="
@@ -717,6 +814,10 @@ def render_acompanhamento_solicitacoes_dashboard() -> None:
                     if v and v.lower() not in {"none", "nan", "nat", "<na>"}
                 ]
             )
+            # Restringir opções ao que o usuário tem permissão
+            supervisao_options = [
+                v for v in supervisao_options if _normalize_text_for_match(v) in allowed_supervisoes_norm
+            ]
             selected_supervisoes = st.multiselect(
                 "Supervisão",
                 options=supervisao_options,
@@ -732,7 +833,8 @@ def render_acompanhamento_solicitacoes_dashboard() -> None:
             df_global[cargo_col_global].astype(str).str.strip().isin(selected_cargos)
         ]
 
-    if selected_supervisoes:
+    # Aplicar governança ao conjunto de dados (sempre)
+    if supervisao_col_global or area_col_global:
         sup_series = (
             df_global[supervisao_col_global].astype(str).str.strip()
             if supervisao_col_global
@@ -749,7 +851,14 @@ def render_acompanhamento_solicitacoes_dashboard() -> None:
             & (~sup_series.str.lower().isin(["none", "nan", "nat", "<na>"])),
             area_series,
         )
-        df_global = df_global[supervisao_display.isin(selected_supervisoes)]
+
+        supervisao_display_norm = supervisao_display.map(_normalize_text_for_match)
+        df_global = df_global[supervisao_display_norm.isin(allowed_supervisoes_norm)]
+
+        # Aplicar filtro do usuário, se ele selecionar
+        if selected_supervisoes:
+            selected_supervisoes_norm = {_normalize_text_for_match(v) for v in selected_supervisoes if v}
+            df_global = df_global[supervisao_display_norm.isin(selected_supervisoes_norm)]
 
     # 4 abas lado a lado
     tab_keys = list(BOARD_FILTERS.keys())

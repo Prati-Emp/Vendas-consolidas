@@ -98,8 +98,15 @@ USERS_DATABASE = {
         "created": "2025-12-19",
         "last_login": None,
         "active": True,
-        "pages": ["operacoes"],
-        "subpages": ["operacoes.jira", "operacoes.compras", "operacoes.solicitacoes", "operacoes.contratos", "operacoes.evolucao_obra"]
+        "pages": ["operacoes", "administrativo"],
+        "subpages": [
+            "operacoes.jira",
+            "operacoes.compras",
+            "operacoes.solicitacoes",
+            "operacoes.contratos",
+            "operacoes.evolucao_obra",
+            "administrativo.acompanhamento_solicitacoes",
+        ]
     },
     "michael.seidenstucker@grupoprati.com": {
         "password": "Pr@ti2025!Michael",
