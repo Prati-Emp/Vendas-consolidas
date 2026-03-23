@@ -20,15 +20,10 @@ from advanced_auth import get_current_user
 # Mapeamento: coluna "Motivo_da_Requisição" conforme filtros do Jira
 # Fonte: filtros dos quadros Kanban do Jira (RH/DHO)
 BOARD_FILTERS: Dict[str, Dict[str, Any]] = {
-    "rotinas_trabalhistas": {
-        "label": "📋 Rotinas Trabalhistas",
+    "requisicao_vaga_rc": {
+        "label": "📝 Requisição de Vaga (RC)",
         "col": "Motivo_da_Requisição",
-        "values": ["Afastamento", "Demissão", "Férias"],
-    },
-    "treinamentos_td": {
-        "label": "🎓 Treinamentos (T&D)",
-        "col": "Motivo_da_Requisição",
-        "values": ["Treinamentos"],
+        "values": ["Aumento de Quadro", "Substituição"],
     },
     "movimentacoes_mc": {
         "label": "🔄 Movimentações (MC)",
@@ -38,10 +33,15 @@ BOARD_FILTERS: Dict[str, Dict[str, Any]] = {
             "Mudança de horário", "Movimentação"
         ],
     },
-    "requisicao_vaga_rc": {
-        "label": "📝 Requisição de Vaga (RC)",
+    "treinamentos_td": {
+        "label": "🎓 Treinamentos (T&D)",
         "col": "Motivo_da_Requisição",
-        "values": ["Aumento de Quadro", "Substituição"],
+        "values": ["Treinamentos"],
+    },
+    "rotinas_trabalhistas": {
+        "label": "📋 Rotinas Trabalhistas",
+        "col": "Motivo_da_Requisição",
+        "values": ["Afastamento", "Demissão", "Férias"],
     },
 }
 
@@ -362,9 +362,9 @@ def _build_kanban_column_html(
         return "#6366F1"
 
     def _get_life_badge(life_days: int) -> tuple[str, str]:
-        if life_days <= 2:
+        if life_days <= 7:
             return "#DCFCE7", "#166534"
-        if life_days <= 5:
+        if life_days <= 14:
             return "#FEF3C7", "#92400E"
         return "#FEE2E2", "#991B1B"
 
