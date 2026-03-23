@@ -765,7 +765,11 @@ def render_acompanhamento_solicitacoes_dashboard() -> None:
     # Governança: filtrar por supervisão autorizada do usuário logado.
     # Observação: para o(s) usuário(s) abaixo, ignoramos a lista de permissões
     # e liberamos a leitura total (mesmo sem estar na planilha).
-    bypass_emails = {"odair2d@hotmail.com", "odair.santos@grupoprati.com"}
+    bypass_emails = {
+        "odair2d@hotmail.com",
+        "odair.santos@grupoprati.com",
+        "joao.fantinel@grupoprati.com",
+    }
     user_data = get_current_user()
     user_email = (user_data or {}).get("email", "") if user_data else ""
     user_email_norm = _normalize_text_for_match(user_email)
