@@ -184,6 +184,17 @@ USERS_DATABASE = {
         "pages": ["vendas", "leads", "reservas", "motivo_fora_prazo", "tv_comercial"],  # Sem acesso ao administrativo (Repasses, Contas pagas, Saldo em caixa)
         "subpages": []
     },
+    "otavio.watanabe@grupoprati.com": {
+        "password": "@I15OVyN%ik*",
+        "role": "analyst",
+        "name": "Otavio Watanabe",
+        "department": "Operacoes",
+        "created": "2026-03-23",
+        "last_login": None,
+        "active": True,
+        "pages": ["administrativo"],
+        "subpages": ["administrativo.acompanhamento_solicitacoes"]
+    },
     "odair2d@hotmail.com": {
         "password": "Pr@ti2025!Odair2",
         "role": "analyst",
