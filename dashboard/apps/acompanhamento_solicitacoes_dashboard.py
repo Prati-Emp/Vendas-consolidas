@@ -940,7 +940,11 @@ def render_acompanhamento_solicitacoes_dashboard() -> None:
         with tab:
             df_board = _filter_df_by_board(df_global, board_key)
             if df_board.empty and i == 0 and not df_global.empty:
-                # Fallback: se o primeiro quadro está vazio, mostrar todos os dados com aviso
-                st.info("💡 Nenhum item encontrado com os filtros atuais. Exibindo todos os itens. Ajuste **BOARD_FILTERS** em `acompanhamento_solicitacoes_dashboard.py` conforme os valores de **Tipo_de_item** no Jira.")
-                df_board = df_global.copy()
+                # Aviso: se o primeiro quadro está vazio, não "vazar" cards dos outros quadros.
+                # O fallback anterior gerava duplicidade (cards de RC aparecendo em Rotinas).
+                st.info(
+                    "💡 Nenhum item encontrado para `Rotinas Trabalhistas` com os filtros atuais. "
+                    "Ajuste **BOARD_FILTERS** em `acompanhamento_solicitacoes_dashboard.py` conforme os valores de "
+                    "**Tipo_de_item** no Jira."
+                )
             _render_kanban_board(df_board, BOARD_FILTERS[board_key]["label"], board_key)
