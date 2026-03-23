@@ -649,6 +649,11 @@ def _render_kanban_board(df: pd.DataFrame, title: str, board_key: str = "") -> N
         overflow-x: auto;
         overflow-y: hidden;
         margin-bottom: 8px;
+        scrollbar-width: none; /* Firefox */
+        -ms-overflow-style: none; /* IE/Edge legado */
+    }}
+    .kanban-headers-scroll::-webkit-scrollbar {{
+        display: none; /* Chrome/Safari/Edge */
     }}
     .kanban-board-headers {{
         display: flex;
