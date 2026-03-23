@@ -706,12 +706,27 @@ def render_acompanhamento_solicitacoes_dashboard() -> None:
         st.warning("⚠️ Nenhum dado encontrado na view Jira_projeto_dho_consolidado.")
         return
 
-    # Governança: filtrar por supervisão autorizada do usuário logado
-    allowed_supervisoes = get_allowed_supervisoes_for_current_user()
-    allowed_supervisoes_norm = {_normalize_text_for_match(v) for v in allowed_supervisoes if v}
-    if not allowed_supervisoes_norm:
-        st.error("Acesso negado: não foi possível encontrar supervisões autorizadas para seu usuário.")
-        return
+    # Governança: filtrar por supervisão autorizada do usuário logado.
+    # Observação: para o(s) usuário(s) abaixo, ignoramos a lista de permissões
+    # e liberamos a leitura total (mesmo sem estar na planilha).
+    bypass_emails = {"odair2d@hotmail.com", "odair.santos@grupoprati.com"}
+    user_data = get_current_user()
+    user_email = (user_data or {}).get("email", "") if user_data else ""
+    user_email_norm = _normalize_text_for_match(user_email)
+
+    governanca_enabled = user_email_norm not in {_normalize_text_for_match(v) for v in bypass_emails if v}
+
+    allowed_supervisoes_norm: Optional[set[str]] = None
+    if governanca_enabled:
+        allowed_supervisoes = get_allowed_supervisoes_for_current_user()
+        allowed_supervisoes_norm = {
+            _normalize_text_for_match(v) for v in allowed_supervisoes if v
+        }
+        if not allowed_supervisoes_norm:
+            st.error(
+                "Acesso negado: não foi possível encontrar supervisões autorizadas para seu usuário."
+            )
+            return
 
     supervisao_col_probe = _find_column(df_raw, ["supervisao", "supervisão", "supervis"])
     area_col_probe = _find_column(df_raw, ["area", "área"])
@@ -801,10 +816,11 @@ def render_acompanhamento_solicitacoes_dashboard() -> None:
                 )
                 supervisao_display_norm = supervisao_display.map(_normalize_text_for_match)
 
-                # Respeitar governança sempre
-                df_for_cargo_options = df_for_cargo_options[
-                    supervisao_display_norm.isin(allowed_supervisoes_norm)
-                ]
+                # Respeitar governança (quando habilitada)
+                if governanca_enabled and allowed_supervisoes_norm is not None:
+                    df_for_cargo_options = df_for_cargo_options[
+                        supervisao_display_norm.isin(allowed_supervisoes_norm)
+                    ]
                 # Respeitar supervisões já selecionadas (pra atualizar a lista)
                 if supervisoes_prev_norm:
                     df_for_cargo_options = df_for_cargo_options[
@@ -856,10 +872,11 @@ def render_acompanhamento_solicitacoes_dashboard() -> None:
             )
             supervisao_display_norm = supervisao_display.map(_normalize_text_for_match)
 
-            # Respeitar governança sempre
-            df_for_supervisao_options = df_for_supervisao_options[
-                supervisao_display_norm.isin(allowed_supervisoes_norm)
-            ]
+            # Respeitar governança (quando habilitada)
+            if governanca_enabled and allowed_supervisoes_norm is not None:
+                df_for_supervisao_options = df_for_supervisao_options[
+                    supervisao_display_norm.isin(allowed_supervisoes_norm)
+                ]
 
             if cargo_col_global and selected_cargos:
                 df_for_supervisao_options = df_for_supervisao_options[
@@ -905,7 +922,7 @@ def render_acompanhamento_solicitacoes_dashboard() -> None:
             df_global[cargo_col_global].astype(str).str.strip().isin(selected_cargos)
         ]
 
-    # Aplicar governança ao conjunto de dados (sempre)
+    # Aplicar governança ao conjunto de dados (quando habilitada)
     if supervisao_col_global or area_col_global:
         sup_series = (
             df_global[supervisao_col_global].astype(str).str.strip()
@@ -925,7 +942,10 @@ def render_acompanhamento_solicitacoes_dashboard() -> None:
         )
 
         supervisao_display_norm = supervisao_display.map(_normalize_text_for_match)
-        df_global = df_global[supervisao_display_norm.isin(allowed_supervisoes_norm)]
+        if governanca_enabled and allowed_supervisoes_norm is not None:
+            df_global = df_global[
+                supervisao_display_norm.isin(allowed_supervisoes_norm)
+            ]
 
         # Aplicar filtro do usuário, se ele selecionar
         if selected_supervisoes:
