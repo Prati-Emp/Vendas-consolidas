@@ -480,9 +480,7 @@ def _build_kanban_column_html(
     return cards_html if cards_html else '<div style="color: #888; font-style: italic; padding: 8px;">Nenhum item</div>'
 
 
-def _render_kanban_board(
-    df: pd.DataFrame, title: str, board_key: str = "", board_height: int = 520
-) -> None:
+def _render_kanban_board(df: pd.DataFrame, title: str, board_key: str = "") -> None:
     """Renderiza um quadro Kanban completo com colunas por status e scroll horizontal."""
     if df.empty:
         st.info(f"Nenhum item encontrado para **{title}**.")
@@ -580,6 +578,17 @@ def _render_kanban_board(
     chave_col = "Chave" if "Chave" in df.columns else (df.columns[0] if len(df.columns) > 0 else "")
     resumo_col = "Resumo" if "Resumo" in df.columns else ""
     tipo_col = "Tipo_de_item" if "Tipo_de_item" in df.columns else ""
+
+    # Altura automática baseada na coluna com maior volume de cards.
+    # Objetivo: reduzir rolagem vertical e ampliar visão do quadro.
+    max_cards_in_column = 0
+    for status_val in statuses:
+        max_cards_in_column = max(max_cards_in_column, len(df[df[status_col] == status_val]))
+
+    base_height = 200
+    estimated_card_height = 150
+    board_height = base_height + (max_cards_in_column * estimated_card_height)
+    board_height = max(520, min(1400, board_height))
 
     # Montar todo o Kanban em HTML com container scrollável
     columns_html = ""
@@ -739,7 +748,7 @@ def _render_kanban_board(
     </body>
     </html>
     """
-    components.html(scroll_html, height=board_height, scrolling=True)
+    components.html(scroll_html, height=int(board_height), scrolling=True)
 
 
 def render_acompanhamento_solicitacoes_dashboard() -> None:
@@ -836,14 +845,6 @@ def render_acompanhamento_solicitacoes_dashboard() -> None:
 
     with st.sidebar:
         st.markdown("### 🔎 Filtros")
-        kanban_height = st.slider(
-            "Altura do quadro (cards)",
-            min_value=420,
-            max_value=1200,
-            value=520,
-            step=20,
-            help="Aumente para visualizar mais cards sem rolar a página.",
-        )
         if cargo_col_global:
             # O filtro de Cargo deve respeitar o filtro de Supervisão
             supervisoes_prev = st.session_state.get("filter_supervisoes", [])
@@ -1017,9 +1018,4 @@ def render_acompanhamento_solicitacoes_dashboard() -> None:
             if df_board.empty and i == 0 and not df_global.empty:
                 # Não exibimos mensagem adicional aqui: o próprio board renderiza o estado vazio.
                 pass
-            _render_kanban_board(
-                df_board,
-                BOARD_FILTERS[board_key]["label"],
-                board_key,
-                board_height=kanban_height,
-            )
+            _render_kanban_board(df_board, BOARD_FILTERS[board_key]["label"], board_key)
