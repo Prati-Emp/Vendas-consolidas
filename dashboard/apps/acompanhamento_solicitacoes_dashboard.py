@@ -590,19 +590,20 @@ def _render_kanban_board(df: pd.DataFrame, title: str, board_key: str = "") -> N
     board_height = base_height + (max_cards_in_column * estimated_card_height)
     board_height = max(520, min(1400, board_height))
 
-    # Montar todo o Kanban em HTML com container scrollável
-    columns_html = ""
+    # Montar cabeçalhos e colunas de cards separadamente para permitir sticky no topo
+    headers_html = ""
+    cards_columns_html = ""
     for status_val in statuses:
-        count = len(df[df[status_col] == status_val])
         cards = _build_kanban_column_html(df, status_col, status_val, chave_col, resumo_col, tipo_col)
         outer_label = _get_status_display_name(board_key, status_val)
-        inner_status_label = html.escape(str(status_val).strip().upper())
-        columns_html += f"""
-        <div class="kanban-column">
-            <div class="kanban-column-header">
-                <div class="kanban-column-title">{html.escape(outer_label)}</div>
-                <hr style="border: none; border-top: 1px solid #dee2e6; margin: 0;">
-            </div>
+        headers_html += f"""
+        <div class="kanban-column kanban-column-header-cell">
+            <div class="kanban-column-title">{html.escape(outer_label)}</div>
+            <hr style="border: none; border-top: 1px solid #dee2e6; margin: 0;">
+        </div>
+        """
+        cards_columns_html += f"""
+        <div class="kanban-column kanban-column-cards">
             {cards}
         </div>
         """
@@ -615,6 +616,13 @@ def _render_kanban_board(df: pd.DataFrame, title: str, board_key: str = "") -> N
     <style>
     * {{ margin: 0; padding: 0; box-sizing: border-box; }}
     body {{ font-family: inherit; background: transparent; color: #333; }}
+    .kanban-sticky-top {{
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        background: #0B1220;
+        padding-bottom: 4px;
+    }}
     .kanban-top-scroll {{
         overflow-x: auto;
         overflow-y: hidden;
@@ -637,6 +645,24 @@ def _render_kanban_board(df: pd.DataFrame, title: str, board_key: str = "") -> N
         min-width: 100%;
         padding: 8px 0;
     }}
+    .kanban-headers-scroll {{
+        overflow-x: auto;
+        overflow-y: hidden;
+        margin-bottom: 8px;
+    }}
+    .kanban-board-headers {{
+        display: flex;
+        flex-direction: row;
+        width: max-content;
+        min-width: 100%;
+    }}
+    .kanban-board-cards {{
+        display: flex;
+        flex-direction: row;
+        width: max-content;
+        min-width: 100%;
+        padding: 8px 0;
+    }}
     .kanban-column {{
         flex: 0 0 220px;
         min-width: 220px;
@@ -646,14 +672,10 @@ def _render_kanban_board(df: pd.DataFrame, title: str, board_key: str = "") -> N
         padding: 12px;
         margin-right: 12px;
     }}
-    .kanban-column-header {{
-        position: sticky;
-        top: 0;
-        z-index: 5;
+    .kanban-column-header-cell {{
         background: #f8f9fa;
-        padding-bottom: 10px;
-        margin-bottom: 12px;
     }}
+    .kanban-column-cards {{ background: #f8f9fa; }}
     .kanban-column-title {{ font-weight: 600; margin-bottom: 8px; font-size: 0.95rem; text-align: center; }}
     .kanban-card {{
         background: #fff;
@@ -713,41 +735,62 @@ def _render_kanban_board(df: pd.DataFrame, title: str, board_key: str = "") -> N
     </style>
     </head>
     <body>
-    <div id="kanbanTopScroll" class="kanban-top-scroll">
-        <div id="kanbanTopScrollInner" class="kanban-top-scroll-inner"></div>
+    <div class="kanban-sticky-top">
+        <div id="kanbanTopScroll" class="kanban-top-scroll">
+            <div id="kanbanTopScrollInner" class="kanban-top-scroll-inner"></div>
+        </div>
+        <div id="kanbanHeaderScroll" class="kanban-headers-scroll">
+            <div id="kanbanHeaderBoard" class="kanban-board-headers">
+                {headers_html}
+            </div>
+        </div>
     </div>
     <div id="kanbanBottomScroll" class="kanban-scroll-container">
-        <div class="kanban-board">
-            {columns_html}
+        <div id="kanbanCardsBoard" class="kanban-board-cards">
+            {cards_columns_html}
         </div>
     </div>
     <script>
     (function () {{
         const top = document.getElementById("kanbanTopScroll");
         const topInner = document.getElementById("kanbanTopScrollInner");
+        const header = document.getElementById("kanbanHeaderScroll");
+        const headerBoard = document.getElementById("kanbanHeaderBoard");
         const bottom = document.getElementById("kanbanBottomScroll");
-        const board = document.querySelector(".kanban-board");
+        const cardsBoard = document.getElementById("kanbanCardsBoard");
 
-        if (!top || !topInner || !bottom || !board) return;
+        if (!top || !topInner || !header || !headerBoard || !bottom || !cardsBoard) return;
 
         const syncWidth = () => {{
-            topInner.style.width = `${{board.scrollWidth}}px`;
+            const width = Math.max(headerBoard.scrollWidth, cardsBoard.scrollWidth);
+            topInner.style.width = `${{width}}px`;
         }};
 
         let syncingFromTop = false;
+        let syncingFromHeader = false;
         let syncingFromBottom = false;
 
         top.addEventListener("scroll", () => {{
-            if (syncingFromBottom) return;
+            if (syncingFromBottom || syncingFromHeader) return;
             syncingFromTop = true;
             bottom.scrollLeft = top.scrollLeft;
+            header.scrollLeft = top.scrollLeft;
             syncingFromTop = false;
         }});
 
+        header.addEventListener("scroll", () => {{
+            if (syncingFromTop || syncingFromBottom) return;
+            syncingFromHeader = true;
+            bottom.scrollLeft = header.scrollLeft;
+            top.scrollLeft = header.scrollLeft;
+            syncingFromHeader = false;
+        }});
+
         bottom.addEventListener("scroll", () => {{
-            if (syncingFromTop) return;
+            if (syncingFromTop || syncingFromHeader) return;
             syncingFromBottom = true;
             top.scrollLeft = bottom.scrollLeft;
+            header.scrollLeft = bottom.scrollLeft;
             syncingFromBottom = false;
         }});
 
