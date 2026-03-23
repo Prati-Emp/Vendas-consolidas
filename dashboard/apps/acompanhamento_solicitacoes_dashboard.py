@@ -648,7 +648,7 @@ def _render_kanban_board(df: pd.DataFrame, title: str, board_key: str = "") -> N
     .kanban-headers-scroll {{
         overflow-x: auto;
         overflow-y: hidden;
-        margin-bottom: 8px;
+        margin-bottom: 2px;
         scrollbar-width: none; /* Firefox */
         -ms-overflow-style: none; /* IE/Edge legado */
     }}
@@ -666,7 +666,7 @@ def _render_kanban_board(df: pd.DataFrame, title: str, board_key: str = "") -> N
         flex-direction: row;
         width: max-content;
         min-width: 100%;
-        padding: 8px 0;
+        padding: 0;
     }}
     .kanban-column {{
         flex: 0 0 220px;
