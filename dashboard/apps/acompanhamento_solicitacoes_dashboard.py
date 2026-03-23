@@ -480,7 +480,9 @@ def _build_kanban_column_html(
     return cards_html if cards_html else '<div style="color: #888; font-style: italic; padding: 8px;">Nenhum item</div>'
 
 
-def _render_kanban_board(df: pd.DataFrame, title: str, board_key: str = "") -> None:
+def _render_kanban_board(
+    df: pd.DataFrame, title: str, board_key: str = "", board_height: int = 520
+) -> None:
     """Renderiza um quadro Kanban completo com colunas por status e scroll horizontal."""
     if df.empty:
         st.info(f"Nenhum item encontrado para **{title}**.")
@@ -737,7 +739,7 @@ def _render_kanban_board(df: pd.DataFrame, title: str, board_key: str = "") -> N
     </body>
     </html>
     """
-    components.html(scroll_html, height=520, scrolling=True)
+    components.html(scroll_html, height=board_height, scrolling=True)
 
 
 def render_acompanhamento_solicitacoes_dashboard() -> None:
@@ -834,6 +836,14 @@ def render_acompanhamento_solicitacoes_dashboard() -> None:
 
     with st.sidebar:
         st.markdown("### 🔎 Filtros")
+        kanban_height = st.slider(
+            "Altura do quadro (cards)",
+            min_value=420,
+            max_value=1200,
+            value=520,
+            step=20,
+            help="Aumente para visualizar mais cards sem rolar a página.",
+        )
         if cargo_col_global:
             # O filtro de Cargo deve respeitar o filtro de Supervisão
             supervisoes_prev = st.session_state.get("filter_supervisoes", [])
@@ -1007,4 +1017,9 @@ def render_acompanhamento_solicitacoes_dashboard() -> None:
             if df_board.empty and i == 0 and not df_global.empty:
                 # Não exibimos mensagem adicional aqui: o próprio board renderiza o estado vazio.
                 pass
-            _render_kanban_board(df_board, BOARD_FILTERS[board_key]["label"], board_key)
+            _render_kanban_board(
+                df_board,
+                BOARD_FILTERS[board_key]["label"],
+                board_key,
+                board_height=kanban_height,
+            )
