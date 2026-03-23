@@ -27,7 +27,9 @@ TAB_DEFINITIONS: List[Dict[str, str]] = [
     },
     {
         "label": "📋 Acompanhamento de Solicitações",
-        "permission": "administrativo.acompanhamento_solicitacoes",
+        # A governança de dados já bloqueia quem não está autorizado (planilhas.quadro_rh_autorizacoes).
+        # Então liberamos essa página para qualquer usuário com acesso ao `administrativo`.
+        "permission": "administrativo",
         "page_path": "pages/7_Acompanhamento_Solicitacoes.py",
         "key": "acompanhamento_solicitacoes",
     },
