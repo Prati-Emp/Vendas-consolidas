@@ -599,8 +599,10 @@ def _render_kanban_board(df: pd.DataFrame, title: str, board_key: str = "") -> N
         inner_status_label = html.escape(str(status_val).strip().upper())
         columns_html += f"""
         <div class="kanban-column">
-            <div class="kanban-column-title">{html.escape(outer_label)}</div>
-            <hr style="border: none; border-top: 1px solid #dee2e6; margin: 0 0 12px 0;">
+            <div class="kanban-column-header">
+                <div class="kanban-column-title">{html.escape(outer_label)}</div>
+                <hr style="border: none; border-top: 1px solid #dee2e6; margin: 0;">
+            </div>
             {cards}
         </div>
         """
@@ -643,6 +645,14 @@ def _render_kanban_board(df: pd.DataFrame, title: str, board_key: str = "") -> N
         border-radius: 8px;
         padding: 12px;
         margin-right: 12px;
+    }}
+    .kanban-column-header {{
+        position: sticky;
+        top: 0;
+        z-index: 5;
+        background: #f8f9fa;
+        padding-bottom: 10px;
+        margin-bottom: 12px;
     }}
     .kanban-column-title {{ font-weight: 600; margin-bottom: 8px; font-size: 0.95rem; text-align: center; }}
     .kanban-card {{
