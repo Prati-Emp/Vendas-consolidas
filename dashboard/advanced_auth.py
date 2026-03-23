@@ -199,6 +199,64 @@ USERS_DATABASE = {
         "pages": ["administrativo"],
         "subpages": ["administrativo.acompanhamento_solicitacoes"]
     },
+    "monya.vitoria@grupoprati.com": {
+        "password": "&P6fBXB2Z*$u",
+        "role": "analyst",
+        "name": "Monya Vitoria",
+        "department": "RH",
+        "created": "2026-03-23",
+        "last_login": None,
+        "active": True,
+        "pages": ["administrativo"],
+        "subpages": ["administrativo.acompanhamento_solicitacoes"]
+    },
+    "taina.cerny@grupoprati.com": {
+        "password": "!!75I9$oAudN",
+        "role": "analyst",
+        "name": "Taina Cerny",
+        "department": "RH",
+        "created": "2026-03-23",
+        "last_login": None,
+        "active": True,
+        "pages": ["administrativo"],
+        "subpages": ["administrativo.acompanhamento_solicitacoes"]
+    },
+    "airton.silva@grupoprati.com": {
+        "password": "S1&5HP$jQ$G$",
+        "role": "analyst",
+        "name": "Airton Silva",
+        "department": "RH",
+        "created": "2026-03-23",
+        "last_login": None,
+        "active": True,
+        "pages": ["administrativo"],
+        "subpages": [
+            "administrativo.indicadores_gestao_pessoas",
+            "administrativo.acompanhamento_solicitacoes",
+        ]
+    },
+    "luana.casarin@grupoprati.com": {
+        "password": "@uhDF2hT@z41",
+        "role": "analyst",
+        "name": "Luana Casarin",
+        "department": "RH",
+        "created": "2026-03-23",
+        "last_login": None,
+        "active": True,
+        "pages": ["administrativo"],
+        "subpages": ["administrativo.acompanhamento_solicitacoes"]
+    },
+    "angelica.moreira@grupoprati.com": {
+        "password": "vt2hHQ2Gc&R7",
+        "role": "analyst",
+        "name": "Angelica Moreira",
+        "department": "RH",
+        "created": "2026-03-23",
+        "last_login": None,
+        "active": True,
+        "pages": ["administrativo"],
+        "subpages": ["administrativo.acompanhamento_solicitacoes"]
+    },
     "odair2d@hotmail.com": {
         "password": "Pr@ti2025!Odair2",
         "role": "analyst",

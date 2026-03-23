@@ -836,6 +836,7 @@ def render_acompanhamento_solicitacoes_dashboard() -> None:
         "odair2d@hotmail.com",
         "odair.santos@grupoprati.com",
         "joao.fantinel@grupoprati.com",
+        "airton.silva@grupoprati.com",
     }
     user_data = get_current_user()
     user_email = (user_data or {}).get("email", "") if user_data else ""
