@@ -679,9 +679,18 @@ def _render_kanban_board(df: pd.DataFrame, title: str, board_key: str = "") -> N
     }}
     .kanban-column-header-cell {{
         background: #f8f9fa;
+        border-radius: 4px;
+        padding: 8px 10px;
     }}
     .kanban-column-cards {{ background: #f8f9fa; }}
-    .kanban-column-title {{ font-weight: 600; margin-bottom: 8px; font-size: 0.95rem; text-align: center; }}
+    .kanban-column-title {{
+        font-weight: 600;
+        margin-bottom: 6px;
+        font-size: 0.82rem;
+        line-height: 1.1;
+        text-align: center;
+        letter-spacing: 0.2px;
+    }}
     .kanban-card {{
         background: #fff;
         border: 1px solid #e0e0e0;
