@@ -654,6 +654,7 @@ def render_acompanhamento_solicitacoes_dashboard() -> None:
                 break
 
     selected_cargos: List[str] = []
+    selected_supervisoes: List[str] = []
     with st.sidebar:
         st.markdown("### 🔎 Filtros")
         if cargo_col_global:
@@ -673,11 +674,82 @@ def render_acompanhamento_solicitacoes_dashboard() -> None:
         else:
             st.caption("Coluna de Cargo não encontrada para filtro.")
 
+        # Filtro global de Supervisão (com fallback para Área)
+        supervisao_col_global = "Supervisão" if "Supervisão" in df_raw.columns else None
+        if supervisao_col_global is None:
+            for c in df_raw.columns:
+                c_norm = unicodedata.normalize("NFKD", str(c).strip()).lower()
+                c_norm = "".join(ch for ch in c_norm if not unicodedata.combining(ch))
+                if c_norm == "supervisao":
+                    supervisao_col_global = c
+                    break
+
+        area_col_global = "Área" if "Área" in df_raw.columns else None
+        if area_col_global is None:
+            for c in df_raw.columns:
+                c_norm = unicodedata.normalize("NFKD", str(c).strip()).lower()
+                c_norm = "".join(ch for ch in c_norm if not unicodedata.combining(ch))
+                if c_norm == "area":
+                    area_col_global = c
+                    break
+
+        if supervisao_col_global or area_col_global:
+            sup_series = (
+                df_raw[supervisao_col_global].astype(str).str.strip()
+                if supervisao_col_global
+                else pd.Series("", index=df_raw.index)
+            )
+            area_series = (
+                df_raw[area_col_global].astype(str).str.strip()
+                if area_col_global
+                else pd.Series("", index=df_raw.index)
+            )
+            supervisao_display = sup_series.where(
+                sup_series.notna()
+                & (sup_series != "")
+                & (~sup_series.str.lower().isin(["none", "nan", "nat", "<na>"])),
+                area_series,
+            )
+            supervisao_options = sorted(
+                [
+                    v
+                    for v in supervisao_display.dropna().astype(str).str.strip().unique().tolist()
+                    if v and v.lower() not in {"none", "nan", "nat", "<na>"}
+                ]
+            )
+            selected_supervisoes = st.multiselect(
+                "Supervisão",
+                options=supervisao_options,
+                default=[],
+                placeholder="Selecione uma ou mais supervisões",
+            )
+        else:
+            st.caption("Colunas de Supervisão/Área não encontradas para filtro.")
+
     df_global = df_raw.copy()
     if cargo_col_global and selected_cargos:
         df_global = df_global[
             df_global[cargo_col_global].astype(str).str.strip().isin(selected_cargos)
         ]
+
+    if selected_supervisoes:
+        sup_series = (
+            df_global[supervisao_col_global].astype(str).str.strip()
+            if supervisao_col_global
+            else pd.Series("", index=df_global.index)
+        )
+        area_series = (
+            df_global[area_col_global].astype(str).str.strip()
+            if area_col_global
+            else pd.Series("", index=df_global.index)
+        )
+        supervisao_display = sup_series.where(
+            sup_series.notna()
+            & (sup_series != "")
+            & (~sup_series.str.lower().isin(["none", "nan", "nat", "<na>"])),
+            area_series,
+        )
+        df_global = df_global[supervisao_display.isin(selected_supervisoes)]
 
     # 4 abas lado a lado
     tab_keys = list(BOARD_FILTERS.keys())
