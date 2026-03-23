@@ -643,30 +643,41 @@ def render_acompanhamento_solicitacoes_dashboard() -> None:
         unsafe_allow_html=True,
     )
 
-    # Sidebar: ajuda para configurar filtros e nomes
+    # Sidebar: filtro global de Cargo (aplica em todos os quadros)
+    cargo_col_global = "Cargo" if "Cargo" in df_raw.columns else None
+    if cargo_col_global is None:
+        for c in df_raw.columns:
+            c_norm = unicodedata.normalize("NFKD", str(c).strip()).lower()
+            c_norm = "".join(ch for ch in c_norm if not unicodedata.combining(ch))
+            if c_norm == "cargo":
+                cargo_col_global = c
+                break
+
+    selected_cargos: List[str] = []
     with st.sidebar:
-        with st.expander("🔧 Configurar quadros"):
-            tipo_col = "Motivo_da_Requisição" if "Motivo_da_Requisição" in df_raw.columns else None
-            if tipo_col:
-                valores = sorted(df_raw[tipo_col].dropna().astype(str).str.strip().unique().tolist())
-                st.caption(f"Valores em **{tipo_col}** (filtros do Jira):")
-                st.code(", ".join(f'"{v}"' for v in valores[:30]), language=None)
-                if len(valores) > 30:
-                    st.caption(f"... e mais {len(valores) - 30}")
-        with st.expander("📝 Nomes das colunas (Treinamentos)"):
-            df_td = _filter_df_by_board(df_raw, "treinamentos_td")
-            status_col = _get_status_column(df_td) if not df_td.empty else None
-            if status_col:
-                statuses_td = sorted(df_td[status_col].dropna().astype(str).str.strip().unique().tolist())
-                st.caption("Status no Jira (use em STATUS_DISPLAY_NAMES):")
-                st.code(", ".join(f'"{v}"' for v in statuses_td[:25]), language=None)
-        with st.expander("📝 Nomes das colunas (Rotinas Trabalhistas)"):
-            df_rt = _filter_df_by_board(df_raw, "rotinas_trabalhistas")
-            status_col_rt = _get_status_column(df_rt) if not df_rt.empty else None
-            if status_col_rt:
-                statuses_rt = sorted(df_rt[status_col_rt].dropna().astype(str).str.strip().unique().tolist())
-                st.caption("Status no Jira (use em STATUS_DISPLAY_NAMES):")
-                st.code(", ".join(f'"{v}"' for v in statuses_rt[:25]), language=None)
+        st.markdown("### 🔎 Filtros")
+        if cargo_col_global:
+            cargo_options = sorted(
+                [
+                    v
+                    for v in df_raw[cargo_col_global].dropna().astype(str).str.strip().unique().tolist()
+                    if v and v.lower() not in {"none", "nan", "nat", "<na>"}
+                ]
+            )
+            selected_cargos = st.multiselect(
+                "Cargo",
+                options=cargo_options,
+                default=[],
+                placeholder="Selecione um ou mais cargos",
+            )
+        else:
+            st.caption("Coluna de Cargo não encontrada para filtro.")
+
+    df_global = df_raw.copy()
+    if cargo_col_global and selected_cargos:
+        df_global = df_global[
+            df_global[cargo_col_global].astype(str).str.strip().isin(selected_cargos)
+        ]
 
     # 4 abas lado a lado
     tab_keys = list(BOARD_FILTERS.keys())
@@ -674,9 +685,9 @@ def render_acompanhamento_solicitacoes_dashboard() -> None:
 
     for i, (tab, board_key) in enumerate(zip(tabs, tab_keys)):
         with tab:
-            df_board = _filter_df_by_board(df_raw, board_key)
-            if df_board.empty and i == 0 and not df_raw.empty:
+            df_board = _filter_df_by_board(df_global, board_key)
+            if df_board.empty and i == 0 and not df_global.empty:
                 # Fallback: se o primeiro quadro está vazio, mostrar todos os dados com aviso
                 st.info("💡 Nenhum item encontrado com os filtros atuais. Exibindo todos os itens. Ajuste **BOARD_FILTERS** em `acompanhamento_solicitacoes_dashboard.py` conforme os valores de **Tipo_de_item** no Jira.")
-                df_board = df_raw.copy()
+                df_board = df_global.copy()
             _render_kanban_board(df_board, BOARD_FILTERS[board_key]["label"], board_key)
