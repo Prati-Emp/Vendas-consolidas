@@ -602,6 +602,15 @@ def _render_kanban_board(df: pd.DataFrame, title: str, board_key: str = "") -> N
     <style>
     * {{ margin: 0; padding: 0; box-sizing: border-box; }}
     body {{ font-family: inherit; background: transparent; color: #333; }}
+    .kanban-top-scroll {{
+        overflow-x: auto;
+        overflow-y: hidden;
+        height: 14px;
+        margin-bottom: 6px;
+    }}
+    .kanban-top-scroll-inner {{
+        height: 1px;
+    }}
     .kanban-scroll-container {{
         overflow-x: scroll;
         overflow-y: hidden;
@@ -683,11 +692,48 @@ def _render_kanban_board(df: pd.DataFrame, title: str, board_key: str = "") -> N
     </style>
     </head>
     <body>
-    <div class="kanban-scroll-container">
+    <div id="kanbanTopScroll" class="kanban-top-scroll">
+        <div id="kanbanTopScrollInner" class="kanban-top-scroll-inner"></div>
+    </div>
+    <div id="kanbanBottomScroll" class="kanban-scroll-container">
         <div class="kanban-board">
             {columns_html}
         </div>
     </div>
+    <script>
+    (function () {{
+        const top = document.getElementById("kanbanTopScroll");
+        const topInner = document.getElementById("kanbanTopScrollInner");
+        const bottom = document.getElementById("kanbanBottomScroll");
+        const board = document.querySelector(".kanban-board");
+
+        if (!top || !topInner || !bottom || !board) return;
+
+        const syncWidth = () => {{
+            topInner.style.width = `${{board.scrollWidth}}px`;
+        }};
+
+        let syncingFromTop = false;
+        let syncingFromBottom = false;
+
+        top.addEventListener("scroll", () => {{
+            if (syncingFromBottom) return;
+            syncingFromTop = true;
+            bottom.scrollLeft = top.scrollLeft;
+            syncingFromTop = false;
+        }});
+
+        bottom.addEventListener("scroll", () => {{
+            if (syncingFromTop) return;
+            syncingFromBottom = true;
+            top.scrollLeft = bottom.scrollLeft;
+            syncingFromBottom = false;
+        }});
+
+        syncWidth();
+        window.addEventListener("resize", syncWidth);
+    }})();
+    </script>
     </body>
     </html>
     """
