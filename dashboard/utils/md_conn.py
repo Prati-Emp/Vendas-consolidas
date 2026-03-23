@@ -4,12 +4,32 @@ Baseado nos padrões do projeto Vendas_Consolidadas.
 """
 
 import os
-import duckdb
+import subprocess
+import sys
 import pandas as pd
 from typing import List, Optional, Dict, Any
 from dotenv import load_dotenv
 import streamlit as st
 import time
+
+
+def _ensure_duckdb_module():
+    """Garante disponibilidade do módulo duckdb no ambiente."""
+    try:
+        import duckdb as _duckdb  # type: ignore
+        return _duckdb
+    except ModuleNotFoundError:
+        # Fallback para ambientes de deploy que não instalaram dependências corretamente.
+        subprocess.check_call(
+            [sys.executable, "-m", "pip", "install", "duckdb==1.4.1"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        import duckdb as _duckdb  # type: ignore
+        return _duckdb
+
+
+duckdb = _ensure_duckdb_module()
 
 # Carregar variáveis de ambiente
 import os
