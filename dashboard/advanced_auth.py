@@ -77,7 +77,11 @@ USERS_DATABASE = {
         "created": "2025-01-23",
         "last_login": None,
         "active": True,
-        "subpages": ["operacoes.jira"],  # Apenas acesso ao Jira no Operações
+        "subpages": [
+            "operacoes.jira",
+            "administrativo.indicadores_gestao_pessoas",
+            "administrativo.acompanhamento_solicitacoes",
+        ],  # Jira em Operações + páginas RH no Administrativo
         "pages": ["vendas", "operacoes", "administrativo"]  # Liberado para Vendas, Operações e Administrativo
     },
     "andre.pozza@grupoprati.com": {
