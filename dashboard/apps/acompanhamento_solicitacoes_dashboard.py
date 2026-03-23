@@ -907,68 +907,6 @@ def render_acompanhamento_solicitacoes_dashboard() -> None:
 
     with st.sidebar:
         st.markdown("### 🔎 Filtros")
-        if cargo_col_global:
-            # O filtro de Cargo deve respeitar o filtro de Supervisão
-            supervisoes_prev = st.session_state.get("filter_supervisoes", [])
-            supervisoes_prev_norm = {
-                _normalize_text_for_match(v) for v in supervisoes_prev if v
-            }
-
-            df_for_cargo_options = df_raw.copy()
-            if supervisao_col_global or area_col_global:
-                sup_series = (
-                    df_raw[supervisao_col_global].astype(str).str.strip()
-                    if supervisao_col_global
-                    else pd.Series("", index=df_raw.index)
-                )
-                area_series = (
-                    df_raw[area_col_global].astype(str).str.strip()
-                    if area_col_global
-                    else pd.Series("", index=df_raw.index)
-                )
-                supervisao_display = sup_series.where(
-                    sup_series.notna()
-                    & (sup_series != "")
-                    & (~sup_series.str.lower().isin(["none", "nan", "nat", "<na>"])),
-                    area_series,
-                )
-                supervisao_display_norm = supervisao_display.map(_normalize_text_for_match)
-
-                # Respeitar governança (quando habilitada)
-                if governanca_enabled and allowed_supervisoes_norm is not None:
-                    df_for_cargo_options = df_for_cargo_options[
-                        supervisao_display_norm.isin(allowed_supervisoes_norm)
-                    ]
-                # Respeitar supervisões já selecionadas (pra atualizar a lista)
-                if supervisoes_prev_norm:
-                    df_for_cargo_options = df_for_cargo_options[
-                        supervisao_display_norm.isin(supervisoes_prev_norm)
-                    ]
-
-            cargo_options = sorted(
-                [
-                    v
-                    for v in df_for_cargo_options[cargo_col_global]
-                    .dropna()
-                    .astype(str)
-                    .str.strip()
-                    .unique()
-                    .tolist()
-                    if v and v.lower() not in {"none", "nan", "nat", "<na>"}
-                ]
-            )
-            selected_cargos = st.multiselect(
-                "Cargo",
-                options=cargo_options,
-                default=[],
-                key="filter_cargos",
-                placeholder="Selecione um ou mais cargos",
-            )
-            cargo_options_norm = {_normalize_text_for_match(v) for v in cargo_options}
-            selected_cargos = [v for v in selected_cargos if _normalize_text_for_match(v) in cargo_options_norm]
-        else:
-            st.caption("Coluna de Cargo não encontrada para filtro.")
-
         if supervisao_col_global or area_col_global:
             # O filtro de Supervisão deve respeitar o filtro de Cargo
             df_for_supervisao_options = df_raw.copy()
@@ -1033,6 +971,68 @@ def render_acompanhamento_solicitacoes_dashboard() -> None:
             ]
         else:
             st.caption("Colunas de Supervisão/Área não encontradas para filtro.")
+
+        if cargo_col_global:
+            # O filtro de Cargo deve respeitar o filtro de Supervisão
+            supervisoes_prev = st.session_state.get("filter_supervisoes", [])
+            supervisoes_prev_norm = {
+                _normalize_text_for_match(v) for v in supervisoes_prev if v
+            }
+
+            df_for_cargo_options = df_raw.copy()
+            if supervisao_col_global or area_col_global:
+                sup_series = (
+                    df_raw[supervisao_col_global].astype(str).str.strip()
+                    if supervisao_col_global
+                    else pd.Series("", index=df_raw.index)
+                )
+                area_series = (
+                    df_raw[area_col_global].astype(str).str.strip()
+                    if area_col_global
+                    else pd.Series("", index=df_raw.index)
+                )
+                supervisao_display = sup_series.where(
+                    sup_series.notna()
+                    & (sup_series != "")
+                    & (~sup_series.str.lower().isin(["none", "nan", "nat", "<na>"])),
+                    area_series,
+                )
+                supervisao_display_norm = supervisao_display.map(_normalize_text_for_match)
+
+                # Respeitar governança (quando habilitada)
+                if governanca_enabled and allowed_supervisoes_norm is not None:
+                    df_for_cargo_options = df_for_cargo_options[
+                        supervisao_display_norm.isin(allowed_supervisoes_norm)
+                    ]
+                # Respeitar supervisões já selecionadas (pra atualizar a lista)
+                if supervisoes_prev_norm:
+                    df_for_cargo_options = df_for_cargo_options[
+                        supervisao_display_norm.isin(supervisoes_prev_norm)
+                    ]
+
+            cargo_options = sorted(
+                [
+                    v
+                    for v in df_for_cargo_options[cargo_col_global]
+                    .dropna()
+                    .astype(str)
+                    .str.strip()
+                    .unique()
+                    .tolist()
+                    if v and v.lower() not in {"none", "nan", "nat", "<na>"}
+                ]
+            )
+            selected_cargos = st.multiselect(
+                "Cargo",
+                options=cargo_options,
+                default=[],
+                key="filter_cargos",
+                placeholder="Selecione um ou mais cargos",
+            )
+            cargo_options_norm = {_normalize_text_for_match(v) for v in cargo_options}
+            selected_cargos = [v for v in selected_cargos if _normalize_text_for_match(v) in cargo_options_norm]
+        else:
+            st.caption("Coluna de Cargo não encontrada para filtro.")
 
     df_global = df_raw.copy()
     if cargo_col_global and selected_cargos:
