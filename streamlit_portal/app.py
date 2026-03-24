@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import html
 import sys
 from pathlib import Path
 from typing import Dict
@@ -152,18 +153,23 @@ cols = st.columns(2)
 for i, app in enumerate(allowed_apps):
     with cols[i % 2]:
         url = links.get(app["key"], "").strip()
+        # Títulos podem ter emoji/caracteres — escapar para HTML seguro.
+        title_h = html.escape(app["title"], quote=False)
+        desc_h = html.escape(app["description"], quote=False)
         card_inner = (
             f'<div class="portal-card">'
-            f'<h4>{app["title"]}</h4>'
-            f'<p>{app["description"]}</p>'
-            f'</div>'
+            f"<h4>{title_h}</h4>"
+            f"<p>{desc_h}</p>"
+            f"</div>"
         )
 
         if url:
-            # Card inteiro clicável para navegação direta.
+            # target="_self" no Streamlit Cloud costuma navegar só o iframe interno (link “morto” ou tela em branco).
+            # "_top" abre o dashboard na janela inteira; "_blank" também funciona (nova aba).
+            safe_url = html.escape(url, quote=True)
             st.markdown(
                 (
-                    f'<a href="{url}" target="_self" rel="noopener noreferrer" '
+                    f'<a href="{safe_url}" target="_top" rel="noopener noreferrer" '
                     f'style="text-decoration:none; color:inherit; display:block;">'
                     f"{card_inner}"
                     f"</a>"
