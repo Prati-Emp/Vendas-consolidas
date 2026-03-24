@@ -163,21 +163,17 @@ for i, app in enumerate(allowed_apps):
             f"</div>"
         )
 
+        # Só o card em HTML; links via st.link_button (âncoras em markdown costumam não navegar no Cloud).
+        st.markdown(card_inner, unsafe_allow_html=True)
         if url:
-            # target="_self" no Streamlit Cloud costuma navegar só o iframe interno (link “morto” ou tela em branco).
-            # "_top" abre o dashboard na janela inteira; "_blank" também funciona (nova aba).
-            safe_url = html.escape(url, quote=True)
-            st.markdown(
-                (
-                    f'<a href="{safe_url}" target="_top" rel="noopener noreferrer" '
-                    f'style="text-decoration:none; color:inherit; display:block;">'
-                    f"{card_inner}"
-                    f"</a>"
-                ),
-                unsafe_allow_html=True,
+            st.link_button(
+                "Abrir dashboard →",
+                url.strip(),
+                help=app["description"],
+                use_container_width=True,
+                type="primary",
+                key=f"portal_open_{app['key']}",
             )
         else:
-            st.markdown(card_inner, unsafe_allow_html=True)
-        if not url:
             st.caption("URL não configurada")
 
