@@ -596,9 +596,10 @@ def _render_kanban_board(df: pd.DataFrame, title: str, board_key: str = "") -> N
     for status_val in statuses:
         cards = _build_kanban_column_html(df, status_col, status_val, chave_col, resumo_col, tipo_col)
         outer_label = _get_status_display_name(board_key, status_val)
+        n_items = int((df[status_col] == status_val).sum())
         headers_html += f"""
         <div class="kanban-column kanban-column-header-cell">
-            <div class="kanban-column-title">{html.escape(outer_label)}</div>
+            <div class="kanban-column-title">{html.escape(outer_label)} <span class="kanban-column-count">({n_items})</span></div>
             <hr style="border: none; border-top: 1px solid #dee2e6; margin: 0;">
         </div>
         """
@@ -690,6 +691,12 @@ def _render_kanban_board(df: pd.DataFrame, title: str, board_key: str = "") -> N
         line-height: 1.1;
         text-align: center;
         letter-spacing: 0.2px;
+    }}
+    .kanban-column-count {{
+        font-weight: 700;
+        font-size: 0.78em;
+        color: #374151;
+        white-space: nowrap;
     }}
     .kanban-card {{
         background: #fff;
