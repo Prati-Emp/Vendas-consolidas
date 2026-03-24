@@ -129,6 +129,7 @@ st.markdown(
         margin: 0;
         opacity: 0.9;
         color: inherit;
+        text-align: center;
     }
     </style>
     """,
