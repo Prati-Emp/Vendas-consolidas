@@ -89,7 +89,7 @@ st.markdown(
     .portal-hero {
         background: linear-gradient(135deg, #1e3a8a 0%, #dc2626 100%);
         border-radius: 12px;
-        padding: 18px 20px;
+        padding: 30px 20px;
         margin-bottom: 14px;
         border: 1px solid rgba(255,255,255,0.15);
     }
