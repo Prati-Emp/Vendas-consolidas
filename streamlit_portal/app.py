@@ -93,30 +93,30 @@ cols = st.columns(2)
 for i, app in enumerate(allowed_apps):
     with cols[i % 2]:
         url = links.get(app["key"], "").strip()
-        card_inner = f"""
-        <div style="
-            border: 1px solid rgba(128,128,128,0.3);
-            border-radius: 10px;
-            padding: 14px 16px;
-            margin-bottom: 12px;
-            min-height: 120px;
-            background: rgba(255,255,255,0.02);
-            transition: all 0.2s ease;
-        ">
-            <h4 style="margin: 0 0 8px 0; color: inherit;">{app["title"]}</h4>
-            <p style="margin: 0; opacity: 0.85; color: inherit;">{app["description"]}</p>
-        </div>
-        """
+        card_inner = (
+            f'<div style="'
+            f'border: 1px solid rgba(128,128,128,0.3);'
+            f'border-radius: 10px;'
+            f'padding: 14px 16px;'
+            f'margin-bottom: 12px;'
+            f'min-height: 120px;'
+            f'background: rgba(255,255,255,0.02);'
+            f'transition: all 0.2s ease;'
+            f'">'
+            f'<h4 style="margin: 0 0 8px 0; color: inherit;">{app["title"]}</h4>'
+            f'<p style="margin: 0; opacity: 0.85; color: inherit;">{app["description"]}</p>'
+            f'</div>'
+        )
 
         if url:
             # Card inteiro clicável para navegação direta.
             st.markdown(
-                f"""
-                <a href="{url}" target="_blank" rel="noopener noreferrer"
-                   style="text-decoration:none; color:inherit; display:block;">
-                    {card_inner}
-                </a>
-                """,
+                (
+                    f'<a href="{url}" target="_blank" rel="noopener noreferrer" '
+                    f'style="text-decoration:none; color:inherit; display:block;">'
+                    f"{card_inner}"
+                    f"</a>"
+                ),
                 unsafe_allow_html=True,
             )
         else:
