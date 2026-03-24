@@ -57,7 +57,7 @@ USERS_DATABASE = {
         "created": "2024-10-21", 
         "last_login": None,
         "active": True,
-        "subpages": ["operacoes.jira"]  # Apenas acesso ao Jira
+        "subpages": ["operacoes.jira", "administrativo.acompanhamento_solicitacoes"]  # Jira + acompanhamento RH
     },
     "evelyn.padilha@grupoprati.com": {
         "password": "Pr@ti2024!Evelyn",
@@ -67,7 +67,7 @@ USERS_DATABASE = {
         "created": "2024-10-21",
         "last_login": None,
         "active": True,
-        "subpages": ["operacoes.jira"]  # Apenas acesso ao Jira
+        "subpages": ["operacoes.jira", "administrativo.acompanhamento_solicitacoes"]  # Jira + acompanhamento RH
     },
     "joao.fantinel@grupoprati.com": {
         "password": "0sIOnX%d9@sz",
@@ -92,7 +92,19 @@ USERS_DATABASE = {
         "created": "2025-01-23",
         "last_login": None,
         "active": True,
-        "subpages": ["operacoes.jira", "operacoes.compras", "operacoes.solicitacoes", "operacoes.contratos", "operacoes.evolucao_obra"]
+        "subpages": [
+            "operacoes.jira",
+            "operacoes.compras",
+            "operacoes.solicitacoes",
+            "operacoes.contratos",
+            "operacoes.evolucao_obra",
+            "administrativo.repasses",
+            "administrativo.contas_pagas",
+            "administrativo.saldo_em_caixa",
+            "administrativo.rh",
+            "administrativo.indicadores_gestao_pessoas",
+            "administrativo.acompanhamento_solicitacoes",
+        ]
     },
     "raul.lunkes@grupoprati.com": {
         "password": "Pr@ti2025!Raul",
@@ -120,8 +132,8 @@ USERS_DATABASE = {
         "created": "2025-12-19",
         "last_login": None,
         "active": True,
-        "pages": ["operacoes"],
-        "subpages": ["operacoes.jira"]
+        "pages": ["operacoes", "administrativo"],
+        "subpages": ["operacoes.jira", "administrativo.acompanhamento_solicitacoes"]
     },
     "italo.peres@grupoprati.com": {
         "password": "Pr@ti2024!Italo",
@@ -153,7 +165,12 @@ USERS_DATABASE = {
         "last_login": None,
         "active": True,
         "pages": ["vendas", "leads", "reservas", "motivo_fora_prazo", "administrativo"],  # Acesso ao dashboard de reservas e administrativo
-        "subpages": ["administrativo.repasses", "administrativo.contas_pagas", "administrativo.saldo_em_caixa"]  # RH oculto
+        "subpages": [
+            "administrativo.repasses",
+            "administrativo.contas_pagas",
+            "administrativo.saldo_em_caixa",
+            "administrativo.acompanhamento_solicitacoes",
+        ]  # RH / indicadores ocultos
     },
     "ricardo@grupoprati.com": {
         "password": "Pr@ti2025!Ricardo",
@@ -185,8 +202,8 @@ USERS_DATABASE = {
         "created": "2026-03-02",
         "last_login": None,
         "active": True,
-        "pages": ["vendas", "leads", "reservas", "motivo_fora_prazo", "tv_comercial"],  # Sem acesso ao administrativo (Repasses, Contas pagas, Saldo em caixa)
-        "subpages": []
+        "pages": ["vendas", "leads", "reservas", "motivo_fora_prazo", "tv_comercial", "administrativo"],
+        "subpages": ["administrativo.acompanhamento_solicitacoes"]
     },
     "otavio.watanabe@grupoprati.com": {
         "password": "@I15OVyN%ik*",
