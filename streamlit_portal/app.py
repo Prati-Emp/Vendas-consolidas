@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import html
+import inspect
 import sys
 from pathlib import Path
 from typing import Dict
@@ -25,6 +26,27 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
+
+
+def _portal_link_button(label: str, url: str, *, description: str, widget_key: str) -> None:
+    """st.link_button mudou entre versões (ex.: sem `key` em 1.33–1.40); monta só kwargs suportados."""
+    url_s = str(url).strip()
+    try:
+        params = set(inspect.signature(st.link_button).parameters.keys())
+    except (TypeError, ValueError):
+        params = set()
+    kw: Dict[str, object] = {}
+    if "help" in params:
+        kw["help"] = description
+    if "type" in params:
+        kw["type"] = "primary"
+    if "width" in params:
+        kw["width"] = "stretch"
+    elif "use_container_width" in params:
+        kw["use_container_width"] = True
+    if "key" in params:
+        kw["key"] = widget_key
+    st.link_button(label, url_s, **kw)
 
 
 def _get_portal_links_from_secrets() -> Dict[str, str]:
@@ -152,7 +174,7 @@ allowed_apps = PORTAL_APPS
 cols = st.columns(2)
 for i, app in enumerate(allowed_apps):
     with cols[i % 2]:
-        url = links.get(app["key"], "").strip()
+        url = str(links.get(app["key"], "") or "").strip()
         # Títulos podem ter emoji/caracteres — escapar para HTML seguro.
         title_h = html.escape(app["title"], quote=False)
         desc_h = html.escape(app["description"], quote=False)
@@ -166,13 +188,11 @@ for i, app in enumerate(allowed_apps):
         # Só o card em HTML; links via st.link_button (âncoras em markdown costumam não navegar no Cloud).
         st.markdown(card_inner, unsafe_allow_html=True)
         if url:
-            st.link_button(
+            _portal_link_button(
                 "Abrir dashboard →",
-                url.strip(),
-                help=app["description"],
-                use_container_width=True,
-                type="primary",
-                key=f"portal_open_{app['key']}",
+                url,
+                description=app["description"],
+                widget_key=f"portal_open_{app['key']}",
             )
         else:
             st.caption("URL não configurada")
