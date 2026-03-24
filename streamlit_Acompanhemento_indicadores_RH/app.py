@@ -1,4 +1,4 @@
-"""Aplicativo principal (mini-admin) do Acompanhamento e Indicadores RH."""
+"""Aplicativo principal (mini-admin) de Acompanhamento e Indicadores de Gestão de Pessoas."""
 
 import sys
 from pathlib import Path
@@ -19,13 +19,13 @@ from navigation import ensure_administrativo_access  # noqa: E402
 
 
 st.set_page_config(
-    page_title="Acompanhamento e Indicadores RH",
-    page_icon="📋",
+    page_title="Acompanhamento e Indicadores de Gestão de Pessoas",
+    page_icon="👥",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
-require_auth(dashboard_title="Acompanhamento e Indicadores RH")
+require_auth(dashboard_title="Acompanhamento e Indicadores de Gestão de Pessoas")
 require_page_access("administrativo")
 
 # Redirecionar automaticamente para a primeira aba disponível
