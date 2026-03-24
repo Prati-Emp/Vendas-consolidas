@@ -83,8 +83,64 @@ PORTAL_APPS = [
 ]
 
 
-st.title("🧭 Portal de Dashboards Prati")
-st.caption("Acesso rápido para os dashboards publicados.")
+st.markdown(
+    """
+    <style>
+    .portal-hero {
+        background: linear-gradient(135deg, #1e3a8a 0%, #dc2626 100%);
+        border-radius: 12px;
+        padding: 18px 20px;
+        margin-bottom: 14px;
+        border: 1px solid rgba(255,255,255,0.15);
+    }
+    .portal-hero h1 {
+        margin: 0;
+        color: #ffffff;
+        font-size: 2rem;
+        font-weight: 700;
+    }
+    .portal-hero p {
+        margin: 6px 0 0 0;
+        color: #f3f4f6;
+        font-size: 0.95rem;
+    }
+    .portal-card {
+        border: 1px solid rgba(128,128,128,0.35);
+        border-left: 3px solid #dc2626;
+        border-radius: 10px;
+        padding: 14px 16px;
+        margin-bottom: 12px;
+        min-height: 120px;
+        background: rgba(30,58,138,0.08);
+        transition: all 0.2s ease;
+    }
+    .portal-card:hover {
+        border-left-color: #1e3a8a;
+        background: rgba(220,38,38,0.08);
+    }
+    .portal-card h4 {
+        margin: 0 0 8px 0;
+        color: inherit;
+    }
+    .portal-card p {
+        margin: 0;
+        opacity: 0.9;
+        color: inherit;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+st.markdown(
+    """
+    <div class="portal-hero">
+        <h1>🧭 Portal de Dashboards Prati</h1>
+        <p>Acesso rápido para os dashboards publicados.</p>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
 links = {**DEFAULT_PORTAL_LINKS, **_get_portal_links_from_secrets()}
 allowed_apps = PORTAL_APPS
@@ -94,17 +150,9 @@ for i, app in enumerate(allowed_apps):
     with cols[i % 2]:
         url = links.get(app["key"], "").strip()
         card_inner = (
-            f'<div style="'
-            f'border: 1px solid rgba(128,128,128,0.3);'
-            f'border-radius: 10px;'
-            f'padding: 14px 16px;'
-            f'margin-bottom: 12px;'
-            f'min-height: 120px;'
-            f'background: rgba(255,255,255,0.02);'
-            f'transition: all 0.2s ease;'
-            f'">'
-            f'<h4 style="margin: 0 0 8px 0; color: inherit;">{app["title"]}</h4>'
-            f'<p style="margin: 0; opacity: 0.85; color: inherit;">{app["description"]}</p>'
+            f'<div class="portal-card">'
+            f'<h4>{app["title"]}</h4>'
+            f'<p>{app["description"]}</p>'
             f'</div>'
         )
 
@@ -112,7 +160,7 @@ for i, app in enumerate(allowed_apps):
             # Card inteiro clicável para navegação direta.
             st.markdown(
                 (
-                    f'<a href="{url}" target="_blank" rel="noopener noreferrer" '
+                    f'<a href="{url}" target="_self" rel="noopener noreferrer" '
                     f'style="text-decoration:none; color:inherit; display:block;">'
                     f"{card_inner}"
                     f"</a>"
