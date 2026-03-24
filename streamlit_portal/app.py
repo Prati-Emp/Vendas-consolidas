@@ -98,11 +98,13 @@ st.markdown(
         color: #ffffff;
         font-size: 2rem;
         font-weight: 700;
+        text-align: center;
     }
     .portal-hero p {
         margin: 6px 0 0 0;
         color: #f3f4f6;
         font-size: 0.95rem;
+        text-align: center;
     }
     .portal-card {
         border: 1px solid rgba(128,128,128,0.35);
@@ -121,6 +123,7 @@ st.markdown(
     .portal-card h4 {
         margin: 0 0 8px 0;
         color: inherit;
+        text-align: center;
     }
     .portal-card p {
         margin: 0;
