@@ -140,7 +140,6 @@ st.markdown(
     """
     <div class="portal-hero">
         <h1>🧭 Portal de Dashboards Prati</h1>
-        <p>Acesso rápido para os dashboards publicados.</p>
     </div>
     """,
     unsafe_allow_html=True,
