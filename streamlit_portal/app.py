@@ -124,11 +124,3 @@ for i, app in enumerate(allowed_apps):
         if not url:
             st.caption("URL não configurada")
 
-st.markdown("---")
-st.markdown(
-    """
-    **Configuração de links (Streamlit Cloud / Secrets):**
-    adicione um objeto `portal_links` com as URLs dos apps.
-    """.strip()
-)
-
