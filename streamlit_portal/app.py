@@ -40,6 +40,14 @@ def _get_portal_links_from_secrets() -> Dict[str, str]:
     return {}
 
 
+DEFAULT_PORTAL_LINKS: Dict[str, str] = {
+    "vendas": "https://painel-comercial-3an7z6klwm62m8vjgaandc.streamlit.app/",
+    "operacoes": "https://operacoe-atividades-dp6rfv83mdgebtsitsvsab.streamlit.app/",
+    "administrativo": "https://dashboardadm7uzra3xkjapkqfbotwba6.streamlit.app/",
+    "rh_portal": "https://acompanhamento-qjz7ssdzfrmmqyw2dcpw4f.streamlit.app/",
+}
+
+
 def _is_allowed(required_permissions: List[str]) -> bool:
     """Verifica se usuário pode visualizar um card do portal."""
     return any(can_access_page(p) for p in required_permissions)
@@ -87,7 +95,7 @@ user = get_current_user() or {}
 user_name = user.get("name", "Usuário")
 st.caption(f"Bem-vindo, {user_name}. Aqui você vê apenas os apps aos quais tem acesso.")
 
-links = _get_portal_links_from_secrets()
+links = {**DEFAULT_PORTAL_LINKS, **_get_portal_links_from_secrets()}
 allowed_apps = [app for app in PORTAL_APPS if _is_allowed(app["required_permissions"])]
 
 if not allowed_apps:
