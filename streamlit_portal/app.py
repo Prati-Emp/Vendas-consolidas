@@ -118,7 +118,12 @@ for i, app in enumerate(allowed_apps):
         if url:
             st.link_button("Abrir app", url, use_container_width=True)
         else:
-            st.button("URL não configurada", disabled=True, use_container_width=True)
+            st.button(
+                "URL não configurada",
+                key=f"portal_missing_{app['key']}",
+                disabled=True,
+                use_container_width=True,
+            )
 
 st.markdown("---")
 st.markdown(
