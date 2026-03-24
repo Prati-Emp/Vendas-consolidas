@@ -37,7 +37,7 @@ USERS_DATABASE = {
         "created": "2024-10-21",
         "last_login": None,
         "active": True,
-        "subpages": ["operacoes.jira", "operacoes.compras", "operacoes.solicitacoes", "operacoes.contratos", "administrativo.repasses", "administrativo.contas_pagas", "administrativo.saldo_em_caixa", "administrativo.rh"]
+        "subpages": ["operacoes.jira", "operacoes.compras", "operacoes.solicitacoes", "operacoes.contratos", "administrativo.repasses", "administrativo.contas_pagas", "administrativo.saldo_em_caixa", "administrativo.rh", "administrativo.acompanhamento_solicitacoes"]
     },
     "lucas.follmann@grupoprati.com": {
         "password": "Pr@ti2024!Lucas",
