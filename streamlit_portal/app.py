@@ -127,14 +127,14 @@ st.markdown(
     .portal-hero {
         background: linear-gradient(135deg, #1e3a8a 0%, #dc2626 100%);
         border-radius: 10px;
-        padding: 18px 18px;
-        margin-bottom: 8px;
+        padding: 26px 22px;
+        margin-bottom: 24px;
         border: 1px solid rgba(255,255,255,0.15);
     }
     .portal-hero h1 {
         margin: 0;
         color: #ffffff;
-        font-size: 1.35rem;
+        font-size: 1.6rem;
         font-weight: 700;
         text-align: center;
         line-height: 1.3;
@@ -170,12 +170,12 @@ st.markdown(
         color: inherit;
         text-align: center;
     }
-    /* Só os cards clicáveis (iframe): menos espaço vertical entre eles, sem afetar o resto do app */
+    /* Cards clicáveis: bem compactos entre linhas */
     [data-testid="element-container"]:has(iframe) {
-        margin-bottom: 0.35rem !important;
+        margin-bottom: 0.1rem !important;
     }
     [data-testid="stHorizontalBlock"] {
-        gap: 0.5rem !important;
+        gap: 0.35rem !important;
     }
     </style>
     """,
@@ -213,7 +213,7 @@ for i, app in enumerate(allowed_apps):
         if url:
             components.html(
                 _portal_clickable_card_html(url, app["title"], app["description"]),
-                height=146,
+                height=144,
                 scrolling=False,
             )
         else:
