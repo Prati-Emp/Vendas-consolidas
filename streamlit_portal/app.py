@@ -31,8 +31,8 @@ st.set_page_config(
 
 def _portal_iframe_theme_body_class() -> str:
     """
-    Classe no <body> do iframe: light / dark quando st.context.theme existe (Streamlit recente),
-    senão 'auto' + @media (prefers-color-scheme) como fallback (útil em versões sem st.context).
+    Classe no <body> do iframe: light ou dark via st.context.theme; se indisponível, 'auto'
+    usa o mesmo visual escuro dos cards (sem prefers-color-scheme, para não misturar com SO).
     """
     try:
         ctx = getattr(st, "context", None)
@@ -130,21 +130,10 @@ _PORTAL_CARD_IFRAME_CSS = """
   body.portal-tokens-light h4 { color: #0f172a; }
   body.portal-tokens-light p { color: #475569; }
 
-  @media (prefers-color-scheme: light) {
-    body.portal-tokens-auto a.portal-card-wrap { color: #0f172a; }
-    body.portal-tokens-auto .pcard {
-      border: 1px solid #e2e8f0;
-      background: #f8fafc;
-    }
-    body.portal-tokens-auto a.portal-card-wrap:hover .pcard,
-    body.portal-tokens-auto a.portal-card-wrap:focus .pcard {
-      border-left-color: #1e3a8a;
-      background: #f1f5f9;
-      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
-    }
-    body.portal-tokens-auto h4 { color: #0f172a; }
-    body.portal-tokens-auto p { color: #475569; opacity: 1; }
-  }
+  /*
+   * Não usar prefers-color-scheme no iframe: com tema ESCURO no Streamlit e SO em modo claro,
+   * o media query pintava os cards de branco. Modo claro só com body.portal-tokens-light (st.context).
+   */
 """
 
 # Cards só em markdown (ex.: URL não configurada): mesmo contraste do tema claro
@@ -245,10 +234,6 @@ PORTAL_APPS = [
 _PORTAL_IFRAME_THEME_CLASS = _portal_iframe_theme_body_class()
 if _PORTAL_IFRAME_THEME_CLASS == "portal-tokens-light":
     _PORTAL_MD_THEME_EXTRA = _PORTAL_MARKDOWN_LIGHT_CARD_CSS
-elif _PORTAL_IFRAME_THEME_CLASS == "portal-tokens-auto":
-    _PORTAL_MD_THEME_EXTRA = (
-        "@media (prefers-color-scheme: light) { " + _PORTAL_MARKDOWN_LIGHT_CARD_CSS + " }\n"
-    )
 else:
     _PORTAL_MD_THEME_EXTRA = ""
 
