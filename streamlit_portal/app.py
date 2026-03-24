@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict
 
 import streamlit as st
 
@@ -16,7 +16,6 @@ for path in (ROOT_DIR, DASHBOARD_DIR):
     if str(path) not in sys.path:
         sys.path.append(str(path))
 
-from advanced_auth import can_access_page, get_current_user, require_auth  # noqa: E402
 
 
 st.set_page_config(
@@ -25,8 +24,6 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
-
-require_auth(dashboard_title="Portal de Dashboards Prati")
 
 
 def _get_portal_links_from_secrets() -> Dict[str, str]:
@@ -46,11 +43,6 @@ DEFAULT_PORTAL_LINKS: Dict[str, str] = {
     "administrativo": "https://dashboardadm7uzra3xkjapkqfbotwba6.streamlit.app/",
     "rh_portal": "https://acompanhamento-qjz7ssdzfrmmqyw2dcpw4f.streamlit.app/",
 }
-
-
-def _is_allowed(required_permissions: List[str]) -> bool:
-    """Verifica se usuário pode visualizar um card do portal."""
-    return any(can_access_page(p) for p in required_permissions)
 
 
 PORTAL_APPS = [
@@ -91,20 +83,20 @@ PORTAL_APPS = [
 
 
 st.title("🧭 Portal de Dashboards Prati")
-user = get_current_user() or {}
-user_name = user.get("name", "Usuário")
-st.caption(f"Bem-vindo, {user_name}. Aqui você vê apenas os apps aos quais tem acesso.")
+st.caption("Acesso rápido para os dashboards publicados.")
 
 links = {**DEFAULT_PORTAL_LINKS, **_get_portal_links_from_secrets()}
-allowed_apps = [app for app in PORTAL_APPS if _is_allowed(app["required_permissions"])]
-
-if not allowed_apps:
-    st.warning("Nenhum app disponível para o seu perfil no momento.")
-    st.stop()
+allowed_apps = PORTAL_APPS
 
 cols = st.columns(2)
 for i, app in enumerate(allowed_apps):
     with cols[i % 2]:
+        url = links.get(app["key"], "").strip()
+        title_html = (
+            f'<a href="{url}" target="_self" style="text-decoration:none; color:inherit;">{app["title"]}</a>'
+            if url
+            else app["title"]
+        )
         st.markdown(
             f"""
             <div style="
@@ -115,14 +107,12 @@ for i, app in enumerate(allowed_apps):
                 min-height: 120px;
                 background: rgba(255,255,255,0.02);
             ">
-                <h4 style="margin: 0 0 8px 0;">{app["title"]}</h4>
+                <h4 style="margin: 0 0 8px 0;">{title_html}</h4>
                 <p style="margin: 0; opacity: 0.85;">{app["description"]}</p>
             </div>
             """,
             unsafe_allow_html=True,
         )
-
-        url = links.get(app["key"], "").strip()
         if url:
             st.link_button("Abrir app", url, use_container_width=True)
         else:
