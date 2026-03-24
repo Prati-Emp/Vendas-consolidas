@@ -659,20 +659,26 @@ def _render_kanban_board(df: pd.DataFrame, title: str, board_key: str = "") -> N
     .kanban-board-headers {{
         display: flex;
         flex-direction: row;
+        align-items: flex-start;
         width: max-content;
         min-width: 100%;
     }}
     .kanban-board-cards {{
         display: flex;
         flex-direction: row;
+        align-items: flex-start;
         width: max-content;
         min-width: 100%;
         padding: 0;
     }}
+    /* Largura fixa e igual em cabeçalho e cards: evita larguras diferentes por conteúdo e perde sincronia no scroll */
     .kanban-column {{
-        flex: 0 0 220px;
-        min-width: 220px;
-        max-width: 280px;
+        flex: 0 0 260px;
+        width: 260px;
+        min-width: 260px;
+        max-width: 260px;
+        box-sizing: border-box;
+        overflow-x: hidden;
         background: #f8f9fa;
         border-radius: 8px;
         padding: 12px;
@@ -681,16 +687,18 @@ def _render_kanban_board(df: pd.DataFrame, title: str, board_key: str = "") -> N
     .kanban-column-header-cell {{
         background: #f8f9fa;
         border-radius: 4px;
-        padding: 8px 10px;
+        /* mesmo padding da coluna de cards — antes 8px/10px deslocava o grid */
     }}
     .kanban-column-cards {{ background: #f8f9fa; }}
     .kanban-column-title {{
         font-weight: 600;
         margin-bottom: 6px;
         font-size: 0.82rem;
-        line-height: 1.1;
+        line-height: 1.15;
         text-align: center;
         letter-spacing: 0.2px;
+        word-break: break-word;
+        overflow-wrap: anywhere;
     }}
     .kanban-column-count {{
         font-weight: 700;
@@ -702,10 +710,15 @@ def _render_kanban_board(df: pd.DataFrame, title: str, board_key: str = "") -> N
         background: #fff;
         border: 1px solid #e0e0e0;
         border-radius: 8px;
-        padding: 12px;
+        padding: 10px;
         margin-bottom: 10px;
         box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-        font-size: 0.9rem;
+        font-size: 0.88rem;
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+        word-break: break-word;
+        overflow-wrap: anywhere;
     }}
     .kanban-card-chave {{
         font-weight: 600;
@@ -717,9 +730,10 @@ def _render_kanban_board(df: pd.DataFrame, title: str, board_key: str = "") -> N
         color: #1F2937;
         margin-bottom: 8px;
         word-wrap: break-word;
+        overflow-wrap: anywhere;
         font-weight: 700;
-        line-height: 1.25;
-        font-size: 1rem;
+        line-height: 1.2;
+        font-size: 0.95rem;
     }}
     .kanban-card-meta {{
         display: flex;
@@ -796,7 +810,7 @@ def _render_kanban_board(df: pd.DataFrame, title: str, board_key: str = "") -> N
             syncingFromTop = true;
             bottom.scrollLeft = top.scrollLeft;
             header.scrollLeft = top.scrollLeft;
-            syncingFromTop = false;
+            requestAnimationFrame(() => {{ syncingFromTop = false; }});
         }});
 
         header.addEventListener("scroll", () => {{
@@ -804,7 +818,7 @@ def _render_kanban_board(df: pd.DataFrame, title: str, board_key: str = "") -> N
             syncingFromHeader = true;
             bottom.scrollLeft = header.scrollLeft;
             top.scrollLeft = header.scrollLeft;
-            syncingFromHeader = false;
+            requestAnimationFrame(() => {{ syncingFromHeader = false; }});
         }});
 
         bottom.addEventListener("scroll", () => {{
@@ -812,11 +826,12 @@ def _render_kanban_board(df: pd.DataFrame, title: str, board_key: str = "") -> N
             syncingFromBottom = true;
             top.scrollLeft = bottom.scrollLeft;
             header.scrollLeft = bottom.scrollLeft;
-            syncingFromBottom = false;
+            requestAnimationFrame(() => {{ syncingFromBottom = false; }});
         }});
 
         syncWidth();
         window.addEventListener("resize", syncWidth);
+        window.addEventListener("load", syncWidth);
     }})();
     </script>
     </body>
