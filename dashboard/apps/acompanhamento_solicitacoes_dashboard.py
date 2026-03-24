@@ -492,8 +492,6 @@ def _render_kanban_board(df: pd.DataFrame, title: str, board_key: str = "") -> N
         st.dataframe(df.head(20), use_container_width=True, hide_index=True)
         return
 
-    statuses = [s for s in df[status_col].dropna().unique().tolist() if str(s).strip()]
-
     def _normalize_for_compare(x: str) -> str:
         x_norm = unicodedata.normalize("NFKD", str(x).strip())
         x_norm = "".join(c for c in x_norm if not unicodedata.combining(c))
@@ -501,7 +499,9 @@ def _render_kanban_board(df: pd.DataFrame, title: str, board_key: str = "") -> N
         x_norm = re.sub(r"\s+", " ", x_norm)
         return x_norm
 
-    # Ordem fixa para Rotinas Trabalhistas (de cima pra baixo)
+    # Lista fixa de colunas por quadro (sempre exibidas, mesmo sem itens).
+    # Status nos dados que não estiverem no catálogo entram ao final.
+    desired_status_order: Optional[List[str]] = None
     if board_key == "rotinas_trabalhistas":
         desired_status_order = [
             "Backlog",
@@ -511,14 +511,6 @@ def _render_kanban_board(df: pd.DataFrame, title: str, board_key: str = "") -> N
             "Finalizado",
             "Rejeitado",
         ]
-        desired_norm_index = { _normalize_for_compare(s): i for i, s in enumerate(desired_status_order) }
-
-        def _sort_status_rotinas(s: str) -> tuple[int, str]:
-            n = _normalize_for_compare(s)
-            return (desired_norm_index.get(n, 999), n)
-
-        statuses = sorted(statuses, key=_sort_status_rotinas)
-    # Ordem fixa para Movimentações (de cima pra baixo) - sequência da imagem
     elif board_key == "movimentacoes_mc":
         desired_status_order = [
             "Backlog",
@@ -530,14 +522,6 @@ def _render_kanban_board(df: pd.DataFrame, title: str, board_key: str = "") -> N
             "Finalizado",
             "Rejeitado",
         ]
-        desired_norm_index = { _normalize_for_compare(s): i for i, s in enumerate(desired_status_order) }
-
-        def _sort_status_mov(s: str) -> tuple[int, str]:
-            n = _normalize_for_compare(s)
-            return (desired_norm_index.get(n, 999), n)
-
-        statuses = sorted(statuses, key=_sort_status_mov)
-    # Ordem fixa para Requisições de Vagas (de cima pra baixo) - sequência da imagem
     elif board_key == "requisicao_vaga_rc":
         desired_status_order = [
             "Backlog",
@@ -557,23 +541,41 @@ def _render_kanban_board(df: pd.DataFrame, title: str, board_key: str = "") -> N
             "Finalizado",
             "Rejeitado",
         ]
-        desired_norm_index = { _normalize_for_compare(s): i for i, s in enumerate(desired_status_order) }
+    elif board_key == "treinamentos_td":
+        desired_status_order = [
+            "Backlog",
+            "Aprovação Diretoria",
+            "Aprovação Presidência",
+            "Aprovado",
+            "Finalizado",
+            "Rejeitado",
+        ]
 
-        def _sort_status_rc(s: str) -> tuple[int, str]:
-            n = _normalize_for_compare(s)
-            return (desired_norm_index.get(n, 999), n)
-
-        statuses = sorted(statuses, key=_sort_status_rc)
+    if desired_status_order is not None:
+        statuses = list(desired_status_order)
+        catalog_norms = {_normalize_for_compare(s) for s in statuses}
+        extras: List[str] = []
+        for s in df[status_col].dropna().unique().tolist():
+            s_str = str(s).strip()
+            if not s_str:
+                continue
+            n = _normalize_for_compare(s_str)
+            if n not in catalog_norms:
+                catalog_norms.add(n)
+                extras.append(s_str)
+        extras.sort(key=lambda x: (_normalize_for_compare(x), str(x).lower()))
+        statuses = statuses + extras
     else:
+        statuses = [s for s in df[status_col].dropna().unique().tolist() if str(s).strip()]
+
         def _sort_status_default(s: str) -> tuple[int, str]:
             s_str = str(s).strip()
             return (0, s_str) if _normalize_for_compare(s_str) == "backlog" else (1, _normalize_for_compare(s_str))
 
         statuses = sorted(statuses, key=_sort_status_default)
-
-    if not statuses:
-        st.info("Nenhum status encontrado.")
-        return
+        if not statuses:
+            st.info("Nenhum status encontrado.")
+            return
 
     chave_col = "Chave" if "Chave" in df.columns else (df.columns[0] if len(df.columns) > 0 else "")
     resumo_col = "Resumo" if "Resumo" in df.columns else ""
