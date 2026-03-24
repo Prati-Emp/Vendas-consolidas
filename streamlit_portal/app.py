@@ -41,6 +41,7 @@ DEFAULT_PORTAL_LINKS: Dict[str, str] = {
     "vendas": "https://painel-comercial-3an7z6klwm62m8vjgaandc.streamlit.app/",
     "operacoes": "https://operacoe-atividades-dp6rfv83mdgebtsitsvsab.streamlit.app/",
     "administrativo": "https://dashboardadm7uzra3xkjapkqfbotwba6.streamlit.app/",
+    "tv_comercial": "https://tv-comercial-fe5yw6krwg6qwxntjwjkiao.streamlit.app/",
     "rh_portal": "https://acompanhamento-qjz7ssdzfrmmqyw2dcpw4f.streamlit.app/",
 }
 
@@ -113,15 +114,8 @@ for i, app in enumerate(allowed_apps):
             """,
             unsafe_allow_html=True,
         )
-        if url:
-            st.link_button("Abrir app", url, use_container_width=True)
-        else:
-            st.button(
-                "URL não configurada",
-                key=f"portal_missing_{app['key']}",
-                disabled=True,
-                use_container_width=True,
-            )
+        if not url:
+            st.caption("URL não configurada")
 
 st.markdown("---")
 st.markdown(
