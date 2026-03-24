@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 import html
-import inspect
 import sys
 from pathlib import Path
 from typing import Dict
 
 import streamlit as st
+import streamlit.components.v1 as components
 
 # Reuso da autenticação central do projeto
 APP_DIR = Path(__file__).resolve().parent
@@ -28,25 +28,39 @@ st.set_page_config(
 )
 
 
-def _portal_link_button(label: str, url: str, *, description: str, widget_key: str) -> None:
-    """st.link_button mudou entre versões (ex.: sem `key` em 1.33–1.40); monta só kwargs suportados."""
-    url_s = str(url).strip()
-    try:
-        params = set(inspect.signature(st.link_button).parameters.keys())
-    except (TypeError, ValueError):
-        params = set()
-    kw: Dict[str, object] = {}
-    if "help" in params:
-        kw["help"] = description
-    if "type" in params:
-        kw["type"] = "primary"
-    if "width" in params:
-        kw["width"] = "stretch"
-    elif "use_container_width" in params:
-        kw["use_container_width"] = True
-    if "key" in params:
-        kw["key"] = widget_key
-    st.link_button(label, url_s, **kw)
+def _portal_clickable_card_html(url: str, title: str, description: str) -> str:
+    """Card inteiro clicável dentro do iframe do componente (evita markdown + botão duplicado no Streamlit)."""
+    href = html.escape(str(url).strip(), quote=True)
+    title_h = html.escape(title, quote=False)
+    title_attr = html.escape(title, quote=True)
+    desc_h = html.escape(description, quote=False)
+    return f"""<!DOCTYPE html><html><head><meta charset="utf-8"/>
+<style>
+  body {{ margin: 0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+         background: transparent; }}
+  a {{ display: block; text-decoration: none; color: #fafafa; outline: none; }}
+  .pcard {{
+    border: 1px solid rgba(128,128,128,0.35);
+    border-left: 3px solid #dc2626;
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin: 0;
+    min-height: 108px;
+    box-sizing: border-box;
+    background: rgba(30,58,138,0.12);
+    transition: border-left-color 0.2s ease, background 0.2s ease;
+  }}
+  a:hover .pcard, a:focus .pcard {{
+    border-left-color: #1e3a8a;
+    background: rgba(220,38,38,0.1);
+  }}
+  h4 {{ margin: 0 0 8px 0; text-align: center; font-size: 1rem; font-weight: 600; }}
+  p {{ margin: 0; opacity: 0.9; text-align: center; font-size: 0.9rem; line-height: 1.35; }}
+</style></head><body>
+<a href="{href}" target="_blank" rel="noopener noreferrer" aria-label="{title_attr}">
+  <div class="pcard"><h4>{title_h}</h4><p>{desc_h}</p></div>
+</a>
+</body></html>"""
 
 
 def _get_portal_links_from_secrets() -> Dict[str, str]:
@@ -175,7 +189,6 @@ cols = st.columns(2)
 for i, app in enumerate(allowed_apps):
     with cols[i % 2]:
         url = str(links.get(app["key"], "") or "").strip()
-        # Títulos podem ter emoji/caracteres — escapar para HTML seguro.
         title_h = html.escape(app["title"], quote=False)
         desc_h = html.escape(app["description"], quote=False)
         card_inner = (
@@ -185,15 +198,13 @@ for i, app in enumerate(allowed_apps):
             f"</div>"
         )
 
-        # Só o card em HTML; links via st.link_button (âncoras em markdown costumam não navegar no Cloud).
-        st.markdown(card_inner, unsafe_allow_html=True)
         if url:
-            _portal_link_button(
-                "Abrir dashboard →",
-                url,
-                description=app["description"],
-                widget_key=f"portal_open_{app['key']}",
+            components.html(
+                _portal_clickable_card_html(url, app["title"], app["description"]),
+                height=152,
+                scrolling=False,
             )
         else:
+            st.markdown(card_inner, unsafe_allow_html=True)
             st.caption("URL não configurada")
 
