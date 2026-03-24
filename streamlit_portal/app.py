@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import html
+import inspect
 import sys
 from pathlib import Path
 from typing import Dict
@@ -125,17 +126,18 @@ st.markdown(
     <style>
     .portal-hero {
         background: linear-gradient(135deg, #1e3a8a 0%, #dc2626 100%);
-        border-radius: 12px;
-        padding: 42px 22px;
-        margin-bottom: 14px;
+        border-radius: 10px;
+        padding: 18px 18px;
+        margin-bottom: 8px;
         border: 1px solid rgba(255,255,255,0.15);
     }
     .portal-hero h1 {
         margin: 0;
         color: #ffffff;
-        font-size: 2rem;
+        font-size: 1.35rem;
         font-weight: 700;
         text-align: center;
+        line-height: 1.3;
     }
     .portal-hero p {
         margin: 6px 0 0 0;
@@ -168,6 +170,13 @@ st.markdown(
         color: inherit;
         text-align: center;
     }
+    /* Só os cards clicáveis (iframe): menos espaço vertical entre eles, sem afetar o resto do app */
+    [data-testid="element-container"]:has(iframe) {
+        margin-bottom: 0.35rem !important;
+    }
+    [data-testid="stHorizontalBlock"] {
+        gap: 0.5rem !important;
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -185,7 +194,10 @@ st.markdown(
 links = {**DEFAULT_PORTAL_LINKS, **_get_portal_links_from_secrets()}
 allowed_apps = PORTAL_APPS
 
-cols = st.columns(2)
+if "gap" in inspect.signature(st.columns).parameters:
+    cols = st.columns(2, gap="small")
+else:
+    cols = st.columns(2)
 for i, app in enumerate(allowed_apps):
     with cols[i % 2]:
         url = str(links.get(app["key"], "") or "").strip()
@@ -201,7 +213,7 @@ for i, app in enumerate(allowed_apps):
         if url:
             components.html(
                 _portal_clickable_card_html(url, app["title"], app["description"]),
-                height=152,
+                height=146,
                 scrolling=False,
             )
         else:
