@@ -392,7 +392,9 @@ def render_jira_requisicao_vaga_tempos() -> None:
         "Somente o quadro **Requisição de vaga (RC)** com status **Finalizado** (e equivalentes). "
         "**Início**: *Start date*; se ausente, *Data de início*. "
         "**Tempo fechamento da vaga**: do início até **Data de aprovação** (aceite do candidato). "
-        "**Tempo de aprovação da vaga**: do início até **Data de fechamento** (até a etapa de fechamento registrada no Jira). "
+        "**Tempo de aprovação da vaga**: do início até **Data de fechamento**; se a **Data finalização** "
+        "for anterior (processo já encerrado, mas fechamento preenchido depois no Jira), usa-se a **Data finalização** "
+        "como data final desse prazo. "
         "**Tempo total de contratação**: do início até **Data finalização**. "
         "Cálculo em **dias corridos**."
     )
@@ -418,7 +420,11 @@ def render_jira_requisicao_vaga_tempos() -> None:
         st.metric("Tempo fechamento da vaga (média)", k1, help="Início → data de aprovação")
         st.caption(f"n = {n1} · mediana {h1}")
     with r2:
-        st.metric("Tempo aprovação da vaga (média)", k2, help="Início → data de fechamento")
+        st.metric(
+            "Tempo aprovação da vaga (média)",
+            k2,
+            help="Início → data de fechamento; se finalização for mais cedo, usa-se ela como fim.",
+        )
         st.caption(f"n = {n2} · mediana {h2}")
     with r3:
         st.metric("Tempo total contratação (média)", k3, help="Início → data finalização")

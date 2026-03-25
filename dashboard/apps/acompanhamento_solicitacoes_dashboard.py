@@ -404,7 +404,9 @@ def compute_requisicao_vaga_tempos_table(df: pd.DataFrame) -> pd.DataFrame:
     Métricas (dias corridos), sempre a partir do **início**:
     - **Início**: `Start_date` por linha; onde vazio, usa-se `Data_de_inicio`.
     - **Tempo fechamento vaga**: até **Data de aprovação** (aceite do candidato).
-    - **Tempo aprovação vaga**: até **Data de fechamento** (aprovação presidência / fechamento da req.).
+    - **Tempo aprovação vaga**: do início até **Data de fechamento**. Se houver **Data finalização**
+      anterior à data de fechamento (processo já encerrado no Jira, mas campo de fechamento atualizado
+      depois), usa-se **Data finalização** como fim desse prazo para não inflar o indicador.
     - **Tempo total contratação**: até **Data finalização**.
 
     Colunas de data na view consolidada: `Data_de_aprovação`, `Data_de_fechamento`, `Data_de_finalizacao`.
@@ -461,6 +463,10 @@ def compute_requisicao_vaga_tempos_table(df: pd.DataFrame) -> pd.DataFrame:
     out["Início"] = inicio.dt.strftime("%Y-%m-%d")
     out.loc[inicio.isna(), "Início"] = ""
 
+    d_fi_series: Optional[pd.Series] = None
+    if col_fin and col_fin in done.columns:
+        d_fi_series = pd.to_datetime(done[col_fin], errors="coerce", dayfirst=True)
+
     if col_aprov and col_aprov in done.columns:
         d_ap = pd.to_datetime(done[col_aprov], errors="coerce", dayfirst=True)
         out["Data de aprovação"] = d_ap.dt.strftime("%Y-%m-%d")
@@ -474,16 +480,22 @@ def compute_requisicao_vaga_tempos_table(df: pd.DataFrame) -> pd.DataFrame:
         d_fe = pd.to_datetime(done[col_fech], errors="coerce", dayfirst=True)
         out["Data de fechamento"] = d_fe.dt.strftime("%Y-%m-%d")
         out.loc[d_fe.isna(), "Data de fechamento"] = ""
-        out[COL_TEMPO_APROVACAO_VAGA] = _series_day_diff_days(inicio, d_fe)
+
+        end_aprov = d_fe
+        if d_fi_series is not None:
+            both = d_fe.notna() & d_fi_series.notna()
+            use_final_mais_cedo = both & (d_fi_series < d_fe)
+            end_aprov = d_fe.where(~use_final_mais_cedo, d_fi_series)
+
+        out[COL_TEMPO_APROVACAO_VAGA] = _series_day_diff_days(inicio, end_aprov)
     else:
         out["Data de fechamento"] = ""
         out[COL_TEMPO_APROVACAO_VAGA] = pd.Series(pd.NA, index=out.index, dtype="Int64")
 
-    if col_fin and col_fin in done.columns:
-        d_fi = pd.to_datetime(done[col_fin], errors="coerce", dayfirst=True)
-        out["Data finalização"] = d_fi.dt.strftime("%Y-%m-%d")
-        out.loc[d_fi.isna(), "Data finalização"] = ""
-        out[COL_TEMPO_TOTAL_CONTRATACAO] = _series_day_diff_days(inicio, d_fi)
+    if d_fi_series is not None:
+        out["Data finalização"] = d_fi_series.dt.strftime("%Y-%m-%d")
+        out.loc[d_fi_series.isna(), "Data finalização"] = ""
+        out[COL_TEMPO_TOTAL_CONTRATACAO] = _series_day_diff_days(inicio, d_fi_series)
     else:
         out["Data finalização"] = ""
         out[COL_TEMPO_TOTAL_CONTRATACAO] = pd.Series(pd.NA, index=out.index, dtype="Int64")
