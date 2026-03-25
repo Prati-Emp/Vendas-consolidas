@@ -8,7 +8,7 @@ from __future__ import annotations
 import html
 import re
 import unicodedata
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import pandas as pd
 import streamlit as st
@@ -266,6 +266,96 @@ def _get_status_column(df: pd.DataFrame) -> str:
         if "status" in col.lower():
             return col
     return ""
+
+
+def _normalize_jira_status_token(value: Any) -> str:
+    """Normaliza valor de status do Jira para comparação (sem acentos, minúsculas)."""
+    if value is None:
+        return ""
+    s_raw = str(value).strip()
+    if not s_raw or s_raw.lower() in {"none", "nan", "nat", "<na>"}:
+        return ""
+    s_norm = unicodedata.normalize("NFKD", s_raw)
+    s_norm = "".join(c for c in s_norm if not unicodedata.combining(c))
+    s_norm = s_norm.lower()
+    s_norm = re.sub(r"\s+", " ", s_norm)
+    return s_norm
+
+
+# Ordem de colunas da matriz de indicadores (quadro × situação)
+SOLICITACOES_MATRIX_BUCKET_ORDER: Tuple[str, ...] = (
+    "Abertas",
+    "Em andamento",
+    "Concluídas",
+    "Rejeitadas",
+)
+
+
+def classify_jira_status_bucket(status_val: Any) -> str:
+    """
+    Agrupa o status bruto do Jira em faixas para indicadores:
+    - Abertas: backlog (entrada / solicitações novas no quadro)
+    - Em andamento: demais etapas do fluxo até conclusão ou rejeição
+    - Concluídas: finalizado (ou equivalentes comuns)
+    - Rejeitadas: rejeitado (ou equivalentes comuns)
+    """
+    n = _normalize_jira_status_token(status_val)
+    if not n:
+        return "Em andamento"
+
+    # Concluídas
+    if n == "finalizado" or n in ("done", "closed", "concluido", "concluído", "resolvido", "resolved"):
+        return "Concluídas"
+
+    # Rejeitadas
+    if n == "rejeitado" or n == "rejected":
+        return "Rejeitadas"
+
+    # Abertas (primeira coluna do Kanban nos quadros DHO)
+    if n == "backlog":
+        return "Abertas"
+
+    return "Em andamento"
+
+
+def compute_solicitacoes_matrix_by_quadro(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Conta solicitações por quadro (mesma regra de filtro do Kanban) e por faixa de status.
+
+    Retorna DataFrame com colunas: Quadro, Abertas, Em andamento, Concluídas, Rejeitadas, Total.
+    Última linha: TOTAL GERAL (soma por coluna; total geral pode contar o mesmo card
+    uma vez por quadro — cada linha de quadro já é disjunta porMotivo/Regra Triagem).
+    """
+    status_col = _get_status_column(df)
+    if df.empty or not status_col:
+        return pd.DataFrame()
+
+    cols_order = list(SOLICITACOES_MATRIX_BUCKET_ORDER)
+    rows: List[Dict[str, Any]] = []
+
+    for board_key, cfg in BOARD_FILTERS.items():
+        dfb = _filter_df_by_board(df, board_key)
+        counts = {c: 0 for c in cols_order}
+        if not dfb.empty and status_col in dfb.columns:
+            buckets = dfb[status_col].apply(classify_jira_status_bucket)
+            vc = buckets.value_counts()
+            for c in cols_order:
+                counts[c] = int(vc.get(c, 0) or 0)
+        row: Dict[str, Any] = {"Quadro": cfg["label"], **counts}
+        row["Total"] = sum(counts[c] for c in cols_order)
+        rows.append(row)
+
+    mat = pd.DataFrame(rows)
+    if mat.empty:
+        return mat
+
+    totals = {c: int(mat[c].sum()) for c in cols_order}
+    total_row: Dict[str, Any] = {
+        "Quadro": "TOTAL GERAL",
+        **totals,
+        "Total": int(sum(totals[c] for c in cols_order)),
+    }
+    return pd.concat([mat, pd.DataFrame([total_row])], ignore_index=True)
 
 
 def _build_kanban_column_html(

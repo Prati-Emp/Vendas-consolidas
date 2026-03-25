@@ -1,5 +1,6 @@
 """
-Dashboard de Indicadores de Gestão de Pessoas — dados das views Tecsmart no MotherDuck.
+Dashboard de Indicadores de Gestão de Pessoas —
+solicitações (Jira DHO) e indicadores operacionais (views Tecsmart no MotherDuck).
 """
 
 from __future__ import annotations
@@ -12,6 +13,10 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import streamlit as st
 
+from dashboard.apps.acompanhamento_solicitacoes_dashboard import (  # noqa: E402
+    compute_solicitacoes_matrix_by_quadro,
+    load_jira_dho_acompanhamento,
+)
 from dashboard.utils.md_conn import get_md_connection
 
 TEC_CONSOLIDADO = "administracao.Tecsmart_indicadores"
@@ -324,38 +329,79 @@ def tab_por_dimensao(
     )
 
 
+def render_jira_matriz_solicitacoes_por_quadro() -> None:
+    """Matriz quadros × (Abertas / Em andamento / Concluídas / Rejeitadas), mesma base do Kanban."""
+    st.subheader("Matriz de solicitações por quadro")
+    st.caption(
+        "Fonte: `administracao.Jira_projeto_dho_consolidado`, com o mesmo recorte de cada quadro "
+        "do acompanhamento Kanban. **Abertas**: status *Backlog*. **Em andamento**: demais etapas do fluxo "
+        "até conclusão ou rejeição. **Concluídas**: *Finalizado* (também Done, Closed, Resolvido). "
+        "**Rejeitadas**: *Rejeitado* (ou Rejected)."
+    )
+    df = load_jira_dho_acompanhamento()
+    if df.empty:
+        st.warning("Sem dados do Jira para exibir a matriz.")
+        return
+    mat = compute_solicitacoes_matrix_by_quadro(df)
+    if mat.empty:
+        st.warning("Não foi possível montar a matriz (verifique a coluna de status no dataset).")
+        return
+
+    col_cfg = {
+        "Quadro": st.column_config.TextColumn("Quadro", width="large"),
+        "Abertas": st.column_config.NumberColumn("Abertas", format="%d"),
+        "Em andamento": st.column_config.NumberColumn("Em andamento", format="%d"),
+        "Concluídas": st.column_config.NumberColumn("Concluídas", format="%d"),
+        "Rejeitadas": st.column_config.NumberColumn("Rejeitadas", format="%d"),
+        "Total": st.column_config.NumberColumn("Total", format="%d"),
+    }
+    st.dataframe(
+        mat,
+        column_config=col_cfg,
+        hide_index=True,
+        use_container_width=True,
+        key="ind_rh_matriz_quadros_solicitacoes",
+    )
+
+
 def render_indicadores_rh_dashboard(
     show_title: bool = True,
     show_caption: bool = True,
 ) -> None:
-    """Renderiza indicadores de gestão de pessoas (Tecsmart)."""
+    """Renderiza indicadores de gestão de pessoas (Jira + Tecsmart)."""
     if show_title:
         st.title("Indicadores de gestão de pessoas")
     if show_caption:
         st.caption(
-            "Indicadores calculados nas views Tecsmart (headcount, admissões, saídas, turnover, "
-            "absenteísmo e horas de atestados)."
+            "Aba **Solicitações (Jira)**: volume por quadro DHO e situação no fluxo. "
+            "Aba **Operacional (Tecsmart)**: headcount, admissões, saídas, turnover e absenteísmo."
         )
 
-    tab_con, tab_eq, tab_fi = st.tabs(
-        ["Visão consolidada", "Por equipe", "Por filial"]
-    )
+    tab_jira, tab_tec = st.tabs(["Solicitações (Jira)", "Operacional (Tecsmart)"])
 
-    with tab_con:
-        tab_consolidado(load_tecsmart_consolidado())
+    with tab_jira:
+        render_jira_matriz_solicitacoes_por_quadro()
 
-    with tab_eq:
-        tab_por_dimensao(
-            load_tecsmart_equipe(),
-            "equipe",
-            TEC_EQUIPE,
-            "equipe",
+    with tab_tec:
+        tab_con, tab_eq, tab_fi = st.tabs(
+            ["Visão consolidada", "Por equipe", "Por filial"]
         )
 
-    with tab_fi:
-        tab_por_dimensao(
-            load_tecsmart_filial(),
-            "filial",
-            TEC_FILIAL,
-            "filial",
-        )
+        with tab_con:
+            tab_consolidado(load_tecsmart_consolidado())
+
+        with tab_eq:
+            tab_por_dimensao(
+                load_tecsmart_equipe(),
+                "equipe",
+                TEC_EQUIPE,
+                "equipe",
+            )
+
+        with tab_fi:
+            tab_por_dimensao(
+                load_tecsmart_filial(),
+                "filial",
+                TEC_FILIAL,
+                "filial",
+            )
