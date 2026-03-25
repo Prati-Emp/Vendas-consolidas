@@ -381,8 +381,9 @@ def _find_dataframe_column_normalized(df: pd.DataFrame, desired: str) -> str:
 
 def _series_day_diff_days(start: pd.Series, end: pd.Series) -> pd.Series:
     """Diferença em dias corridos (normalizado ao calendário); inválido ou negativo vira NA."""
-    s = pd.to_datetime(start, errors="coerce", dayfirst=True)
-    e = pd.to_datetime(end, errors="coerce", dayfirst=True)
+    # Datas vêm da view como DATE/ISO; evitar dayfirst=True (gerava troca dia/mês em alguns casos).
+    s = pd.to_datetime(start, errors="coerce")
+    e = pd.to_datetime(end, errors="coerce")
     s_norm = s.dt.normalize()
     e_norm = e.dt.normalize()
     delta = (e_norm - s_norm).dt.days
@@ -410,6 +411,7 @@ def compute_requisicao_vaga_tempos_table(df: pd.DataFrame) -> pd.DataFrame:
     - **Tempo total contratação**: até **Data finalização**.
 
     Colunas de data na view consolidada: `Data_de_aprovação`, `Data_de_fechamento`, `Data_de_finalizacao`.
+    (A view `Jira_projeto_dho_consolidado` normaliza textos para **DATE**; fechamento usa ordem ano–dia–mês no ISO.)
     """
     if df.empty:
         return pd.DataFrame()
@@ -433,9 +435,9 @@ def compute_requisicao_vaga_tempos_table(df: pd.DataFrame) -> pd.DataFrame:
 
     inicio = pd.Series(pd.NaT, index=done.index, dtype="datetime64[ns]")
     if col_start and col_start in done.columns:
-        inicio = pd.to_datetime(done[col_start], errors="coerce", dayfirst=True)
+        inicio = pd.to_datetime(done[col_start], errors="coerce")
     if col_data_inicio and col_data_inicio in done.columns:
-        alt = pd.to_datetime(done[col_data_inicio], errors="coerce", dayfirst=True)
+        alt = pd.to_datetime(done[col_data_inicio], errors="coerce")
         inicio = inicio.fillna(alt)
 
     if inicio.isna().all():
@@ -465,10 +467,10 @@ def compute_requisicao_vaga_tempos_table(df: pd.DataFrame) -> pd.DataFrame:
 
     d_fi_series: Optional[pd.Series] = None
     if col_fin and col_fin in done.columns:
-        d_fi_series = pd.to_datetime(done[col_fin], errors="coerce", dayfirst=True)
+        d_fi_series = pd.to_datetime(done[col_fin], errors="coerce")
 
     if col_aprov and col_aprov in done.columns:
-        d_ap = pd.to_datetime(done[col_aprov], errors="coerce", dayfirst=True)
+        d_ap = pd.to_datetime(done[col_aprov], errors="coerce")
         out["Data de aprovação"] = d_ap.dt.strftime("%Y-%m-%d")
         out.loc[d_ap.isna(), "Data de aprovação"] = ""
         out[COL_TEMPO_FECHAMENTO_VAGA] = _series_day_diff_days(inicio, d_ap)
@@ -477,7 +479,7 @@ def compute_requisicao_vaga_tempos_table(df: pd.DataFrame) -> pd.DataFrame:
         out[COL_TEMPO_FECHAMENTO_VAGA] = pd.Series(pd.NA, index=out.index, dtype="Int64")
 
     if col_fech and col_fech in done.columns:
-        d_fe = pd.to_datetime(done[col_fech], errors="coerce", dayfirst=True)
+        d_fe = pd.to_datetime(done[col_fech], errors="coerce")
         out["Data de fechamento"] = d_fe.dt.strftime("%Y-%m-%d")
         out.loc[d_fe.isna(), "Data de fechamento"] = ""
 
