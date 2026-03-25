@@ -127,37 +127,35 @@ def consolidar_supervisao(desc_colunas):
     return f"COALESCE({', '.join(partes)})"
 
 
-def expr_data_para_date_sql(col_sql: str, fechamento_ano_dia_mes_iso: bool) -> str:
+def expr_data_para_date_sql(col_sql: str) -> str:
     """
     Converte coluna bruta da planilha/Jira para DATE na view.
 
-    - Texto no formato ``YYYY-MM-DD``: uso explícito de MAKE_DATE para evitar
-      interpretação ambígua do CAST.
-    - Padrão (demais colunas): ano, **mês**, **dia** (ISO usual).
-    - Data de fechamento: na origem vem como **ano, dia, mês** no mesmo texto
-      (Y-D-M); segundo e terceiro blocos são tratados como dia e mês nessa ordem.
+    Texto ``YYYY-MM-DD`` (10 caracteres com hífens): a origem mistura **ISO Y-M-D**
+    (2025-12-30) e **ano-dia-mês** (2025-30-12 = 30/12/2025). Sem isso, MAKE_DATE
+    único gera erro "Date out of range" (ex.: mês 30).
 
-    Outros formatos tentam strptime BR / com barras e TRY_CAST final.
+    Usa-se ``COALESCE(TRY(Y-M-D), TRY(Y-D-M))``: o primeiro que for válido vence.
+
+    Outros formatos: STRPTIME + TRY_CAST final.
     col_sql: identificador entre aspas, ex: \"Data de aprovação\"
     """
     t = f"TRIM(CAST({col_sql} AS VARCHAR))"
     hyphen = (
         f"(len({t}) = 10 AND substr({t}, 5, 1) = '-' AND substr({t}, 8, 1) = '-')"
     )
-    if fechamento_ano_dia_mes_iso:
-        corpo_make = (
-            f"MAKE_DATE(CAST(SUBSTR({t}, 1, 4) AS INTEGER), "
-            f"CAST(SUBSTR({t}, 9, 2) AS INTEGER), CAST(SUBSTR({t}, 6, 2) AS INTEGER))"
-        )
-    else:
-        corpo_make = (
-            f"MAKE_DATE(CAST(SUBSTR({t}, 1, 4) AS INTEGER), "
-            f"CAST(SUBSTR({t}, 6, 2) AS INTEGER), CAST(SUBSTR({t}, 9, 2) AS INTEGER))"
-        )
+    y_m_d = (
+        f"MAKE_DATE(CAST(SUBSTR({t}, 1, 4) AS INTEGER), "
+        f"CAST(SUBSTR({t}, 6, 2) AS INTEGER), CAST(SUBSTR({t}, 9, 2) AS INTEGER))"
+    )
+    y_d_m = (
+        f"MAKE_DATE(CAST(SUBSTR({t}, 1, 4) AS INTEGER), "
+        f"CAST(SUBSTR({t}, 9, 2) AS INTEGER), CAST(SUBSTR({t}, 6, 2) AS INTEGER))"
+    )
     return (
         "CASE "
         f"WHEN {t} IS NULL OR {t} = '' THEN CAST(NULL AS DATE) "
-        f"WHEN {hyphen} THEN {corpo_make} "
+        f"WHEN {hyphen} THEN COALESCE(TRY({y_m_d}), TRY({y_d_m})) "
         "ELSE COALESCE("
         f"TRY_CAST(STRPTIME({t}, '%d/%m/%Y') AS DATE), "
         f"TRY_CAST(STRPTIME({t}, '%d-%m-%Y') AS DATE), "
@@ -227,13 +225,13 @@ def criar_view(conn):
         # Consolidar colunas de Supervisão em uma única coluna
         supervisao_consolidada = consolidar_supervisao(desc)
 
-        d_start = expr_data_para_date_sql('"Start date"', False)
-        d_pretendida = expr_data_para_date_sql('"Data pretendida"', False)
-        d_proposta = expr_data_para_date_sql('"Data Proposta"', False)
-        d_aprov = expr_data_para_date_sql('"Data de aprovação"', False)
-        d_fech = expr_data_para_date_sql('"Data de fechamento"', True)
-        d_fin = expr_data_para_date_sql(finalizacao_ref, False)
-        d_inicio = expr_data_para_date_sql('"Data de inicio"', False)
+        d_start = expr_data_para_date_sql('"Start date"')
+        d_pretendida = expr_data_para_date_sql('"Data pretendida"')
+        d_proposta = expr_data_para_date_sql('"Data Proposta"')
+        d_aprov = expr_data_para_date_sql('"Data de aprovação"')
+        d_fech = expr_data_para_date_sql('"Data de fechamento"')
+        d_fin = expr_data_para_date_sql(finalizacao_ref)
+        d_inicio = expr_data_para_date_sql('"Data de inicio"')
         
         # SQL da view - seguindo a ordem especificada pelo usuário
         sql_view = f"""

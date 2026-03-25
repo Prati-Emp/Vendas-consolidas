@@ -411,7 +411,7 @@ def compute_requisicao_vaga_tempos_table(df: pd.DataFrame) -> pd.DataFrame:
     - **Tempo total contratação**: até **Data finalização**.
 
     Colunas de data na view consolidada: `Data_de_aprovação`, `Data_de_fechamento`, `Data_de_finalizacao`.
-    (A view `Jira_projeto_dho_consolidado` normaliza textos para **DATE**; fechamento usa ordem ano–dia–mês no ISO.)
+    (A view normaliza textos para **DATE**, tentando ISO Y-M-D e, se inválido, Y-D-M, ex. `2025-30-12` → 30/12/2025.)
     """
     if df.empty:
         return pd.DataFrame()
