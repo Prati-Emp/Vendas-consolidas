@@ -16,6 +16,9 @@ for path in (ROOT_DIR, DASHBOARD_DIR, APP_DIR):
 
 from advanced_auth import require_auth, require_page_access  # noqa: E402
 from navigation import render_administrativo_navigation  # noqa: E402
+from dashboard.apps.indicadores_rh_dashboard import (  # noqa: E402
+    render_indicadores_rh_dashboard,
+)
 
 st.set_page_config(
     page_title="Indicadores RH - Gestão de Pessoas",
@@ -33,5 +36,5 @@ render_administrativo_navigation(current_key="indicadores_gestao_pessoas")
 
 st.markdown("---")
 st.subheader("📊 Indicadores Gestão de Pessoas")
-st.info("Página em construção. Conteúdo será desenvolvido em breve.")
+render_indicadores_rh_dashboard(show_title=False, show_caption=True)
 
