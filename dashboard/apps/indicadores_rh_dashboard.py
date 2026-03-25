@@ -14,6 +14,10 @@ from plotly.subplots import make_subplots
 import streamlit as st
 
 from dashboard.apps.acompanhamento_solicitacoes_dashboard import (  # noqa: E402
+    COL_TEMPO_APROVACAO_VAGA,
+    COL_TEMPO_FECHAMENTO_VAGA,
+    COL_TEMPO_TOTAL_CONTRATACAO,
+    compute_requisicao_vaga_tempos_table,
     compute_solicitacoes_matrix_by_quadro,
     load_jira_dho_acompanhamento,
 )
@@ -366,6 +370,75 @@ def render_jira_matriz_solicitacoes_por_quadro() -> None:
     )
 
 
+def _format_mean_median_dias(n: int, mean: float, median: float) -> tuple[str, str]:
+    if n <= 0:
+        return "—", "—"
+    mean_s = f"{mean:.1f}".replace(".", ",") + " dias"
+    med_s = f"{median:.1f}".replace(".", ",") + " dias"
+    return mean_s, med_s
+
+
+def _tempo_stats(tbl: pd.DataFrame, col: str) -> tuple[int, float, float]:
+    v = pd.to_numeric(tbl[col], errors="coerce").dropna()
+    if v.empty:
+        return 0, float("nan"), float("nan")
+    return int(v.shape[0]), float(v.mean()), float(v.median())
+
+
+def render_jira_requisicao_vaga_tempos() -> None:
+    """Tempos médios no quadro RC para issues finalizadas."""
+    st.subheader("Requisição de vagas — tempos (Finalizado)")
+    st.caption(
+        "Somente o quadro **Requisição de vaga (RC)** com status **Finalizado** (e equivalentes). "
+        "**Início**: *Start date*; se ausente, *Data de início*. "
+        "**Tempo fechamento da vaga**: do início até **Data de aprovação** (aceite do candidato). "
+        "**Tempo de aprovação da vaga**: do início até **Data de fechamento** (até a etapa de fechamento registrada no Jira). "
+        "**Tempo total de contratação**: do início até **Data finalização**. "
+        "Cálculo em **dias corridos**."
+    )
+    df = load_jira_dho_acompanhamento()
+    tbl = compute_requisicao_vaga_tempos_table(df)
+    if tbl.empty:
+        st.info(
+            "Nenhuma requisição de vaga **finalizada** encontrada, ou faltam colunas de data/início "
+            "para calcular os tempos."
+        )
+        return
+
+    n1, m1, d1 = _tempo_stats(tbl, COL_TEMPO_FECHAMENTO_VAGA)
+    n2, m2, d2 = _tempo_stats(tbl, COL_TEMPO_APROVACAO_VAGA)
+    n3, m3, d3 = _tempo_stats(tbl, COL_TEMPO_TOTAL_CONTRATACAO)
+
+    k1, h1 = _format_mean_median_dias(n1, m1, d1)
+    k2, h2 = _format_mean_median_dias(n2, m2, d2)
+    k3, h3 = _format_mean_median_dias(n3, m3, d3)
+
+    r1, r2, r3 = st.columns(3)
+    with r1:
+        st.metric("Tempo fechamento da vaga (média)", k1, help="Início → data de aprovação")
+        st.caption(f"n = {n1} · mediana {h1}")
+    with r2:
+        st.metric("Tempo aprovação da vaga (média)", k2, help="Início → data de fechamento")
+        st.caption(f"n = {n2} · mediana {h2}")
+    with r3:
+        st.metric("Tempo total contratação (média)", k3, help="Início → data finalização")
+        st.caption(f"n = {n3} · mediana {h3}")
+
+    st.subheader("Detalhamento por solicitação")
+    num_cfg = st.column_config.NumberColumn(format="%d")
+    st.dataframe(
+        tbl,
+        hide_index=True,
+        use_container_width=True,
+        key="ind_rh_req_vaga_tempos_tbl",
+        column_config={
+            COL_TEMPO_FECHAMENTO_VAGA: num_cfg,
+            COL_TEMPO_APROVACAO_VAGA: num_cfg,
+            COL_TEMPO_TOTAL_CONTRATACAO: num_cfg,
+        },
+    )
+
+
 def render_indicadores_rh_dashboard(
     show_title: bool = True,
     show_caption: bool = True,
@@ -375,14 +448,20 @@ def render_indicadores_rh_dashboard(
         st.title("Indicadores de gestão de pessoas")
     if show_caption:
         st.caption(
-            "Aba **Solicitações (Jira)**: volume por quadro DHO e situação no fluxo. "
+            "Aba **Solicitações (Jira)**: matriz por quadro e tempos no quadro de requisição de vagas. "
             "Aba **Operacional (Tecsmart)**: headcount, admissões, saídas, turnover e absenteísmo."
         )
 
     tab_jira, tab_tec = st.tabs(["Solicitações (Jira)", "Operacional (Tecsmart)"])
 
     with tab_jira:
-        render_jira_matriz_solicitacoes_por_quadro()
+        jira_matriz, jira_rv = st.tabs(
+            ["Matriz por quadro", "Requisição de vagas — tempos"]
+        )
+        with jira_matriz:
+            render_jira_matriz_solicitacoes_por_quadro()
+        with jira_rv:
+            render_jira_requisicao_vaga_tempos()
 
     with tab_tec:
         tab_con, tab_eq, tab_fi = st.tabs(

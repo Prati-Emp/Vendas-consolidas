@@ -358,6 +358,147 @@ def compute_solicitacoes_matrix_by_quadro(df: pd.DataFrame) -> pd.DataFrame:
     return pd.concat([mat, pd.DataFrame([total_row])], ignore_index=True)
 
 
+def _find_dataframe_column_normalized(df: pd.DataFrame, desired: str) -> str:
+    """
+    Encontra coluna no DataFrame comparando rótulos normalizados
+    (minúsculas, sem acentos, espaços como underscore).
+    """
+    if df is None or df.empty or not desired:
+        return ""
+    desired_norm = unicodedata.normalize("NFKD", desired.strip()).lower()
+    desired_norm = "".join(c for c in desired_norm if not unicodedata.combining(c))
+    desired_norm = re.sub(r"\s+", "_", desired_norm.strip())
+
+    norm_to_col: Dict[str, str] = {}
+    for c in df.columns:
+        c_str = str(c).strip()
+        c_norm = unicodedata.normalize("NFKD", c_str).lower()
+        c_norm = "".join(ch for ch in c_norm if not unicodedata.combining(ch))
+        c_norm = re.sub(r"\s+", "_", c_norm)
+        norm_to_col[c_norm] = c_str
+    return norm_to_col.get(desired_norm, "")
+
+
+def _series_day_diff_days(start: pd.Series, end: pd.Series) -> pd.Series:
+    """Diferença em dias corridos (normalizado ao calendário); inválido ou negativo vira NA."""
+    s = pd.to_datetime(start, errors="coerce", dayfirst=True)
+    e = pd.to_datetime(end, errors="coerce", dayfirst=True)
+    s_norm = s.dt.normalize()
+    e_norm = e.dt.normalize()
+    delta = (e_norm - s_norm).dt.days
+    out = delta.astype("Int64")
+    out = out.where((out.notna()) & (out >= 0))
+    return out
+
+
+# Colunas de saída (tabela de tempos — requisição de vagas)
+COL_TEMPO_FECHAMENTO_VAGA = "Tempo fechamento vaga (dias)"
+COL_TEMPO_APROVACAO_VAGA = "Tempo aprovação vaga (dias)"
+COL_TEMPO_TOTAL_CONTRATACAO = "Tempo total contratação (dias)"
+
+
+def compute_requisicao_vaga_tempos_table(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Quadro **Requisição de vaga (RC)**, apenas registros com status em **Concluídas** (ex.: Finalizado).
+
+    Métricas (dias corridos), sempre a partir do **início**:
+    - **Início**: `Start_date` por linha; onde vazio, usa-se `Data_de_inicio`.
+    - **Tempo fechamento vaga**: até **Data de aprovação** (aceite do candidato).
+    - **Tempo aprovação vaga**: até **Data de fechamento** (aprovação presidência / fechamento da req.).
+    - **Tempo total contratação**: até **Data finalização**.
+
+    Colunas de data na view consolidada: `Data_de_aprovação`, `Data_de_fechamento`, `Data_de_finalizacao`.
+    """
+    if df.empty:
+        return pd.DataFrame()
+
+    base = _filter_df_by_board(df, "requisicao_vaga_rc")
+    status_col = _get_status_column(base)
+    if base.empty or not status_col:
+        return pd.DataFrame()
+
+    done_mask = base[status_col].apply(
+        lambda s: classify_jira_status_bucket(s) == "Concluídas"
+    )
+    done = base.loc[done_mask].copy()
+    if done.empty:
+        return pd.DataFrame()
+
+    col_start = _find_dataframe_column_normalized(done, "Start_date")
+    col_data_inicio = _find_dataframe_column_normalized(done, "Data_de_inicio")
+    if not col_start and not col_data_inicio:
+        return pd.DataFrame()
+
+    inicio = pd.Series(pd.NaT, index=done.index, dtype="datetime64[ns]")
+    if col_start and col_start in done.columns:
+        inicio = pd.to_datetime(done[col_start], errors="coerce", dayfirst=True)
+    if col_data_inicio and col_data_inicio in done.columns:
+        alt = pd.to_datetime(done[col_data_inicio], errors="coerce", dayfirst=True)
+        inicio = inicio.fillna(alt)
+
+    if inicio.isna().all():
+        return pd.DataFrame()
+
+    col_aprov = _find_dataframe_column_normalized(done, "Data_de_aprovacao")
+    col_fech = _find_dataframe_column_normalized(done, "Data_de_fechamento")
+    col_fin = _find_dataframe_column_normalized(done, "Data_de_finalizacao") or _find_dataframe_column_normalized(
+        done, "Data_de_finalização"
+    )
+
+    chave_col = _find_dataframe_column_normalized(done, "Chave") or (
+        "Chave" if "Chave" in done.columns else ""
+    )
+    if not chave_col:
+        return pd.DataFrame()
+
+    resumo_col = _find_dataframe_column_normalized(done, "Resumo")
+
+    out = pd.DataFrame()
+    out["Chave"] = done[chave_col].astype(str).str.strip()
+    if resumo_col and resumo_col in done.columns:
+        out["Resumo"] = done[resumo_col].apply(lambda x: str(x).strip() if pd.notna(x) else "")
+
+    out["Início"] = inicio.dt.strftime("%Y-%m-%d")
+    out.loc[inicio.isna(), "Início"] = ""
+
+    if col_aprov and col_aprov in done.columns:
+        d_ap = pd.to_datetime(done[col_aprov], errors="coerce", dayfirst=True)
+        out["Data de aprovação"] = d_ap.dt.strftime("%Y-%m-%d")
+        out.loc[d_ap.isna(), "Data de aprovação"] = ""
+        out[COL_TEMPO_FECHAMENTO_VAGA] = _series_day_diff_days(inicio, d_ap)
+    else:
+        out["Data de aprovação"] = ""
+        out[COL_TEMPO_FECHAMENTO_VAGA] = pd.Series(pd.NA, index=out.index, dtype="Int64")
+
+    if col_fech and col_fech in done.columns:
+        d_fe = pd.to_datetime(done[col_fech], errors="coerce", dayfirst=True)
+        out["Data de fechamento"] = d_fe.dt.strftime("%Y-%m-%d")
+        out.loc[d_fe.isna(), "Data de fechamento"] = ""
+        out[COL_TEMPO_APROVACAO_VAGA] = _series_day_diff_days(inicio, d_fe)
+    else:
+        out["Data de fechamento"] = ""
+        out[COL_TEMPO_APROVACAO_VAGA] = pd.Series(pd.NA, index=out.index, dtype="Int64")
+
+    if col_fin and col_fin in done.columns:
+        d_fi = pd.to_datetime(done[col_fin], errors="coerce", dayfirst=True)
+        out["Data finalização"] = d_fi.dt.strftime("%Y-%m-%d")
+        out.loc[d_fi.isna(), "Data finalização"] = ""
+        out[COL_TEMPO_TOTAL_CONTRATACAO] = _series_day_diff_days(inicio, d_fi)
+    else:
+        out["Data finalização"] = ""
+        out[COL_TEMPO_TOTAL_CONTRATACAO] = pd.Series(pd.NA, index=out.index, dtype="Int64")
+
+    # Ordenar: maior tempo total primeiro (quando houver)
+    if out[COL_TEMPO_TOTAL_CONTRATACAO].notna().any():
+        out = out.sort_values(
+            COL_TEMPO_TOTAL_CONTRATACAO, ascending=False, na_position="last"
+        )
+    else:
+        out = out.sort_values("Chave")
+
+    return out.reset_index(drop=True)
+
+
 def _build_kanban_column_html(
     df: pd.DataFrame, status_col: str, status_val: str, chave_col: str, resumo_col: str, tipo_col: str
 ) -> str:
