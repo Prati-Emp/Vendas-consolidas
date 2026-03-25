@@ -330,11 +330,11 @@ def tab_por_dimensao(
 
 
 def render_jira_matriz_solicitacoes_por_quadro() -> None:
-    """Matriz quadros × (Abertas / Em andamento / Concluídas / Rejeitadas), mesma base do Kanban."""
+    """Matriz quadros × (Aguardando atendimento / Em andamento / Concluídas / Rejeitadas), mesma base do Kanban."""
     st.subheader("Matriz de solicitações por quadro")
     st.caption(
         "Fonte: `administracao.Jira_projeto_dho_consolidado`, com o mesmo recorte de cada quadro "
-        "do acompanhamento Kanban. **Abertas**: status *Backlog*. **Em andamento**: demais etapas do fluxo "
+        "do acompanhamento Kanban. **Aguardando atendimento**: status *Backlog*. **Em andamento**: demais etapas do fluxo "
         "até conclusão ou rejeição. **Concluídas**: *Finalizado* (também Done, Closed, Resolvido). "
         "**Rejeitadas**: *Rejeitado* (ou Rejected)."
     )
@@ -349,7 +349,9 @@ def render_jira_matriz_solicitacoes_por_quadro() -> None:
 
     col_cfg = {
         "Quadro": st.column_config.TextColumn("Quadro", width="large"),
-        "Abertas": st.column_config.NumberColumn("Abertas", format="%d"),
+        "Aguardando atendimento": st.column_config.NumberColumn(
+            "Aguardando atendimento", format="%d"
+        ),
         "Em andamento": st.column_config.NumberColumn("Em andamento", format="%d"),
         "Concluídas": st.column_config.NumberColumn("Concluídas", format="%d"),
         "Rejeitadas": st.column_config.NumberColumn("Rejeitadas", format="%d"),

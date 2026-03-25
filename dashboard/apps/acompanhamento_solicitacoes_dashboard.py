@@ -284,7 +284,7 @@ def _normalize_jira_status_token(value: Any) -> str:
 
 # Ordem de colunas da matriz de indicadores (quadro × situação)
 SOLICITACOES_MATRIX_BUCKET_ORDER: Tuple[str, ...] = (
-    "Abertas",
+    "Aguardando atendimento",
     "Em andamento",
     "Concluídas",
     "Rejeitadas",
@@ -294,7 +294,7 @@ SOLICITACOES_MATRIX_BUCKET_ORDER: Tuple[str, ...] = (
 def classify_jira_status_bucket(status_val: Any) -> str:
     """
     Agrupa o status bruto do Jira em faixas para indicadores:
-    - Abertas: backlog (entrada / solicitações novas no quadro)
+    - Aguardando atendimento: backlog (entrada / solicitações novas no quadro)
     - Em andamento: demais etapas do fluxo até conclusão ou rejeição
     - Concluídas: finalizado (ou equivalentes comuns)
     - Rejeitadas: rejeitado (ou equivalentes comuns)
@@ -311,9 +311,9 @@ def classify_jira_status_bucket(status_val: Any) -> str:
     if n == "rejeitado" or n == "rejected":
         return "Rejeitadas"
 
-    # Abertas (primeira coluna do Kanban nos quadros DHO)
+    # Aguardando atendimento (Backlog — primeira coluna do Kanban nos quadros DHO)
     if n == "backlog":
-        return "Abertas"
+        return "Aguardando atendimento"
 
     return "Em andamento"
 
@@ -322,7 +322,7 @@ def compute_solicitacoes_matrix_by_quadro(df: pd.DataFrame) -> pd.DataFrame:
     """
     Conta solicitações por quadro (mesma regra de filtro do Kanban) e por faixa de status.
 
-    Retorna DataFrame com colunas: Quadro, Abertas, Em andamento, Concluídas, Rejeitadas, Total.
+    Retorna DataFrame com colunas: Quadro, Aguardando atendimento, Em andamento, Concluídas, Rejeitadas, Total.
     Última linha: TOTAL GERAL (soma por coluna; total geral pode contar o mesmo card
     uma vez por quadro — cada linha de quadro já é disjunta porMotivo/Regra Triagem).
     """
