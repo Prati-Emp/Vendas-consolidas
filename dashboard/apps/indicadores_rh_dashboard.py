@@ -381,15 +381,26 @@ def _render_demografia_rh() -> None:
                         if v
                     ]
                 )
-                valores_selecionados = st.multiselect(
-                    f"2) Filtrar itens de {col_filtro_label}",
-                    options=valores_disponiveis,
-                    default=valores_disponiveis,
-                    key="demog_filtro_valores_experiencia",
-                    placeholder="Selecione um ou mais itens",
+                selecionar_todos = st.checkbox(
+                    "Aplicar em todos os itens",
+                    value=True,
+                    key="demog_filtro_todos_experiencia",
+                    help="Com esta opção ativa, o filtro usa todos os valores sem exibir tudo selecionado.",
                 )
 
-                if valores_selecionados:
+                valores_selecionados: List[str] = []
+                if not selecionar_todos:
+                    valores_selecionados = st.multiselect(
+                        f"2) Filtrar itens de {col_filtro_label}",
+                        options=valores_disponiveis,
+                        default=[],
+                        key="demog_filtro_valores_experiencia",
+                        placeholder="Selecione um ou mais itens",
+                    )
+
+                if selecionar_todos:
+                    detalhe_filtrado = detalhe.copy()
+                elif valores_selecionados:
                     detalhe_filtrado = detalhe[detalhe[col_filtro].isin(valores_selecionados)].copy()
                 else:
                     detalhe_filtrado = detalhe.iloc[0:0].copy()
