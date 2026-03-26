@@ -361,20 +361,36 @@ def _render_demografia_rh() -> None:
                 )
 
                 st.subheader("Pessoas em experiência (detalhado)")
-                fases_disponiveis = [
-                    f for f in detalhe["Fase"].dropna().astype(str).str.strip().unique().tolist() if f
-                ]
-                fases_disponiveis = sorted(fases_disponiveis)
-                fases_selecionadas = st.multiselect(
-                    "Filtrar por fase de experiência",
-                    options=fases_disponiveis,
-                    default=fases_disponiveis,
-                    key="demog_filtro_fase_experiencia",
-                    placeholder="Selecione uma ou mais fases",
+                filtro_cols = {
+                    "Fase": "Fase",
+                    "Equipe": "Equipe",
+                    "Cargo": "Cargo",
+                    "Colaborador": "Colaborador",
+                }
+                col_filtro_label = st.selectbox(
+                    "1) Escolha a coluna para filtrar",
+                    options=list(filtro_cols.keys()),
+                    index=0,
+                    key="demog_filtro_coluna_experiencia",
+                )
+                col_filtro = filtro_cols[col_filtro_label]
+                valores_disponiveis = sorted(
+                    [
+                        v
+                        for v in detalhe[col_filtro].dropna().astype(str).str.strip().unique().tolist()
+                        if v
+                    ]
+                )
+                valores_selecionados = st.multiselect(
+                    f"2) Filtrar itens de {col_filtro_label}",
+                    options=valores_disponiveis,
+                    default=valores_disponiveis,
+                    key="demog_filtro_valores_experiencia",
+                    placeholder="Selecione um ou mais itens",
                 )
 
-                if fases_selecionadas:
-                    detalhe_filtrado = detalhe[detalhe["Fase"].isin(fases_selecionadas)].copy()
+                if valores_selecionados:
+                    detalhe_filtrado = detalhe[detalhe[col_filtro].isin(valores_selecionados)].copy()
                 else:
                     detalhe_filtrado = detalhe.iloc[0:0].copy()
 
