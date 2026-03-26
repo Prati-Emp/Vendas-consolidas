@@ -191,6 +191,8 @@ def _render_demografia_rh() -> None:
     col_nac = _pick_col(df, ["nacionalidade"])
     col_eq = _pick_col(df, ["equipe"])
     col_cargo = _pick_col(df, ["funcionario", "cargo"])
+    col_colab = _pick_col(df, ["colaborador", "nome", "nome_do_colaborador"])
+    col_adm = _pick_col(df, ["admicao", "admissao", "admiss_o"])
     col_exp1 = _pick_col(df, ["experiencia_vencimento"])
     col_exp2 = _pick_col(df, ["experiencia_2_vencimento"])
 
@@ -306,6 +308,59 @@ def _render_demografia_rh() -> None:
             status = status.mask(exp_end.notna() & (exp_end < today), "Encerrado")
             tbl = status.value_counts().rename_axis("Situação").reset_index(name="Quantidade")
             st.dataframe(tbl, hide_index=True, use_container_width=True, key="demog_experiencia")
+
+            # Detalhamento: somente pessoas atualmente em experiência (1ª ou 2ª)
+            em_primeira = exp1.notna() & (today <= exp1.dt.normalize())
+            em_segunda = (~em_primeira) & exp2.notna() & (today <= exp2.dt.normalize())
+            em_experiencia = em_primeira | em_segunda
+
+            if em_experiencia.any():
+                adm = pd.to_datetime(df[col_adm], errors="coerce") if col_adm else pd.Series(pd.NaT, index=df.index)
+                fase = pd.Series("", index=df.index)
+                fase = fase.mask(em_primeira, "1ª experiência")
+                fase = fase.mask(em_segunda, "2ª experiência")
+
+                venc = pd.Series(pd.NaT, index=df.index)
+                venc = venc.where(~em_primeira, exp1)
+                venc = venc.where(~em_segunda, exp2)
+
+                inicio_fase = pd.Series(pd.NaT, index=df.index)
+                # Na 1ª experiência, conta desde admissão.
+                inicio_fase = inicio_fase.where(~em_primeira, adm)
+                # Na 2ª experiência, conta desde o fim da 1ª (fallback para admissão se faltar exp1).
+                inicio_fase = inicio_fase.where(~em_segunda, exp1.fillna(adm))
+
+                dias_exp = (today - inicio_fase.dt.normalize()).dt.days
+                dias_exp = dias_exp.where(dias_exp.notna(), 0).clip(lower=0).astype(int)
+
+                detalhe = pd.DataFrame(
+                    {
+                        "Colaborador": df[col_colab].astype(str).str.strip() if col_colab else pd.Series("", index=df.index),
+                        "Equipe": df[col_eq].astype(str).str.strip() if col_eq else pd.Series("", index=df.index),
+                        "Cargo": df[col_cargo].astype(str).str.strip() if col_cargo else pd.Series("", index=df.index),
+                        "Fase": fase,
+                        "Vencimento da experiência": venc.dt.strftime("%Y-%m-%d"),
+                        "Dias em experiência": dias_exp,
+                    }
+                )
+                detalhe = detalhe[em_experiencia].copy()
+                detalhe = detalhe.sort_values(
+                    by=["Vencimento da experiência", "Colaborador"],
+                    ascending=[True, True],
+                )
+
+                st.subheader("Pessoas em experiência (detalhado)")
+                st.dataframe(
+                    detalhe,
+                    hide_index=True,
+                    use_container_width=True,
+                    key="demog_pessoas_em_experiencia",
+                    column_config={
+                        "Dias em experiência": st.column_config.NumberColumn(format="%d"),
+                    },
+                )
+            else:
+                st.info("Não há pessoas em experiência no momento.")
         else:
             st.info("Colunas de experiência não encontradas.")
 
