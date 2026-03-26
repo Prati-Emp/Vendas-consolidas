@@ -268,7 +268,18 @@ def _render_demografia_rh() -> None:
                     include_lowest=True,
                 )
                 tbl = bins.value_counts(sort=False).rename_axis("Faixa").reset_index(name="Quantidade")
-                st.dataframe(tbl, hide_index=True, use_container_width=True, key="demog_tempo_empresa")
+                total_tempo = max(int(tbl["Quantidade"].sum()), 1)
+                tbl["%"] = (tbl["Quantidade"] / total_tempo) * 100
+                st.dataframe(
+                    tbl,
+                    hide_index=True,
+                    use_container_width=True,
+                    key="demog_tempo_empresa",
+                    column_config={
+                        "Quantidade": st.column_config.NumberColumn(format="%d"),
+                        "%": st.column_config.NumberColumn(format="%.1f%%"),
+                    },
+                )
             else:
                 st.info("Coluna de tempo de empresa não encontrada.")
         with c2:
