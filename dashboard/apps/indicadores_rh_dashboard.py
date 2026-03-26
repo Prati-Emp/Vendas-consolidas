@@ -177,20 +177,33 @@ def _render_demografia_rh() -> None:
     col_exp1 = _pick_col(df, ["experiencia_vencimento"])
     col_exp2 = _pick_col(df, ["experiencia_2_vencimento"])
 
-    # Quadro de minorias por nível hierárquico (adaptado)
+    # Base para KPIs e quadro hierárquico
+    base = df.copy()
     if col_hier:
-        base = df.copy()
         base["_hier"] = base[col_hier].astype(str).str.strip().replace({"": "NÃO INFORMADO"})
-        if col_sexo:
-            sx = base[col_sexo].astype(str).str.lower()
-            base["_mulher"] = sx.str.contains("femin", na=False)
-        else:
-            base["_mulher"] = False
-        minoria_racial = pd.Series(False, index=base.index)
-        if col_raca:
-            rr = base[col_raca].astype(str).str.strip().str.lower()
-            minoria_racial = (~rr.isin(["", "nan", "none", "na", "<na>", "não informado"])) & (rr != "branco")
-        base["_minoria"] = minoria_racial
+    else:
+        base["_hier"] = "NÃO INFORMADO"
+    if col_sexo:
+        sx = base[col_sexo].astype(str).str.lower()
+        base["_mulher"] = sx.str.contains("femin", na=False)
+    else:
+        base["_mulher"] = False
+    minoria_racial = pd.Series(False, index=base.index)
+    if col_raca:
+        rr = base[col_raca].astype(str).str.strip().str.lower()
+        minoria_racial = (~rr.isin(["", "nan", "none", "na", "<na>", "não informado"])) & (rr != "branco")
+    base["_minoria"] = minoria_racial
+
+    tabs = st.tabs(["Resumo", "Tempo e experiência", "Diversidade", "Estrutura"])
+
+    with tabs[0]:
+        t1, t2, t3 = st.columns(3)
+        with t1:
+            st.metric("Colaboradores", f"{len(base):,}".replace(",", "."))
+        with t2:
+            st.metric("Mulheres", f"{int(base['_mulher'].sum()):,}".replace(",", "."))
+        with t3:
+            st.metric("Minorias", f"{int(base['_minoria'].sum()):,}".replace(",", "."))
 
         m = (
             base.groupby("_hier")
@@ -217,54 +230,58 @@ def _render_demografia_rh() -> None:
         )
         st.caption("Minorias = raça informada diferente de 'Branco' (campos vazios/não informados não entram).")
 
-    # Faixas numéricas
-    c1, c2 = st.columns(2)
-    with c1:
-        st.subheader("Tempo de empresa")
-        if col_tempo:
-            v = pd.to_numeric(df[col_tempo], errors="coerce")
-            bins = pd.cut(v, bins=[-1, 6, 12, 24, 60, 9999], labels=["0-6m", "7-12m", "13-24m", "25-60m", "60m+"])
-            tbl = bins.value_counts().rename_axis("Faixa").reset_index(name="Quantidade").sort_values("Faixa")
-            st.dataframe(tbl, hide_index=True, use_container_width=True, key="demog_tempo_empresa")
-        else:
-            st.info("Coluna de tempo de empresa não encontrada.")
-    with c2:
-        st.subheader("Idade")
-        if col_idade:
-            i = pd.to_numeric(df[col_idade], errors="coerce")
-            bins = pd.cut(i, bins=[0, 20, 30, 40, 50, 60, 200], labels=["<21", "21-30", "31-40", "41-50", "51-60", "60+"])
-            tbl = bins.value_counts().rename_axis("Faixa").reset_index(name="Quantidade").sort_values("Faixa")
-            st.dataframe(tbl, hide_index=True, use_container_width=True, key="demog_idade")
-        else:
-            st.info("Coluna de idade não encontrada.")
+    with tabs[1]:
+        c1, c2 = st.columns(2)
+        with c1:
+            st.subheader("Tempo de empresa")
+            if col_tempo:
+                v = pd.to_numeric(df[col_tempo], errors="coerce")
+                bins = pd.cut(v, bins=[-1, 6, 12, 24, 60, 9999], labels=["0-6m", "7-12m", "13-24m", "25-60m", "60m+"])
+                tbl = bins.value_counts().rename_axis("Faixa").reset_index(name="Quantidade").sort_values("Faixa")
+                st.dataframe(tbl, hide_index=True, use_container_width=True, key="demog_tempo_empresa")
+            else:
+                st.info("Coluna de tempo de empresa não encontrada.")
+        with c2:
+            st.subheader("Idade")
+            if col_idade:
+                i = pd.to_numeric(df[col_idade], errors="coerce")
+                bins = pd.cut(i, bins=[0, 20, 30, 40, 50, 60, 200], labels=["<21", "21-30", "31-40", "41-50", "51-60", "60+"])
+                tbl = bins.value_counts().rename_axis("Faixa").reset_index(name="Quantidade").sort_values("Faixa")
+                st.dataframe(tbl, hide_index=True, use_container_width=True, key="demog_idade")
+            else:
+                st.info("Coluna de idade não encontrada.")
 
-    # Período de experiência
-    st.subheader("Período de experiência")
-    if col_exp1 or col_exp2:
-        exp1 = pd.to_datetime(df[col_exp1], errors="coerce") if col_exp1 else pd.Series(pd.NaT, index=df.index)
-        exp2 = pd.to_datetime(df[col_exp2], errors="coerce") if col_exp2 else pd.Series(pd.NaT, index=df.index)
-        exp_end = exp1.fillna(exp2)
-        status = pd.Series("Não informado", index=df.index)
-        today = pd.Timestamp.today().normalize()
-        status = status.mask(exp_end.notna() & (exp_end >= today), "Em experiência")
-        status = status.mask(exp_end.notna() & (exp_end < today), "Encerrado")
-        tbl = status.value_counts().rename_axis("Situação").reset_index(name="Quantidade")
-        st.dataframe(tbl, hide_index=True, use_container_width=True, key="demog_experiencia")
-    else:
-        st.info("Colunas de experiência não encontradas.")
+        st.subheader("Período de experiência")
+        if col_exp1 or col_exp2:
+            exp1 = pd.to_datetime(df[col_exp1], errors="coerce") if col_exp1 else pd.Series(pd.NaT, index=df.index)
+            exp2 = pd.to_datetime(df[col_exp2], errors="coerce") if col_exp2 else pd.Series(pd.NaT, index=df.index)
+            exp_end = exp1.fillna(exp2)
+            status = pd.Series("Não informado", index=df.index)
+            today = pd.Timestamp.today().normalize()
+            status = status.mask(exp_end.notna() & (exp_end >= today), "Em experiência")
+            status = status.mask(exp_end.notna() & (exp_end < today), "Encerrado")
+            tbl = status.value_counts().rename_axis("Situação").reset_index(name="Quantidade")
+            st.dataframe(tbl, hide_index=True, use_container_width=True, key="demog_experiencia")
+        else:
+            st.info("Colunas de experiência não encontradas.")
 
-    st.subheader("Distribuições demográficas")
-    d1, d2 = st.columns(2)
-    with d1:
-        _render_dist(df, col_estado, "Estado civil", "estado_civil")
-        _render_dist(df, col_sexo, "Sexo", "sexo")
-        _render_dist(df, col_vinc, "Vínculo empregatício", "vinculo")
-        _render_dist(df, col_eq, "Equipe", "equipe")
-    with d2:
-        _render_dist(df, col_instr, "Grau de instrução", "instrucao")
-        _render_dist(df, col_raca, "Raça", "raca")
-        _render_dist(df, col_nac, "Nacionalidade", "nacionalidade")
-        _render_dist(df, col_cargo, "Cargo", "cargo")
+    with tabs[2]:
+        d1, d2 = st.columns(2)
+        with d1:
+            _render_dist(df, col_sexo, "Sexo", "sexo")
+            _render_dist(df, col_raca, "Raça", "raca")
+        with d2:
+            _render_dist(df, col_nac, "Nacionalidade", "nacionalidade")
+            _render_dist(df, col_estado, "Estado civil", "estado_civil")
+            _render_dist(df, col_instr, "Grau de instrução", "instrucao")
+
+    with tabs[3]:
+        d1, d2 = st.columns(2)
+        with d1:
+            _render_dist(df, col_vinc, "Vínculo empregatício", "vinculo")
+            _render_dist(df, col_eq, "Equipe", "equipe")
+        with d2:
+            _render_dist(df, col_cargo, "Cargo", "cargo")
 
 
 def prepare_tecsmart_df(df: pd.DataFrame) -> pd.DataFrame:
