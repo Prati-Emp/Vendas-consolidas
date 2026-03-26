@@ -461,17 +461,14 @@ def render_jira_requisicao_vaga_tempos() -> None:
     r1, r2, r3 = st.columns(3)
     with r1:
         st.metric("Tempo data aprovação (média)", k1, help="Início → data de aprovação")
-        st.caption(f"n = {n1} · mediana {h1}")
     with r2:
         st.metric(
             "Data de aceite (média)",
             k2,
             help="Início → data de fechamento; se finalização for mais cedo, usa-se ela como fim.",
         )
-        st.caption(f"n = {n2} · mediana {h2}")
     with r3:
         st.metric("Data de fechamento (média)", k3, help="Início → data finalização (ciclo total)")
-        st.caption(f"n = {n3} · mediana {h3}")
 
     st.subheader("Tempos por cargo")
     st.caption("Média em dias corridos por cargo, considerando apenas vagas finalizadas.")
