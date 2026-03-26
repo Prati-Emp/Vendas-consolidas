@@ -492,6 +492,10 @@ def _render_demografia_rh() -> None:
             instr_div = instr_s[mask]
             estado_div = estado_s[mask]
 
+            def _bar_textpos_for_count(n: int) -> str:
+                # Se houver poucas barras, texto "dentro" costuma ficar espremido em barras pequenas.
+                return "outside" if n <= 6 else "inside"
+
             total = int(div.shape[0])
             feminino = int(sexo_div.str.lower().str.contains("femin", na=False).sum())
             perc_fem = (feminino / total * 100.0) if total else 0.0
@@ -561,13 +565,15 @@ def _render_demografia_rh() -> None:
                     color_continuous_scale="Blues",
                     text="Quantidade",
                 )
-                textpos_raca = "inside" if len(raca_tbl) <= 6 else "outside"
                 fig_raca.update_layout(
                     template="plotly_dark",
                     coloraxis_showscale=False,
                     margin=dict(l=10, r=10, t=50, b=10),
                 )
-                fig_raca.update_traces(textposition=textpos_raca)
+                fig_raca.update_traces(
+                    textposition=_bar_textpos_for_count(len(raca_tbl)),
+                    texttemplate="<b>%{text}</b>",
+                )
                 st.plotly_chart(fig_raca, use_container_width=True)
 
             c3, c4 = st.columns(2)
@@ -585,13 +591,15 @@ def _render_demografia_rh() -> None:
                     color_continuous_scale="Teal",
                     text="Quantidade",
                 )
-                textpos_nac = "inside" if len(nac_tbl.head(10)) <= 6 else "outside"
                 fig_nac.update_layout(
                     template="plotly_dark",
                     coloraxis_showscale=False,
                     margin=dict(l=10, r=10, t=50, b=10),
                 )
-                fig_nac.update_traces(textposition=textpos_nac)
+                fig_nac.update_traces(
+                    textposition=_bar_textpos_for_count(len(nac_tbl.head(10))),
+                    texttemplate="<b>%{text}</b>",
+                )
                 st.plotly_chart(fig_nac, use_container_width=True)
             with c4:
                 estado_tbl = (
@@ -608,13 +616,15 @@ def _render_demografia_rh() -> None:
                     color_continuous_scale="Viridis",
                     text="Quantidade",
                 )
-                textpos_estado = "inside" if len(estado_tbl) <= 6 else "outside"
                 fig_estado.update_layout(
                     template="plotly_dark",
                     coloraxis_showscale=False,
                     margin=dict(l=10, r=10, t=50, b=10),
                 )
-                fig_estado.update_traces(textposition=textpos_estado)
+                fig_estado.update_traces(
+                    textposition=_bar_textpos_for_count(len(estado_tbl)),
+                    texttemplate="<b>%{text}</b>",
+                )
                 st.plotly_chart(fig_estado, use_container_width=True)
 
             instr_tbl = (
@@ -631,13 +641,15 @@ def _render_demografia_rh() -> None:
                 color_continuous_scale="Cividis",
                 text="Quantidade",
             )
-            textpos_instr = "inside" if len(instr_tbl) <= 6 else "outside"
             fig_instr.update_layout(
                 template="plotly_dark",
                 coloraxis_showscale=False,
                 margin=dict(l=10, r=10, t=50, b=10),
             )
-            fig_instr.update_traces(textposition=textpos_instr)
+            fig_instr.update_traces(
+                textposition=_bar_textpos_for_count(len(instr_tbl)),
+                texttemplate="<b>%{text}</b>",
+            )
             st.plotly_chart(fig_instr, use_container_width=True)
 
     with tabs[3]:
