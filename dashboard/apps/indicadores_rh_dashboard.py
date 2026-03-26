@@ -698,7 +698,7 @@ def render_indicadores_rh_dashboard(
     if show_caption:
         st.caption(
             "Aba **Solicitações (Jira)**: matriz por quadro e tempos no quadro de requisição de vagas. "
-            "Aba **Operacional (Tecsmart)**: headcount, admissões, saídas, turnover e absenteísmo."
+            "Aba **Operacional (Tecsmart)**: demografia baseada em `funcionario_geral_rh_consolidado`."
         )
 
     tab_jira, tab_tec = st.tabs(["Solicitações (Jira)", "Operacional (Tecsmart)"])
@@ -709,28 +709,4 @@ def render_indicadores_rh_dashboard(
         render_jira_requisicao_vaga_tempos()
 
     with tab_tec:
-        tab_demog, tab_con, tab_eq, tab_fi = st.tabs(
-            ["Demografia RH", "Visão consolidada", "Por equipe", "Por filial"]
-        )
-
-        with tab_demog:
-            _render_demografia_rh()
-
-        with tab_con:
-            tab_consolidado(load_tecsmart_consolidado())
-
-        with tab_eq:
-            tab_por_dimensao(
-                load_tecsmart_equipe(),
-                "equipe",
-                TEC_EQUIPE,
-                "equipe",
-            )
-
-        with tab_fi:
-            tab_por_dimensao(
-                load_tecsmart_filial(),
-                "filial",
-                TEC_FILIAL,
-                "filial",
-            )
+        _render_demografia_rh()
