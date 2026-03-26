@@ -189,14 +189,8 @@ def _render_demografia_rh() -> None:
         minoria_racial = pd.Series(False, index=base.index)
         if col_raca:
             rr = base[col_raca].astype(str).str.strip().str.lower()
-            minoria_racial = rr.isin(
-                ["preta", "preto", "parda", "pardo", "indigena", "indígena", "amarela", "quilombola"]
-            )
-        pcd = pd.Series(False, index=base.index)
-        if col_pcd:
-            p = base[col_pcd].astype(str).str.strip().str.lower()
-            pcd = ~p.isin(["", "nan", "none", "sem deficiencia", "sem deficiência"])
-        base["_minoria"] = minoria_racial | pcd
+            minoria_racial = (~rr.isin(["", "nan", "none", "na", "<na>", "não informado"])) & (rr != "branco")
+        base["_minoria"] = minoria_racial
 
         m = (
             base.groupby("_hier")
@@ -221,7 +215,7 @@ def _render_demografia_rh() -> None:
                 "Minorias": st.column_config.NumberColumn(format="%d"),
             },
         )
-        st.caption("Minorias = raça autodeclarada minoritária e/ou colaborador com deficiência.")
+        st.caption("Minorias = raça informada diferente de 'Branco' (campos vazios/não informados não entram).")
 
     # Faixas numéricas
     c1, c2 = st.columns(2)
