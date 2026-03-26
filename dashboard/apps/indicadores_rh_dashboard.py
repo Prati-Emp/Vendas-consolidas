@@ -534,6 +534,12 @@ def _render_demografia_rh() -> None:
                     hole=0.55,
                     title="Distribuição por Gênero",
                 )
+                # Reduz o tamanho da rosca ~30% (domain define área ocupada do gráfico).
+                fig_sexo.update_traces(
+                    textposition="inside",
+                    textinfo="percent+label",
+                    domain={"x": [0.15, 0.85], "y": [0.15, 0.85]},
+                )
                 fig_sexo.update_layout(
                     template="plotly_dark",
                     legend_title_text="",
@@ -553,12 +559,15 @@ def _render_demografia_rh() -> None:
                     title="Distribuição por Raça",
                     color="Quantidade",
                     color_continuous_scale="Blues",
+                    text="Quantidade",
                 )
+                textpos_raca = "inside" if len(raca_tbl) <= 6 else "outside"
                 fig_raca.update_layout(
                     template="plotly_dark",
                     coloraxis_showscale=False,
                     margin=dict(l=10, r=10, t=50, b=10),
                 )
+                fig_raca.update_traces(textposition=textpos_raca)
                 st.plotly_chart(fig_raca, use_container_width=True)
 
             c3, c4 = st.columns(2)
@@ -574,12 +583,15 @@ def _render_demografia_rh() -> None:
                     title="Nacionalidade",
                     color="Quantidade",
                     color_continuous_scale="Teal",
+                    text="Quantidade",
                 )
+                textpos_nac = "inside" if len(nac_tbl.head(10)) <= 6 else "outside"
                 fig_nac.update_layout(
                     template="plotly_dark",
                     coloraxis_showscale=False,
                     margin=dict(l=10, r=10, t=50, b=10),
                 )
+                fig_nac.update_traces(textposition=textpos_nac)
                 st.plotly_chart(fig_nac, use_container_width=True)
             with c4:
                 estado_tbl = (
@@ -594,12 +606,15 @@ def _render_demografia_rh() -> None:
                     title="Estado Civil",
                     color="Quantidade",
                     color_continuous_scale="Viridis",
+                    text="Quantidade",
                 )
+                textpos_estado = "inside" if len(estado_tbl) <= 6 else "outside"
                 fig_estado.update_layout(
                     template="plotly_dark",
                     coloraxis_showscale=False,
                     margin=dict(l=10, r=10, t=50, b=10),
                 )
+                fig_estado.update_traces(textposition=textpos_estado)
                 st.plotly_chart(fig_estado, use_container_width=True)
 
             instr_tbl = (
@@ -614,12 +629,15 @@ def _render_demografia_rh() -> None:
                 title="Grau de Instrução",
                 color="Quantidade",
                 color_continuous_scale="Cividis",
+                text="Quantidade",
             )
+            textpos_instr = "inside" if len(instr_tbl) <= 6 else "outside"
             fig_instr.update_layout(
                 template="plotly_dark",
                 coloraxis_showscale=False,
                 margin=dict(l=10, r=10, t=50, b=10),
             )
+            fig_instr.update_traces(textposition=textpos_instr)
             st.plotly_chart(fig_instr, use_container_width=True)
 
     with tabs[3]:
