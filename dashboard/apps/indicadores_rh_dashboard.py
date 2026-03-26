@@ -191,7 +191,7 @@ def _render_demografia_rh() -> None:
     minoria_racial = pd.Series(False, index=base.index)
     if col_raca:
         rr = base[col_raca].astype(str).str.strip().str.lower()
-        minoria_racial = (~rr.isin(["", "nan", "none", "na", "<na>", "não informado"])) & (rr != "branco")
+        minoria_racial = (~rr.isin(["", "nan", "none", "na", "<na>", "não informado"])) & (~rr.isin(["branco", "branca"]))
     base["_minoria"] = minoria_racial
 
     tabs = st.tabs(["Resumo", "Tempo e experiência", "Diversidade", "Estrutura"])
