@@ -456,9 +456,16 @@ def compute_requisicao_vaga_tempos_table(df: pd.DataFrame) -> pd.DataFrame:
         return pd.DataFrame()
 
     resumo_col = _find_dataframe_column_normalized(done, "Resumo")
+    cargo_col = _find_dataframe_column_normalized(done, "Cargo")
 
     out = pd.DataFrame()
     out["Chave"] = done[chave_col].astype(str).str.strip()
+    if cargo_col and cargo_col in done.columns:
+        out["Cargo"] = done[cargo_col].apply(
+            lambda x: str(x).strip() if pd.notna(x) else ""
+        )
+    else:
+        out["Cargo"] = ""
     if resumo_col and resumo_col in done.columns:
         out["Resumo"] = done[resumo_col].apply(lambda x: str(x).strip() if pd.notna(x) else "")
 

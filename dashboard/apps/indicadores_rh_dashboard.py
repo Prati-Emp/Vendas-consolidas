@@ -385,6 +385,49 @@ def _tempo_stats(tbl: pd.DataFrame, col: str) -> tuple[int, float, float]:
     return int(v.shape[0]), float(v.mean()), float(v.median())
 
 
+def _build_tempos_por_cargo_table(tbl: pd.DataFrame) -> pd.DataFrame:
+    """Agrupa tempos de requisição de vaga por cargo (médias e quantidade)."""
+    if tbl.empty or "Cargo" not in tbl.columns:
+        return pd.DataFrame()
+
+    base = tbl.copy()
+    base["Cargo"] = base["Cargo"].fillna("").astype(str).str.strip()
+    base["Cargo"] = base["Cargo"].replace("", "NÃO INFORMADO")
+
+    for c in (
+        COL_TEMPO_FECHAMENTO_VAGA,
+        COL_TEMPO_APROVACAO_VAGA,
+        COL_TEMPO_TOTAL_CONTRATACAO,
+    ):
+        if c in base.columns:
+            base[c] = pd.to_numeric(base[c], errors="coerce")
+
+    grp = (
+        base.groupby("Cargo", dropna=False)
+        .agg(
+            vagas_finalizadas=("Chave", "count"),
+            tempo_fechamento_medio=(COL_TEMPO_FECHAMENTO_VAGA, "mean"),
+            tempo_aprovacao_medio=(COL_TEMPO_APROVACAO_VAGA, "mean"),
+            tempo_total_contratacao_medio=(COL_TEMPO_TOTAL_CONTRATACAO, "mean"),
+        )
+        .reset_index()
+    )
+
+    grp = grp.rename(
+        columns={
+            "Cargo": "Cargo",
+            "vagas_finalizadas": "Vagas finalizadas",
+            "tempo_fechamento_medio": "Tempo fechamento vaga (média)",
+            "tempo_aprovacao_medio": "Tempo aprovação vaga (média)",
+            "tempo_total_contratacao_medio": "Tempo total contratação (média)",
+        }
+    )
+    grp = grp.sort_values(
+        by=["Vagas finalizadas", "Cargo"], ascending=[False, True]
+    ).reset_index(drop=True)
+    return grp
+
+
 def render_jira_requisicao_vaga_tempos() -> None:
     """Tempos médios no quadro RC para issues finalizadas."""
     st.subheader("Requisição de vagas — tempos (Finalizado)")
@@ -429,6 +472,25 @@ def render_jira_requisicao_vaga_tempos() -> None:
     with r3:
         st.metric("Tempo total contratação (média)", k3, help="Início → data finalização")
         st.caption(f"n = {n3} · mediana {h3}")
+
+    st.subheader("Tempos por cargo")
+    st.caption("Média em dias corridos por cargo, considerando apenas vagas finalizadas.")
+    tbl_cargo = _build_tempos_por_cargo_table(tbl)
+    if tbl_cargo.empty:
+        st.info("Sem dados suficientes de cargo para montar o quadro por cargo.")
+    else:
+        st.dataframe(
+            tbl_cargo,
+            hide_index=True,
+            use_container_width=True,
+            key="ind_rh_req_vaga_tempos_por_cargo_tbl",
+            column_config={
+                "Vagas finalizadas": st.column_config.NumberColumn(format="%d"),
+                "Tempo fechamento vaga (média)": st.column_config.NumberColumn(format="%.1f"),
+                "Tempo aprovação vaga (média)": st.column_config.NumberColumn(format="%.1f"),
+                "Tempo total contratação (média)": st.column_config.NumberColumn(format="%.1f"),
+            },
+        )
 
     st.subheader("Detalhamento por solicitação")
     num_cfg = st.column_config.NumberColumn(format="%d")
