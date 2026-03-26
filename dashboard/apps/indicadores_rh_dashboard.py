@@ -5,7 +5,7 @@ solicitações (Jira DHO) e indicadores operacionais (views Tecsmart no MotherDu
 
 from __future__ import annotations
 
-from typing import List, Optional, Sequence, Tuple
+from typing import Any, List, Optional, Sequence, Tuple
 
 import pandas as pd
 import plotly.express as px
@@ -26,6 +26,7 @@ from dashboard.utils.md_conn import get_md_connection
 TEC_CONSOLIDADO = "administracao.Tecsmart_indicadores"
 TEC_EQUIPE = "administracao.Tecsmart_indicadores_equipe"
 TEC_FILIAL = "administracao.Tecsmart_indicadores_filial"
+FUNC_GERAL_RH = "administracao.funcionario_geral_rh_consolidado"
 
 NUMERIC_MEASURES: Tuple[str, ...] = (
     "headcount",
@@ -81,6 +82,195 @@ def load_tecsmart_filial() -> pd.DataFrame:
         return md.run_query(f"SELECT * FROM {TEC_FILIAL} ORDER BY data, filial")
     except Exception:
         return pd.DataFrame()
+
+
+@st.cache_data(ttl=600)
+def load_funcionario_geral_rh() -> pd.DataFrame:
+    md = get_md_connection()
+    try:
+        return md.run_query(f"SELECT * FROM {FUNC_GERAL_RH}")
+    except Exception:
+        return pd.DataFrame()
+
+
+def _norm_txt(s: Any) -> str:
+    if s is None:
+        return ""
+    v = str(s).strip().lower()
+    v = v.replace("á", "a").replace("à", "a").replace("ã", "a").replace("â", "a")
+    v = v.replace("é", "e").replace("ê", "e")
+    v = v.replace("í", "i")
+    v = v.replace("ó", "o").replace("ô", "o").replace("õ", "o")
+    v = v.replace("ú", "u")
+    v = v.replace("ç", "c")
+    v = v.replace("-", "_").replace(" ", "_")
+    return v
+
+
+def _pick_col(df: pd.DataFrame, candidates: Sequence[str]) -> str:
+    if df.empty:
+        return ""
+    cols = list(df.columns)
+    norm = {c: _norm_txt(c) for c in cols}
+    for cand in candidates:
+        n = _norm_txt(cand)
+        for c, cn in norm.items():
+            if n == cn or n in cn:
+                return c
+    return ""
+
+
+def _value_counts_table(df: pd.DataFrame, col: str, label: str) -> pd.DataFrame:
+    if not col or col not in df.columns:
+        return pd.DataFrame()
+    s = df[col].astype(str).str.strip().replace({"": "NÃO INFORMADO", "nan": "NÃO INFORMADO"})
+    out = (
+        s.value_counts(dropna=False)
+        .rename_axis(label)
+        .reset_index(name="Quantidade")
+        .sort_values("Quantidade", ascending=False)
+    )
+    out["Percentual"] = (out["Quantidade"] / max(int(out["Quantidade"].sum()), 1)) * 100
+    return out
+
+
+def _render_dist(df: pd.DataFrame, col: str, label: str, key_suffix: str) -> None:
+    tbl = _value_counts_table(df, col, label)
+    if tbl.empty:
+        st.info(f"Coluna de {label.lower()} não encontrada.")
+        return
+    fig = px.bar(tbl.head(15), x=label, y="Quantidade", title=label)
+    fig.update_layout(xaxis_title="", yaxis_title="Quantidade")
+    st.plotly_chart(fig, use_container_width=True)
+    st.dataframe(
+        tbl,
+        hide_index=True,
+        use_container_width=True,
+        key=f"demog_tbl_{key_suffix}",
+        column_config={
+            "Quantidade": st.column_config.NumberColumn(format="%d"),
+            "Percentual": st.column_config.NumberColumn(format="%.1f%%"),
+        },
+    )
+
+
+def _render_demografia_rh() -> None:
+    st.subheader("Demografia da empresa")
+    st.caption(f"Fonte: `{FUNC_GERAL_RH}`")
+    df = load_funcionario_geral_rh()
+    if df.empty:
+        st.warning("Sem dados para demografia.")
+        return
+
+    col_hier = _pick_col(df, ["hierarquia"])
+    col_sexo = _pick_col(df, ["sexo"])
+    col_raca = _pick_col(df, ["raca"])
+    col_pcd = _pick_col(df, ["tipo_de_deficiencia"])
+    col_tempo = _pick_col(df, ["tempo_de_empresa_meses"])
+    col_idade = _pick_col(df, ["idade"])
+    col_estado = _pick_col(df, ["estado_civil"])
+    col_instr = _pick_col(df, ["grau_de_instrucao", "grau_instrucao", "instrucao", "escolaridade"])
+    col_vinc = _pick_col(df, ["tipo_de_vinculo", "vinculo"])
+    col_nac = _pick_col(df, ["nacionalidade"])
+    col_eq = _pick_col(df, ["equipe"])
+    col_cargo = _pick_col(df, ["funcionario", "cargo"])
+    col_exp1 = _pick_col(df, ["experiencia_vencimento"])
+    col_exp2 = _pick_col(df, ["experiencia_2_vencimento"])
+
+    # Quadro de minorias por nível hierárquico (adaptado)
+    if col_hier:
+        base = df.copy()
+        base["_hier"] = base[col_hier].astype(str).str.strip().replace({"": "NÃO INFORMADO"})
+        if col_sexo:
+            sx = base[col_sexo].astype(str).str.lower()
+            base["_mulher"] = sx.str.contains("femin", na=False)
+        else:
+            base["_mulher"] = False
+        minoria_racial = pd.Series(False, index=base.index)
+        if col_raca:
+            rr = base[col_raca].astype(str).str.strip().str.lower()
+            minoria_racial = rr.isin(
+                ["preta", "preto", "parda", "pardo", "indigena", "indígena", "amarela", "quilombola"]
+            )
+        pcd = pd.Series(False, index=base.index)
+        if col_pcd:
+            p = base[col_pcd].astype(str).str.strip().str.lower()
+            pcd = ~p.isin(["", "nan", "none", "sem deficiencia", "sem deficiência"])
+        base["_minoria"] = minoria_racial | pcd
+
+        m = (
+            base.groupby("_hier")
+            .agg(
+                Total=("_hier", "count"),
+                Mulheres=("_mulher", "sum"),
+                Minorias=("_minoria", "sum"),
+            )
+            .reset_index()
+            .rename(columns={"_hier": "Nível hierárquico"})
+            .sort_values("Total", ascending=False)
+        )
+        st.subheader("Número de colaboradores por nível hierárquico")
+        st.dataframe(
+            m,
+            hide_index=True,
+            use_container_width=True,
+            key="demog_hier_minorias",
+            column_config={
+                "Total": st.column_config.NumberColumn(format="%d"),
+                "Mulheres": st.column_config.NumberColumn(format="%d"),
+                "Minorias": st.column_config.NumberColumn(format="%d"),
+            },
+        )
+        st.caption("Minorias = raça autodeclarada minoritária e/ou colaborador com deficiência.")
+
+    # Faixas numéricas
+    c1, c2 = st.columns(2)
+    with c1:
+        st.subheader("Tempo de empresa")
+        if col_tempo:
+            v = pd.to_numeric(df[col_tempo], errors="coerce")
+            bins = pd.cut(v, bins=[-1, 6, 12, 24, 60, 9999], labels=["0-6m", "7-12m", "13-24m", "25-60m", "60m+"])
+            tbl = bins.value_counts().rename_axis("Faixa").reset_index(name="Quantidade").sort_values("Faixa")
+            st.dataframe(tbl, hide_index=True, use_container_width=True, key="demog_tempo_empresa")
+        else:
+            st.info("Coluna de tempo de empresa não encontrada.")
+    with c2:
+        st.subheader("Idade")
+        if col_idade:
+            i = pd.to_numeric(df[col_idade], errors="coerce")
+            bins = pd.cut(i, bins=[0, 20, 30, 40, 50, 60, 200], labels=["<21", "21-30", "31-40", "41-50", "51-60", "60+"])
+            tbl = bins.value_counts().rename_axis("Faixa").reset_index(name="Quantidade").sort_values("Faixa")
+            st.dataframe(tbl, hide_index=True, use_container_width=True, key="demog_idade")
+        else:
+            st.info("Coluna de idade não encontrada.")
+
+    # Período de experiência
+    st.subheader("Período de experiência")
+    if col_exp1 or col_exp2:
+        exp1 = pd.to_datetime(df[col_exp1], errors="coerce") if col_exp1 else pd.Series(pd.NaT, index=df.index)
+        exp2 = pd.to_datetime(df[col_exp2], errors="coerce") if col_exp2 else pd.Series(pd.NaT, index=df.index)
+        exp_end = exp1.fillna(exp2)
+        status = pd.Series("Não informado", index=df.index)
+        today = pd.Timestamp.today().normalize()
+        status = status.mask(exp_end.notna() & (exp_end >= today), "Em experiência")
+        status = status.mask(exp_end.notna() & (exp_end < today), "Encerrado")
+        tbl = status.value_counts().rename_axis("Situação").reset_index(name="Quantidade")
+        st.dataframe(tbl, hide_index=True, use_container_width=True, key="demog_experiencia")
+    else:
+        st.info("Colunas de experiência não encontradas.")
+
+    st.subheader("Distribuições demográficas")
+    d1, d2 = st.columns(2)
+    with d1:
+        _render_dist(df, col_estado, "Estado civil", "estado_civil")
+        _render_dist(df, col_sexo, "Sexo", "sexo")
+        _render_dist(df, col_vinc, "Vínculo empregatício", "vinculo")
+        _render_dist(df, col_eq, "Equipe", "equipe")
+    with d2:
+        _render_dist(df, col_instr, "Grau de instrução", "instrucao")
+        _render_dist(df, col_raca, "Raça", "raca")
+        _render_dist(df, col_nac, "Nacionalidade", "nacionalidade")
+        _render_dist(df, col_cargo, "Cargo", "cargo")
 
 
 def prepare_tecsmart_df(df: pd.DataFrame) -> pd.DataFrame:
@@ -525,9 +715,12 @@ def render_indicadores_rh_dashboard(
         render_jira_requisicao_vaga_tempos()
 
     with tab_tec:
-        tab_con, tab_eq, tab_fi = st.tabs(
-            ["Visão consolidada", "Por equipe", "Por filial"]
+        tab_demog, tab_con, tab_eq, tab_fi = st.tabs(
+            ["Demografia RH", "Visão consolidada", "Por equipe", "Por filial"]
         )
+
+        with tab_demog:
+            _render_demografia_rh()
 
         with tab_con:
             tab_consolidado(load_tecsmart_consolidado())
