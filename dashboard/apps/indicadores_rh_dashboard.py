@@ -508,19 +508,19 @@ def _render_demografia_rh() -> None:
                 f"""
                 <div class="div-kpi-grid">
                   <div class="div-kpi-card">
-                    <div class="div-kpi-title">Total de colaboradores</div>
+                    <div class="div-kpi-title">👥 Total de colaboradores</div>
                     <div class="div-kpi-value">{_format_int(total)}</div>
                   </div>
                   <div class="div-kpi-card">
-                    <div class="div-kpi-title">Representatividade feminina</div>
+                    <div class="div-kpi-title">♀ Representatividade feminina</div>
                     <div class="div-kpi-sub">{f"{perc_fem:.1f}%".replace(".", ",")}</div>
                   </div>
                   <div class="div-kpi-card">
-                    <div class="div-kpi-title">Escolaridade predominante</div>
+                    <div class="div-kpi-title">🎓 Escolaridade predominante</div>
                     <div class="div-kpi-sub">{instr_top}: {f"{instr_top_pct:.1f}%".replace(".", ",")}</div>
                   </div>
                   <div class="div-kpi-card">
-                    <div class="div-kpi-title">Nacionalidade predominante</div>
+                    <div class="div-kpi-title">🌍 Nacionalidade predominante</div>
                     <div class="div-kpi-sub">{nac_top}: {f"{nac_top_pct:.1f}%".replace(".", ",")}</div>
                   </div>
                 </div>
@@ -531,6 +531,17 @@ def _render_demografia_rh() -> None:
             c1, c2 = st.columns(2)
             with c1:
                 sexo_tbl = sexo_div.value_counts().rename_axis("Sexo").reset_index(name="Quantidade")
+                # Paleta consistente com a referência: Masculino em azul e Feminino em coral.
+                sexo_vals = sexo_tbl["Sexo"].astype(str).tolist()
+                gender_map = {}
+                for s in sexo_vals:
+                    ss = str(s).strip().lower()
+                    if "femin" in ss:
+                        gender_map[s] = "#FF6B5E"
+                    elif "mascul" in ss:
+                        gender_map[s] = "#6EA8FE"
+                    else:
+                        gender_map[s] = "#94A3B8"
                 fig_sexo = px.pie(
                     sexo_tbl,
                     values="Quantidade",
@@ -538,7 +549,7 @@ def _render_demografia_rh() -> None:
                     color="Sexo",
                     hole=0.55,
                     title="Distribuição por Gênero",
-                    color_discrete_sequence=px.colors.sequential.Blues,
+                    color_discrete_map=gender_map,
                 )
                 # Reduz o tamanho da rosca ~30% (domain define área ocupada do gráfico).
                 fig_sexo.update_traces(
