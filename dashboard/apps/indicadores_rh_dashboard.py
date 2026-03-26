@@ -417,9 +417,9 @@ def _build_tempos_por_cargo_table(tbl: pd.DataFrame) -> pd.DataFrame:
         columns={
             "Cargo": "Cargo",
             "vagas_finalizadas": "Vagas finalizadas",
-            "tempo_fechamento_medio": "Tempo fechamento vaga (média)",
-            "tempo_aprovacao_medio": "Tempo aprovação vaga (média)",
-            "tempo_total_contratacao_medio": "Tempo total contratação (média)",
+            "tempo_fechamento_medio": "Tempo data aprovação (média)",
+            "tempo_aprovacao_medio": "Data de aceite (média)",
+            "tempo_total_contratacao_medio": "Data de fechamento (média)",
         }
     )
     grp = grp.sort_values(
@@ -434,11 +434,11 @@ def render_jira_requisicao_vaga_tempos() -> None:
     st.caption(
         "Somente o quadro **Requisição de vaga (RC)** com status **Finalizado** (e equivalentes). "
         "**Início**: *Start date*; se ausente, *Data de início*. "
-        "**Tempo fechamento da vaga**: do início até **Data de aprovação** (aceite do candidato). "
-        "**Tempo de aprovação da vaga**: do início até **Data de fechamento**; se a **Data finalização** "
+        "**Tempo data aprovação**: do início até **Data de aprovação**. "
+        "**Data de aceite**: do início até **Data de fechamento**; se a **Data finalização** "
         "for anterior (processo já encerrado, mas fechamento preenchido depois no Jira), usa-se a **Data finalização** "
         "como data final desse prazo. "
-        "**Tempo total de contratação**: do início até **Data finalização**. "
+        "**Data de fechamento**: do início até **Data finalização** (tempo total do ciclo da vaga). "
         "Cálculo em **dias corridos**."
     )
     df = load_jira_dho_acompanhamento()
@@ -460,17 +460,17 @@ def render_jira_requisicao_vaga_tempos() -> None:
 
     r1, r2, r3 = st.columns(3)
     with r1:
-        st.metric("Tempo fechamento da vaga (média)", k1, help="Início → data de aprovação")
+        st.metric("Tempo data aprovação (média)", k1, help="Início → data de aprovação")
         st.caption(f"n = {n1} · mediana {h1}")
     with r2:
         st.metric(
-            "Tempo aprovação da vaga (média)",
+            "Data de aceite (média)",
             k2,
             help="Início → data de fechamento; se finalização for mais cedo, usa-se ela como fim.",
         )
         st.caption(f"n = {n2} · mediana {h2}")
     with r3:
-        st.metric("Tempo total contratação (média)", k3, help="Início → data finalização")
+        st.metric("Data de fechamento (média)", k3, help="Início → data finalização (ciclo total)")
         st.caption(f"n = {n3} · mediana {h3}")
 
     st.subheader("Tempos por cargo")
@@ -486,9 +486,9 @@ def render_jira_requisicao_vaga_tempos() -> None:
             key="ind_rh_req_vaga_tempos_por_cargo_tbl",
             column_config={
                 "Vagas finalizadas": st.column_config.NumberColumn(format="%d"),
-                "Tempo fechamento vaga (média)": st.column_config.NumberColumn(format="%.1f"),
-                "Tempo aprovação vaga (média)": st.column_config.NumberColumn(format="%.1f"),
-                "Tempo total contratação (média)": st.column_config.NumberColumn(format="%.1f"),
+                "Tempo data aprovação (média)": st.column_config.NumberColumn(format="%.1f"),
+                "Data de aceite (média)": st.column_config.NumberColumn(format="%.1f"),
+                "Data de fechamento (média)": st.column_config.NumberColumn(format="%.1f"),
             },
         )
 
