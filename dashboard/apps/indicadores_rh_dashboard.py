@@ -415,6 +415,19 @@ def _render_demografia_rh() -> None:
     with tabs[2]:
         st.subheader("Dashboard de Diversidade")
         st.caption("Perfil demográfico com foco em diversidade e inclusão.")
+        st.markdown(
+            """
+            <style>
+            .div-kpi-grid { display:grid; grid-template-columns: repeat(4, minmax(180px, 1fr)); gap:12px; margin: 6px 0 14px 0; }
+            .div-kpi-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.10); border-radius: 12px; padding: 10px 12px; }
+            .div-kpi-title { font-size: 12px; color: #cbd5e1; margin-bottom: 4px; }
+            .div-kpi-value { font-size: 32px; line-height: 1.1; font-weight: 700; color: #f8fafc; }
+            .div-kpi-sub { font-size: 18px; line-height: 1.2; font-weight: 600; color: #f8fafc; }
+            @media (max-width: 1200px) { .div-kpi-grid { grid-template-columns: repeat(2, minmax(180px, 1fr)); } }
+            </style>
+            """,
+            unsafe_allow_html=True,
+        )
 
         df_div = df.copy()
 
@@ -435,33 +448,40 @@ def _render_demografia_rh() -> None:
         instr_s = _clean_series(col_instr)
         estado_s = _clean_series(col_estado)
 
-        f1, f2, f3 = st.columns(3)
-        with f1:
-            sexo_opts = sorted(sexo_s.unique().tolist())
-            sexo_sel = st.multiselect(
-                "Filtro por Gênero",
-                options=sexo_opts,
-                default=sexo_opts,
-                key="div_filtro_sexo",
-            )
-        with f2:
-            nac_opts = sorted(nac_s.unique().tolist())
-            nac_sel = st.multiselect(
-                "Filtro por Nacionalidade",
-                options=nac_opts,
-                default=nac_opts,
-                key="div_filtro_nacionalidade",
-            )
-        with f3:
-            raca_opts = sorted(raca_s.unique().tolist())
-            raca_sel = st.multiselect(
-                "Filtro por Raça",
-                options=raca_opts,
-                default=raca_opts,
-                key="div_filtro_raca",
-            )
+        sexo_opts = sorted(sexo_s.unique().tolist())
+        nac_opts = sorted(nac_s.unique().tolist())
+        raca_opts = sorted(raca_s.unique().tolist())
 
-        mask = sexo_s.isin(sexo_sel) & nac_s.isin(nac_sel) & raca_s.isin(raca_sel)
+        with st.sidebar:
+            st.markdown("### Filtros da Diversidade")
+            with st.expander("Refinar seleção", expanded=True):
+                st.caption("Sem seleção = todos")
+                sexo_sel = st.multiselect(
+                    "Gênero",
+                    options=sexo_opts,
+                    default=[],
+                    key="div_filtro_sexo",
+                    placeholder="Todos",
+                )
+                nac_sel = st.multiselect(
+                    "Nacionalidade",
+                    options=nac_opts,
+                    default=[],
+                    key="div_filtro_nacionalidade",
+                    placeholder="Todos",
+                )
+                raca_sel = st.multiselect(
+                    "Raça",
+                    options=raca_opts,
+                    default=[],
+                    key="div_filtro_raca",
+                    placeholder="Todos",
+                )
+
+        sexo_mask = sexo_s.isin(sexo_sel) if sexo_sel else pd.Series(True, index=df_div.index)
+        nac_mask = nac_s.isin(nac_sel) if nac_sel else pd.Series(True, index=df_div.index)
+        raca_mask = raca_s.isin(raca_sel) if raca_sel else pd.Series(True, index=df_div.index)
+        mask = sexo_mask & nac_mask & raca_mask
         div = df_div[mask].copy()
         if div.empty:
             st.info("Sem dados para os filtros selecionados.")
@@ -480,15 +500,29 @@ def _render_demografia_rh() -> None:
             instr_top = instr_div.value_counts().idxmax() if not instr_div.empty else "N/A"
             instr_top_pct = (instr_div.value_counts().max() / total * 100.0) if total else 0.0
 
-            k1, k2, k3, k4 = st.columns(4)
-            with k1:
-                st.metric("Total de colaboradores", _format_int(total))
-            with k2:
-                st.metric("Representatividade feminina", f"{perc_fem:.1f}%".replace(".", ","))
-            with k3:
-                st.metric("Escolaridade predominante", f"{instr_top}: {instr_top_pct:.1f}%".replace(".", ","))
-            with k4:
-                st.metric("Nacionalidade predominante", f"{nac_top}: {nac_top_pct:.1f}%".replace(".", ","))
+            st.markdown(
+                f"""
+                <div class="div-kpi-grid">
+                  <div class="div-kpi-card">
+                    <div class="div-kpi-title">Total de colaboradores</div>
+                    <div class="div-kpi-value">{_format_int(total)}</div>
+                  </div>
+                  <div class="div-kpi-card">
+                    <div class="div-kpi-title">Representatividade feminina</div>
+                    <div class="div-kpi-sub">{f"{perc_fem:.1f}%".replace(".", ",")}</div>
+                  </div>
+                  <div class="div-kpi-card">
+                    <div class="div-kpi-title">Escolaridade predominante</div>
+                    <div class="div-kpi-sub">{instr_top}: {f"{instr_top_pct:.1f}%".replace(".", ",")}</div>
+                  </div>
+                  <div class="div-kpi-card">
+                    <div class="div-kpi-title">Nacionalidade predominante</div>
+                    <div class="div-kpi-sub">{nac_top}: {f"{nac_top_pct:.1f}%".replace(".", ",")}</div>
+                  </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
 
             c1, c2 = st.columns(2)
             with c1:
@@ -499,6 +533,11 @@ def _render_demografia_rh() -> None:
                     names="Sexo",
                     hole=0.55,
                     title="Distribuição por Gênero",
+                )
+                fig_sexo.update_layout(
+                    template="plotly_dark",
+                    legend_title_text="",
+                    margin=dict(l=10, r=10, t=50, b=10),
                 )
                 st.plotly_chart(fig_sexo, use_container_width=True)
             with c2:
@@ -514,6 +553,11 @@ def _render_demografia_rh() -> None:
                     title="Distribuição por Raça",
                     color="Quantidade",
                     color_continuous_scale="Blues",
+                )
+                fig_raca.update_layout(
+                    template="plotly_dark",
+                    coloraxis_showscale=False,
+                    margin=dict(l=10, r=10, t=50, b=10),
                 )
                 st.plotly_chart(fig_raca, use_container_width=True)
 
@@ -531,6 +575,11 @@ def _render_demografia_rh() -> None:
                     color="Quantidade",
                     color_continuous_scale="Teal",
                 )
+                fig_nac.update_layout(
+                    template="plotly_dark",
+                    coloraxis_showscale=False,
+                    margin=dict(l=10, r=10, t=50, b=10),
+                )
                 st.plotly_chart(fig_nac, use_container_width=True)
             with c4:
                 estado_tbl = (
@@ -546,6 +595,11 @@ def _render_demografia_rh() -> None:
                     color="Quantidade",
                     color_continuous_scale="Viridis",
                 )
+                fig_estado.update_layout(
+                    template="plotly_dark",
+                    coloraxis_showscale=False,
+                    margin=dict(l=10, r=10, t=50, b=10),
+                )
                 st.plotly_chart(fig_estado, use_container_width=True)
 
             instr_tbl = (
@@ -560,6 +614,11 @@ def _render_demografia_rh() -> None:
                 title="Grau de Instrução",
                 color="Quantidade",
                 color_continuous_scale="Cividis",
+            )
+            fig_instr.update_layout(
+                template="plotly_dark",
+                coloraxis_showscale=False,
+                margin=dict(l=10, r=10, t=50, b=10),
             )
             st.plotly_chart(fig_instr, use_container_width=True)
 
