@@ -361,8 +361,25 @@ def _render_demografia_rh() -> None:
                 )
 
                 st.subheader("Pessoas em experiência (detalhado)")
+                fases_disponiveis = [
+                    f for f in detalhe["Fase"].dropna().astype(str).str.strip().unique().tolist() if f
+                ]
+                fases_disponiveis = sorted(fases_disponiveis)
+                fases_selecionadas = st.multiselect(
+                    "Filtrar por fase de experiência",
+                    options=fases_disponiveis,
+                    default=fases_disponiveis,
+                    key="demog_filtro_fase_experiencia",
+                    placeholder="Selecione uma ou mais fases",
+                )
+
+                if fases_selecionadas:
+                    detalhe_filtrado = detalhe[detalhe["Fase"].isin(fases_selecionadas)].copy()
+                else:
+                    detalhe_filtrado = detalhe.iloc[0:0].copy()
+
                 st.dataframe(
-                    detalhe,
+                    detalhe_filtrado,
                     hide_index=True,
                     use_container_width=True,
                     key="demog_pessoas_em_experiencia",
