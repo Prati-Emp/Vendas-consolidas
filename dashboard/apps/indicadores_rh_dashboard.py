@@ -535,8 +535,10 @@ def _render_demografia_rh() -> None:
                     sexo_tbl,
                     values="Quantidade",
                     names="Sexo",
+                    color="Sexo",
                     hole=0.55,
                     title="Distribuição por Gênero",
+                    color_discrete_sequence=px.colors.sequential.Blues,
                 )
                 # Reduz o tamanho da rosca ~30% (domain define área ocupada do gráfico).
                 fig_sexo.update_traces(
@@ -588,7 +590,7 @@ def _render_demografia_rh() -> None:
                     y="Quantidade",
                     title="Nacionalidade",
                     color="Quantidade",
-                    color_continuous_scale="Teal",
+                    color_continuous_scale="Blues",
                     text="Quantidade",
                 )
                 fig_nac.update_layout(
@@ -613,7 +615,7 @@ def _render_demografia_rh() -> None:
                     orientation="h",
                     title="Estado Civil",
                     color="Quantidade",
-                    color_continuous_scale="Viridis",
+                    color_continuous_scale="Blues",
                     text="Quantidade",
                 )
                 fig_estado.update_layout(
@@ -638,7 +640,7 @@ def _render_demografia_rh() -> None:
                 orientation="h",
                 title="Grau de Instrução",
                 color="Quantidade",
-                color_continuous_scale="Cividis",
+                color_continuous_scale="Blues",
                 text="Quantidade",
             )
             fig_instr.update_layout(
