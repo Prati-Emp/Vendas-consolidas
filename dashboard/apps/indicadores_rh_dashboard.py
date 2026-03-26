@@ -112,10 +112,27 @@ def _pick_col(df: pd.DataFrame, candidates: Sequence[str]) -> str:
         return ""
     cols = list(df.columns)
     norm = {c: _norm_txt(c) for c in cols}
+
+    # 1) Match exato primeiro (evita colisões como "idade" em "nacionalidade")
     for cand in candidates:
         n = _norm_txt(cand)
         for c, cn in norm.items():
-            if n == cn or n in cn:
+            if n == cn:
+                return c
+
+    # 2) Match por token (ex.: "vinculo" em "tipo_de_vinculo")
+    for cand in candidates:
+        n = _norm_txt(cand)
+        for c, cn in norm.items():
+            tokens = [t for t in cn.split("_") if t]
+            if n in tokens:
+                return c
+
+    # 3) Fallback por contains (último recurso)
+    for cand in candidates:
+        n = _norm_txt(cand)
+        for c, cn in norm.items():
+            if n and n in cn:
                 return c
     return ""
 
@@ -236,8 +253,19 @@ def _render_demografia_rh() -> None:
             st.subheader("Tempo de empresa")
             if col_tempo:
                 v = pd.to_numeric(df[col_tempo], errors="coerce")
-                bins = pd.cut(v, bins=[-1, 6, 12, 24, 60, 9999], labels=["0-6m", "7-12m", "13-24m", "25-60m", "60m+"])
-                tbl = bins.value_counts().rename_axis("Faixa").reset_index(name="Quantidade").sort_values("Faixa")
+                bins = pd.cut(
+                    v,
+                    bins=[-1, 6, 12, 24, 60, 9999],
+                    labels=[
+                        "0-6m",
+                        "7-12m (1 ano)",
+                        "13-24m (1-2 anos)",
+                        "25-60m (2-5 anos)",
+                        "60m+ (5+ anos)",
+                    ],
+                    include_lowest=True,
+                )
+                tbl = bins.value_counts(sort=False).rename_axis("Faixa").reset_index(name="Quantidade")
                 st.dataframe(tbl, hide_index=True, use_container_width=True, key="demog_tempo_empresa")
             else:
                 st.info("Coluna de tempo de empresa não encontrada.")
@@ -245,8 +273,13 @@ def _render_demografia_rh() -> None:
             st.subheader("Idade")
             if col_idade:
                 i = pd.to_numeric(df[col_idade], errors="coerce")
-                bins = pd.cut(i, bins=[0, 20, 30, 40, 50, 60, 200], labels=["<21", "21-30", "31-40", "41-50", "51-60", "60+"])
-                tbl = bins.value_counts().rename_axis("Faixa").reset_index(name="Quantidade").sort_values("Faixa")
+                bins = pd.cut(
+                    i,
+                    bins=[-1, 20, 30, 40, 50, 60, 200],
+                    labels=["<21", "21-30", "31-40", "41-50", "51-60", "60+"],
+                    include_lowest=True,
+                )
+                tbl = bins.value_counts(sort=False).rename_axis("Faixa").reset_index(name="Quantidade")
                 st.dataframe(tbl, hide_index=True, use_container_width=True, key="demog_idade")
             else:
                 st.info("Coluna de idade não encontrada.")
