@@ -667,12 +667,196 @@ def _render_demografia_rh() -> None:
             st.plotly_chart(fig_instr, use_container_width=True)
 
     with tabs[3]:
-        d1, d2 = st.columns(2)
-        with d1:
-            _render_dist(df, col_vinc, "Vínculo empregatício", "vinculo")
-            _render_dist(df, col_eq, "Equipe", "equipe")
-        with d2:
-            _render_dist(df, col_cargo, "Cargo", "cargo")
+        st.subheader("Estrutura (vínculo, equipe e cargo)")
+        st.caption("Visão executiva da composição do quadro por vínculos, equipes e cargos.")
+
+        # Helpers locais (mantém consistência com a aba Diversidade)
+        def _bar_textpos_for_count(n: int) -> str:
+            return "outside" if n <= 6 else "inside"
+
+        def _clean_opts(col: str) -> pd.Series:
+            if not col or col not in df.columns:
+                return pd.Series("NÃO INFORMADO", index=df.index)
+            return (
+                df[col]
+                .astype(str)
+                .str.strip()
+                .replace({"": "NÃO INFORMADO", "nan": "NÃO INFORMADO"})
+            )
+
+        vinc_s = _clean_opts(col_vinc)
+        eq_s = _clean_opts(col_eq)
+        cargo_s = _clean_opts(col_cargo)
+
+        with st.sidebar:
+            st.markdown("### Filtros - Estrutura")
+            with st.expander("Refinar seleção", expanded=False):
+                vinc_opts = sorted(vinc_s.unique().tolist())
+                eq_opts = sorted(eq_s.unique().tolist())
+                cargo_opts = sorted(cargo_s.unique().tolist())
+
+                vinc_sel = st.multiselect(
+                    "Vínculo empregatício",
+                    options=vinc_opts,
+                    default=[],
+                    key="estr_filtro_vinculo",
+                    placeholder="Todos",
+                )
+                eq_sel = st.multiselect(
+                    "Equipe",
+                    options=eq_opts,
+                    default=[],
+                    key="estr_filtro_equipe",
+                    placeholder="Todos",
+                )
+                cargo_sel = st.multiselect(
+                    "Cargo",
+                    options=cargo_opts,
+                    default=[],
+                    key="estr_filtro_cargo",
+                    placeholder="Todos",
+                )
+
+        vinc_mask = vinc_s.isin(vinc_sel) if vinc_sel else pd.Series(True, index=df.index)
+        eq_mask = eq_s.isin(eq_sel) if eq_sel else pd.Series(True, index=df.index)
+        cargo_mask = cargo_s.isin(cargo_sel) if cargo_sel else pd.Series(True, index=df.index)
+        mask = vinc_mask & eq_mask & cargo_mask
+
+        estr = df[mask].copy()
+        if estr.empty:
+            st.info("Sem dados para os filtros selecionados.")
+            return
+
+        vinc_div = vinc_s[mask]
+        eq_div = eq_s[mask]
+        cargo_div = cargo_s[mask]
+
+        total = int(estr.shape[0])
+        vinc_top = vinc_div.value_counts().idxmax() if not vinc_div.empty else "N/A"
+        eq_top = eq_div.value_counts().idxmax() if not eq_div.empty else "N/A"
+        cargo_top = cargo_div.value_counts().idxmax() if not cargo_div.empty else "N/A"
+
+        # Cards KPI (estilo igual ao da Diversidade)
+        st.markdown(
+            """
+            <style>
+            .div-kpi-grid { display:grid; grid-template-columns: repeat(4, minmax(180px, 1fr)); gap:12px; margin: 6px 0 14px 0; }
+            .div-kpi-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.10); border-radius: 12px; padding: 10px 12px; min-height: 78px; display:flex; flex-direction:column; justify-content:center; }
+            .div-kpi-title { font-size: 12px; color: #cbd5e1; margin-bottom: 4px; }
+            .div-kpi-value { font-size: 32px; line-height: 1.1; font-weight: 700; color: #f8fafc; word-break: break-word; }
+            .div-kpi-sub { font-size: 18px; line-height: 1.2; font-weight: 600; color: #f8fafc; word-break: break-word; }
+            @media (max-width: 1200px) { .div-kpi-grid { grid-template-columns: repeat(2, minmax(180px, 1fr)); } }
+            </style>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        k1, k2, k3, k4 = st.columns(4)
+        st.markdown(
+            f"""
+            <div class="div-kpi-grid">
+              <div class="div-kpi-card">
+                <div class="div-kpi-title">👥 Total de colaboradores</div>
+                <div class="div-kpi-value">{_format_int(total)}</div>
+              </div>
+              <div class="div-kpi-card">
+                <div class="div-kpi-title">🤝 Vínculo predominante</div>
+                <div class="div-kpi-sub">{vinc_top}</div>
+              </div>
+              <div class="div-kpi-card">
+                <div class="div-kpi-title">🏢 Equipe predominante</div>
+                <div class="div-kpi-sub">{eq_top}</div>
+              </div>
+              <div class="div-kpi-card">
+                <div class="div-kpi-title">🧩 Cargo predominante</div>
+                <div class="div-kpi-sub">{cargo_top}</div>
+              </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        def _bar_table(series: pd.Series, y_label: str, topn: int = 15) -> pd.DataFrame:
+            tbl = (
+                series.value_counts()
+                .rename_axis(y_label)
+                .reset_index(name="Quantidade")
+                .sort_values("Quantidade", ascending=False)
+            )
+            if tbl.shape[0] > topn:
+                tbl = tbl.head(topn)
+            # para barras horizontais, ordenar por quantidade ajuda na leitura
+            return tbl.sort_values("Quantidade", ascending=True)
+
+        tbl_vinc = _bar_table(vinc_div, "Vínculo empregatício")
+        tbl_eq = _bar_table(eq_div, "Equipe")
+        tbl_cargo = _bar_table(cargo_div, "Cargo", topn=12)
+
+        c1, c2 = st.columns(2)
+        with c1:
+            fig_vinc = px.bar(
+                tbl_vinc,
+                x="Quantidade",
+                y="Vínculo empregatício",
+                orientation="h",
+                title="Vínculo empregatício",
+                color="Quantidade",
+                color_continuous_scale="Blues",
+                text="Quantidade",
+            )
+            fig_vinc.update_layout(
+                template="plotly_dark",
+                coloraxis_showscale=False,
+                margin=dict(l=10, r=10, t=50, b=10),
+            )
+            fig_vinc.update_traces(
+                textposition=_bar_textpos_for_count(len(tbl_vinc)),
+                texttemplate="<b>%{text}</b>",
+            )
+            st.plotly_chart(fig_vinc, use_container_width=True)
+
+        with c2:
+            fig_eq = px.bar(
+                tbl_eq,
+                x="Quantidade",
+                y="Equipe",
+                orientation="h",
+                title="Equipe",
+                color="Quantidade",
+                color_continuous_scale="Blues",
+                text="Quantidade",
+            )
+            fig_eq.update_layout(
+                template="plotly_dark",
+                coloraxis_showscale=False,
+                margin=dict(l=10, r=10, t=50, b=10),
+            )
+            fig_eq.update_traces(
+                textposition=_bar_textpos_for_count(len(tbl_eq)),
+                texttemplate="<b>%{text}</b>",
+            )
+            st.plotly_chart(fig_eq, use_container_width=True)
+
+        fig_cargo = px.bar(
+            tbl_cargo,
+            x="Quantidade",
+            y="Cargo",
+            orientation="h",
+            title="Cargo",
+            color="Quantidade",
+            color_continuous_scale="Blues",
+            text="Quantidade",
+        )
+        fig_cargo.update_layout(
+            template="plotly_dark",
+            coloraxis_showscale=False,
+            margin=dict(l=10, r=10, t=50, b=10),
+        )
+        fig_cargo.update_traces(
+            textposition=_bar_textpos_for_count(len(tbl_cargo)),
+            texttemplate="<b>%{text}</b>",
+        )
+        st.plotly_chart(fig_cargo, use_container_width=True)
 
 
 def prepare_tecsmart_df(df: pd.DataFrame) -> pd.DataFrame:
