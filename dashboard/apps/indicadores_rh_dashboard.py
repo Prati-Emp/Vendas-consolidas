@@ -367,12 +367,14 @@ def _render_demografia_rh() -> None:
                     "Cargo": "Cargo",
                     "Colaborador": "Colaborador",
                 }
-                col_filtro_label = st.selectbox(
-                    "1) Escolha a coluna para filtrar",
-                    options=list(filtro_cols.keys()),
-                    index=0,
-                    key="demog_filtro_coluna_experiencia",
-                )
+                f1, f2 = st.columns(2)
+                with f1:
+                    col_filtro_label = st.selectbox(
+                        "1) Escolha a coluna para filtrar",
+                        options=list(filtro_cols.keys()),
+                        index=0,
+                        key="demog_filtro_coluna_experiencia",
+                    )
                 col_filtro = filtro_cols[col_filtro_label]
                 valores_disponiveis = sorted(
                     [
@@ -381,29 +383,20 @@ def _render_demografia_rh() -> None:
                         if v
                     ]
                 )
-                selecionar_todos = st.checkbox(
-                    "Aplicar em todos os itens",
-                    value=True,
-                    key="demog_filtro_todos_experiencia",
-                    help="Com esta opção ativa, o filtro usa todos os valores sem exibir tudo selecionado.",
-                )
-
-                valores_selecionados: List[str] = []
-                if not selecionar_todos:
+                with f2:
                     valores_selecionados = st.multiselect(
                         f"2) Filtrar itens de {col_filtro_label}",
                         options=valores_disponiveis,
                         default=[],
                         key="demog_filtro_valores_experiencia",
-                        placeholder="Selecione um ou mais itens",
+                        placeholder="Sem seleção = todos",
                     )
 
-                if selecionar_todos:
-                    detalhe_filtrado = detalhe.copy()
-                elif valores_selecionados:
+                # UX: quando não selecionar itens, mostramos tudo.
+                if valores_selecionados:
                     detalhe_filtrado = detalhe[detalhe[col_filtro].isin(valores_selecionados)].copy()
                 else:
-                    detalhe_filtrado = detalhe.iloc[0:0].copy()
+                    detalhe_filtrado = detalhe.copy()
 
                 st.dataframe(
                     detalhe_filtrado,
