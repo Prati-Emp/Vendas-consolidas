@@ -389,7 +389,7 @@ def _render_demografia_rh() -> None:
                         options=valores_disponiveis,
                         default=[],
                         key="demog_filtro_valores_experiencia",
-                        placeholder="Sem seleção = todos",
+                        placeholder="",
                     )
 
                 # UX: quando não selecionar itens, mostramos tudo.
@@ -413,14 +413,155 @@ def _render_demografia_rh() -> None:
             st.info("Colunas de experiência não encontradas.")
 
     with tabs[2]:
-        d1, d2 = st.columns(2)
-        with d1:
-            _render_dist(df, col_sexo, "Sexo", "sexo")
-            _render_dist(df, col_raca, "Raça", "raca")
-        with d2:
-            _render_dist(df, col_nac, "Nacionalidade", "nacionalidade")
-            _render_dist(df, col_estado, "Estado civil", "estado_civil")
-            _render_dist(df, col_instr, "Grau de instrução", "instrucao")
+        st.subheader("Dashboard de Diversidade")
+        st.caption("Perfil demográfico com foco em diversidade e inclusão.")
+
+        df_div = df.copy()
+
+        def _clean_series(col_name: str) -> pd.Series:
+            if not col_name or col_name not in df_div.columns:
+                return pd.Series("NÃO INFORMADO", index=df_div.index)
+            s = (
+                df_div[col_name]
+                .astype(str)
+                .str.strip()
+                .replace({"": "NÃO INFORMADO", "nan": "NÃO INFORMADO", "None": "NÃO INFORMADO"})
+            )
+            return s
+
+        sexo_s = _clean_series(col_sexo)
+        nac_s = _clean_series(col_nac)
+        raca_s = _clean_series(col_raca)
+        instr_s = _clean_series(col_instr)
+        estado_s = _clean_series(col_estado)
+
+        f1, f2, f3 = st.columns(3)
+        with f1:
+            sexo_opts = sorted(sexo_s.unique().tolist())
+            sexo_sel = st.multiselect(
+                "Filtro por Gênero",
+                options=sexo_opts,
+                default=sexo_opts,
+                key="div_filtro_sexo",
+            )
+        with f2:
+            nac_opts = sorted(nac_s.unique().tolist())
+            nac_sel = st.multiselect(
+                "Filtro por Nacionalidade",
+                options=nac_opts,
+                default=nac_opts,
+                key="div_filtro_nacionalidade",
+            )
+        with f3:
+            raca_opts = sorted(raca_s.unique().tolist())
+            raca_sel = st.multiselect(
+                "Filtro por Raça",
+                options=raca_opts,
+                default=raca_opts,
+                key="div_filtro_raca",
+            )
+
+        mask = sexo_s.isin(sexo_sel) & nac_s.isin(nac_sel) & raca_s.isin(raca_sel)
+        div = df_div[mask].copy()
+        if div.empty:
+            st.info("Sem dados para os filtros selecionados.")
+        else:
+            sexo_div = sexo_s[mask]
+            nac_div = nac_s[mask]
+            raca_div = raca_s[mask]
+            instr_div = instr_s[mask]
+            estado_div = estado_s[mask]
+
+            total = int(div.shape[0])
+            feminino = int(sexo_div.str.lower().str.contains("femin", na=False).sum())
+            perc_fem = (feminino / total * 100.0) if total else 0.0
+            nac_top = nac_div.value_counts().idxmax() if not nac_div.empty else "N/A"
+            nac_top_pct = (nac_div.value_counts().max() / total * 100.0) if total else 0.0
+            instr_top = instr_div.value_counts().idxmax() if not instr_div.empty else "N/A"
+            instr_top_pct = (instr_div.value_counts().max() / total * 100.0) if total else 0.0
+
+            k1, k2, k3, k4 = st.columns(4)
+            with k1:
+                st.metric("Total de colaboradores", _format_int(total))
+            with k2:
+                st.metric("Representatividade feminina", f"{perc_fem:.1f}%".replace(".", ","))
+            with k3:
+                st.metric("Escolaridade predominante", f"{instr_top}: {instr_top_pct:.1f}%".replace(".", ","))
+            with k4:
+                st.metric("Nacionalidade predominante", f"{nac_top}: {nac_top_pct:.1f}%".replace(".", ","))
+
+            c1, c2 = st.columns(2)
+            with c1:
+                sexo_tbl = sexo_div.value_counts().rename_axis("Sexo").reset_index(name="Quantidade")
+                fig_sexo = px.pie(
+                    sexo_tbl,
+                    values="Quantidade",
+                    names="Sexo",
+                    hole=0.55,
+                    title="Distribuição por Gênero",
+                )
+                st.plotly_chart(fig_sexo, use_container_width=True)
+            with c2:
+                raca_tbl = (
+                    raca_div.value_counts().rename_axis("Raça").reset_index(name="Quantidade")
+                    .sort_values("Quantidade", ascending=True)
+                )
+                fig_raca = px.bar(
+                    raca_tbl,
+                    x="Quantidade",
+                    y="Raça",
+                    orientation="h",
+                    title="Distribuição por Raça",
+                    color="Quantidade",
+                    color_continuous_scale="Blues",
+                )
+                st.plotly_chart(fig_raca, use_container_width=True)
+
+            c3, c4 = st.columns(2)
+            with c3:
+                nac_tbl = (
+                    nac_div.value_counts().rename_axis("Nacionalidade").reset_index(name="Quantidade")
+                    .sort_values("Quantidade", ascending=False)
+                )
+                fig_nac = px.bar(
+                    nac_tbl.head(10),
+                    x="Nacionalidade",
+                    y="Quantidade",
+                    title="Nacionalidade",
+                    color="Quantidade",
+                    color_continuous_scale="Teal",
+                )
+                st.plotly_chart(fig_nac, use_container_width=True)
+            with c4:
+                estado_tbl = (
+                    estado_div.value_counts().rename_axis("Estado civil").reset_index(name="Quantidade")
+                    .sort_values("Quantidade", ascending=True)
+                )
+                fig_estado = px.bar(
+                    estado_tbl,
+                    x="Quantidade",
+                    y="Estado civil",
+                    orientation="h",
+                    title="Estado Civil",
+                    color="Quantidade",
+                    color_continuous_scale="Viridis",
+                )
+                st.plotly_chart(fig_estado, use_container_width=True)
+
+            instr_tbl = (
+                instr_div.value_counts().rename_axis("Grau de instrução").reset_index(name="Quantidade")
+                .sort_values("Quantidade", ascending=True)
+            )
+            fig_instr = px.bar(
+                instr_tbl,
+                x="Quantidade",
+                y="Grau de instrução",
+                orientation="h",
+                title="Grau de Instrução",
+                color="Quantidade",
+                color_continuous_scale="Cividis",
+            )
+            st.plotly_chart(fig_instr, use_container_width=True)
 
     with tabs[3]:
         d1, d2 = st.columns(2)
