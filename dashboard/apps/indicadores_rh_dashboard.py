@@ -419,9 +419,9 @@ def _render_demografia_rh() -> None:
             """
             <style>
             .div-kpi-grid { display:grid; grid-template-columns: repeat(4, minmax(180px, 1fr)); gap:12px; margin: 6px 0 14px 0; }
-            .div-kpi-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.10); border-radius: 12px; padding: 10px 12px; }
+            .div-kpi-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.10); border-radius: 12px; padding: 10px 12px; min-height: 78px; display:flex; flex-direction:column; justify-content:center; }
             .div-kpi-title { font-size: 12px; color: #cbd5e1; margin-bottom: 4px; }
-            .div-kpi-value { font-size: 32px; line-height: 1.1; font-weight: 700; color: #f8fafc; }
+            .div-kpi-value { font-size: 32px; line-height: 1.1; font-weight: 700; color: #f8fafc; word-break: break-word; }
             .div-kpi-sub { font-size: 18px; line-height: 1.2; font-weight: 600; color: #f8fafc; }
             @media (max-width: 1200px) { .div-kpi-grid { grid-template-columns: repeat(2, minmax(180px, 1fr)); } }
             </style>
@@ -513,15 +513,15 @@ def _render_demografia_rh() -> None:
                   </div>
                   <div class="div-kpi-card">
                     <div class="div-kpi-title">♀ Representatividade feminina</div>
-                    <div class="div-kpi-sub">{f"{perc_fem:.1f}%".replace(".", ",")}</div>
+                    <div class="div-kpi-value">{f"{perc_fem:.1f}%".replace(".", ",")}</div>
                   </div>
                   <div class="div-kpi-card">
                     <div class="div-kpi-title">🎓 Escolaridade predominante</div>
-                    <div class="div-kpi-sub">{instr_top}: {f"{instr_top_pct:.1f}%".replace(".", ",")}</div>
+                    <div class="div-kpi-value">{instr_top}: {f"{instr_top_pct:.1f}%".replace(".", ",")}</div>
                   </div>
                   <div class="div-kpi-card">
                     <div class="div-kpi-title">🌍 Nacionalidade predominante</div>
-                    <div class="div-kpi-sub">{nac_top}: {f"{nac_top_pct:.1f}%".replace(".", ",")}</div>
+                    <div class="div-kpi-value">{nac_top}: {f"{nac_top_pct:.1f}%".replace(".", ",")}</div>
                   </div>
                 </div>
                 """,
@@ -555,6 +555,7 @@ def _render_demografia_rh() -> None:
                 fig_sexo.update_traces(
                     textposition="inside",
                     textinfo="percent+label",
+                    texttemplate="<b>%{label}</b><br><b>%{percent}</b>",
                     domain={"x": [0.15, 0.85], "y": [0.15, 0.85]},
                 )
                 fig_sexo.update_layout(
