@@ -520,13 +520,9 @@ def render_indicadores_rh_dashboard(
     tab_jira, tab_tec = st.tabs(["Solicitações (Jira)", "Operacional (Tecsmart)"])
 
     with tab_jira:
-        jira_matriz, jira_rv = st.tabs(
-            ["Matriz por quadro", "Requisição de vagas — tempos"]
-        )
-        with jira_matriz:
-            render_jira_matriz_solicitacoes_por_quadro()
-        with jira_rv:
-            render_jira_requisicao_vaga_tempos()
+        render_jira_matriz_solicitacoes_por_quadro()
+        st.divider()
+        render_jira_requisicao_vaga_tempos()
 
     with tab_tec:
         tab_con, tab_eq, tab_fi = st.tabs(
