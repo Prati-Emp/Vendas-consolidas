@@ -258,10 +258,10 @@ def _render_demografia_rh() -> None:
                     bins=[-1, 6, 12, 24, 60, 9999],
                     labels=[
                         "0-6m",
-                        "7-12m (1 ano)",
-                        "13-24m (1-2 anos)",
-                        "25-60m (2-5 anos)",
-                        "60m+ (5+ anos)",
+                        "1 ano",
+                        "1-2 anos",
+                        "2-5 anos",
+                        "5+ anos",
                     ],
                     include_lowest=True,
                 )
@@ -280,7 +280,18 @@ def _render_demografia_rh() -> None:
                     include_lowest=True,
                 )
                 tbl = bins.value_counts(sort=False).rename_axis("Faixa").reset_index(name="Quantidade")
-                st.dataframe(tbl, hide_index=True, use_container_width=True, key="demog_idade")
+                total_idade = max(int(tbl["Quantidade"].sum()), 1)
+                tbl["%"] = (tbl["Quantidade"] / total_idade) * 100
+                st.dataframe(
+                    tbl,
+                    hide_index=True,
+                    use_container_width=True,
+                    key="demog_idade",
+                    column_config={
+                        "Quantidade": st.column_config.NumberColumn(format="%d"),
+                        "%": st.column_config.NumberColumn(format="%.1f%%"),
+                    },
+                )
             else:
                 st.info("Coluna de idade não encontrada.")
 
