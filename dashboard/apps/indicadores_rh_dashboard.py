@@ -176,6 +176,7 @@ def _render_estrutura_dashboard(
     col_vinc: str,
     col_eq: str,
     col_cargo: str,
+    col_instr: str,
 ) -> None:
     """Renderiza seção de estrutura (vínculo, equipe e cargo)."""
     st.subheader("Estrutura (vínculo, equipe e cargo)")
@@ -194,6 +195,7 @@ def _render_estrutura_dashboard(
     vinc_s = _clean_opts(col_vinc)
     eq_s = _clean_opts(col_eq)
     cargo_s = _clean_opts(col_cargo)
+    instr_s = _clean_opts(col_instr)
 
     with st.sidebar:
         st.markdown("### Filtros - Estrutura")
@@ -237,6 +239,7 @@ def _render_estrutura_dashboard(
     vinc_div = vinc_s[mask]
     eq_div = eq_s[mask]
     cargo_div = cargo_s[mask]
+    instr_div = instr_s[mask]
 
     def _bar_table(series: pd.Series, y_label: str, topn: int = 15) -> pd.DataFrame:
         tbl = (
@@ -248,15 +251,6 @@ def _render_estrutura_dashboard(
         if tbl.shape[0] > topn:
             tbl = tbl.head(topn)
         return tbl.sort_values("Quantidade", ascending=True)
-
-    tbl_vinc = (
-        vinc_div.value_counts()
-        .rename_axis("Vínculo empregatício")
-        .reset_index(name="Quantidade")
-        .sort_values("Quantidade", ascending=False)
-    )
-    total_vinc = max(int(tbl_vinc["Quantidade"].sum()), 1)
-    tbl_vinc["%"] = (tbl_vinc["Quantidade"] / total_vinc) * 100
 
     tbl_eq = (
         eq_div.value_counts()
@@ -275,21 +269,73 @@ def _render_estrutura_dashboard(
     total_cargo = max(int(tbl_cargo["Quantidade"].sum()), 1)
     tbl_cargo["%"] = (tbl_cargo["Quantidade"] / total_cargo) * 100
 
+    # Vínculo (gráfico) lado a lado com Grau de instrução (gráfico)
     c1, c2 = st.columns(2)
     with c1:
-        st.subheader("Vínculo empregatício")
+        tbl_vinc_graf = (
+            vinc_div.value_counts()
+            .rename_axis("Vínculo empregatício")
+            .reset_index(name="Quantidade")
+            .sort_values("Quantidade", ascending=True)
+        )
+        fig_vinc = px.bar(
+            tbl_vinc_graf,
+            x="Quantidade",
+            y="Vínculo empregatício",
+            orientation="h",
+            title="Vínculo empregatício",
+            color="Quantidade",
+            color_continuous_scale="Blues",
+            text="Quantidade",
+        )
+        fig_vinc.update_layout(
+            template="plotly_dark",
+            coloraxis_showscale=False,
+            margin=dict(l=10, r=10, t=50, b=10),
+        )
+        fig_vinc.update_traces(texttemplate="<b>%{text}</b>", textposition="inside")
+        st.plotly_chart(fig_vinc, use_container_width=True)
+
+    with c2:
+        tbl_instr = (
+            instr_div.value_counts()
+            .rename_axis("Grau de instrução")
+            .reset_index(name="Quantidade")
+            .sort_values("Quantidade", ascending=True)
+        )
+        fig_instr = px.bar(
+            tbl_instr,
+            x="Quantidade",
+            y="Grau de instrução",
+            orientation="h",
+            title="Grau de Instrução",
+            color="Quantidade",
+            color_continuous_scale="Blues",
+            text="Quantidade",
+        )
+        fig_instr.update_layout(
+            template="plotly_dark",
+            coloraxis_showscale=False,
+            margin=dict(l=10, r=10, t=50, b=10),
+        )
+        fig_instr.update_traces(texttemplate="<b>%{text}</b>", textposition="inside")
+        st.plotly_chart(fig_instr, use_container_width=True)
+
+    # Tabelas de cargo e equipe lado a lado
+    t1, t2 = st.columns(2)
+    with t1:
+        st.subheader("Cargo")
         st.dataframe(
-            tbl_vinc,
+            tbl_cargo,
             hide_index=True,
             use_container_width=True,
-            key="estr_tabela_vinculo",
+            key="estr_tabela_cargo",
             column_config={
                 "Quantidade": st.column_config.NumberColumn(format="%d"),
                 "%": st.column_config.NumberColumn(format="%.1f%%"),
             },
         )
-
-    with c2:
+    with t2:
         st.subheader("Equipe")
         st.dataframe(
             tbl_eq,
@@ -301,18 +347,6 @@ def _render_estrutura_dashboard(
                 "%": st.column_config.NumberColumn(format="%.1f%%"),
             },
         )
-
-    st.subheader("Cargo")
-    st.dataframe(
-        tbl_cargo,
-        hide_index=True,
-        use_container_width=True,
-        key="estr_tabela_cargo",
-        column_config={
-            "Quantidade": st.column_config.NumberColumn(format="%d"),
-            "%": st.column_config.NumberColumn(format="%.1f%%"),
-        },
-    )
 
 
 def _render_demografia_rh() -> None:
@@ -815,7 +849,7 @@ def _render_demografia_rh() -> None:
             st.plotly_chart(fig_instr, use_container_width=True)
 
             st.divider()
-            _render_estrutura_dashboard(df, col_vinc, col_eq, col_cargo)
+            _render_estrutura_dashboard(df, col_vinc, col_eq, col_cargo, col_instr)
 
     with tabs[3]:
         st.info("As informações de Estrutura foram movidas para a aba Diversidade.")
