@@ -249,8 +249,23 @@ def _render_estrutura_dashboard(
             tbl = tbl.head(topn)
         return tbl.sort_values("Quantidade", ascending=True)
 
-    tbl_vinc = _bar_table(vinc_div, "Vínculo empregatício")
-    tbl_eq = _bar_table(eq_div, "Equipe")
+    tbl_vinc = (
+        vinc_div.value_counts()
+        .rename_axis("Vínculo empregatício")
+        .reset_index(name="Quantidade")
+        .sort_values("Quantidade", ascending=False)
+    )
+    total_vinc = max(int(tbl_vinc["Quantidade"].sum()), 1)
+    tbl_vinc["%"] = (tbl_vinc["Quantidade"] / total_vinc) * 100
+
+    tbl_eq = (
+        eq_div.value_counts()
+        .rename_axis("Equipe")
+        .reset_index(name="Quantidade")
+        .sort_values("Quantidade", ascending=False)
+    )
+    total_eq = max(int(tbl_eq["Quantidade"].sum()), 1)
+    tbl_eq["%"] = (tbl_eq["Quantidade"] / total_eq) * 100
     tbl_cargo = (
         cargo_div.value_counts()
         .rename_axis("Cargo")
@@ -262,38 +277,30 @@ def _render_estrutura_dashboard(
 
     c1, c2 = st.columns(2)
     with c1:
-        fig_vinc = px.bar(
+        st.subheader("Vínculo empregatício")
+        st.dataframe(
             tbl_vinc,
-            x="Quantidade",
-            y="Vínculo empregatício",
-            orientation="h",
-            title="Vínculo empregatício",
-            color="Quantidade",
-            color_continuous_scale="Blues",
+            hide_index=True,
+            use_container_width=True,
+            key="estr_tabela_vinculo",
+            column_config={
+                "Quantidade": st.column_config.NumberColumn(format="%d"),
+                "%": st.column_config.NumberColumn(format="%.1f%%"),
+            },
         )
-        fig_vinc.update_layout(
-            template="plotly_dark",
-            coloraxis_showscale=False,
-            margin=dict(l=10, r=10, t=50, b=10),
-        )
-        st.plotly_chart(fig_vinc, use_container_width=True)
 
     with c2:
-        fig_eq = px.bar(
+        st.subheader("Equipe")
+        st.dataframe(
             tbl_eq,
-            x="Quantidade",
-            y="Equipe",
-            orientation="h",
-            title="Equipe",
-            color="Quantidade",
-            color_continuous_scale="Blues",
+            hide_index=True,
+            use_container_width=True,
+            key="estr_tabela_equipe",
+            column_config={
+                "Quantidade": st.column_config.NumberColumn(format="%d"),
+                "%": st.column_config.NumberColumn(format="%.1f%%"),
+            },
         )
-        fig_eq.update_layout(
-            template="plotly_dark",
-            coloraxis_showscale=False,
-            margin=dict(l=10, r=10, t=50, b=10),
-        )
-        st.plotly_chart(fig_eq, use_container_width=True)
 
     st.subheader("Cargo")
     st.dataframe(
