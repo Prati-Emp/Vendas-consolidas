@@ -556,6 +556,9 @@ def _render_demografia_rh() -> None:
                     textposition="inside",
                     textinfo="percent+label",
                     texttemplate="<b>%{label}</b><br><b>%{percent}</b>",
+                    sort=False,
+                    direction="clockwise",
+                    rotation=90,
                     domain={"x": [0.15, 0.85], "y": [0.15, 0.85]},
                 )
                 fig_sexo.update_layout(
