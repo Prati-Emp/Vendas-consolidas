@@ -761,7 +761,7 @@ def _render_demografia_rh() -> None:
                     x1=0.5,
                     y0=0.6925,
                     y1=0.85,
-                    line=dict(color="#0B1220", width=1.2),
+                    line=dict(color="#FF6B5E", width=1.2),
                 )
                 st.plotly_chart(fig_sexo, use_container_width=True)
             with c2:
