@@ -754,14 +754,15 @@ def _render_demografia_rh() -> None:
                 )
                 # Acerto fino apenas da junção superior, sem deslocar a divisão inferior.
                 fig_sexo.add_shape(
-                    type="line",
+                    type="rect",
                     xref="paper",
                     yref="paper",
-                    x0=0.5,
-                    x1=0.5,
+                    x0=0.4985,
+                    x1=0.5025,
                     y0=0.6925,
                     y1=0.85,
-                    line=dict(color="#FF6B5E", width=1.2),
+                    line=dict(color="#FF6B5E", width=0),
+                    fillcolor="#FF6B5E",
                 )
                 st.plotly_chart(fig_sexo, use_container_width=True)
             with c2:
