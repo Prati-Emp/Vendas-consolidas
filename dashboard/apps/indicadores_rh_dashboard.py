@@ -1265,14 +1265,6 @@ def render_indicadores_rh_dashboard(
     show_caption: bool = True,
 ) -> None:
     """Renderiza indicadores de gestão de pessoas (Jira + Tecsmart)."""
-    if show_title:
-        st.title("Indicadores de gestão de pessoas")
-    if show_caption:
-        st.caption(
-            "Aba **Solicitações (Jira)**: matriz por quadro e tempos no quadro de requisição de vagas. "
-            "Aba **Operacional (Tecsmart)**: demografia baseada em `funcionario_geral_rh_consolidado`."
-        )
-
     tab_jira, tab_tec = st.tabs(["Solicitações (Jira)", "Operacional (Tecsmart)"])
 
     with tab_jira:
