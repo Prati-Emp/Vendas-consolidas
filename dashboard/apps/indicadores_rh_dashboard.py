@@ -360,7 +360,6 @@ def _render_estrutura_dashboard(
 
 def _render_demografia_rh() -> None:
     st.subheader("Demografia da empresa")
-    st.caption(f"Fonte: `{FUNC_GERAL_RH}`")
     df = load_funcionario_geral_rh()
     if df.empty:
         st.warning("Sem dados para demografia.")
