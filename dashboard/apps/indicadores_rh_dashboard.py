@@ -556,6 +556,7 @@ def _render_demografia_rh() -> None:
                     textposition="inside",
                     textinfo="percent+label",
                     texttemplate="<b>%{label}</b><br><b>%{percent}</b>",
+                    insidetextorientation="horizontal",
                     sort=False,
                     direction="clockwise",
                     rotation=90,
