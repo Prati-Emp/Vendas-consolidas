@@ -179,8 +179,6 @@ def _render_estrutura_dashboard(
     col_instr: str,
 ) -> None:
     """Renderiza seção de estrutura (vínculo, equipe e cargo)."""
-    st.subheader("Estrutura (vínculo, equipe e cargo)")
-    st.caption("Visão executiva da composição do quadro por vínculos, equipes e cargos.")
 
     def _clean_opts(col: str) -> pd.Series:
         if not col or col not in df.columns:
@@ -745,8 +743,8 @@ def _render_demografia_rh() -> None:
                     insidetextorientation="horizontal",
                     sort=False,
                     direction="clockwise",
-                    rotation=90,
-                    domain={"x": [0.15, 0.85], "y": [0.15, 0.85]},
+                    rotation=0,
+                    marker=dict(line=dict(color="#0B1220", width=1)),
                 )
                 fig_sexo.update_layout(
                     template="plotly_dark",
