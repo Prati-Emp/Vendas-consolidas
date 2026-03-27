@@ -743,7 +743,7 @@ def _render_demografia_rh() -> None:
                     insidetextorientation="horizontal",
                     sort=False,
                     direction="clockwise",
-                    rotation=98,
+                    rotation=90,
                     domain={"x": [0.15, 0.85], "y": [0.15, 0.85]},
                     marker=dict(line=dict(color="#0B1220", width=0.8)),
                 )
@@ -751,6 +751,17 @@ def _render_demografia_rh() -> None:
                     template="plotly_dark",
                     legend_title_text="",
                     margin=dict(l=10, r=10, t=50, b=10),
+                )
+                # Acerto fino apenas da junção superior, sem deslocar a divisão inferior.
+                fig_sexo.add_shape(
+                    type="line",
+                    xref="paper",
+                    yref="paper",
+                    x0=0.5,
+                    x1=0.5,
+                    y0=0.6925,
+                    y1=0.85,
+                    line=dict(color="#0B1220", width=1.2),
                 )
                 st.plotly_chart(fig_sexo, use_container_width=True)
             with c2:
