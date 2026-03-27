@@ -743,7 +743,7 @@ def _render_demografia_rh() -> None:
                     insidetextorientation="horizontal",
                     sort=False,
                     direction="clockwise",
-                    rotation=94,
+                    rotation=98,
                     domain={"x": [0.15, 0.85], "y": [0.15, 0.85]},
                     marker=dict(line=dict(color="#0B1220", width=0.8)),
                 )
