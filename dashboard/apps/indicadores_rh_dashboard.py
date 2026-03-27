@@ -174,11 +174,13 @@ def _render_dist(df: pd.DataFrame, col: str, label: str, key_suffix: str) -> Non
 def _render_estrutura_dashboard(
     df: pd.DataFrame,
     col_vinc: str,
+    col_eq: str,
+    col_cargo: str,
     col_instr: str,
 ) -> None:
     """Renderiza seção de estrutura (vínculo, equipe e cargo)."""
-    st.subheader("Estrutura (vínculo e grau de instrução)")
-    st.caption("Visão executiva da composição do quadro por vínculo empregatício e grau de instrução.")
+    st.subheader("Estrutura (vínculo, equipe e cargo)")
+    st.caption("Visão executiva da composição do quadro por vínculos, equipes e cargos.")
 
     def _clean_opts(col: str) -> pd.Series:
         if not col or col not in df.columns:
@@ -191,12 +193,16 @@ def _render_estrutura_dashboard(
         )
 
     vinc_s = _clean_opts(col_vinc)
+    eq_s = _clean_opts(col_eq)
+    cargo_s = _clean_opts(col_cargo)
     instr_s = _clean_opts(col_instr)
 
     with st.sidebar:
         st.markdown("### Filtros - Estrutura")
         with st.expander("Refinar seleção", expanded=False):
             vinc_opts = sorted(vinc_s.unique().tolist())
+            eq_opts = sorted(eq_s.unique().tolist())
+            cargo_opts = sorted(cargo_s.unique().tolist())
             instr_opts = sorted(instr_s.unique().tolist())
 
             vinc_sel = st.multiselect(
@@ -213,10 +219,26 @@ def _render_estrutura_dashboard(
                 key="estr_filtro_instrucao",
                 placeholder="Todos",
             )
+            eq_sel = st.multiselect(
+                "Equipe",
+                options=eq_opts,
+                default=[],
+                key="estr_filtro_equipe",
+                placeholder="Todos",
+            )
+            cargo_sel = st.multiselect(
+                "Cargo",
+                options=cargo_opts,
+                default=[],
+                key="estr_filtro_cargo",
+                placeholder="Todos",
+            )
 
     vinc_mask = vinc_s.isin(vinc_sel) if vinc_sel else pd.Series(True, index=df.index)
     instr_mask = instr_s.isin(instr_sel) if instr_sel else pd.Series(True, index=df.index)
-    mask = vinc_mask & instr_mask
+    eq_mask = eq_s.isin(eq_sel) if eq_sel else pd.Series(True, index=df.index)
+    cargo_mask = cargo_s.isin(cargo_sel) if cargo_sel else pd.Series(True, index=df.index)
+    mask = vinc_mask & instr_mask & eq_mask & cargo_mask
 
     estr = df[mask].copy()
     if estr.empty:
@@ -224,6 +246,8 @@ def _render_estrutura_dashboard(
         return
 
     vinc_div = vinc_s[mask]
+    eq_div = eq_s[mask]
+    cargo_div = cargo_s[mask]
     instr_div = instr_s[mask]
 
     def _bar_table(series: pd.Series, y_label: str, topn: int = 15) -> pd.DataFrame:
@@ -236,6 +260,24 @@ def _render_estrutura_dashboard(
         if tbl.shape[0] > topn:
             tbl = tbl.head(topn)
         return tbl.sort_values("Quantidade", ascending=True)
+
+    tbl_eq = (
+        eq_div.value_counts()
+        .rename_axis("Equipe")
+        .reset_index(name="Quantidade")
+        .sort_values("Quantidade", ascending=False)
+    )
+    total_eq = max(int(tbl_eq["Quantidade"].sum()), 1)
+    tbl_eq["%"] = (tbl_eq["Quantidade"] / total_eq) * 100
+
+    tbl_cargo = (
+        cargo_div.value_counts()
+        .rename_axis("Cargo")
+        .reset_index(name="Quantidade")
+        .sort_values("Quantidade", ascending=False)
+    )
+    total_cargo = max(int(tbl_cargo["Quantidade"].sum()), 1)
+    tbl_cargo["%"] = (tbl_cargo["Quantidade"] / total_cargo) * 100
 
     # Vínculo (gráfico) lado a lado com Grau de instrução (gráfico)
     c1, c2 = st.columns(2)
@@ -287,6 +329,33 @@ def _render_estrutura_dashboard(
         )
         fig_instr.update_traces(texttemplate="<b>%{text}</b>", textposition="inside")
         st.plotly_chart(fig_instr, use_container_width=True)
+
+    # Tabelas de cargo e equipe lado a lado
+    t1, t2 = st.columns(2)
+    with t1:
+        st.subheader("Cargo")
+        st.dataframe(
+            tbl_cargo,
+            hide_index=True,
+            use_container_width=True,
+            key="estr_tabela_cargo",
+            column_config={
+                "Quantidade": st.column_config.NumberColumn(format="%d"),
+                "%": st.column_config.NumberColumn(format="%.1f%%"),
+            },
+        )
+    with t2:
+        st.subheader("Equipe")
+        st.dataframe(
+            tbl_eq,
+            hide_index=True,
+            use_container_width=True,
+            key="estr_tabela_equipe",
+            column_config={
+                "Quantidade": st.column_config.NumberColumn(format="%d"),
+                "%": st.column_config.NumberColumn(format="%.1f%%"),
+            },
+        )
 
 
 def _render_demografia_rh() -> None:
@@ -763,33 +832,8 @@ def _render_demografia_rh() -> None:
                 )
                 st.plotly_chart(fig_estado, use_container_width=True)
 
-            instr_tbl = (
-                instr_div.value_counts().rename_axis("Grau de instrução").reset_index(name="Quantidade")
-                .sort_values("Quantidade", ascending=True)
-            )
-            fig_instr = px.bar(
-                instr_tbl,
-                x="Quantidade",
-                y="Grau de instrução",
-                orientation="h",
-                title="Grau de Instrução",
-                color="Quantidade",
-                color_continuous_scale="Blues",
-                text="Quantidade",
-            )
-            fig_instr.update_layout(
-                template="plotly_dark",
-                coloraxis_showscale=False,
-                margin=dict(l=10, r=10, t=50, b=10),
-            )
-            fig_instr.update_traces(
-                textposition=_bar_textpos_for_count(len(instr_tbl)),
-                texttemplate="<b>%{text}</b>",
-            )
-            st.plotly_chart(fig_instr, use_container_width=True)
-
             st.divider()
-            _render_estrutura_dashboard(df, col_vinc, col_instr)
+            _render_estrutura_dashboard(df, col_vinc, col_eq, col_cargo, col_instr)
 
     with tabs[3]:
         st.info("As informações de Estrutura foram movidas para a aba Diversidade.")
