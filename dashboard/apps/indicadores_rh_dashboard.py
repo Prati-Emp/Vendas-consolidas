@@ -171,6 +171,143 @@ def _render_dist(df: pd.DataFrame, col: str, label: str, key_suffix: str) -> Non
     )
 
 
+def _render_estrutura_dashboard(
+    df: pd.DataFrame,
+    col_vinc: str,
+    col_eq: str,
+    col_cargo: str,
+) -> None:
+    """Renderiza seção de estrutura (vínculo, equipe e cargo)."""
+    st.subheader("Estrutura (vínculo, equipe e cargo)")
+    st.caption("Visão executiva da composição do quadro por vínculos, equipes e cargos.")
+
+    def _clean_opts(col: str) -> pd.Series:
+        if not col or col not in df.columns:
+            return pd.Series("NÃO INFORMADO", index=df.index)
+        return (
+            df[col]
+            .astype(str)
+            .str.strip()
+            .replace({"": "NÃO INFORMADO", "nan": "NÃO INFORMADO"})
+        )
+
+    vinc_s = _clean_opts(col_vinc)
+    eq_s = _clean_opts(col_eq)
+    cargo_s = _clean_opts(col_cargo)
+
+    with st.sidebar:
+        st.markdown("### Filtros - Estrutura")
+        with st.expander("Refinar seleção", expanded=False):
+            vinc_opts = sorted(vinc_s.unique().tolist())
+            eq_opts = sorted(eq_s.unique().tolist())
+            cargo_opts = sorted(cargo_s.unique().tolist())
+
+            vinc_sel = st.multiselect(
+                "Vínculo empregatício",
+                options=vinc_opts,
+                default=[],
+                key="estr_filtro_vinculo",
+                placeholder="Todos",
+            )
+            eq_sel = st.multiselect(
+                "Equipe",
+                options=eq_opts,
+                default=[],
+                key="estr_filtro_equipe",
+                placeholder="Todos",
+            )
+            cargo_sel = st.multiselect(
+                "Cargo",
+                options=cargo_opts,
+                default=[],
+                key="estr_filtro_cargo",
+                placeholder="Todos",
+            )
+
+    vinc_mask = vinc_s.isin(vinc_sel) if vinc_sel else pd.Series(True, index=df.index)
+    eq_mask = eq_s.isin(eq_sel) if eq_sel else pd.Series(True, index=df.index)
+    cargo_mask = cargo_s.isin(cargo_sel) if cargo_sel else pd.Series(True, index=df.index)
+    mask = vinc_mask & eq_mask & cargo_mask
+
+    estr = df[mask].copy()
+    if estr.empty:
+        st.info("Sem dados para os filtros selecionados.")
+        return
+
+    vinc_div = vinc_s[mask]
+    eq_div = eq_s[mask]
+    cargo_div = cargo_s[mask]
+
+    def _bar_table(series: pd.Series, y_label: str, topn: int = 15) -> pd.DataFrame:
+        tbl = (
+            series.value_counts()
+            .rename_axis(y_label)
+            .reset_index(name="Quantidade")
+            .sort_values("Quantidade", ascending=False)
+        )
+        if tbl.shape[0] > topn:
+            tbl = tbl.head(topn)
+        return tbl.sort_values("Quantidade", ascending=True)
+
+    tbl_vinc = _bar_table(vinc_div, "Vínculo empregatício")
+    tbl_eq = _bar_table(eq_div, "Equipe")
+    tbl_cargo = (
+        cargo_div.value_counts()
+        .rename_axis("Cargo")
+        .reset_index(name="Quantidade")
+        .sort_values("Quantidade", ascending=False)
+    )
+    total_cargo = max(int(tbl_cargo["Quantidade"].sum()), 1)
+    tbl_cargo["%"] = (tbl_cargo["Quantidade"] / total_cargo) * 100
+
+    c1, c2 = st.columns(2)
+    with c1:
+        fig_vinc = px.bar(
+            tbl_vinc,
+            x="Quantidade",
+            y="Vínculo empregatício",
+            orientation="h",
+            title="Vínculo empregatício",
+            color="Quantidade",
+            color_continuous_scale="Blues",
+        )
+        fig_vinc.update_layout(
+            template="plotly_dark",
+            coloraxis_showscale=False,
+            margin=dict(l=10, r=10, t=50, b=10),
+        )
+        st.plotly_chart(fig_vinc, use_container_width=True)
+
+    with c2:
+        fig_eq = px.bar(
+            tbl_eq,
+            x="Quantidade",
+            y="Equipe",
+            orientation="h",
+            title="Equipe",
+            color="Quantidade",
+            color_continuous_scale="Blues",
+        )
+        fig_eq.update_layout(
+            template="plotly_dark",
+            coloraxis_showscale=False,
+            margin=dict(l=10, r=10, t=50, b=10),
+        )
+        st.plotly_chart(fig_eq, use_container_width=True)
+
+    st.subheader("Cargo")
+    st.dataframe(
+        tbl_cargo,
+        hide_index=True,
+        use_container_width=True,
+        key="estr_tabela_cargo",
+        column_config={
+            "Quantidade": st.column_config.NumberColumn(format="%d"),
+            "%": st.column_config.NumberColumn(format="%.1f%%"),
+        },
+    )
+
+
 def _render_demografia_rh() -> None:
     st.subheader("Demografia da empresa")
     st.caption(f"Fonte: `{FUNC_GERAL_RH}`")
@@ -670,138 +807,11 @@ def _render_demografia_rh() -> None:
             )
             st.plotly_chart(fig_instr, use_container_width=True)
 
+            st.divider()
+            _render_estrutura_dashboard(df, col_vinc, col_eq, col_cargo)
+
     with tabs[3]:
-        st.subheader("Estrutura (vínculo, equipe e cargo)")
-        st.caption("Visão executiva da composição do quadro por vínculos, equipes e cargos.")
-
-        def _clean_opts(col: str) -> pd.Series:
-            if not col or col not in df.columns:
-                return pd.Series("NÃO INFORMADO", index=df.index)
-            return (
-                df[col]
-                .astype(str)
-                .str.strip()
-                .replace({"": "NÃO INFORMADO", "nan": "NÃO INFORMADO"})
-            )
-
-        vinc_s = _clean_opts(col_vinc)
-        eq_s = _clean_opts(col_eq)
-        cargo_s = _clean_opts(col_cargo)
-
-        with st.sidebar:
-            st.markdown("### Filtros - Estrutura")
-            with st.expander("Refinar seleção", expanded=False):
-                vinc_opts = sorted(vinc_s.unique().tolist())
-                eq_opts = sorted(eq_s.unique().tolist())
-                cargo_opts = sorted(cargo_s.unique().tolist())
-
-                vinc_sel = st.multiselect(
-                    "Vínculo empregatício",
-                    options=vinc_opts,
-                    default=[],
-                    key="estr_filtro_vinculo",
-                    placeholder="Todos",
-                )
-                eq_sel = st.multiselect(
-                    "Equipe",
-                    options=eq_opts,
-                    default=[],
-                    key="estr_filtro_equipe",
-                    placeholder="Todos",
-                )
-                cargo_sel = st.multiselect(
-                    "Cargo",
-                    options=cargo_opts,
-                    default=[],
-                    key="estr_filtro_cargo",
-                    placeholder="Todos",
-                )
-
-        vinc_mask = vinc_s.isin(vinc_sel) if vinc_sel else pd.Series(True, index=df.index)
-        eq_mask = eq_s.isin(eq_sel) if eq_sel else pd.Series(True, index=df.index)
-        cargo_mask = cargo_s.isin(cargo_sel) if cargo_sel else pd.Series(True, index=df.index)
-        mask = vinc_mask & eq_mask & cargo_mask
-
-        estr = df[mask].copy()
-        if estr.empty:
-            st.info("Sem dados para os filtros selecionados.")
-            return
-
-        vinc_div = vinc_s[mask]
-        eq_div = eq_s[mask]
-        cargo_div = cargo_s[mask]
-
-        total = int(estr.shape[0])
-        vinc_top = vinc_div.value_counts().idxmax() if not vinc_div.empty else "N/A"
-        eq_top = eq_div.value_counts().idxmax() if not eq_div.empty else "N/A"
-        cargo_top = cargo_div.value_counts().idxmax() if not cargo_div.empty else "N/A"
-
-        def _bar_table(series: pd.Series, y_label: str, topn: int = 15) -> pd.DataFrame:
-            tbl = (
-                series.value_counts()
-                .rename_axis(y_label)
-                .reset_index(name="Quantidade")
-                .sort_values("Quantidade", ascending=False)
-            )
-            if tbl.shape[0] > topn:
-                tbl = tbl.head(topn)
-            # para barras horizontais, ordenar por quantidade ajuda na leitura
-            return tbl.sort_values("Quantidade", ascending=True)
-
-        tbl_vinc = _bar_table(vinc_div, "Vínculo empregatício")
-        tbl_eq = _bar_table(eq_div, "Equipe")
-        tbl_cargo = _bar_table(cargo_div, "Cargo", topn=12)
-
-        c1, c2 = st.columns(2)
-        with c1:
-            fig_vinc = px.bar(
-                tbl_vinc,
-                x="Quantidade",
-                y="Vínculo empregatício",
-                orientation="h",
-                title="Vínculo empregatício",
-                color="Quantidade",
-                color_continuous_scale="Blues",
-            )
-            fig_vinc.update_layout(
-                template="plotly_dark",
-                coloraxis_showscale=False,
-                margin=dict(l=10, r=10, t=50, b=10),
-            )
-            st.plotly_chart(fig_vinc, use_container_width=True)
-
-        with c2:
-            fig_eq = px.bar(
-                tbl_eq,
-                x="Quantidade",
-                y="Equipe",
-                orientation="h",
-                title="Equipe",
-                color="Quantidade",
-                color_continuous_scale="Blues",
-            )
-            fig_eq.update_layout(
-                template="plotly_dark",
-                coloraxis_showscale=False,
-                margin=dict(l=10, r=10, t=50, b=10),
-            )
-            st.plotly_chart(fig_eq, use_container_width=True)
-
-        fig_cargo = px.bar(
-            tbl_cargo,
-            x="Quantidade",
-            y="Cargo",
-            orientation="h",
-            title="Cargo",
-            color="Quantidade",
-            color_continuous_scale="Blues",
-        )
-        fig_cargo.update_layout(
-            template="plotly_dark",
-            coloraxis_showscale=False,
-            margin=dict(l=10, r=10, t=50, b=10),
-        )
-        st.plotly_chart(fig_cargo, use_container_width=True)
+        st.info("As informações de Estrutura foram movidas para a aba Diversidade.")
 
 
 def prepare_tecsmart_df(df: pd.DataFrame) -> pd.DataFrame:
