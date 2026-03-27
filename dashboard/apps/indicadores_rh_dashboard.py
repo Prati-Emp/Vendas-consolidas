@@ -743,8 +743,9 @@ def _render_demografia_rh() -> None:
                     insidetextorientation="horizontal",
                     sort=False,
                     direction="clockwise",
-                    rotation=0,
-                    marker=dict(line=dict(color="#0B1220", width=1)),
+                    rotation=90,
+                    domain={"x": [0.15, 0.85], "y": [0.15, 0.85]},
+                    marker=dict(line=dict(color="#0B1220", width=0.8)),
                 )
                 fig_sexo.update_layout(
                     template="plotly_dark",
