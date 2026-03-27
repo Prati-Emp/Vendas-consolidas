@@ -331,7 +331,7 @@ def _render_demografia_rh() -> None:
         minoria_racial = (~rr.isin(["", "nan", "none", "na", "<na>", "não informado"])) & (~rr.isin(["branco", "branca"]))
     base["_minoria"] = minoria_racial
 
-    tabs = st.tabs(["Resumo", "Tempo e experiência", "Diversidade"])
+    tabs = st.tabs(["Resumo", "Tempo e experiência", "Diversidade", "Estrutura"])
 
     with tabs[0]:
         t1, t2, t3 = st.columns(3)
@@ -763,7 +763,36 @@ def _render_demografia_rh() -> None:
                 )
                 st.plotly_chart(fig_estado, use_container_width=True)
 
-            # Bloco de grau de instrução removido a pedido da área.
+            instr_tbl = (
+                instr_div.value_counts().rename_axis("Grau de instrução").reset_index(name="Quantidade")
+                .sort_values("Quantidade", ascending=True)
+            )
+            fig_instr = px.bar(
+                instr_tbl,
+                x="Quantidade",
+                y="Grau de instrução",
+                orientation="h",
+                title="Grau de Instrução",
+                color="Quantidade",
+                color_continuous_scale="Blues",
+                text="Quantidade",
+            )
+            fig_instr.update_layout(
+                template="plotly_dark",
+                coloraxis_showscale=False,
+                margin=dict(l=10, r=10, t=50, b=10),
+            )
+            fig_instr.update_traces(
+                textposition=_bar_textpos_for_count(len(instr_tbl)),
+                texttemplate="<b>%{text}</b>",
+            )
+            st.plotly_chart(fig_instr, use_container_width=True)
+
+            st.divider()
+            _render_estrutura_dashboard(df, col_vinc, col_instr)
+
+    with tabs[3]:
+        st.info("As informações de Estrutura foram movidas para a aba Diversidade.")
 
 
 def prepare_tecsmart_df(df: pd.DataFrame) -> pd.DataFrame:
