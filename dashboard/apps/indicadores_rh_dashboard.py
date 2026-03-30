@@ -177,6 +177,7 @@ def _render_estrutura_dashboard(
     col_eq: str,
     col_cargo: str,
     col_instr: str,
+    sidebar_container: Optional[Any] = None,
 ) -> None:
     """Renderiza seção de estrutura (vínculo, equipe e cargo)."""
 
@@ -195,7 +196,8 @@ def _render_estrutura_dashboard(
     cargo_s = _clean_opts(col_cargo)
     instr_s = _clean_opts(col_instr)
 
-    with st.sidebar:
+    sidebar_target = sidebar_container if sidebar_container is not None else st.sidebar
+    with sidebar_target:
         st.markdown("### Filtros - Estrutura")
         with st.expander("Refinar seleção", expanded=False):
             vinc_opts = sorted(vinc_s.unique().tolist())
@@ -398,18 +400,101 @@ def _render_demografia_rh() -> None:
     base["_minoria"] = minoria_racial
 
     tabs = st.tabs(["Resumo", "Tempo e experiência", "Diversidade", "Estrutura"])
+    sb_div, sb_estr = st.sidebar.tabs(["Diversidade", "Estrutura"])
 
     with tabs[0]:
+        st.markdown("### Filtros globais do resumo")
+
+        def _clean_global_col(col_name: str) -> pd.Series:
+            if not col_name or col_name not in df.columns:
+                return pd.Series("NÃO INFORMADO", index=df.index)
+            return (
+                df[col_name]
+                .astype(str)
+                .str.strip()
+                .replace({"": "NÃO INFORMADO", "nan": "NÃO INFORMADO", "None": "NÃO INFORMADO"})
+            )
+
+        sexo_g = _clean_global_col(col_sexo)
+        raca_g = _clean_global_col(col_raca)
+        hier_g = base["_hier"].astype(str).str.strip().replace({"": "NÃO INFORMADO"})
+        cargo_g = _clean_global_col(col_cargo)
+        equipe_g = _clean_global_col(col_eq)
+
+        f1, f2, f3 = st.columns(3)
+        with f1:
+            sexo_sel_resumo = st.multiselect(
+                "Sexo",
+                options=sorted(sexo_g.unique().tolist()),
+                default=[],
+                key="resumo_filtro_sexo",
+                placeholder="Todos",
+            )
+        with f2:
+            raca_sel_resumo = st.multiselect(
+                "Raça",
+                options=sorted(raca_g.unique().tolist()),
+                default=[],
+                key="resumo_filtro_raca",
+                placeholder="Todos",
+            )
+        with f3:
+            hier_sel_resumo = st.multiselect(
+                "Nível hierárquico",
+                options=sorted(hier_g.unique().tolist()),
+                default=[],
+                key="resumo_filtro_hierarquia",
+                placeholder="Todos",
+            )
+
+        f4, f5 = st.columns(2)
+        with f4:
+            cargo_sel_resumo = st.multiselect(
+                "Cargo",
+                options=sorted(cargo_g.unique().tolist()),
+                default=[],
+                key="resumo_filtro_cargo",
+                placeholder="Todos",
+            )
+        with f5:
+            equipe_sel_resumo = st.multiselect(
+                "Equipe",
+                options=sorted(equipe_g.unique().tolist()),
+                default=[],
+                key="resumo_filtro_equipe",
+                placeholder="Todos",
+            )
+
+        mask_resumo = pd.Series(True, index=df.index)
+        if sexo_sel_resumo:
+            mask_resumo &= sexo_g.isin(sexo_sel_resumo)
+        if raca_sel_resumo:
+            mask_resumo &= raca_g.isin(raca_sel_resumo)
+        if hier_sel_resumo:
+            mask_resumo &= hier_g.isin(hier_sel_resumo)
+        if cargo_sel_resumo:
+            mask_resumo &= cargo_g.isin(cargo_sel_resumo)
+        if equipe_sel_resumo:
+            mask_resumo &= equipe_g.isin(equipe_sel_resumo)
+
+        base_resumo = base[mask_resumo].copy()
+        df_resumo = df[mask_resumo].copy()
+
+        if base_resumo.empty:
+            st.info("Sem dados para os filtros globais selecionados.")
+
+        st.caption("Sem seleção em um filtro = todos")
+
         t1, t2, t3 = st.columns(3)
         with t1:
-            st.metric("Colaboradores", f"{len(base):,}".replace(",", "."))
+            st.metric("Colaboradores", f"{len(base_resumo):,}".replace(",", "."))
         with t2:
-            st.metric("Mulheres", f"{int(base['_mulher'].sum()):,}".replace(",", "."))
+            st.metric("Mulheres", f"{int(base_resumo['_mulher'].sum()):,}".replace(",", "."))
         with t3:
-            st.metric("Minorias", f"{int(base['_minoria'].sum()):,}".replace(",", "."))
+            st.metric("Minorias", f"{int(base_resumo['_minoria'].sum()):,}".replace(",", "."))
 
         m = (
-            base.groupby("_hier")
+            base_resumo.groupby("_hier")
             .agg(
                 Total=("_hier", "count"),
                 Mulheres=("_mulher", "sum"),
@@ -438,9 +523,9 @@ def _render_demografia_rh() -> None:
         t_cargo, t_equipe = st.columns(2)
         with t_cargo:
             st.subheader("Cargo")
-            if col_cargo and col_cargo in df.columns:
+            if col_cargo and col_cargo in df_resumo.columns:
                 cargo_s = (
-                    df[col_cargo]
+                    df_resumo[col_cargo]
                     .astype(str)
                     .str.strip()
                     .replace({"": "NÃO INFORMADO", "nan": "NÃO INFORMADO"})
@@ -467,9 +552,9 @@ def _render_demografia_rh() -> None:
                 st.info("Coluna de cargo não encontrada.")
         with t_equipe:
             st.subheader("Equipe")
-            if col_eq and col_eq in df.columns:
+            if col_eq and col_eq in df_resumo.columns:
                 eq_s = (
-                    df[col_eq]
+                    df_resumo[col_eq]
                     .astype(str)
                     .str.strip()
                     .replace({"": "NÃO INFORMADO", "nan": "NÃO INFORMADO"})
@@ -698,7 +783,7 @@ def _render_demografia_rh() -> None:
         nac_opts = sorted(nac_s.unique().tolist())
         raca_opts = sorted(raca_s.unique().tolist())
 
-        with st.sidebar:
+        with sb_div:
             st.markdown("### Filtros da Diversidade")
             with st.expander("Refinar seleção", expanded=True):
                 st.caption("Sem seleção = todos")
@@ -893,7 +978,14 @@ def _render_demografia_rh() -> None:
                 st.plotly_chart(fig_estado, use_container_width=True)
 
             st.divider()
-            _render_estrutura_dashboard(df, col_vinc, col_eq, col_cargo, col_instr)
+            _render_estrutura_dashboard(
+                df,
+                col_vinc,
+                col_eq,
+                col_cargo,
+                col_instr,
+                sidebar_container=sb_estr,
+            )
 
     with tabs[3]:
         st.info("As informações de Estrutura foram movidas para a aba Diversidade.")
