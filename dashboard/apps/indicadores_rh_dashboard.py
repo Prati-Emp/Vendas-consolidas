@@ -433,6 +433,68 @@ def _render_demografia_rh() -> None:
         )
         st.caption("Minorias = raça informada diferente de 'Branco' (campos vazios/não informados não entram).")
 
+        # Tabelas de cargo e equipe também no Resumo
+        st.divider()
+        t_cargo, t_equipe = st.columns(2)
+        with t_cargo:
+            st.subheader("Cargo")
+            if col_cargo and col_cargo in df.columns:
+                cargo_s = (
+                    df[col_cargo]
+                    .astype(str)
+                    .str.strip()
+                    .replace({"": "NÃO INFORMADO", "nan": "NÃO INFORMADO"})
+                )
+                tbl_cargo = (
+                    cargo_s.value_counts()
+                    .rename_axis("Cargo")
+                    .reset_index(name="Quantidade")
+                    .sort_values("Quantidade", ascending=False)
+                )
+                total_cargo = max(int(tbl_cargo["Quantidade"].sum()), 1)
+                tbl_cargo["%"] = (tbl_cargo["Quantidade"] / total_cargo) * 100
+                st.dataframe(
+                    tbl_cargo,
+                    hide_index=True,
+                    use_container_width=True,
+                    key="resumo_tabela_cargo",
+                    column_config={
+                        "Quantidade": st.column_config.NumberColumn(format="%d"),
+                        "%": st.column_config.NumberColumn(format="%.1f%%"),
+                    },
+                )
+            else:
+                st.info("Coluna de cargo não encontrada.")
+        with t_equipe:
+            st.subheader("Equipe")
+            if col_eq and col_eq in df.columns:
+                eq_s = (
+                    df[col_eq]
+                    .astype(str)
+                    .str.strip()
+                    .replace({"": "NÃO INFORMADO", "nan": "NÃO INFORMADO"})
+                )
+                tbl_eq = (
+                    eq_s.value_counts()
+                    .rename_axis("Equipe")
+                    .reset_index(name="Quantidade")
+                    .sort_values("Quantidade", ascending=False)
+                )
+                total_eq = max(int(tbl_eq["Quantidade"].sum()), 1)
+                tbl_eq["%"] = (tbl_eq["Quantidade"] / total_eq) * 100
+                st.dataframe(
+                    tbl_eq,
+                    hide_index=True,
+                    use_container_width=True,
+                    key="resumo_tabela_equipe",
+                    column_config={
+                        "Quantidade": st.column_config.NumberColumn(format="%d"),
+                        "%": st.column_config.NumberColumn(format="%.1f%%"),
+                    },
+                )
+            else:
+                st.info("Coluna de equipe não encontrada.")
+
     with tabs[1]:
         c1, c2 = st.columns(2)
         with c1:
