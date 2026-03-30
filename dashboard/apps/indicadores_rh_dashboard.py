@@ -1421,7 +1421,7 @@ def render_indicadores_rh_dashboard(
     show_caption: bool = True,
 ) -> None:
     """Renderiza indicadores de gestão de pessoas (Jira + Tecsmart)."""
-    tab_jira, tab_tec = st.tabs(["Solicitações (Jira)", "Operacional (Tecsmart)"])
+    tab_jira, tab_tec = st.tabs(["Solicitações (Jira)", "Demografia"])
 
     with tab_jira:
         render_jira_matriz_solicitacoes_por_quadro()
