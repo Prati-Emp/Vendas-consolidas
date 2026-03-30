@@ -194,56 +194,14 @@ def _render_estrutura_dashboard(
     eq_s = _clean_opts(col_eq)
     cargo_s = _clean_opts(col_cargo)
     instr_s = _clean_opts(col_instr)
-
-    st.markdown("### Filtros da Estrutura")
-    f1, f2 = st.columns(2)
-    with f1:
-        vinc_sel = st.multiselect(
-            "Vínculo empregatício",
-            options=sorted(vinc_s.unique().tolist()),
-            default=[],
-            key="estr_filtro_vinculo",
-            placeholder="Todos",
-        )
-        eq_sel = st.multiselect(
-            "Equipe",
-            options=sorted(eq_s.unique().tolist()),
-            default=[],
-            key="estr_filtro_equipe",
-            placeholder="Todos",
-        )
-    with f2:
-        instr_sel = st.multiselect(
-            "Grau de instrução",
-            options=sorted(instr_s.unique().tolist()),
-            default=[],
-            key="estr_filtro_instrucao",
-            placeholder="Todos",
-        )
-        cargo_sel = st.multiselect(
-            "Cargo",
-            options=sorted(cargo_s.unique().tolist()),
-            default=[],
-            key="estr_filtro_cargo",
-            placeholder="Todos",
-        )
-    st.caption("Sem seleção em um filtro = todos")
-
-    vinc_mask = vinc_s.isin(vinc_sel) if vinc_sel else pd.Series(True, index=df.index)
-    instr_mask = instr_s.isin(instr_sel) if instr_sel else pd.Series(True, index=df.index)
-    eq_mask = eq_s.isin(eq_sel) if eq_sel else pd.Series(True, index=df.index)
-    cargo_mask = cargo_s.isin(cargo_sel) if cargo_sel else pd.Series(True, index=df.index)
-    mask = vinc_mask & instr_mask & eq_mask & cargo_mask
-
-    estr = df[mask].copy()
-    if estr.empty:
+    if df.empty:
         st.info("Sem dados para os filtros selecionados.")
         return
 
-    vinc_div = vinc_s[mask]
-    eq_div = eq_s[mask]
-    cargo_div = cargo_s[mask]
-    instr_div = instr_s[mask]
+    vinc_div = vinc_s
+    eq_div = eq_s
+    cargo_div = cargo_s
+    instr_div = instr_s
 
     def _bar_table(series: pd.Series, y_label: str, topn: int = 15) -> pd.DataFrame:
         tbl = (
@@ -796,19 +754,26 @@ def _render_demografia_rh() -> None:
         raca_s = _clean_series(col_raca)
         instr_s = _clean_series(col_instr)
         estado_s = _clean_series(col_estado)
+        vinc_s = _clean_series(col_vinc)
+        eq_s = _clean_series(col_eq)
+        cargo_s = _clean_series(col_cargo)
 
         sexo_opts = sorted(sexo_s.unique().tolist())
         nac_opts = sorted(nac_s.unique().tolist())
         raca_opts = sorted(raca_s.unique().tolist())
+        vinc_opts = sorted(vinc_s.unique().tolist())
+        instr_opts = sorted(instr_s.unique().tolist())
+        eq_opts = sorted(eq_s.unique().tolist())
+        cargo_opts = sorted(cargo_s.unique().tolist())
 
-        st.markdown("### Filtros da Diversidade")
-        d1, d2, d3 = st.columns(3)
+        st.markdown("### Filtros integrados (Diversidade + Estrutura)")
+        d1, d2, d3, d4 = st.columns(4)
         with d1:
             sexo_sel = st.multiselect(
                 "Gênero",
                 options=sexo_opts,
                 default=[],
-                key="div_filtro_sexo",
+                key="filtro_unico_sexo",
                 placeholder="Todos",
             )
         with d2:
@@ -816,7 +781,7 @@ def _render_demografia_rh() -> None:
                 "Nacionalidade",
                 options=nac_opts,
                 default=[],
-                key="div_filtro_nacionalidade",
+                key="filtro_unico_nacionalidade",
                 placeholder="Todos",
             )
         with d3:
@@ -824,7 +789,40 @@ def _render_demografia_rh() -> None:
                 "Raça",
                 options=raca_opts,
                 default=[],
-                key="div_filtro_raca",
+                key="filtro_unico_raca",
+                placeholder="Todos",
+            )
+        with d4:
+            vinc_sel = st.multiselect(
+                "Vínculo empregatício",
+                options=vinc_opts,
+                default=[],
+                key="filtro_unico_vinculo",
+                placeholder="Todos",
+            )
+        e1, e2, e3 = st.columns(3)
+        with e1:
+            instr_sel = st.multiselect(
+                "Grau de instrução",
+                options=instr_opts,
+                default=[],
+                key="filtro_unico_instrucao",
+                placeholder="Todos",
+            )
+        with e2:
+            eq_sel = st.multiselect(
+                "Equipe",
+                options=eq_opts,
+                default=[],
+                key="filtro_unico_equipe",
+                placeholder="Todos",
+            )
+        with e3:
+            cargo_sel = st.multiselect(
+                "Cargo",
+                options=cargo_opts,
+                default=[],
+                key="filtro_unico_cargo",
                 placeholder="Todos",
             )
         st.caption("Sem seleção em um filtro = todos")
@@ -832,7 +830,11 @@ def _render_demografia_rh() -> None:
         sexo_mask = sexo_s.isin(sexo_sel) if sexo_sel else pd.Series(True, index=df_div.index)
         nac_mask = nac_s.isin(nac_sel) if nac_sel else pd.Series(True, index=df_div.index)
         raca_mask = raca_s.isin(raca_sel) if raca_sel else pd.Series(True, index=df_div.index)
-        mask = sexo_mask & nac_mask & raca_mask
+        vinc_mask = vinc_s.isin(vinc_sel) if vinc_sel else pd.Series(True, index=df_div.index)
+        instr_mask = instr_s.isin(instr_sel) if instr_sel else pd.Series(True, index=df_div.index)
+        eq_mask = eq_s.isin(eq_sel) if eq_sel else pd.Series(True, index=df_div.index)
+        cargo_mask = cargo_s.isin(cargo_sel) if cargo_sel else pd.Series(True, index=df_div.index)
+        mask = sexo_mask & nac_mask & raca_mask & vinc_mask & instr_mask & eq_mask & cargo_mask
         div = df_div[mask].copy()
         if div.empty:
             st.info("Sem dados para os filtros selecionados.")
@@ -998,7 +1000,7 @@ def _render_demografia_rh() -> None:
                 st.plotly_chart(fig_estado, use_container_width=True)
 
             st.divider()
-            _render_estrutura_dashboard(df, col_vinc, col_eq, col_cargo, col_instr)
+            _render_estrutura_dashboard(div, col_vinc, col_eq, col_cargo, col_instr)
 
 def prepare_tecsmart_df(df: pd.DataFrame) -> pd.DataFrame:
     if df.empty:
