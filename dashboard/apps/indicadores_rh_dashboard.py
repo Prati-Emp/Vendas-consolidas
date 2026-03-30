@@ -370,61 +370,38 @@ def _render_demografia_rh() -> None:
         cargo_g = _clean_global_col(col_cargo)
         equipe_g = _clean_global_col(col_eq)
 
-        f1, f2, f3 = st.columns(3)
-        with f1:
-            sexo_sel_resumo = st.multiselect(
-                "Sexo",
-                options=sorted(sexo_g.unique().tolist()),
-                default=[],
-                key="resumo_filtro_sexo",
-                placeholder="Todos",
-            )
-        with f2:
-            raca_sel_resumo = st.multiselect(
-                "Raça",
-                options=sorted(raca_g.unique().tolist()),
-                default=[],
-                key="resumo_filtro_raca",
-                placeholder="Todos",
-            )
-        with f3:
-            hier_sel_resumo = st.multiselect(
-                "Nível hierárquico",
-                options=sorted(hier_g.unique().tolist()),
-                default=[],
-                key="resumo_filtro_hierarquia",
-                placeholder="Todos",
-            )
-
-        f4, f5 = st.columns(2)
-        with f4:
-            cargo_sel_resumo = st.multiselect(
-                "Cargo",
-                options=sorted(cargo_g.unique().tolist()),
-                default=[],
-                key="resumo_filtro_cargo",
-                placeholder="Todos",
-            )
-        with f5:
-            equipe_sel_resumo = st.multiselect(
-                "Equipe",
-                options=sorted(equipe_g.unique().tolist()),
-                default=[],
-                key="resumo_filtro_equipe",
-                placeholder="Todos",
-            )
+        filtros_resumo = {
+            "Sexo": sexo_g,
+            "Raça": raca_g,
+            "Nível hierárquico": hier_g,
+            "Cargo": cargo_g,
+            "Equipe": equipe_g,
+        }
+        col_filtro_resumo = st.selectbox(
+            "1) Escolha a coluna para filtrar",
+            options=list(filtros_resumo.keys()),
+            index=0,
+            key="resumo_filtro_coluna_dinamica",
+        )
+        serie_filtro_resumo = filtros_resumo[col_filtro_resumo]
+        opcoes_filtro_resumo = sorted(
+            [
+                v
+                for v in serie_filtro_resumo.dropna().astype(str).str.strip().unique().tolist()
+                if v
+            ]
+        )
+        valores_filtro_resumo = st.multiselect(
+            f"2) Filtrar itens de {col_filtro_resumo}",
+            options=opcoes_filtro_resumo,
+            default=[],
+            key="resumo_filtro_valores_dinamico",
+            placeholder="Todos",
+        )
 
         mask_resumo = pd.Series(True, index=df.index)
-        if sexo_sel_resumo:
-            mask_resumo &= sexo_g.isin(sexo_sel_resumo)
-        if raca_sel_resumo:
-            mask_resumo &= raca_g.isin(raca_sel_resumo)
-        if hier_sel_resumo:
-            mask_resumo &= hier_g.isin(hier_sel_resumo)
-        if cargo_sel_resumo:
-            mask_resumo &= cargo_g.isin(cargo_sel_resumo)
-        if equipe_sel_resumo:
-            mask_resumo &= equipe_g.isin(equipe_sel_resumo)
+        if valores_filtro_resumo:
+            mask_resumo &= serie_filtro_resumo.isin(valores_filtro_resumo)
 
         base_resumo = base[mask_resumo].copy()
         df_resumo = df[mask_resumo].copy()
