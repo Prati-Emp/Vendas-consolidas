@@ -432,7 +432,6 @@ def _render_demografia_rh() -> None:
         if base_resumo.empty:
             st.info("Sem dados para os filtros globais selecionados.")
 
-        st.caption("Sem seleção em um filtro = todos")
 
         cards = st.columns(5)
         homens_total = int(sexo_g[mask_resumo].str.lower().str.contains("mascul", na=False).sum())
@@ -820,7 +819,6 @@ def _render_demografia_rh() -> None:
                 key="filtro_unico_cargo",
                 placeholder="Todos",
             )
-        st.caption("Sem seleção em um filtro = todos")
 
         sexo_mask = sexo_s.isin(sexo_sel) if sexo_sel else pd.Series(True, index=df_div.index)
         nac_mask = nac_s.isin(nac_sel) if nac_sel else pd.Series(True, index=df_div.index)
