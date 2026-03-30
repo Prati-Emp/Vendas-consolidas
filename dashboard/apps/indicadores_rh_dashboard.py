@@ -612,6 +612,47 @@ def _render_demografia_rh() -> None:
             else:
                 st.info("Coluna de idade não encontrada.")
 
+        st.subheader("Tempo de empresa e idade (detalhado)")
+        if col_tempo or col_idade:
+            tempo_vals = pd.to_numeric(df[col_tempo], errors="coerce") if col_tempo else pd.Series(pd.NA, index=df.index)
+            idade_vals = pd.to_numeric(df[col_idade], errors="coerce") if col_idade else pd.Series(pd.NA, index=df.index)
+
+            tempo_faixa = pd.cut(
+                tempo_vals,
+                bins=[-1, 6, 12, 24, 60, 9999],
+                labels=["0-6m", "1 ano", "1-2 anos", "2-5 anos", "5+ anos"],
+                include_lowest=True,
+            ) if col_tempo else pd.Series(pd.NA, index=df.index)
+
+            idade_faixa = pd.cut(
+                idade_vals,
+                bins=[-1, 20, 30, 40, 50, 60, 200],
+                labels=["<21", "21-30", "31-40", "41-50", "51-60", "60+"],
+                include_lowest=True,
+            ) if col_idade else pd.Series(pd.NA, index=df.index)
+
+            detalhe_tempo_idade = pd.DataFrame(
+                {
+                    "Colaborador": df[col_colab].astype(str).str.strip() if col_colab else pd.Series("", index=df.index),
+                    "Equipe": df[col_eq].astype(str).str.strip() if col_eq else pd.Series("", index=df.index),
+                    "Cargo": df[col_cargo].astype(str).str.strip() if col_cargo else pd.Series("", index=df.index),
+                    "Faixa tempo de empresa": tempo_faixa.astype(str).replace({"nan": "Não informado"}),
+                    "Faixa idade": idade_faixa.astype(str).replace({"nan": "Não informado"}),
+                }
+            )
+            detalhe_tempo_idade = detalhe_tempo_idade.sort_values(
+                by=["Faixa tempo de empresa", "Faixa idade", "Colaborador"],
+                ascending=[True, True, True],
+            )
+            st.dataframe(
+                detalhe_tempo_idade,
+                hide_index=True,
+                use_container_width=True,
+                key="demog_tempo_idade_detalhado",
+            )
+        else:
+            st.info("Colunas de tempo de empresa e idade não encontradas.")
+
         st.subheader("Período de experiência")
         if col_exp1 or col_exp2:
             exp1 = pd.to_datetime(df[col_exp1], errors="coerce") if col_exp1 else pd.Series(pd.NaT, index=df.index)
