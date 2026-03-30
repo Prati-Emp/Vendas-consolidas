@@ -720,8 +720,6 @@ def _render_demografia_rh() -> None:
             st.info("Colunas de experiência não encontradas.")
 
     with tabs[2]:
-        st.subheader("Dashboard de Diversidade")
-        st.caption("Perfil demográfico com foco em diversidade e inclusão.")
         st.markdown(
             """
             <style>
@@ -766,7 +764,6 @@ def _render_demografia_rh() -> None:
         eq_opts = sorted(eq_s.unique().tolist())
         cargo_opts = sorted(cargo_s.unique().tolist())
 
-        st.markdown("### Filtros integrados (Diversidade + Estrutura)")
         d1, d2, d3, d4 = st.columns(4)
         with d1:
             sexo_sel = st.multiselect(
