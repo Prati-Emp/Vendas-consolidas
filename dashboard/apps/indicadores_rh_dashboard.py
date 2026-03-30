@@ -479,12 +479,42 @@ def _render_demografia_rh() -> None:
         st.caption("Sem seleção em um filtro = todos")
 
         t1, t2, t3 = st.columns(3)
+        pcd_total = 0
+        if col_pcd and col_pcd in df_resumo.columns:
+            pcd_s = (
+                df_resumo[col_pcd]
+                .astype(str)
+                .str.strip()
+                .str.lower()
+            )
+            pcd_total = int((~pcd_s.isin(["", "nan", "none", "na", "<na>", "não informado"])).sum())
         with t1:
             st.metric("Colaboradores", f"{len(base_resumo):,}".replace(",", "."))
         with t2:
             st.metric("Mulheres", f"{int(base_resumo['_mulher'].sum()):,}".replace(",", "."))
         with t3:
-            st.metric("Minorias", f"{int(base_resumo['_minoria'].sum()):,}".replace(",", "."))
+            st.metric("PCD", f"{pcd_total:,}".replace(",", "."))
+
+        st.markdown("#### Raça")
+        raca_counts = (
+            raca_g[mask_resumo]
+            .value_counts()
+            .rename_axis("Raça")
+            .reset_index(name="Quantidade")
+            .sort_values("Quantidade", ascending=False)
+        )
+        if raca_counts.empty:
+            st.info("Sem dados de raça para os filtros selecionados.")
+        else:
+            max_cards_per_row = 4
+            for i in range(0, len(raca_counts), max_cards_per_row):
+                chunk = raca_counts.iloc[i : i + max_cards_per_row]
+                cols = st.columns(max_cards_per_row)
+                for j in range(max_cards_per_row):
+                    with cols[j]:
+                        if j < len(chunk):
+                            row = chunk.iloc[j]
+                            st.metric(str(row["Raça"]), f"{int(row['Quantidade']):,}".replace(",", "."))
 
         m = (
             base_resumo.groupby("_hier")
