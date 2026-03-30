@@ -177,7 +177,6 @@ def _render_estrutura_dashboard(
     col_eq: str,
     col_cargo: str,
     col_instr: str,
-    sidebar_container: Optional[Any] = None,
 ) -> None:
     """Renderiza seção de estrutura (vínculo, equipe e cargo)."""
 
@@ -196,43 +195,39 @@ def _render_estrutura_dashboard(
     cargo_s = _clean_opts(col_cargo)
     instr_s = _clean_opts(col_instr)
 
-    sidebar_target = sidebar_container if sidebar_container is not None else st.sidebar
-    with sidebar_target:
-        st.markdown("### Filtros - Estrutura")
-        with st.expander("Refinar seleção", expanded=False):
-            vinc_opts = sorted(vinc_s.unique().tolist())
-            eq_opts = sorted(eq_s.unique().tolist())
-            cargo_opts = sorted(cargo_s.unique().tolist())
-            instr_opts = sorted(instr_s.unique().tolist())
-
-            vinc_sel = st.multiselect(
-                "Vínculo empregatício",
-                options=vinc_opts,
-                default=[],
-                key="estr_filtro_vinculo",
-                placeholder="Todos",
-            )
-            instr_sel = st.multiselect(
-                "Grau de instrução",
-                options=instr_opts,
-                default=[],
-                key="estr_filtro_instrucao",
-                placeholder="Todos",
-            )
-            eq_sel = st.multiselect(
-                "Equipe",
-                options=eq_opts,
-                default=[],
-                key="estr_filtro_equipe",
-                placeholder="Todos",
-            )
-            cargo_sel = st.multiselect(
-                "Cargo",
-                options=cargo_opts,
-                default=[],
-                key="estr_filtro_cargo",
-                placeholder="Todos",
-            )
+    st.markdown("### Filtros da Estrutura")
+    f1, f2 = st.columns(2)
+    with f1:
+        vinc_sel = st.multiselect(
+            "Vínculo empregatício",
+            options=sorted(vinc_s.unique().tolist()),
+            default=[],
+            key="estr_filtro_vinculo",
+            placeholder="Todos",
+        )
+        eq_sel = st.multiselect(
+            "Equipe",
+            options=sorted(eq_s.unique().tolist()),
+            default=[],
+            key="estr_filtro_equipe",
+            placeholder="Todos",
+        )
+    with f2:
+        instr_sel = st.multiselect(
+            "Grau de instrução",
+            options=sorted(instr_s.unique().tolist()),
+            default=[],
+            key="estr_filtro_instrucao",
+            placeholder="Todos",
+        )
+        cargo_sel = st.multiselect(
+            "Cargo",
+            options=sorted(cargo_s.unique().tolist()),
+            default=[],
+            key="estr_filtro_cargo",
+            placeholder="Todos",
+        )
+    st.caption("Sem seleção em um filtro = todos")
 
     vinc_mask = vinc_s.isin(vinc_sel) if vinc_sel else pd.Series(True, index=df.index)
     instr_mask = instr_s.isin(instr_sel) if instr_sel else pd.Series(True, index=df.index)
@@ -400,8 +395,6 @@ def _render_demografia_rh() -> None:
     base["_minoria"] = minoria_racial
 
     tabs = st.tabs(["Resumo", "Tempo e experiência", "Diversidade", "Estrutura"])
-    sb_div, sb_estr = st.sidebar.tabs(["Diversidade", "Estrutura"])
-
     with tabs[0]:
         st.markdown("### Filtros globais do resumo")
 
@@ -783,31 +776,33 @@ def _render_demografia_rh() -> None:
         nac_opts = sorted(nac_s.unique().tolist())
         raca_opts = sorted(raca_s.unique().tolist())
 
-        with sb_div:
-            st.markdown("### Filtros da Diversidade")
-            with st.expander("Refinar seleção", expanded=True):
-                st.caption("Sem seleção = todos")
-                sexo_sel = st.multiselect(
-                    "Gênero",
-                    options=sexo_opts,
-                    default=[],
-                    key="div_filtro_sexo",
-                    placeholder="Todos",
-                )
-                nac_sel = st.multiselect(
-                    "Nacionalidade",
-                    options=nac_opts,
-                    default=[],
-                    key="div_filtro_nacionalidade",
-                    placeholder="Todos",
-                )
-                raca_sel = st.multiselect(
-                    "Raça",
-                    options=raca_opts,
-                    default=[],
-                    key="div_filtro_raca",
-                    placeholder="Todos",
-                )
+        st.markdown("### Filtros da Diversidade")
+        d1, d2, d3 = st.columns(3)
+        with d1:
+            sexo_sel = st.multiselect(
+                "Gênero",
+                options=sexo_opts,
+                default=[],
+                key="div_filtro_sexo",
+                placeholder="Todos",
+            )
+        with d2:
+            nac_sel = st.multiselect(
+                "Nacionalidade",
+                options=nac_opts,
+                default=[],
+                key="div_filtro_nacionalidade",
+                placeholder="Todos",
+            )
+        with d3:
+            raca_sel = st.multiselect(
+                "Raça",
+                options=raca_opts,
+                default=[],
+                key="div_filtro_raca",
+                placeholder="Todos",
+            )
+        st.caption("Sem seleção em um filtro = todos")
 
         sexo_mask = sexo_s.isin(sexo_sel) if sexo_sel else pd.Series(True, index=df_div.index)
         nac_mask = nac_s.isin(nac_sel) if nac_sel else pd.Series(True, index=df_div.index)
@@ -978,14 +973,7 @@ def _render_demografia_rh() -> None:
                 st.plotly_chart(fig_estado, use_container_width=True)
 
             st.divider()
-            _render_estrutura_dashboard(
-                df,
-                col_vinc,
-                col_eq,
-                col_cargo,
-                col_instr,
-                sidebar_container=sb_estr,
-            )
+            _render_estrutura_dashboard(df, col_vinc, col_eq, col_cargo, col_instr)
 
     with tabs[3]:
         st.info("As informações de Estrutura foram movidas para a aba Diversidade.")
