@@ -651,12 +651,14 @@ def _render_demografia_rh() -> None:
                 "Cargo": "Cargo",
                 "Colaborador": "Colaborador",
             }
-            col_filtro_label_ti = st.selectbox(
-                "1) Escolha a coluna para filtrar",
-                options=list(filtro_cols_tempo_idade.keys()),
-                index=0,
-                key="demog_filtro_coluna_tempo_idade",
-            )
+            tf1, tf2 = st.columns(2)
+            with tf1:
+                col_filtro_label_ti = st.selectbox(
+                    "1) Escolha a coluna para filtrar",
+                    options=list(filtro_cols_tempo_idade.keys()),
+                    index=0,
+                    key="demog_filtro_coluna_tempo_idade",
+                )
             col_filtro_ti = filtro_cols_tempo_idade[col_filtro_label_ti]
             valores_disponiveis_ti = sorted(
                 [
@@ -665,13 +667,14 @@ def _render_demografia_rh() -> None:
                     if v
                 ]
             )
-            valores_selecionados_ti = st.multiselect(
-                f"2) Filtrar itens de {col_filtro_label_ti}",
-                options=valores_disponiveis_ti,
-                default=[],
-                key="demog_filtro_valores_tempo_idade",
-                placeholder="",
-            )
+            with tf2:
+                valores_selecionados_ti = st.multiselect(
+                    f"2) Filtrar itens de {col_filtro_label_ti}",
+                    options=valores_disponiveis_ti,
+                    default=[],
+                    key="demog_filtro_valores_tempo_idade",
+                    placeholder="",
+                )
 
             if valores_selecionados_ti:
                 detalhe_tempo_idade = detalhe_tempo_idade[
@@ -746,12 +749,14 @@ def _render_demografia_rh() -> None:
                     "Cargo": "Cargo",
                     "Colaborador": "Colaborador",
                 }
-                col_filtro_label = st.selectbox(
-                    "1) Escolha a coluna para filtrar",
-                    options=list(filtro_cols.keys()),
-                    index=0,
-                    key="demog_filtro_coluna_experiencia",
-                )
+                f1, f2 = st.columns(2)
+                with f1:
+                    col_filtro_label = st.selectbox(
+                        "1) Escolha a coluna para filtrar",
+                        options=list(filtro_cols.keys()),
+                        index=0,
+                        key="demog_filtro_coluna_experiencia",
+                    )
                 col_filtro = filtro_cols[col_filtro_label]
                 valores_disponiveis = sorted(
                     [
@@ -760,13 +765,14 @@ def _render_demografia_rh() -> None:
                         if v
                     ]
                 )
-                valores_selecionados = st.multiselect(
-                    f"2) Filtrar itens de {col_filtro_label}",
-                    options=valores_disponiveis,
-                    default=[],
-                    key="demog_filtro_valores_experiencia",
-                    placeholder="",
-                )
+                with f2:
+                    valores_selecionados = st.multiselect(
+                        f"2) Filtrar itens de {col_filtro_label}",
+                        options=valores_disponiveis,
+                        default=[],
+                        key="demog_filtro_valores_experiencia",
+                        placeholder="",
+                    )
 
                 # UX: quando não selecionar itens, mostramos tudo.
                 if valores_selecionados:
