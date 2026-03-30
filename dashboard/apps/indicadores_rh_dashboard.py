@@ -478,7 +478,9 @@ def _render_demografia_rh() -> None:
 
         st.caption("Sem seleção em um filtro = todos")
 
-        t1, t2, t3 = st.columns(3)
+        cards = st.columns(5)
+        homens_total = int(sexo_g[mask_resumo].str.lower().str.contains("mascul", na=False).sum())
+        mulheres_total = int(base_resumo["_mulher"].sum())
         pcd_total = 0
         if col_pcd and col_pcd in df_resumo.columns:
             pcd_s = (
@@ -487,34 +489,27 @@ def _render_demografia_rh() -> None:
                 .str.strip()
                 .str.lower()
             )
-            pcd_total = int((~pcd_s.isin(["", "nan", "none", "na", "<na>", "não informado"])).sum())
-        with t1:
-            st.metric("Colaboradores", f"{len(base_resumo):,}".replace(",", "."))
-        with t2:
-            st.metric("Mulheres", f"{int(base_resumo['_mulher'].sum()):,}".replace(",", "."))
-        with t3:
-            st.metric("PCD", f"{pcd_total:,}".replace(",", "."))
+            pcd_total = int(
+                (
+                    (~pcd_s.isin(["", "nan", "none", "na", "<na>", "não informado"]))
+                    & (pcd_s != "nenhum")
+                ).sum()
+            )
+        idosos_60_total = 0
+        if col_idade and col_idade in df_resumo.columns:
+            idade_s = pd.to_numeric(df_resumo[col_idade], errors="coerce")
+            idosos_60_total = int((idade_s >= 60).sum())
 
-        st.markdown("#### Raça")
-        raca_counts = (
-            raca_g[mask_resumo]
-            .value_counts()
-            .rename_axis("Raça")
-            .reset_index(name="Quantidade")
-            .sort_values("Quantidade", ascending=False)
-        )
-        if raca_counts.empty:
-            st.info("Sem dados de raça para os filtros selecionados.")
-        else:
-            max_cards_per_row = 4
-            for i in range(0, len(raca_counts), max_cards_per_row):
-                chunk = raca_counts.iloc[i : i + max_cards_per_row]
-                cols = st.columns(max_cards_per_row)
-                for j in range(max_cards_per_row):
-                    with cols[j]:
-                        if j < len(chunk):
-                            row = chunk.iloc[j]
-                            st.metric(str(row["Raça"]), f"{int(row['Quantidade']):,}".replace(",", "."))
+        with cards[0]:
+            st.metric("Colaboradores", f"{len(base_resumo):,}".replace(",", "."))
+        with cards[1]:
+            st.metric("Homens", f"{homens_total:,}".replace(",", "."))
+        with cards[2]:
+            st.metric("Mulheres", f"{mulheres_total:,}".replace(",", "."))
+        with cards[3]:
+            st.metric("PCD", f"{pcd_total:,}".replace(",", "."))
+        with cards[4]:
+            st.metric("60+", f"{idosos_60_total:,}".replace(",", "."))
 
         m = (
             base_resumo.groupby("_hier")
