@@ -377,12 +377,14 @@ def _render_demografia_rh() -> None:
             "Cargo": cargo_g,
             "Equipe": equipe_g,
         }
-        col_filtro_resumo = st.selectbox(
-            "1) Escolha a coluna para filtrar",
-            options=list(filtros_resumo.keys()),
-            index=0,
-            key="resumo_filtro_coluna_dinamica",
-        )
+        rf1, rf2 = st.columns(2)
+        with rf1:
+            col_filtro_resumo = st.selectbox(
+                "1) Escolha a coluna para filtrar",
+                options=list(filtros_resumo.keys()),
+                index=0,
+                key="resumo_filtro_coluna_dinamica",
+            )
         serie_filtro_resumo = filtros_resumo[col_filtro_resumo]
         opcoes_filtro_resumo = sorted(
             [
@@ -391,13 +393,14 @@ def _render_demografia_rh() -> None:
                 if v
             ]
         )
-        valores_filtro_resumo = st.multiselect(
-            f"2) Filtrar itens de {col_filtro_resumo}",
-            options=opcoes_filtro_resumo,
-            default=[],
-            key="resumo_filtro_valores_dinamico",
-            placeholder="Todos",
-        )
+        with rf2:
+            valores_filtro_resumo = st.multiselect(
+                f"2) Filtrar itens de {col_filtro_resumo}",
+                options=opcoes_filtro_resumo,
+                default=[],
+                key="resumo_filtro_valores_dinamico",
+                placeholder="Todos",
+            )
 
         mask_resumo = pd.Series(True, index=df.index)
         if valores_filtro_resumo:
@@ -808,81 +811,43 @@ def _render_demografia_rh() -> None:
         eq_s = _clean_series(col_eq)
         cargo_s = _clean_series(col_cargo)
 
-        sexo_opts = sorted(sexo_s.unique().tolist())
-        nac_opts = sorted(nac_s.unique().tolist())
-        raca_opts = sorted(raca_s.unique().tolist())
-        vinc_opts = sorted(vinc_s.unique().tolist())
-        instr_opts = sorted(instr_s.unique().tolist())
-        eq_opts = sorted(eq_s.unique().tolist())
-        cargo_opts = sorted(cargo_s.unique().tolist())
-
-        d1, d2, d3, d4 = st.columns(4)
-        with d1:
-            sexo_sel = st.multiselect(
-                "Gênero",
-                options=sexo_opts,
-                default=[],
-                key="filtro_unico_sexo",
-                placeholder="Todos",
+        filtros_diversidade = {
+            "Gênero": sexo_s,
+            "Nacionalidade": nac_s,
+            "Raça": raca_s,
+            "Vínculo empregatício": vinc_s,
+            "Grau de instrução": instr_s,
+            "Equipe": eq_s,
+            "Cargo": cargo_s,
+        }
+        df1, df2 = st.columns(2)
+        with df1:
+            col_filtro_div = st.selectbox(
+                "1) Escolha a coluna para filtrar",
+                options=list(filtros_diversidade.keys()),
+                index=0,
+                key="diversidade_filtro_coluna_dinamica",
             )
-        with d2:
-            nac_sel = st.multiselect(
-                "Nacionalidade",
-                options=nac_opts,
+        serie_filtro_div = filtros_diversidade[col_filtro_div]
+        opcoes_filtro_div = sorted(
+            [
+                v
+                for v in serie_filtro_div.dropna().astype(str).str.strip().unique().tolist()
+                if v
+            ]
+        )
+        with df2:
+            valores_filtro_div = st.multiselect(
+                f"2) Filtrar itens de {col_filtro_div}",
+                options=opcoes_filtro_div,
                 default=[],
-                key="filtro_unico_nacionalidade",
-                placeholder="Todos",
-            )
-        with d3:
-            raca_sel = st.multiselect(
-                "Raça",
-                options=raca_opts,
-                default=[],
-                key="filtro_unico_raca",
-                placeholder="Todos",
-            )
-        with d4:
-            vinc_sel = st.multiselect(
-                "Vínculo empregatício",
-                options=vinc_opts,
-                default=[],
-                key="filtro_unico_vinculo",
-                placeholder="Todos",
-            )
-        e1, e2, e3 = st.columns(3)
-        with e1:
-            instr_sel = st.multiselect(
-                "Grau de instrução",
-                options=instr_opts,
-                default=[],
-                key="filtro_unico_instrucao",
-                placeholder="Todos",
-            )
-        with e2:
-            eq_sel = st.multiselect(
-                "Equipe",
-                options=eq_opts,
-                default=[],
-                key="filtro_unico_equipe",
-                placeholder="Todos",
-            )
-        with e3:
-            cargo_sel = st.multiselect(
-                "Cargo",
-                options=cargo_opts,
-                default=[],
-                key="filtro_unico_cargo",
+                key="diversidade_filtro_valores_dinamico",
                 placeholder="Todos",
             )
 
-        sexo_mask = sexo_s.isin(sexo_sel) if sexo_sel else pd.Series(True, index=df_div.index)
-        nac_mask = nac_s.isin(nac_sel) if nac_sel else pd.Series(True, index=df_div.index)
-        raca_mask = raca_s.isin(raca_sel) if raca_sel else pd.Series(True, index=df_div.index)
-        vinc_mask = vinc_s.isin(vinc_sel) if vinc_sel else pd.Series(True, index=df_div.index)
-        instr_mask = instr_s.isin(instr_sel) if instr_sel else pd.Series(True, index=df_div.index)
-        eq_mask = eq_s.isin(eq_sel) if eq_sel else pd.Series(True, index=df_div.index)
-        cargo_mask = cargo_s.isin(cargo_sel) if cargo_sel else pd.Series(True, index=df_div.index)
-        mask = sexo_mask & nac_mask & raca_mask & vinc_mask & instr_mask & eq_mask & cargo_mask
+        mask = pd.Series(True, index=df_div.index)
+        if valores_filtro_div:
+            mask &= serie_filtro_div.isin(valores_filtro_div)
         div = df_div[mask].copy()
         if div.empty:
             st.info("Sem dados para os filtros selecionados.")
