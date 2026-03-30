@@ -394,7 +394,7 @@ def _render_demografia_rh() -> None:
         minoria_racial = (~rr.isin(["", "nan", "none", "na", "<na>", "não informado"])) & (~rr.isin(["branco", "branca"]))
     base["_minoria"] = minoria_racial
 
-    tabs = st.tabs(["Resumo", "Tempo e experiência", "Diversidade", "Estrutura"])
+    tabs = st.tabs(["Resumo", "Tempo e experiência", "Diversidade"])
     with tabs[0]:
         st.markdown("### Filtros globais do resumo")
 
@@ -974,10 +974,6 @@ def _render_demografia_rh() -> None:
 
             st.divider()
             _render_estrutura_dashboard(df, col_vinc, col_eq, col_cargo, col_instr)
-
-    with tabs[3]:
-        st.info("As informações de Estrutura foram movidas para a aba Diversidade.")
-
 
 def prepare_tecsmart_df(df: pd.DataFrame) -> pd.DataFrame:
     if df.empty:
