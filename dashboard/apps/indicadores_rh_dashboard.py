@@ -354,8 +354,6 @@ def _render_demografia_rh() -> None:
 
     tabs = st.tabs(["Resumo", "Tempo e experiência", "Diversidade"])
     with tabs[0]:
-        st.markdown("### Filtros globais do resumo")
-
         def _clean_global_col(col_name: str) -> pd.Series:
             if not col_name or col_name not in df.columns:
                 return pd.Series("NÃO INFORMADO", index=df.index)
