@@ -1770,6 +1770,22 @@ def render_indicador_atestados() -> None:
         ren_exist = {k: v for k, v in _rename_atestados.items() if k in tbl_detalhe.columns and v not in tbl_detalhe.columns}
         tbl_detalhe = tbl_detalhe.rename(columns=ren_exist)
 
+        # data criação (nome legado na planilha / DuckDB)
+        for c in list(tbl_detalhe.columns):
+            if _norm_txt(c) == _norm_txt("datt_cria_o"):
+                tbl_detalhe = tbl_detalhe.rename(columns={c: "Data criação"})
+                break
+
+        def _series_somente_hora(s: pd.Series) -> pd.Series:
+            """Exibe apenas HH:MM (remove data fictícia tipo 1900-01-01)."""
+            dt = pd.to_datetime(s, errors="coerce")
+            out = dt.dt.strftime("%H:%M")
+            return out.where(dt.notna(), "")
+
+        for col_h in ("Hora início", "Hora término"):
+            if col_h in tbl_detalhe.columns:
+                tbl_detalhe[col_h] = _series_somente_hora(tbl_detalhe[col_h])
+
         pri = ["Data início", "Data fim"]
         rest = [c for c in tbl_detalhe.columns if c not in pri]
         tbl_detalhe = tbl_detalhe[pri + rest]
