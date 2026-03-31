@@ -1778,7 +1778,11 @@ def render_indicador_atestados() -> None:
 
         # data criação (nome legado na planilha / DuckDB)
         for c in list(tbl_detalhe.columns):
-            if _norm_txt(c) == _norm_txt("datt_cria_o"):
+            n = _norm_txt(c)
+            if n in (
+                _norm_txt("data_cria_o"),
+                _norm_txt("datt_cria_o"),  # legado / typo
+            ):
                 tbl_detalhe = tbl_detalhe.rename(columns={c: "Data criação"})
                 break
 
