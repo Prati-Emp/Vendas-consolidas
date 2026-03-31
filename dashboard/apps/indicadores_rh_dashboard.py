@@ -687,7 +687,8 @@ def _render_demografia_rh() -> None:
             exp1 = pd.to_datetime(df[col_exp1], errors="coerce") if col_exp1 else pd.Series(pd.NaT, index=df.index)
             exp2 = pd.to_datetime(df[col_exp2], errors="coerce") if col_exp2 else pd.Series(pd.NaT, index=df.index)
             today = pd.Timestamp.today().normalize()
-            exp_end = exp1.fillna(exp2)
+            # Fim da experiência = maior data entre 1ª e 2ª (evita subcontar quem está na 2ª)
+            exp_end = pd.concat([exp1, exp2], axis=1).max(axis=1)
 
             # Consolidar por colaborador para evitar duplicidades de linhas na base
             if col_colab:
@@ -701,8 +702,9 @@ def _render_demografia_rh() -> None:
                 status = pd.Series("Não informado", index=df.index)
                 status = status.mask(exp_end.notna() & (exp_end >= today), "Em experiência")
 
-            # Remover "Encerrado" (não exibimos mais essa situação)
-            tbl = status.value_counts().rename_axis("Situação").reset_index(name="Quantidade")
+            # Exibir apenas a situação "Em experiência"
+            qtd_em_exp = int((status == "Em experiência").sum())
+            tbl = pd.DataFrame([{"Situação": "Em experiência", "Quantidade": qtd_em_exp}])
             st.dataframe(tbl, hide_index=True, use_container_width=True, key="demog_experiencia")
 
             # Detalhamento: somente pessoas atualmente em experiência (1ª ou 2ª)
