@@ -1450,10 +1450,6 @@ def render_jira_requisicao_vaga_tempos() -> None:
 def render_indicador_atestados() -> None:
     """Atestados a partir da view indicador_de_atestados (início e término do período)."""
     st.subheader("Atestados")
-    st.caption(
-        f"Fonte: `{INDICADOR_ATESTADOS}`. **Data início** e **Data fim** correspondem às colunas "
-        "**inicio** e **t_rmino** da base (período do atestado)."
-    )
     df = load_indicador_de_atestados()
     if df.empty:
         st.warning("Sem dados em `indicador_de_atestados` ou falha ao consultar o MotherDuck.")
@@ -1741,6 +1737,16 @@ def render_indicador_atestados() -> None:
             )
             matriz_out = pd.concat([matriz, total_row], ignore_index=True)
 
+            _help_horas_atestados = (
+                "Regras do cálculo das horas:\n"
+                "- Exclui do somatório o motivo **afastamento INSS**.\n"
+                "- Se houver **hora_inicio** e **hora_t_rmino** (ambas preenchidas), usa a diferença entre elas.\n"
+                "- Se houver somente uma das horas (apenas início ou apenas término), ignora horas e usa o cálculo por datas.\n"
+                "- Sem par completo de horas: usa a diferença entre **inicio** e **t_rmino**.\n"
+                "- Se **inicio** e **t_rmino** forem no mesmo dia: considera **8h48 (8,8h)**.\n"
+                "- Se forem dias diferentes: considera (dias corridos inclusivo) × 8,8h.\n"
+                "- Se a diferença por horas ficar negativa (virada de dia), soma 24h como ajuste."
+            )
             st.subheader("Matriz por motivo")
             st.dataframe(
                 matriz_out,
@@ -1750,7 +1756,7 @@ def render_indicador_atestados() -> None:
                 column_config={
                     "Motivo": st.column_config.TextColumn(width="large"),
                     "Quantidade": st.column_config.NumberColumn(format="%d"),
-                    "Horas": st.column_config.NumberColumn(format="%.1f"),
+                    "Horas": st.column_config.NumberColumn(format="%.1f", help=_help_horas_atestados),
                 },
             )
 
