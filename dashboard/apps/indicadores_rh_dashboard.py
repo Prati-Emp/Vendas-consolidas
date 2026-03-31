@@ -821,16 +821,22 @@ def _render_demografia_rh() -> None:
         vinc_s = _clean_series(col_vinc)
         eq_s = _clean_series(col_eq)
         cargo_s = _clean_series(col_cargo)
+        colab_s = _clean_series(col_colab) if col_colab and col_colab in df_div.columns else None
 
-        filtros_diversidade = {
-            "Gênero": sexo_s,
-            "Nacionalidade": nac_s,
-            "Raça": raca_s,
-            "Vínculo empregatício": vinc_s,
-            "Grau de instrução": instr_s,
-            "Equipe": eq_s,
-            "Cargo": cargo_s,
-        }
+        filtros_diversidade: dict[str, pd.Series] = {}
+        if colab_s is not None:
+            filtros_diversidade["Colaborador"] = colab_s
+        filtros_diversidade.update(
+            {
+                "Gênero": sexo_s,
+                "Nacionalidade": nac_s,
+                "Raça": raca_s,
+                "Vínculo empregatício": vinc_s,
+                "Grau de instrução": instr_s,
+                "Equipe": eq_s,
+                "Cargo": cargo_s,
+            }
+        )
         df1, df2 = st.columns(2)
         with df1:
             col_filtro_div = st.selectbox(
@@ -1024,7 +1030,92 @@ def _render_demografia_rh() -> None:
                 st.plotly_chart(fig_estado, use_container_width=True)
 
             st.divider()
-            _render_estrutura_dashboard(div, col_vinc, col_eq, col_cargo, col_instr)
+            st.subheader("Diversidade (detalhado)")
+
+            def _serie_texto_div(dframe: pd.DataFrame, col: Optional[str]) -> pd.Series:
+                if not col or col not in dframe.columns:
+                    return pd.Series("NÃO INFORMADO", index=dframe.index)
+                return (
+                    dframe[col]
+                    .astype(str)
+                    .str.strip()
+                    .replace({"": "NÃO INFORMADO", "nan": "NÃO INFORMADO", "None": "NÃO INFORMADO"})
+                )
+
+            blocos: dict[str, pd.Series] = {}
+            if col_colab and col_colab in div.columns:
+                blocos["Colaborador"] = _serie_texto_div(div, col_colab)
+            blocos["Equipe"] = _serie_texto_div(div, col_eq)
+            blocos["Cargo"] = _serie_texto_div(div, col_cargo)
+            blocos["Gênero"] = _serie_texto_div(div, col_sexo)
+            blocos["Raça"] = _serie_texto_div(div, col_raca)
+            blocos["Nacionalidade"] = _serie_texto_div(div, col_nac)
+            blocos["Estado civil"] = _serie_texto_div(div, col_estado)
+            blocos["Grau de instrução"] = _serie_texto_div(div, col_instr)
+            blocos["Vínculo empregatício"] = _serie_texto_div(div, col_vinc)
+            if col_hier and col_hier in div.columns:
+                blocos["Nível hierárquico"] = _serie_texto_div(div, col_hier)
+            if col_pcd and col_pcd in div.columns:
+                blocos["PCD / tipo deficiência"] = _serie_texto_div(div, col_pcd)
+            if col_idade and col_idade in div.columns:
+                idade_num = pd.to_numeric(div[col_idade], errors="coerce")
+                blocos["Idade (anos)"] = idade_num.round(0).astype("Int64")
+            if col_tempo and col_tempo in div.columns:
+                tempo_num = pd.to_numeric(div[col_tempo], errors="coerce")
+                blocos["Tempo de empresa (meses)"] = tempo_num.round(1)
+
+            detalhe_div = pd.DataFrame(blocos)
+            detalhe_div = detalhe_div.sort_values(
+                by=["Colaborador"] if "Colaborador" in detalhe_div.columns else list(detalhe_div.columns)[:1],
+                ascending=[True],
+            )
+
+            filtro_cols_div_det = {c: c for c in detalhe_div.columns}
+            ddet1, ddet2 = st.columns(2)
+            with ddet1:
+                col_filtro_div_det_label = st.selectbox(
+                    "1) Escolha a coluna para filtrar",
+                    options=list(filtro_cols_div_det.keys()),
+                    index=0,
+                    key="demog_div_filtro_coluna_detalhe",
+                )
+            col_filtro_div_det = filtro_cols_div_det[col_filtro_div_det_label]
+            valores_disp_div_det = sorted(
+                {
+                    v
+                    for v in detalhe_div[col_filtro_div_det]
+                    .dropna()
+                    .astype(str)
+                    .str.strip()
+                    .unique()
+                    .tolist()
+                    if str(v).strip()
+                }
+            )
+            with ddet2:
+                valores_sel_div_det = st.multiselect(
+                    f"2) Filtrar itens de {col_filtro_div_det_label}",
+                    options=valores_disp_div_det,
+                    default=[],
+                    key="demog_div_filtro_valores_detalhe",
+                    placeholder="",
+                )
+            if valores_sel_div_det:
+                # Comparar como string para incluir idade/tempo exibidos
+                mask_f = (
+                    detalhe_div[col_filtro_div_det]
+                    .astype(str)
+                    .str.strip()
+                    .isin([str(x).strip() for x in valores_sel_div_det])
+                )
+                detalhe_div = detalhe_div.loc[mask_f].copy()
+
+            st.dataframe(
+                detalhe_div,
+                hide_index=True,
+                use_container_width=True,
+                key="demog_diversidade_detalhado",
+            )
 
 def prepare_tecsmart_df(df: pd.DataFrame) -> pd.DataFrame:
     if df.empty:
