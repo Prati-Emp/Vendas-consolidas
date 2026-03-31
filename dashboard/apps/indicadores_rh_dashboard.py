@@ -1692,10 +1692,7 @@ def render_indicador_atestados() -> None:
 
             total_horas = float(horas_final[mask_motivo].sum())
 
-        # Bloco 1: Quantidades (total + por motivo)
-        st.subheader("Quantidade")
-        qtd_cards: list[tuple[str, str]] = [("Registros no período", f"{len(out_f):,}".replace(",", "."))]
-
+        # Matriz por motivo: linhas = motivo; colunas = quantidade e horas
         col_motivo = _pick_col(out_f, ["motivo", "motivo_do_atestado", "tipo", "tipo_atestado"])
         if col_motivo and col_motivo in out_f.columns and not out_f.empty:
             motivo_s = (
@@ -1704,44 +1701,9 @@ def render_indicador_atestados() -> None:
                 .str.strip()
                 .replace({"": "NÃO INFORMADO", "nan": "NÃO INFORMADO", "None": "NÃO INFORMADO"})
             )
-            motivos_tbl = (
-                motivo_s.value_counts(dropna=False)
-                .rename_axis("Motivo")
-                .reset_index(name="Quantidade")
-            )
-            motivos = motivos_tbl["Motivo"].astype(str).tolist()
-            counts = motivos_tbl["Quantidade"].astype(int).tolist()
+            qty_by_motivo = motivo_s.value_counts(dropna=False)
 
-            per_row = 6
-            for m, n in zip(motivos, counts):
-                qtd_cards.append((str(m), f"{int(n):,}".replace(",", ".")))
-
-            for i in range(0, len(qtd_cards), per_row):
-                cols = st.columns(min(per_row, len(qtd_cards) - i))
-                for j, c in enumerate(cols):
-                    idx = i + j
-                    with c:
-                        st.metric(qtd_cards[idx][0], qtd_cards[idx][1])
-
-            # Bloco 2: Horas (total + por motivo)
-            st.subheader("Horas")
-            horas_cards: list[tuple[str, str, Optional[str]]] = [
-                (
-                    "Total de horas (no período)",
-                    f"{float(total_horas):,.1f}".replace(",", "X").replace(".", ",").replace("X", "."),
-                    (
-                        "Regras do cálculo:\n"
-                        "- Exclui do somatório o motivo \"afastamento INSS\".\n"
-                        "- Se houver **hora_inicio** e **hora_t_rmino** (ambas preenchidas), usa a diferença entre elas.\n"
-                        "- Se houver somente uma das horas (apenas início ou apenas término), ignora horas e usa o cálculo por datas.\n"
-                        "- Sem par completo de horas: usa a diferença entre **inicio** e **t_rmino**.\n"
-                        "- Se **inicio** e **t_rmino** forem no mesmo dia: considera **8h48 (8,8h)**.\n"
-                        "- Se forem dias diferentes: considera (dias corridos inclusivo) × 8,8h.\n"
-                        "- Se a diferença por horas ficar negativa (virada de dia), soma 24h como ajuste."
-                    ),
-                )
-            ]
-
+            horas_by_motivo = pd.Series(dtype="float64")
             if isinstance(horas_final, pd.Series):
                 motivo_key = motivo_s.astype(str).str.strip().str.lower()
                 motivo_mask_inss = motivo_key.isin(["afastamento inss", "afastamento_inss"])
@@ -1751,23 +1713,41 @@ def render_indicador_atestados() -> None:
                     .groupby("Motivo", dropna=False)["Horas"]
                     .sum()
                 )
-                horas_vals = [float(horas_by_motivo.get(m, 0.0)) for m in motivos]
-                for m, h in zip(motivos, horas_vals):
-                    horas_cards.append(
-                        (
-                            str(m),
-                            f"{float(h):,.1f}".replace(",", "X").replace(".", ",").replace("X", "."),
-                            None,
-                        )
-                    )
 
-            for i in range(0, len(horas_cards), per_row):
-                cols = st.columns(min(per_row, len(horas_cards) - i))
-                for j, c in enumerate(cols):
-                    idx = i + j
-                    label, value, help_txt = horas_cards[idx]
-                    with c:
-                        st.metric(label, value, help=help_txt)
+            matriz = (
+                pd.DataFrame({"Quantidade": qty_by_motivo})
+                .join(horas_by_motivo.rename("Horas"), how="left")
+                .fillna({"Horas": 0.0})
+                .reset_index()
+                .rename(columns={"index": "Motivo"})
+            )
+            matriz["Quantidade"] = matriz["Quantidade"].astype(int)
+            matriz["Horas"] = pd.to_numeric(matriz["Horas"], errors="coerce").fillna(0.0)
+            matriz = matriz.sort_values(["Quantidade", "Motivo"], ascending=[False, True]).reset_index(drop=True)
+
+            total_row = pd.DataFrame(
+                [
+                    {
+                        "Motivo": "TOTAL",
+                        "Quantidade": int(matriz["Quantidade"].sum()),
+                        "Horas": float(matriz["Horas"].sum()),
+                    }
+                ]
+            )
+            matriz_out = pd.concat([matriz, total_row], ignore_index=True)
+
+            st.subheader("Matriz por motivo")
+            st.dataframe(
+                matriz_out,
+                hide_index=True,
+                use_container_width=True,
+                key="ind_rh_atestados_matriz_motivo",
+                column_config={
+                    "Motivo": st.column_config.TextColumn(width="large"),
+                    "Quantidade": st.column_config.NumberColumn(format="%d"),
+                    "Horas": st.column_config.NumberColumn(format="%.1f"),
+                },
+            )
 
         st.dataframe(
             out_f,
