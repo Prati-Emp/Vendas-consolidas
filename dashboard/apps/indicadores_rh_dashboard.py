@@ -1719,8 +1719,13 @@ def render_indicador_atestados() -> None:
                 .join(horas_by_motivo.rename("Horas"), how="left")
                 .fillna({"Horas": 0.0})
                 .reset_index()
-                .rename(columns={"index": "Motivo"})
             )
+            # `reset_index()` pode criar a coluna como `index` (ou herdar nome do índice).
+            if "Motivo" not in matriz.columns:
+                if "index" in matriz.columns:
+                    matriz = matriz.rename(columns={"index": "Motivo"})
+                else:
+                    matriz = matriz.rename(columns={matriz.columns[0]: "Motivo"})
             matriz["Quantidade"] = matriz["Quantidade"].astype(int)
             matriz["Horas"] = pd.to_numeric(matriz["Horas"], errors="coerce").fillna(0.0)
             matriz = matriz.sort_values(["Quantidade", "Motivo"], ascending=[False, True]).reset_index(drop=True)
