@@ -1551,8 +1551,9 @@ def render_indicador_atestados() -> None:
         if out_f.empty and not out.empty:
             st.info("Nenhum atestado intersecta o período selecionado ou as linhas não têm datas válidas em início/término.")
 
-        # KPI: registros + horas totais no período
-        st.metric("Registros no período", f"{len(out_f):,}".replace(",", "."))
+        # Vamos organizar os KPIs em apenas 2 blocos:
+        # 1) Quantidades (total + por motivo)
+        # 2) Horas (total + por motivo)
 
         # Total de horas (regras):
         # - Se houver hora_inicio E hora_t_rmino, usa diferença entre horas.
@@ -1560,6 +1561,7 @@ def render_indicador_atestados() -> None:
         # - Se inicio e t_rmino forem no mesmo dia e sem horas completas, considera 8h48 (8.8h).
         # - Exclui do cálculo motivo "afastamento INSS".
         horas_final: Optional[pd.Series] = None
+        total_horas = 0.0
         if not out_f.empty:
             col_motivo_calc = _pick_col(out_f, ["motivo", "motivo_do_atestado", "tipo", "tipo_atestado"])
             motivo_calc = (
@@ -1631,22 +1633,11 @@ def render_indicador_atestados() -> None:
             horas_final = horas_final.mask(~use_horas, horas_por_data.fillna(0.0))
 
             total_horas = float(horas_final[mask_motivo].sum())
-            st.metric(
-                "Total de horas (no período)",
-                f"{total_horas:,.1f}".replace(",", "X").replace(".", ",").replace("X", "."),
-                help=(
-                    "Regras do cálculo:\n"
-                    "- Exclui do somatório o motivo \"afastamento INSS\".\n"
-                    "- Se houver **hora_inicio** e **hora_t_rmino** (ambas preenchidas), usa a diferença entre elas.\n"
-                    "- Se houver somente uma das horas (apenas início ou apenas término), ignora horas e usa o cálculo por datas.\n"
-                    "- Sem par completo de horas: usa a diferença entre **inicio** e **t_rmino**.\n"
-                    "- Se **inicio** e **t_rmino** forem no mesmo dia: considera **8h48 (8,8h)**.\n"
-                    "- Se forem dias diferentes: considera \u200b(dias corridos inclusivo) × 8,8h.\n"
-                    "- Se a diferença por horas ficar negativa (virada de dia), soma 24h como ajuste."
-                ),
-            )
 
-        # Blocos por motivo: 1) quantidade 2) horas
+        # Bloco 1: Quantidades (total + por motivo)
+        st.subheader("Quantidade")
+        qtd_cards: list[tuple[str, str]] = [("Registros no período", f"{len(out_f):,}".replace(",", "."))]
+
         col_motivo = _pick_col(out_f, ["motivo", "motivo_do_atestado", "tipo", "tipo_atestado"])
         if col_motivo and col_motivo in out_f.columns and not out_f.empty:
             motivo_s = (
@@ -1664,15 +1655,35 @@ def render_indicador_atestados() -> None:
             counts = motivos_tbl["Quantidade"].astype(int).tolist()
 
             per_row = 4
-            # Linha 1: Quantidade
-            for i in range(0, len(motivos), per_row):
-                cols = st.columns(min(per_row, len(motivos) - i))
+            for m, n in zip(motivos, counts):
+                qtd_cards.append((str(m), f"{int(n):,}".replace(",", ".")))
+
+            for i in range(0, len(qtd_cards), per_row):
+                cols = st.columns(min(per_row, len(qtd_cards) - i))
                 for j, c in enumerate(cols):
                     idx = i + j
                     with c:
-                        st.metric(str(motivos[idx]), f"{int(counts[idx]):,}".replace(",", "."))
+                        st.metric(qtd_cards[idx][0], qtd_cards[idx][1])
 
-            # Linha 2: Horas por motivo (mesmas regras; "Afastamento INSS" desconsiderado -> 0)
+            # Bloco 2: Horas (total + por motivo)
+            st.subheader("Horas")
+            horas_cards: list[tuple[str, str, Optional[str]]] = [
+                (
+                    "Total de horas (no período)",
+                    f"{float(total_horas):,.1f}".replace(",", "X").replace(".", ",").replace("X", "."),
+                    (
+                        "Regras do cálculo:\n"
+                        "- Exclui do somatório o motivo \"afastamento INSS\".\n"
+                        "- Se houver **hora_inicio** e **hora_t_rmino** (ambas preenchidas), usa a diferença entre elas.\n"
+                        "- Se houver somente uma das horas (apenas início ou apenas término), ignora horas e usa o cálculo por datas.\n"
+                        "- Sem par completo de horas: usa a diferença entre **inicio** e **t_rmino**.\n"
+                        "- Se **inicio** e **t_rmino** forem no mesmo dia: considera **8h48 (8,8h)**.\n"
+                        "- Se forem dias diferentes: considera (dias corridos inclusivo) × 8,8h.\n"
+                        "- Se a diferença por horas ficar negativa (virada de dia), soma 24h como ajuste."
+                    ),
+                )
+            ]
+
             if isinstance(horas_final, pd.Series):
                 motivo_key = motivo_s.astype(str).str.strip().str.lower()
                 motivo_mask_inss = motivo_key.isin(["afastamento inss", "afastamento_inss"])
@@ -1683,15 +1694,22 @@ def render_indicador_atestados() -> None:
                     .sum()
                 )
                 horas_vals = [float(horas_by_motivo.get(m, 0.0)) for m in motivos]
-                for i in range(0, len(motivos), per_row):
-                    cols = st.columns(min(per_row, len(motivos) - i))
-                    for j, c in enumerate(cols):
-                        idx = i + j
-                        with c:
-                            st.metric(
-                                f"Horas — {str(motivos[idx])}",
-                                f"{horas_vals[idx]:,.1f}".replace(",", "X").replace(".", ",").replace("X", "."),
-                            )
+                for m, h in zip(motivos, horas_vals):
+                    horas_cards.append(
+                        (
+                            str(m),
+                            f"{float(h):,.1f}".replace(",", "X").replace(".", ",").replace("X", "."),
+                            None,
+                        )
+                    )
+
+            for i in range(0, len(horas_cards), per_row):
+                cols = st.columns(min(per_row, len(horas_cards) - i))
+                for j, c in enumerate(cols):
+                    idx = i + j
+                    label, value, help_txt = horas_cards[idx]
+                    with c:
+                        st.metric(label, value, help=help_txt)
 
         st.dataframe(
             out_f,
