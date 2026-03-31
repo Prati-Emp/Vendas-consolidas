@@ -58,6 +58,44 @@ def _get_status_column(df: pd.DataFrame) -> str:
     return _find_column(df, ["jrd - status", "jrd status", "status"])
 
 
+def _split_solicitacoes_vs_vigentes(df: pd.DataFrame, status_col: str) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Divide o DataFrame em:
+    - Solicitações: itens na(s) etapa(s) iniciais (ex.: Backlog / Solicitação)
+    - Vigentes: itens em andamento (exclui encerrados/concluídos/rejeitados)
+    Regra baseada em texto normalizado do Status (robusta a variações/acentos).
+    """
+    if df.empty or not status_col or status_col not in df.columns:
+        return df.copy(), df.copy()
+
+    s_raw = df[status_col].astype(str).str.strip()
+    s_norm = s_raw.map(_normalize_text_for_match)
+
+    # Solicitações: status iniciais típicos
+    solicit_mask = (
+        (s_norm == "backlog")
+        | s_norm.str.startswith("solicit", na=False)
+        | s_norm.str.contains("aguard", na=False)
+    )
+
+    # Encerrados: itens finalizados/rejeitados/cancelados
+    encerr_norm_tokens = (
+        "finaliz",
+        "conclu",
+        "resolvid",
+        "encerr",
+        "cancel",
+        "rejeit",
+        "closed",
+        "done",
+    )
+    encerr_mask = s_norm.apply(lambda x: any(t in x for t in encerr_norm_tokens) if x else False)
+
+    df_solic = df.loc[solicit_mask].copy()
+    df_vig = df.loc[~solicit_mask & ~encerr_mask].copy()
+    return df_solic, df_vig
+
+
 @st.cache_data(ttl=600)
 def load_jira_juridico_acompanhamento() -> pd.DataFrame:
     """Carrega dados da view administracao.Jira_projeto_juridico_consolidado."""
@@ -463,5 +501,12 @@ def render_acompanhamento_juridico_dashboard() -> None:
         if sel_motivo and motivo_col:
             df_f = df_f[df_f[motivo_col].astype(str).str.strip().isin(sel_motivo)]
 
-    _render_kanban_board(df_f, "Jurídico")
+    # Abas internas: Solicitações x Vigentes (com base na coluna Status)
+    tab_solic, tab_vig = st.tabs(["📩 Solicitações", "📌 Vigentes"])
+    df_solic, df_vig = _split_solicitacoes_vs_vigentes(df_f, status_col) if status_col else (df_f, df_f)
+
+    with tab_solic:
+        _render_kanban_board(df_solic, "Solicitações (Jurídico)")
+    with tab_vig:
+        _render_kanban_board(df_vig, "Vigentes (Jurídico)")
 
