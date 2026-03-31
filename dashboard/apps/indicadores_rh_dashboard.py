@@ -1558,12 +1558,12 @@ def render_indicador_atestados() -> None:
             # Parsing robusto de hora: tenta extrair HH:MM[:SS] (ou datetime/time)
             def _parse_time_to_seconds(s: pd.Series) -> pd.Series:
                 if s is None or s.empty:
-                    return pd.Series(pd.NA, index=out_f.index)
+                    return pd.Series(float("nan"), index=out_f.index, dtype="float64")
                 ss = s.copy()
                 # Tenta datetime
                 dt = pd.to_datetime(ss, errors="coerce")
                 ok_dt = dt.notna()
-                out_sec = pd.Series(pd.NA, index=ss.index, dtype="float64")
+                out_sec = pd.Series(float("nan"), index=ss.index, dtype="float64")
                 if ok_dt.any():
                     out_sec.loc[ok_dt] = (
                         dt.loc[ok_dt].dt.hour * 3600
@@ -1586,7 +1586,7 @@ def render_indicador_atestados() -> None:
             has_h_fim = bool(col_h_fim and col_h_fim in out_f.columns)
 
             use_horas = pd.Series(False, index=out_f.index)
-            horas_por_hora = pd.Series(pd.NA, index=out_f.index, dtype="float64")
+            horas_por_hora = pd.Series(float("nan"), index=out_f.index, dtype="float64")
             if has_h_ini and has_h_fim:
                 h_ini_sec = _parse_time_to_seconds(out_f[col_h_ini])
                 h_fim_sec = _parse_time_to_seconds(out_f[col_h_fim])
@@ -1600,7 +1600,7 @@ def render_indicador_atestados() -> None:
             dias = (d_fim - d_ini).dt.days
             same_day = (dias == 0) & d_ini.notna() & d_fim.notna()
             multi_day = (dias > 0) & d_ini.notna() & d_fim.notna()
-            horas_por_data = pd.Series(pd.NA, index=out_f.index, dtype="float64")
+            horas_por_data = pd.Series(float("nan"), index=out_f.index, dtype="float64")
             horas_por_data = horas_por_data.mask(same_day, 8.8)
             # Para múltiplos dias: dias corridos inclusivo * 8.8h
             horas_por_data = horas_por_data.mask(multi_day, (dias + 1).astype("float64") * 8.8)
