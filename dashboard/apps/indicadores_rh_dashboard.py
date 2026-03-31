@@ -1,10 +1,11 @@
 """
 Dashboard de Indicadores de Gestão de Pessoas —
-solicitações (Jira DHO) e indicadores operacionais (views Tecsmart no MotherDuck).
+solicitações (Jira DHO), atestados (indicador_de_atestados) e demografia (Tecsmart).
 """
 
 from __future__ import annotations
 
+from datetime import date, timedelta
 from typing import Any, List, Optional, Sequence, Tuple
 
 import pandas as pd
@@ -27,6 +28,7 @@ TEC_CONSOLIDADO = "administracao.Tecsmart_indicadores"
 TEC_EQUIPE = "administracao.Tecsmart_indicadores_equipe"
 TEC_FILIAL = "administracao.Tecsmart_indicadores_filial"
 FUNC_GERAL_RH = "administracao.funcionario_geral_rh_consolidado"
+INDICADOR_ATESTADOS = "administracao.indicador_de_atestados"
 
 NUMERIC_MEASURES: Tuple[str, ...] = (
     "headcount",
@@ -89,6 +91,15 @@ def load_funcionario_geral_rh() -> pd.DataFrame:
     md = get_md_connection()
     try:
         return md.run_query(f"SELECT * FROM {FUNC_GERAL_RH}")
+    except Exception:
+        return pd.DataFrame()
+
+
+@st.cache_data(ttl=600)
+def load_indicador_de_atestados() -> pd.DataFrame:
+    md = get_md_connection()
+    try:
+        return md.run_query(f"SELECT * FROM {INDICADOR_ATESTADOS}")
     except Exception:
         return pd.DataFrame()
 
@@ -1436,17 +1447,117 @@ def render_jira_requisicao_vaga_tempos() -> None:
     )
 
 
+def render_indicador_atestados() -> None:
+    """Atestados a partir da view indicador_de_atestados (início e término do período)."""
+    st.subheader("Atestados")
+    st.caption(
+        f"Fonte: `{INDICADOR_ATESTADOS}`. **Data início** e **Data fim** correspondem às colunas "
+        "**inicio** e **t_rmino** da base (período do atestado)."
+    )
+    df = load_indicador_de_atestados()
+    if df.empty:
+        st.warning("Sem dados em `indicador_de_atestados` ou falha ao consultar o MotherDuck.")
+        return
+
+    col_ini = _pick_col(df, ["inicio", "início", "data_inicio", "data_início"])
+    col_fim = _pick_col(df, ["t_rmino", "t_termino", "termino", "término", "data_fim", "data_termino"])
+    if not col_ini or col_ini not in df.columns:
+        st.error("Coluna de início do atestado não encontrada (esperado algo como `inicio`).")
+        return
+    if not col_fim or col_fim not in df.columns:
+        st.error("Coluna de término do atestado não encontrada (esperado algo como `t_rmino`).")
+        return
+
+    data_inicio = pd.to_datetime(df[col_ini], errors="coerce").dt.normalize()
+    data_fim = pd.to_datetime(df[col_fim], errors="coerce").dt.normalize()
+
+    out = pd.concat(
+        [
+            pd.DataFrame({"Data início": data_inicio, "Data fim": data_fim}),
+            df.reset_index(drop=True),
+        ],
+        axis=1,
+    )
+
+    valid_dates = data_inicio.notna() | data_fim.notna()
+    lo_ts = data_inicio.dropna().min()
+    hi_ts = data_fim.dropna().max()
+    if pd.isna(lo_ts) and pd.notna(data_fim.dropna().min()):
+        lo_ts = data_fim.dropna().min()
+    if pd.isna(hi_ts) and pd.notna(data_inicio.dropna().max()):
+        hi_ts = data_inicio.dropna().max()
+
+    if pd.notna(lo_ts) and pd.notna(hi_ts):
+        d_lo = lo_ts.date()
+        d_hi = hi_ts.date()
+    else:
+        d_lo = date.today() - timedelta(days=365)
+        d_hi = date.today()
+
+    r1, r2 = st.columns(2)
+    with r1:
+        filtro_ini = st.date_input(
+            "Filtrar a partir de (data início do atestado)",
+            value=d_lo,
+            min_value=None,
+            max_value=None,
+            key="atestados_filtro_data_ini",
+        )
+    with r2:
+        filtro_fim = st.date_input(
+            "Filtrar até (data fim do atestado)",
+            value=d_hi,
+            min_value=None,
+            max_value=None,
+            key="atestados_filtro_data_fim",
+        )
+
+    if filtro_ini > filtro_fim:
+        st.warning("A data inicial do filtro é maior que a final; ajuste os valores.")
+    else:
+        ts_a = pd.Timestamp(filtro_ini)
+        ts_b = pd.Timestamp(filtro_fim) + pd.Timedelta(days=1) - pd.Timedelta(seconds=1)
+        inicio_ef = data_inicio.fillna(data_fim)
+        fim_ef = data_fim.fillna(data_inicio)
+        overlap = (
+            valid_dates
+            & inicio_ef.notna()
+            & fim_ef.notna()
+            & (inicio_ef <= ts_b)
+            & (fim_ef >= ts_a)
+        )
+        out_f = out.loc[overlap].copy() if overlap.any() else out.iloc[0:0].copy()
+
+        if out_f.empty and not out.empty:
+            st.info("Nenhum atestado intersecta o período selecionado ou as linhas não têm datas válidas em início/término.")
+
+        st.metric("Registros no período", f"{len(out_f):,}".replace(",", "."))
+        st.dataframe(
+            out_f,
+            hide_index=True,
+            use_container_width=True,
+            key="ind_rh_atestados_tbl",
+            column_config={
+                "Data início": st.column_config.DatetimeColumn(format="DD/MM/YYYY"),
+                "Data fim": st.column_config.DatetimeColumn(format="DD/MM/YYYY"),
+            },
+        )
+
+
 def render_indicadores_rh_dashboard(
     show_title: bool = True,
     show_caption: bool = True,
 ) -> None:
-    """Renderiza indicadores de gestão de pessoas (Jira + Tecsmart)."""
-    tab_jira, tab_tec = st.tabs(["Solicitações (Jira)", "Demografia"])
+    """Renderiza indicadores de gestão de pessoas (Jira + atestados + demografia)."""
+    tab_jira, tab_atest, tab_tec = st.tabs(["Solicitações (Jira)", "Atestados", "Demografia"])
 
     with tab_jira:
         render_jira_matriz_solicitacoes_por_quadro()
         st.divider()
         render_jira_requisicao_vaga_tempos()
+
+    with tab_atest:
+        render_indicador_atestados()
 
     with tab_tec:
         _render_demografia_rh()
