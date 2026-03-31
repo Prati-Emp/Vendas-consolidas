@@ -1514,11 +1514,14 @@ def render_indicador_atestados() -> None:
 
     col_equipe = _pick_col(df, ["equipe", "time", "team"])
     col_motivo_raw = _pick_col(df, ["motivo", "motivo_do_atestado", "tipo", "tipo_atestado"])
+    col_colaborador = _pick_col(df, ["colaborador", "funcionario", "colab", "nome", "nome_colaborador"])
     filtros_extra: dict[str, str] = {}
     if col_equipe and col_equipe in out.columns:
         filtros_extra["Equipe"] = col_equipe
     if col_motivo_raw and col_motivo_raw in out.columns:
         filtros_extra["Motivo"] = col_motivo_raw
+    if col_colaborador and col_colaborador in out.columns:
+        filtros_extra["Colaborador"] = col_colaborador
 
     with r1:
         if filtros_extra:
