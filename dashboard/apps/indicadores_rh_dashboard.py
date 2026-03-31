@@ -1754,8 +1754,29 @@ def render_indicador_atestados() -> None:
                 },
             )
 
+        # Detalhamento: remove colunas brutas duplicadas de data (já exibidas como Data início / Data fim)
+        tbl_detalhe = out_f.copy()
+        cols_drop_raw_dates = [c for c in (col_ini, col_fim) if c and c in tbl_detalhe.columns]
+        tbl_detalhe = tbl_detalhe.drop(columns=cols_drop_raw_dates, errors="ignore")
+
+        # Rótulos padrão (só quando o nome da coluna bate exatamente com a origem)
+        _rename_atestados = {
+            "hora_inicio": "Hora início",
+            "hora_t_rmino": "Hora término",
+            "motivo": "Motivo",
+            "equipe": "Equipe",
+            "colaborador": "Colaborador",
+        }
+        ren_exist = {k: v for k, v in _rename_atestados.items() if k in tbl_detalhe.columns and v not in tbl_detalhe.columns}
+        tbl_detalhe = tbl_detalhe.rename(columns=ren_exist)
+
+        pri = ["Data início", "Data fim"]
+        rest = [c for c in tbl_detalhe.columns if c not in pri]
+        tbl_detalhe = tbl_detalhe[pri + rest]
+
+        st.subheader("Detalhamento")
         st.dataframe(
-            out_f,
+            tbl_detalhe,
             hide_index=True,
             use_container_width=True,
             key="ind_rh_atestados_tbl",
