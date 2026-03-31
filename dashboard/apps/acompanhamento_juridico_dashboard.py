@@ -1,0 +1,467 @@
+"""
+Dashboard de Acompanhamento Jurídico - Quadro Kanban do Jira (Jurídico).
+
+Fonte: view administracao.Jira_projeto_juridico_consolidado
+Objetivo: reproduzir o Kanban usado no acompanhamento de solicitações (DHO),
+mas com layout/UX equivalente e mapeamento flexível de colunas.
+"""
+
+from __future__ import annotations
+
+import html
+import re
+import unicodedata
+from typing import Any, Dict, List
+
+import pandas as pd
+import streamlit as st
+import streamlit.components.v1 as components
+
+from dashboard.utils.md_conn import get_md_connection
+
+
+def _normalize_text_for_match(value: Any) -> str:
+    if value is None:
+        return ""
+    s = str(value).strip()
+    if not s or s.lower() in {"none", "nan", "nat", "<na>"}:
+        return ""
+    s = unicodedata.normalize("NFKD", s)
+    s = "".join(c for c in s if not unicodedata.combining(c))
+    s = s.lower()
+    s = re.sub(r"\s+", " ", s)
+    return s
+
+
+def _find_column(df: pd.DataFrame, candidates: List[str]) -> str:
+    if df.empty:
+        return ""
+    normalized_cols = {c: _normalize_text_for_match(c) for c in df.columns}
+    for cand in candidates:
+        cand_norm = _normalize_text_for_match(cand)
+        for col, col_norm in normalized_cols.items():
+            if cand_norm and cand_norm in col_norm:
+                return str(col)
+    return ""
+
+
+def _get_status_column(df: pd.DataFrame) -> str:
+    if df.empty:
+        return ""
+    for c in ("Status", "status"):
+        if c in df.columns:
+            return c
+    for col in df.columns:
+        if "status" in str(col).lower():
+            return str(col)
+    # Jira jurídico costuma ter "JRD - Status"
+    return _find_column(df, ["jrd - status", "jrd status", "status"])
+
+
+@st.cache_data(ttl=600)
+def load_jira_juridico_acompanhamento() -> pd.DataFrame:
+    """Carrega dados da view administracao.Jira_projeto_juridico_consolidado."""
+    md_conn = get_md_connection()
+    sql = "SELECT * FROM administracao.Jira_projeto_juridico_consolidado"
+    try:
+        return md_conn.run_query(sql)
+    except Exception as e:
+        st.error(f"Erro ao carregar dados: {str(e)}")
+        return pd.DataFrame()
+
+
+def _build_kanban_column_html(
+    df: pd.DataFrame, status_col: str, status_val: str, chave_col: str, resumo_col: str
+) -> str:
+    df_status = df[df[status_col] == status_val]
+    if df_status.empty:
+        return '<div style="color: #888; font-style: italic; padding: 8px;">Nenhum item</div>'
+
+    def _clean_text(v: Any) -> str:
+        if v is None:
+            return ""
+        t = str(v).strip()
+        if not t or t.lower() in {"none", "nan", "nat", "<na>"}:
+            return ""
+        return t
+
+    def _to_display_case(value: Any) -> str:
+        text = _clean_text(value)
+        if not text:
+            return ""
+        has_lower = any(ch.islower() for ch in text)
+        has_upper = any(ch.isupper() for ch in text)
+        if has_lower and has_upper:
+            return text
+        small_words = {"de", "da", "do", "das", "dos", "e", "em", "com", "para"}
+
+        def repl(match: re.Match[str]) -> str:
+            token = match.group(0)
+            lower = token.lower()
+            if lower in {"rh", "dho", "ti", "cnpj", "jrd"}:
+                return lower.upper()
+            return token.capitalize()
+
+        normalized = re.sub(r"[A-Za-zÀ-ÿ0-9&/().-]+", repl, text.lower())
+        for word in small_words:
+            normalized = re.sub(rf"\b{word.capitalize()}\b", word, normalized)
+        if normalized:
+            normalized = normalized[0].upper() + normalized[1:]
+        return normalized
+
+    def _get_tag_color(tag: str) -> str:
+        n = _normalize_text_for_match(tag)
+        if any(k in n for k in ("contrato", "aditivo", "assinatura")):
+            return "#3B82F6"
+        if any(k in n for k in ("distrato", "rescis", "encerr")):
+            return "#EF4444"
+        if any(k in n for k in ("analise", "análise", "parecer")):
+            return "#10B981"
+        return "#6366F1"
+
+    # Campos comuns na view jurídica (com detecção flexível)
+    motivo_col = _find_column(df, ["jrd motivo da requisição consolidada", "motivo", "requisi"])
+    responsavel_col = _find_column(df, ["responsavel", "responsável", "owner"])
+    solicitante_col = _find_column(df, ["solicitante", "requerente", "nome", "colaborador"])
+    tipo_col = _find_column(df, ["tipo de contrato", "tipo", "contrato"])
+    data_col = _find_column(df, ["data de criacao", "data criação", "cria", "created", "start"])
+
+    cards_html = ""
+    for _, row in df_status.iterrows():
+        chave = html.escape(_clean_text(row.get(chave_col, "")) if chave_col else "")
+        resumo_raw = _to_display_case(row.get(resumo_col, "")) if resumo_col else ""
+        resumo_raw = resumo_raw[:140] + ("..." if len(resumo_raw) > 140 else "")
+        resumo = html.escape(resumo_raw)
+
+        motivo_raw = _to_display_case(row.get(motivo_col, "")) if motivo_col else ""
+        motivo_raw = motivo_raw[:120] + ("..." if len(motivo_raw) > 120 else "")
+        motivo = html.escape(motivo_raw)
+
+        responsavel_raw = _to_display_case(row.get(responsavel_col, "")) if responsavel_col else ""
+        responsavel = html.escape(responsavel_raw)
+
+        solicitante_raw = _to_display_case(row.get(solicitante_col, "")) if solicitante_col else ""
+        solicitante = html.escape(solicitante_raw)
+
+        tipo_raw = _to_display_case(row.get(tipo_col, "")) if tipo_col else ""
+        tipo = html.escape(tipo_raw)
+
+        data_raw = _clean_text(row.get(data_col, "")) if data_col else ""
+        data_txt = html.escape(data_raw)
+
+        badge_color = _get_tag_color(motivo_raw or tipo_raw or "")
+        resumo_html = f'<div class="kanban-card-resumo">{resumo}</div>' if resumo else ""
+        motivo_html = (
+            f'<div class="kanban-card-badge" style="background:{badge_color}; color:#fff;">{motivo}</div>'
+            if motivo
+            else ""
+        )
+        tipo_html = (
+            f'<div class="kanban-card-badge" style="background:rgba(99,102,241,0.15); color:#C7D2FE; border:1px solid rgba(99,102,241,0.35);">{tipo}</div>'
+            if tipo
+            else ""
+        )
+        solicitante_html = f'<div class="kanban-card-line">👤 {solicitante}</div>' if solicitante else ""
+        responsavel_html = f'<div class="kanban-card-line">Resp: {responsavel}</div>' if responsavel else ""
+        data_html = f'<div class="kanban-card-line">🗓 {data_txt}</div>' if data_txt else ""
+
+        cards_html += f"""
+        <div class="kanban-card" style="border-left: 4px solid {badge_color};">
+            <div class="kanban-card-chave">{chave}</div>
+            {resumo_html}
+            <div class="kanban-card-meta">
+                {motivo_html}
+                {tipo_html}
+            </div>
+            {solicitante_html}
+            {responsavel_html}
+            {data_html}
+        </div>
+        """
+    return cards_html if cards_html else '<div style="color: #888; font-style: italic; padding: 8px;">Nenhum item</div>'
+
+
+def _render_kanban_board(df: pd.DataFrame, title: str) -> None:
+    if df.empty:
+        st.info(f"Nenhum item encontrado para **{title}**.")
+        return
+
+    status_col = _get_status_column(df)
+    if not status_col or status_col not in df.columns:
+        st.warning("Coluna de Status não encontrada nos dados.")
+        st.dataframe(df.head(30), use_container_width=True, hide_index=True)
+        return
+
+    def _norm(x: Any) -> str:
+        return _normalize_text_for_match(x)
+
+    statuses = [s for s in df[status_col].dropna().unique().tolist() if str(s).strip()]
+
+    def _sort_status_default(s: Any) -> tuple[int, str]:
+        s_str = str(s).strip()
+        return (0, s_str) if _norm(s_str) == "backlog" else (1, _norm(s_str))
+
+    statuses = sorted(statuses, key=_sort_status_default)
+    if not statuses:
+        st.info("Nenhum status encontrado.")
+        return
+
+    # Colunas principais (heurística)
+    chave_col = _find_column(df, ["chave", "key"]) or ("Chave" if "Chave" in df.columns else (df.columns[0] if len(df.columns) > 0 else ""))
+    resumo_col = _find_column(df, ["resumo", "summary", "titul", "título"]) or ("Resumo" if "Resumo" in df.columns else "")
+
+    # Altura dinâmica
+    max_cards_in_column = 0
+    for status_val in statuses:
+        max_cards_in_column = max(max_cards_in_column, int((df[status_col] == status_val).sum()))
+    board_height = max(520, min(1400, 200 + (max_cards_in_column * 150)))
+
+    headers_html = ""
+    cards_columns_html = ""
+    for status_val in statuses:
+        cards = _build_kanban_column_html(df, status_col, status_val, chave_col, resumo_col)
+        label = html.escape(str(status_val).strip())
+        n_items = int((df[status_col] == status_val).sum())
+        headers_html += f"""
+        <div class="kanban-column kanban-column-header-cell">
+            <div class="kanban-column-title">{label} <span class="kanban-column-count">({n_items})</span></div>
+            <hr style="border: none; border-top: 1px solid #dee2e6; margin: 0;">
+        </div>
+        """
+        cards_columns_html += f"""
+        <div class="kanban-column kanban-column-cards">
+            {cards}
+        </div>
+        """
+
+    scroll_html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+    <meta charset="UTF-8">
+    <style>
+    * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+    body {{ font-family: inherit; background: transparent; color: #333; }}
+    .kanban-sticky-top {{
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        background: #0B1220;
+        padding-bottom: 4px;
+    }}
+    .kanban-top-scroll {{
+        overflow-x: auto;
+        overflow-y: hidden;
+        height: 14px;
+        margin-bottom: 6px;
+    }}
+    .kanban-top-scroll-inner {{ height: 1px; }}
+    .kanban-scroll-container {{
+        overflow-x: scroll;
+        overflow-y: hidden;
+        padding-bottom: 16px;
+    }}
+    .kanban-headers-scroll {{
+        overflow-x: auto;
+        overflow-y: hidden;
+        margin-bottom: 2px;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+    }}
+    .kanban-headers-scroll::-webkit-scrollbar {{ display: none; }}
+    .kanban-board-headers, .kanban-board-cards {{
+        display: flex;
+        flex-direction: row;
+        align-items: flex-start;
+        width: max-content;
+        min-width: 100%;
+        padding: 8px 0;
+    }}
+    .kanban-column {{
+        flex: 0 0 260px;
+        width: 260px;
+        min-width: 260px;
+        max-width: 260px;
+        overflow-x: hidden;
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 12px;
+        margin-right: 12px;
+    }}
+    .kanban-column-title {{
+        font-weight: 600;
+        margin-bottom: 6px;
+        font-size: 0.82rem;
+        line-height: 1.15;
+        text-align: center;
+        letter-spacing: 0.2px;
+        word-break: break-word;
+        overflow-wrap: anywhere;
+    }}
+    .kanban-column-count {{
+        font-weight: 700;
+        font-size: 0.78em;
+        color: #374151;
+        white-space: nowrap;
+    }}
+    .kanban-card {{
+        background: #fff;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 10px;
+        margin-bottom: 10px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        width: 100%;
+        max-width: 100%;
+        word-break: break-word;
+        overflow-wrap: anywhere;
+    }}
+    .kanban-card-chave {{
+        font-weight: 600;
+        color: #1a73e8;
+        margin-bottom: 6px;
+        font-size: 0.85rem;
+    }}
+    .kanban-card-resumo {{
+        color: #1F2937;
+        margin-bottom: 8px;
+        font-weight: 700;
+        line-height: 1.2;
+        font-size: 0.95rem;
+    }}
+    .kanban-card-meta {{
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-bottom: 10px;
+    }}
+    .kanban-card-badge {{
+        display: inline-flex;
+        align-items: center;
+        border-radius: 999px;
+        padding: 4px 8px;
+        font-size: 0.72rem;
+        font-weight: 600;
+        line-height: 1;
+        max-width: 100%;
+        word-break: break-word;
+        overflow-wrap: anywhere;
+    }}
+    .kanban-card-line {{
+        font-size: 0.8rem;
+        color: #374151;
+        margin-bottom: 4px;
+    }}
+    </style>
+    </head>
+    <body>
+    <div class="kanban-sticky-top">
+        <div id="kanbanTopScroll" class="kanban-top-scroll">
+            <div id="kanbanTopScrollInner" class="kanban-top-scroll-inner"></div>
+        </div>
+        <div id="kanbanHeaderScroll" class="kanban-headers-scroll">
+            <div id="kanbanHeaderBoard" class="kanban-board-headers">
+                {headers_html}
+            </div>
+        </div>
+    </div>
+    <div id="kanbanBottomScroll" class="kanban-scroll-container">
+        <div id="kanbanCardsBoard" class="kanban-board-cards">
+            {cards_columns_html}
+        </div>
+    </div>
+    <script>
+    (function () {{
+        const top = document.getElementById("kanbanTopScroll");
+        const topInner = document.getElementById("kanbanTopScrollInner");
+        const header = document.getElementById("kanbanHeaderScroll");
+        const headerBoard = document.getElementById("kanbanHeaderBoard");
+        const bottom = document.getElementById("kanbanBottomScroll");
+        const cardsBoard = document.getElementById("kanbanCardsBoard");
+        if (!top || !topInner || !header || !headerBoard || !bottom || !cardsBoard) return;
+
+        const syncWidth = () => {{
+            const width = Math.max(headerBoard.scrollWidth, cardsBoard.scrollWidth);
+            topInner.style.width = `${{width}}px`;
+        }};
+
+        let syncingFromTop = false;
+        let syncingFromHeader = false;
+        let syncingFromBottom = false;
+
+        top.addEventListener("scroll", () => {{
+            if (syncingFromBottom || syncingFromHeader) return;
+            syncingFromTop = true;
+            bottom.scrollLeft = top.scrollLeft;
+            header.scrollLeft = top.scrollLeft;
+            requestAnimationFrame(() => {{ syncingFromTop = false; }});
+        }});
+        header.addEventListener("scroll", () => {{
+            if (syncingFromTop || syncingFromBottom) return;
+            syncingFromHeader = true;
+            bottom.scrollLeft = header.scrollLeft;
+            top.scrollLeft = header.scrollLeft;
+            requestAnimationFrame(() => {{ syncingFromHeader = false; }});
+        }});
+        bottom.addEventListener("scroll", () => {{
+            if (syncingFromTop || syncingFromHeader) return;
+            syncingFromBottom = true;
+            top.scrollLeft = bottom.scrollLeft;
+            header.scrollLeft = bottom.scrollLeft;
+            requestAnimationFrame(() => {{ syncingFromBottom = false; }});
+        }});
+        syncWidth();
+        window.addEventListener("resize", syncWidth);
+        window.addEventListener("load", syncWidth);
+    }})();
+    </script>
+    </body>
+    </html>
+    """
+    components.html(scroll_html, height=int(board_height), scrolling=True)
+
+
+def render_acompanhamento_juridico_dashboard() -> None:
+    st.subheader("⚖️ Acompanhamento Jurídico")
+
+    with st.spinner("Carregando dados do Jira Jurídico..."):
+        df_raw = load_jira_juridico_acompanhamento()
+
+    if df_raw.empty:
+        st.warning("⚠️ Nenhum dado encontrado na view Jira_projeto_juridico_consolidado.")
+        return
+
+    # Sidebar: filtros simples por colunas relevantes (se existirem)
+    with st.sidebar:
+        st.markdown("### 🔎 Filtros")
+        status_col = _get_status_column(df_raw)
+        resp_col = _find_column(df_raw, ["responsavel", "responsável"])
+        motivo_col = _find_column(df_raw, ["jrd motivo da requisição consolidada", "motivo", "requisi"])
+
+        df_f = df_raw.copy()
+
+        def _multi(col_label: str, col_name: str, key: str) -> List[str]:
+            if not col_name or col_name not in df_f.columns:
+                return []
+            opts = sorted(
+                {
+                    v
+                    for v in df_f[col_name].dropna().astype(str).str.strip().tolist()
+                    if v and v.lower() not in {"none", "nan", "nat", "<na>"}
+                }
+            )
+            return st.multiselect(col_label, options=opts, default=[], key=key, placeholder="")
+
+        sel_status = _multi("Status", status_col, "jur_filter_status") if status_col else []
+        sel_resp = _multi("Responsável", resp_col, "jur_filter_resp") if resp_col else []
+        sel_motivo = _multi("Motivo", motivo_col, "jur_filter_motivo") if motivo_col else []
+
+        if sel_status and status_col:
+            df_f = df_f[df_f[status_col].astype(str).str.strip().isin(sel_status)]
+        if sel_resp and resp_col:
+            df_f = df_f[df_f[resp_col].astype(str).str.strip().isin(sel_resp)]
+        if sel_motivo and motivo_col:
+            df_f = df_f[df_f[motivo_col].astype(str).str.strip().isin(sel_motivo)]
+
+    _render_kanban_board(df_f, "Jurídico")
+

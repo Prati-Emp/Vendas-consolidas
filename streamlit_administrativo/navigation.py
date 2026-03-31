@@ -55,6 +55,12 @@ TAB_DEFINITIONS = [
         "page_path": "pages/7_Acompanhamento_Solicitacoes.py",
         "key": "acompanhamento_solicitacoes",
     },
+    {
+        "label": "⚖️ Acompanhamento Jurídico",
+        "permission": "administrativo",
+        "page_path": "pages/8_Acompanhamento_Juridico.py",
+        "key": "acompanhamento_juridico",
+    },
 ]
 
 
