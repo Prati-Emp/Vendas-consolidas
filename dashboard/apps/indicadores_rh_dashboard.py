@@ -686,11 +686,22 @@ def _render_demografia_rh() -> None:
         if col_exp1 or col_exp2:
             exp1 = pd.to_datetime(df[col_exp1], errors="coerce") if col_exp1 else pd.Series(pd.NaT, index=df.index)
             exp2 = pd.to_datetime(df[col_exp2], errors="coerce") if col_exp2 else pd.Series(pd.NaT, index=df.index)
-            exp_end = exp1.fillna(exp2)
-            status = pd.Series("Não informado", index=df.index)
             today = pd.Timestamp.today().normalize()
-            status = status.mask(exp_end.notna() & (exp_end >= today), "Em experiência")
-            status = status.mask(exp_end.notna() & (exp_end < today), "Encerrado")
+            exp_end = exp1.fillna(exp2)
+
+            # Consolidar por colaborador para evitar duplicidades de linhas na base
+            if col_colab:
+                colab_s = df[col_colab].astype(str).str.strip()
+                colab_s = colab_s.replace({"": pd.NA, "nan": pd.NA})
+                base_exp = pd.DataFrame({"Colaborador": colab_s, "_exp_end": exp_end})
+                exp_max = base_exp.dropna(subset=["Colaborador"]).groupby("Colaborador", as_index=False)["_exp_end"].max()
+                status = pd.Series("Não informado", index=exp_max.index)
+                status = status.mask(exp_max["_exp_end"].notna() & (exp_max["_exp_end"] >= today), "Em experiência")
+            else:
+                status = pd.Series("Não informado", index=df.index)
+                status = status.mask(exp_end.notna() & (exp_end >= today), "Em experiência")
+
+            # Remover "Encerrado" (não exibimos mais essa situação)
             tbl = status.value_counts().rename_axis("Situação").reset_index(name="Quantidade")
             st.dataframe(tbl, hide_index=True, use_container_width=True, key="demog_experiencia")
 
@@ -733,6 +744,11 @@ def _render_demografia_rh() -> None:
                     by=["Vencimento da experiência", "Colaborador"],
                     ascending=[True, True],
                 )
+                if "Colaborador" in detalhe.columns:
+                    detalhe["Colaborador"] = detalhe["Colaborador"].astype(str).str.strip()
+                    detalhe = detalhe[detalhe["Colaborador"].replace({"": pd.NA, "nan": pd.NA}).notna()].copy()
+                    # Se a base vier duplicada, manter a linha com vencimento mais próximo (primeiro após sort)
+                    detalhe = detalhe.drop_duplicates(subset=["Colaborador"], keep="first")
 
                 st.subheader("Pessoas em experiência (detalhado)")
                 filtro_cols = {
