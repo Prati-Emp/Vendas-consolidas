@@ -1892,6 +1892,15 @@ def render_indicador_atestados() -> None:
         rest = [c for c in tbl_detalhe.columns if c not in pri]
         tbl_detalhe = tbl_detalhe[pri + rest]
 
+        # Ordenar pelo início (mais antigo -> mais novo)
+        if "Data início" in tbl_detalhe.columns:
+            _dt_ini = pd.to_datetime(tbl_detalhe["Data início"], errors="coerce")
+            tbl_detalhe = (
+                tbl_detalhe.assign(**{"__dt_ini_sort": _dt_ini})
+                .sort_values("__dt_ini_sort", ascending=True, na_position="last")
+                .drop(columns=["__dt_ini_sort"])
+            )
+
         st.subheader("Detalhamento")
         st.dataframe(
             tbl_detalhe,
