@@ -1509,24 +1509,8 @@ def render_indicador_atestados() -> None:
         d_fim_min = date.today() - timedelta(days=365)
         d_fim_max = date.today()
 
-    # Filtros: período + (Equipe/Motivo) em 2 etapas
+    # Filtros: (Equipe/Motivo) em 2 etapas + período (datas por último)
     r1, r2, r3, r4 = st.columns(4)
-    with r1:
-        filtro_ini = st.date_input(
-            "Filtrar a partir de (data início do atestado)",
-            value=d_ini_min,
-            min_value=d_ini_min,
-            max_value=d_ini_max,
-            key="atestados_filtro_data_ini",
-        )
-    with r2:
-        filtro_fim = st.date_input(
-            "Filtrar até (data fim do atestado)",
-            value=d_fim_max,
-            min_value=d_fim_min,
-            max_value=d_fim_max,
-            key="atestados_filtro_data_fim",
-        )
 
     col_equipe = _pick_col(df, ["equipe", "time", "team"])
     col_motivo_raw = _pick_col(df, ["motivo", "motivo_do_atestado", "tipo", "tipo_atestado"])
@@ -1536,7 +1520,7 @@ def render_indicador_atestados() -> None:
     if col_motivo_raw and col_motivo_raw in out.columns:
         filtros_extra["Motivo"] = col_motivo_raw
 
-    with r3:
+    with r1:
         if filtros_extra:
             filtro_extra_label = st.selectbox(
                 "1) Escolha o filtro",
@@ -1549,7 +1533,7 @@ def render_indicador_atestados() -> None:
             st.selectbox("1) Escolha o filtro", options=["—"], index=0, key="atestados_filtro_extra_coluna_disabled")
 
     filtro_extra_vals: list[str] = []
-    with r4:
+    with r2:
         if filtros_extra and filtro_extra_label:
             col_extra = filtros_extra[filtro_extra_label]
             opts_extra = sorted(
@@ -1574,6 +1558,23 @@ def render_indicador_atestados() -> None:
                 key="atestados_filtro_extra_valores_disabled",
                 placeholder="—",
             )
+
+    with r3:
+        filtro_ini = st.date_input(
+            "Filtrar a partir de (data início do atestado)",
+            value=d_ini_min,
+            min_value=d_ini_min,
+            max_value=d_ini_max,
+            key="atestados_filtro_data_ini",
+        )
+    with r4:
+        filtro_fim = st.date_input(
+            "Filtrar até (data fim do atestado)",
+            value=d_fim_max,
+            min_value=d_fim_min,
+            max_value=d_fim_max,
+            key="atestados_filtro_data_fim",
+        )
 
     if filtro_ini > filtro_fim:
         st.warning("A data inicial do filtro é maior que a final; ajuste os valores.")
