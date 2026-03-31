@@ -1559,6 +1559,7 @@ def render_indicador_atestados() -> None:
         # - Se faltar uma das horas, ignora horas e usa datas (inicio/t_rmino).
         # - Se inicio e t_rmino forem no mesmo dia e sem horas completas, considera 8h48 (8.8h).
         # - Exclui do cálculo motivo "afastamento INSS".
+        horas_final: Optional[pd.Series] = None
         if not out_f.empty:
             col_motivo_calc = _pick_col(out_f, ["motivo", "motivo_do_atestado", "tipo", "tipo_atestado"])
             motivo_calc = (
@@ -1645,7 +1646,7 @@ def render_indicador_atestados() -> None:
                 ),
             )
 
-        # Cards por motivo (um card por valor em "motivo")
+        # Blocos por motivo: 1) quantidade 2) horas
         col_motivo = _pick_col(out_f, ["motivo", "motivo_do_atestado", "tipo", "tipo_atestado"])
         if col_motivo and col_motivo in out_f.columns and not out_f.empty:
             motivo_s = (
@@ -1663,12 +1664,34 @@ def render_indicador_atestados() -> None:
             counts = motivos_tbl["Quantidade"].astype(int).tolist()
 
             per_row = 4
+            # Linha 1: Quantidade
             for i in range(0, len(motivos), per_row):
                 cols = st.columns(min(per_row, len(motivos) - i))
                 for j, c in enumerate(cols):
                     idx = i + j
                     with c:
                         st.metric(str(motivos[idx]), f"{int(counts[idx]):,}".replace(",", "."))
+
+            # Linha 2: Horas por motivo (mesmas regras; "Afastamento INSS" desconsiderado -> 0)
+            if isinstance(horas_final, pd.Series):
+                motivo_key = motivo_s.astype(str).str.strip().str.lower()
+                motivo_mask_inss = motivo_key.isin(["afastamento inss", "afastamento_inss"])
+                horas_sum = horas_final.where(~motivo_mask_inss, 0.0)
+                horas_by_motivo = (
+                    pd.DataFrame({"Motivo": motivo_s.astype(str), "Horas": horas_sum})
+                    .groupby("Motivo", dropna=False)["Horas"]
+                    .sum()
+                )
+                horas_vals = [float(horas_by_motivo.get(m, 0.0)) for m in motivos]
+                for i in range(0, len(motivos), per_row):
+                    cols = st.columns(min(per_row, len(motivos) - i))
+                    for j, c in enumerate(cols):
+                        idx = i + j
+                        with c:
+                            st.metric(
+                                f"Horas — {str(motivos[idx])}",
+                                f"{horas_vals[idx]:,.1f}".replace(",", "X").replace(".", ",").replace("X", "."),
+                            )
 
         st.dataframe(
             out_f,
