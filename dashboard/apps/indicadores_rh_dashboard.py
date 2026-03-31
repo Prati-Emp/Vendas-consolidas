@@ -1530,18 +1530,23 @@ def render_indicador_atestados() -> None:
     if filtro_ini > filtro_fim:
         st.warning("A data inicial do filtro é maior que a final; ajuste os valores.")
     else:
-        ts_a = pd.Timestamp(filtro_ini)
-        ts_b = pd.Timestamp(filtro_fim) + pd.Timedelta(days=1) - pd.Timedelta(seconds=1)
-        inicio_ef = data_inicio.fillna(data_fim)
-        fim_ef = data_fim.fillna(data_inicio)
-        overlap = (
+        ts_a = pd.Timestamp(filtro_ini).normalize()
+        ts_b = pd.Timestamp(filtro_fim).normalize()
+
+        # Filtro por coluna correspondente (com fallback quando houver apenas uma das datas):
+        # - início: usa data_inicio; se ausente, usa data_fim
+        # - fim: usa data_fim; se ausente, usa data_inicio
+        inicio_ref = data_inicio.fillna(data_fim)
+        fim_ref = data_fim.fillna(data_inicio)
+
+        mask_periodo = (
             valid_dates
-            & inicio_ef.notna()
-            & fim_ef.notna()
-            & (inicio_ef <= ts_b)
-            & (fim_ef >= ts_a)
+            & inicio_ref.notna()
+            & fim_ref.notna()
+            & (inicio_ref >= ts_a)
+            & (fim_ref <= ts_b)
         )
-        out_f = out.loc[overlap].copy() if overlap.any() else out.iloc[0:0].copy()
+        out_f = out.loc[mask_periodo].copy() if mask_periodo.any() else out.iloc[0:0].copy()
 
         if out_f.empty and not out.empty:
             st.info("Nenhum atestado intersecta o período selecionado ou as linhas não têm datas válidas em início/término.")
