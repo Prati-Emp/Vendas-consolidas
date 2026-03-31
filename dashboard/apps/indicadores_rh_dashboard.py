@@ -1480,35 +1480,50 @@ def render_indicador_atestados() -> None:
     )
 
     valid_dates = data_inicio.notna() | data_fim.notna()
-    lo_ts = data_inicio.dropna().min()
-    hi_ts = data_fim.dropna().max()
-    if pd.isna(lo_ts) and pd.notna(data_fim.dropna().min()):
-        lo_ts = data_fim.dropna().min()
-    if pd.isna(hi_ts) and pd.notna(data_inicio.dropna().max()):
-        hi_ts = data_inicio.dropna().max()
 
-    if pd.notna(lo_ts) and pd.notna(hi_ts):
-        d_lo = lo_ts.date()
-        d_hi = hi_ts.date()
+    # Limites independentes por coluna (somente datas onde há informação)
+    ini_min = data_inicio.dropna().min()
+    ini_max = data_inicio.dropna().max()
+    fim_min = data_fim.dropna().min()
+    fim_max = data_fim.dropna().max()
+
+    # Fallbacks seguros caso uma das colunas venha totalmente vazia
+    if pd.isna(ini_min) or pd.isna(ini_max):
+        ini_min = fim_min
+        ini_max = fim_max
+    if pd.isna(fim_min) or pd.isna(fim_max):
+        fim_min = ini_min
+        fim_max = ini_max
+
+    if pd.notna(ini_min) and pd.notna(ini_max):
+        d_ini_min = ini_min.date()
+        d_ini_max = ini_max.date()
     else:
-        d_lo = date.today() - timedelta(days=365)
-        d_hi = date.today()
+        d_ini_min = date.today() - timedelta(days=365)
+        d_ini_max = date.today()
+
+    if pd.notna(fim_min) and pd.notna(fim_max):
+        d_fim_min = fim_min.date()
+        d_fim_max = fim_max.date()
+    else:
+        d_fim_min = date.today() - timedelta(days=365)
+        d_fim_max = date.today()
 
     r1, r2 = st.columns(2)
     with r1:
         filtro_ini = st.date_input(
             "Filtrar a partir de (data início do atestado)",
-            value=d_lo,
-            min_value=None,
-            max_value=None,
+            value=d_ini_min,
+            min_value=d_ini_min,
+            max_value=d_ini_max,
             key="atestados_filtro_data_ini",
         )
     with r2:
         filtro_fim = st.date_input(
             "Filtrar até (data fim do atestado)",
-            value=d_hi,
-            min_value=None,
-            max_value=None,
+            value=d_fim_max,
+            min_value=d_fim_min,
+            max_value=d_fim_max,
             key="atestados_filtro_data_fim",
         )
 
