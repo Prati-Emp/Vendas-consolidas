@@ -552,9 +552,10 @@ def _render_demografia_rh() -> None:
                 v = pd.to_numeric(df[col_tempo], errors="coerce")
                 bins = pd.cut(
                     v,
-                    bins=[-1, 6, 12, 24, 60, 9999],
+                    bins=[-1, 3, 6, 12, 24, 60, 9999],
                     labels=[
-                        "0-6m",
+                        "0-3m",
+                        "3-6m",
                         "1 ano",
                         "1-2 anos",
                         "2-5 anos",
@@ -610,8 +611,8 @@ def _render_demografia_rh() -> None:
 
             tempo_faixa = pd.cut(
                 tempo_vals,
-                bins=[-1, 6, 12, 24, 60, 9999],
-                labels=["0-6m", "1 ano", "1-2 anos", "2-5 anos", "5+ anos"],
+                bins=[-1, 3, 6, 12, 24, 60, 9999],
+                labels=["0-3m", "3-6m", "1 ano", "1-2 anos", "2-5 anos", "5+ anos"],
                 include_lowest=True,
             ) if col_tempo else pd.Series(pd.NA, index=df.index)
 
