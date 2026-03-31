@@ -1509,7 +1509,8 @@ def render_indicador_atestados() -> None:
         d_fim_min = date.today() - timedelta(days=365)
         d_fim_max = date.today()
 
-    r1, r2 = st.columns(2)
+    # Filtros: período + (Equipe/Motivo) em 2 etapas
+    r1, r2, r3, r4 = st.columns(4)
     with r1:
         filtro_ini = st.date_input(
             "Filtrar a partir de (data início do atestado)",
@@ -1526,6 +1527,53 @@ def render_indicador_atestados() -> None:
             max_value=d_fim_max,
             key="atestados_filtro_data_fim",
         )
+
+    col_equipe = _pick_col(df, ["equipe", "time", "team"])
+    col_motivo_raw = _pick_col(df, ["motivo", "motivo_do_atestado", "tipo", "tipo_atestado"])
+    filtros_extra: dict[str, str] = {}
+    if col_equipe and col_equipe in out.columns:
+        filtros_extra["Equipe"] = col_equipe
+    if col_motivo_raw and col_motivo_raw in out.columns:
+        filtros_extra["Motivo"] = col_motivo_raw
+
+    with r3:
+        if filtros_extra:
+            filtro_extra_label = st.selectbox(
+                "1) Escolha o filtro",
+                options=list(filtros_extra.keys()),
+                index=0,
+                key="atestados_filtro_extra_coluna",
+            )
+        else:
+            filtro_extra_label = ""
+            st.selectbox("1) Escolha o filtro", options=["—"], index=0, key="atestados_filtro_extra_coluna_disabled")
+
+    filtro_extra_vals: list[str] = []
+    with r4:
+        if filtros_extra and filtro_extra_label:
+            col_extra = filtros_extra[filtro_extra_label]
+            opts_extra = sorted(
+                [
+                    v
+                    for v in out[col_extra].dropna().astype(str).str.strip().unique().tolist()
+                    if v
+                ]
+            )
+            filtro_extra_vals = st.multiselect(
+                f"2) Filtrar itens de {filtro_extra_label}",
+                options=opts_extra,
+                default=[],
+                key="atestados_filtro_extra_valores",
+                placeholder="Todos",
+            )
+        else:
+            st.multiselect(
+                "2) Filtrar itens",
+                options=[],
+                default=[],
+                key="atestados_filtro_extra_valores_disabled",
+                placeholder="—",
+            )
 
     if filtro_ini > filtro_fim:
         st.warning("A data inicial do filtro é maior que a final; ajuste os valores.")
@@ -1546,7 +1594,13 @@ def render_indicador_atestados() -> None:
             & (inicio_ref >= ts_a)
             & (fim_ref <= ts_b)
         )
-        out_f = out.loc[mask_periodo].copy() if mask_periodo.any() else out.iloc[0:0].copy()
+        mask_final = mask_periodo.copy()
+        if filtros_extra and filtro_extra_label and filtro_extra_vals:
+            col_extra = filtros_extra[filtro_extra_label]
+            s_extra = out[col_extra].astype(str).str.strip()
+            mask_final &= s_extra.isin([str(x).strip() for x in filtro_extra_vals])
+
+        out_f = out.loc[mask_final].copy() if mask_final.any() else out.iloc[0:0].copy()
 
         if out_f.empty and not out.empty:
             st.info("Nenhum atestado intersecta o período selecionado ou as linhas não têm datas válidas em início/término.")
