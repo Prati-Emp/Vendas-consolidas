@@ -1654,7 +1654,7 @@ def render_indicador_atestados() -> None:
             motivos = motivos_tbl["Motivo"].astype(str).tolist()
             counts = motivos_tbl["Quantidade"].astype(int).tolist()
 
-            per_row = 4
+            per_row = 6
             for m, n in zip(motivos, counts):
                 qtd_cards.append((str(m), f"{int(n):,}".replace(",", ".")))
 
