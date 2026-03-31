@@ -1532,6 +1532,32 @@ def render_indicador_atestados() -> None:
             st.info("Nenhum atestado intersecta o período selecionado ou as linhas não têm datas válidas em início/término.")
 
         st.metric("Registros no período", f"{len(out_f):,}".replace(",", "."))
+
+        # Cards por motivo (um card por valor em "motivo")
+        col_motivo = _pick_col(out_f, ["motivo", "motivo_do_atestado", "tipo", "tipo_atestado"])
+        if col_motivo and col_motivo in out_f.columns and not out_f.empty:
+            motivo_s = (
+                out_f[col_motivo]
+                .astype(str)
+                .str.strip()
+                .replace({"": "NÃO INFORMADO", "nan": "NÃO INFORMADO", "None": "NÃO INFORMADO"})
+            )
+            motivos_tbl = (
+                motivo_s.value_counts(dropna=False)
+                .rename_axis("Motivo")
+                .reset_index(name="Quantidade")
+            )
+            motivos = motivos_tbl["Motivo"].astype(str).tolist()
+            counts = motivos_tbl["Quantidade"].astype(int).tolist()
+
+            per_row = 4
+            for i in range(0, len(motivos), per_row):
+                cols = st.columns(min(per_row, len(motivos) - i))
+                for j, c in enumerate(cols):
+                    idx = i + j
+                    with c:
+                        st.metric(str(motivos[idx]), f"{int(counts[idx]):,}".replace(",", "."))
+
         st.dataframe(
             out_f,
             hide_index=True,
