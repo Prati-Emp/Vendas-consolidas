@@ -1531,7 +1531,99 @@ def render_indicador_atestados() -> None:
         if out_f.empty and not out.empty:
             st.info("Nenhum atestado intersecta o período selecionado ou as linhas não têm datas válidas em início/término.")
 
+        # KPI: registros + horas totais no período
         st.metric("Registros no período", f"{len(out_f):,}".replace(",", "."))
+
+        # Total de horas (regras):
+        # - Se houver hora_inicio E hora_t_rmino, usa diferença entre horas.
+        # - Se faltar uma das horas, ignora horas e usa datas (inicio/t_rmino).
+        # - Se inicio e t_rmino forem no mesmo dia e sem horas completas, considera 8h48 (8.8h).
+        # - Exclui do cálculo motivo "afastamento INSS".
+        if not out_f.empty:
+            col_motivo_calc = _pick_col(out_f, ["motivo", "motivo_do_atestado", "tipo", "tipo_atestado"])
+            motivo_calc = (
+                out_f[col_motivo_calc].astype(str).str.strip().str.lower()
+                if col_motivo_calc and col_motivo_calc in out_f.columns
+                else pd.Series("", index=out_f.index)
+            )
+            mask_motivo = ~motivo_calc.isin(["afastamento inss", "afastamento_inss"])
+
+            col_h_ini = _pick_col(out_f, ["hora_inicio", "hora in", "hora início", "hora_incio"])
+            col_h_fim = _pick_col(out_f, ["hora_t_rmino", "hora_termino", "hora término", "hora fim", "hora_fim"])
+
+            # Datas já estão em Data início/Data fim (datetime normalizado)
+            d_ini = pd.to_datetime(out_f["Data início"], errors="coerce").dt.normalize()
+            d_fim = pd.to_datetime(out_f["Data fim"], errors="coerce").dt.normalize()
+
+            # Parsing robusto de hora: tenta extrair HH:MM[:SS] (ou datetime/time)
+            def _parse_time_to_seconds(s: pd.Series) -> pd.Series:
+                if s is None or s.empty:
+                    return pd.Series(pd.NA, index=out_f.index)
+                ss = s.copy()
+                # Tenta datetime
+                dt = pd.to_datetime(ss, errors="coerce")
+                ok_dt = dt.notna()
+                out_sec = pd.Series(pd.NA, index=ss.index, dtype="float64")
+                if ok_dt.any():
+                    out_sec.loc[ok_dt] = (
+                        dt.loc[ok_dt].dt.hour * 3600
+                        + dt.loc[ok_dt].dt.minute * 60
+                        + dt.loc[ok_dt].dt.second
+                    ).astype("float64")
+                # Fallback: string HH:MM[:SS]
+                rem = ~ok_dt
+                if rem.any():
+                    txt = ss.loc[rem].astype(str).str.strip()
+                    parts = txt.str.split(":", expand=True)
+                    if parts.shape[1] >= 2:
+                        hh = pd.to_numeric(parts[0], errors="coerce")
+                        mm = pd.to_numeric(parts[1], errors="coerce")
+                        sec = pd.to_numeric(parts[2], errors="coerce") if parts.shape[1] >= 3 else 0
+                        out_sec.loc[rem] = (hh * 3600 + mm * 60 + sec).astype("float64")
+                return out_sec
+
+            has_h_ini = bool(col_h_ini and col_h_ini in out_f.columns)
+            has_h_fim = bool(col_h_fim and col_h_fim in out_f.columns)
+
+            use_horas = pd.Series(False, index=out_f.index)
+            horas_por_hora = pd.Series(pd.NA, index=out_f.index, dtype="float64")
+            if has_h_ini and has_h_fim:
+                h_ini_sec = _parse_time_to_seconds(out_f[col_h_ini])
+                h_fim_sec = _parse_time_to_seconds(out_f[col_h_fim])
+                use_horas = h_ini_sec.notna() & h_fim_sec.notna()
+                delta_sec = (h_fim_sec - h_ini_sec).astype("float64")
+                # Se ficar negativo (ex.: virou o dia), soma 24h como fallback.
+                delta_sec = delta_sec.mask(delta_sec < 0, delta_sec + 24 * 3600)
+                horas_por_hora = (delta_sec / 3600.0).where(use_horas)
+
+            # Quando não usar horas (por falta de uma delas), usa datas
+            dias = (d_fim - d_ini).dt.days
+            same_day = (dias == 0) & d_ini.notna() & d_fim.notna()
+            multi_day = (dias > 0) & d_ini.notna() & d_fim.notna()
+            horas_por_data = pd.Series(pd.NA, index=out_f.index, dtype="float64")
+            horas_por_data = horas_por_data.mask(same_day, 8.8)
+            # Para múltiplos dias: dias corridos inclusivo * 8.8h
+            horas_por_data = horas_por_data.mask(multi_day, (dias + 1).astype("float64") * 8.8)
+
+            horas_final = pd.Series(0.0, index=out_f.index, dtype="float64")
+            horas_final = horas_final.mask(use_horas, horas_por_hora.fillna(0.0))
+            horas_final = horas_final.mask(~use_horas, horas_por_data.fillna(0.0))
+
+            total_horas = float(horas_final[mask_motivo].sum())
+            st.metric(
+                "Total de horas (no período)",
+                f"{total_horas:,.1f}".replace(",", "X").replace(".", ",").replace("X", "."),
+                help=(
+                    "Regras do cálculo:\n"
+                    "- Exclui do somatório o motivo \"afastamento INSS\".\n"
+                    "- Se houver **hora_inicio** e **hora_t_rmino** (ambas preenchidas), usa a diferença entre elas.\n"
+                    "- Se houver somente uma das horas (apenas início ou apenas término), ignora horas e usa o cálculo por datas.\n"
+                    "- Sem par completo de horas: usa a diferença entre **inicio** e **t_rmino**.\n"
+                    "- Se **inicio** e **t_rmino** forem no mesmo dia: considera **8h48 (8,8h)**.\n"
+                    "- Se forem dias diferentes: considera \u200b(dias corridos inclusivo) × 8,8h.\n"
+                    "- Se a diferença por horas ficar negativa (virada de dia), soma 24h como ajuste."
+                ),
+            )
 
         # Cards por motivo (um card por valor em "motivo")
         col_motivo = _pick_col(out_f, ["motivo", "motivo_do_atestado", "tipo", "tipo_atestado"])
