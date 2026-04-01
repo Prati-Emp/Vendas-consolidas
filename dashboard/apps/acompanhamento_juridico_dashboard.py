@@ -18,6 +18,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 from dashboard.utils.md_conn import get_md_connection
+from advanced_auth import get_current_user
 
 
 def _normalize_text_for_match(value: Any) -> str:
@@ -44,6 +45,59 @@ def _find_column(df: pd.DataFrame, candidates: List[str]) -> str:
                 return str(col)
     return ""
 
+
+def _extract_emails_from_cell(value: Any) -> List[str]:
+    """
+    Extrai e-mails de uma célula que pode conter vários valores separados por vírgula.
+    Normaliza para lower-case e remove espaços.
+    """
+    if value is None:
+        return []
+    raw = str(value).strip()
+    if not raw or raw.lower() in {"none", "nan", "nat", "<na>"}:
+        return []
+    # aceita separadores comuns
+    raw = raw.replace(";", ",").replace("|", ",").replace("\n", ",")
+    parts = [p.strip().lower() for p in raw.split(",")]
+    out = []
+    for p in parts:
+        if not p:
+            continue
+        # limpeza leve: remove espaços internos
+        p = re.sub(r"\s+", "", p)
+        if "@" in p and "." in p:
+            out.append(p)
+    return out
+
+
+def _filter_by_row_email_access(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Filtra os itens para o usuário logado com base na coluna `JRD - e-mail`.
+    Regras:
+    - Se a coluna existir, o usuário só vê linhas onde seu e-mail esteja listado (vírgula-separado).
+    - Se não houver e-mail de sessão, não exibe nada.
+    - Para o Odair, mantém visão completa (admin/owner do quadro).
+    """
+    if df.empty:
+        return df
+
+    user = get_current_user() or {}
+    user_email = (user.get("email") or "").strip().lower()
+    if not user_email:
+        return df.iloc[0:0].copy()
+
+    bypass = {"odair.santos@grupoprati.com", "odair2d@hotmail.com"}
+    if user_email in bypass:
+        return df
+
+    col_email = _find_column(df, ["JRD - e-mail", "JRD - email", "JRD email", "e-mail", "email"])
+    if not col_email or col_email not in df.columns:
+        # se a coluna não existir, não há como validar acesso → não mostra nada
+        return df.iloc[0:0].copy()
+
+    emails_per_row = df[col_email].apply(_extract_emails_from_cell)
+    mask = emails_per_row.apply(lambda lst: user_email in lst)
+    return df.loc[mask].copy()
 
 def _get_status_column(df: pd.DataFrame) -> str:
     if df.empty:
@@ -532,6 +586,12 @@ def render_acompanhamento_juridico_dashboard() -> None:
 
     if df_raw.empty:
         st.warning("⚠️ Nenhum dado encontrado na view Jira_projeto_juridico_consolidado.")
+        return
+
+    # Controle de acesso por item via coluna `JRD - e-mail`
+    df_raw = _filter_by_row_email_access(df_raw)
+    if df_raw.empty:
+        st.info("Você não possui itens vinculados ao seu e-mail no Jurídico.")
         return
 
     # Sidebar: filtros simples por colunas relevantes (se existirem)

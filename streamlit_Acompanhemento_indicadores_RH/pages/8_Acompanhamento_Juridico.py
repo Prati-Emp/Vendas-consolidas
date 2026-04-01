@@ -29,7 +29,6 @@ st.set_page_config(
 
 require_auth(dashboard_title="Acompanhamento e Indicadores de Gestão de Pessoas")
 require_page_access("administrativo")
-require_page_access("administrativo.acompanhamento_juridico")
 
 st.title("👥 Acompanhamento e Indicadores de Gestão de Pessoas")
 render_administrativo_navigation(current_key="acompanhamento_juridico")
