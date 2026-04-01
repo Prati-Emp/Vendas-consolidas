@@ -52,7 +52,7 @@ TAB_DEFINITIONS = [
     {
         "label": "📈 Indicadores Jurídico",
         "permission": "administrativo",
-        "page_path": "pages/9_Indicadores_Juridico.py",
+        "page_path": "pages/6_Indicadores_Juridico.py",
         "key": "indicadores_juridico",
     },
     {
