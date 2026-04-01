@@ -335,6 +335,7 @@ def _build_kanban_column_html(
     responsavel_col = _find_column(df, ["responsavel", "responsável", "owner"])
     solicitante_col = _find_column(df, ["solicitante", "requerente", "nome", "colaborador"])
     tipo_col = _find_column(df, ["tipo de contrato", "tipo", "contrato"])
+    area_col = _find_column(df, ["JRD - Área", "JRD Area", "Área", "Area"])
     # Data exibida no card: preferir "Data limite" (prazo), com fallback para criação/início
     data_col = _find_column(
         df,
@@ -414,6 +415,11 @@ def _build_kanban_column_html(
         else:
             data_html = ""
 
+        area_raw = _to_display_case(row.get(area_col, "")) if area_col else ""
+        area = html.escape(area_raw)
+        # Pedido: mostrar "Área" logo abaixo do badge "desde criação" (aba Solicitações)
+        area_html = f'<div class="kanban-card-line">🏢 {area}</div>' if (time_mode == "since_start" and area) else ""
+
         cards_html += f"""
         <div class="kanban-card" style="border-left: 4px solid {badge_color};">
             <div class="kanban-card-chave">{chave}</div>
@@ -423,6 +429,7 @@ def _build_kanban_column_html(
                 {motivo_html}
                 {tipo_html}
             </div>
+            {area_html}
             {solicitante_html}
             {responsavel_html}
             {data_html}
