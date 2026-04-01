@@ -58,6 +58,44 @@ def _get_status_column(df: pd.DataFrame) -> str:
     return _find_column(df, ["jrd - status", "jrd status", "status"])
 
 
+def _normalize_status_list(values: List[str]) -> List[str]:
+    """Normaliza uma lista de status para comparação."""
+    return [_normalize_text_for_match(v) for v in values if str(v).strip()]
+
+
+def _ordered_statuses_with_extras(
+    df: pd.DataFrame, status_col: str, desired_status_order: List[str]
+) -> List[str]:
+    """
+    Retorna lista de status na ordem desejada, adicionando ao final
+    quaisquer status presentes nos dados e não listados no catálogo.
+    A comparação é feita por texto normalizado (sem acentos/case).
+    """
+    if df.empty or not status_col or status_col not in df.columns:
+        return []
+
+    desired = [s for s in desired_status_order if str(s).strip()]
+    desired_norm = _normalize_status_list(desired)
+    desired_norm_set = set(desired_norm)
+
+    # Mantém o rótulo original informado no catálogo
+    statuses_out = list(desired)
+
+    # Extras do dataset
+    extras: List[str] = []
+    for s in df[status_col].dropna().unique().tolist():
+        s_str = str(s).strip()
+        if not s_str:
+            continue
+        n = _normalize_text_for_match(s_str)
+        if n and n not in desired_norm_set:
+            desired_norm_set.add(n)
+            extras.append(s_str)
+
+    extras.sort(key=lambda x: (_normalize_text_for_match(x), str(x).lower()))
+    return statuses_out + extras
+
+
 def _split_solicitacoes_vs_vigentes(df: pd.DataFrame, status_col: str) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
     Divide o DataFrame em:
@@ -68,31 +106,25 @@ def _split_solicitacoes_vs_vigentes(df: pd.DataFrame, status_col: str) -> tuple[
     if df.empty or not status_col or status_col not in df.columns:
         return df.copy(), df.copy()
 
-    s_raw = df[status_col].astype(str).str.strip()
-    s_norm = s_raw.map(_normalize_text_for_match)
+    s_norm = df[status_col].astype(str).str.strip().map(_normalize_text_for_match)
 
-    # Solicitações: status iniciais típicos
-    solicit_mask = (
-        (s_norm == "backlog")
-        | s_norm.str.startswith("solicit", na=False)
-        | s_norm.str.contains("aguard", na=False)
+    # Catálogo de status por aba (definido pelo negócio)
+    solicit_catalog = _normalize_status_list(
+        [
+            "Backlog",
+            "Pausados",
+            "Em elaboração",
+            "Conferência",
+            "Aguardando assinatura",
+            "Assinados",
+            "Finalizados",
+            "Rejeitados",
+        ]
     )
+    vig_catalog = _normalize_status_list(["Vigente", "Em renovação", "Rescindido", "Arquivado"])
 
-    # Encerrados: itens finalizados/rejeitados/cancelados
-    encerr_norm_tokens = (
-        "finaliz",
-        "conclu",
-        "resolvid",
-        "encerr",
-        "cancel",
-        "rejeit",
-        "closed",
-        "done",
-    )
-    encerr_mask = s_norm.apply(lambda x: any(t in x for t in encerr_norm_tokens) if x else False)
-
-    df_solic = df.loc[solicit_mask].copy()
-    df_vig = df.loc[~solicit_mask & ~encerr_mask].copy()
+    df_solic = df.loc[s_norm.isin(set(solicit_catalog))].copy()
+    df_vig = df.loc[s_norm.isin(set(vig_catalog))].copy()
     return df_solic, df_vig
 
 
@@ -219,7 +251,7 @@ def _build_kanban_column_html(
     return cards_html if cards_html else '<div style="color: #888; font-style: italic; padding: 8px;">Nenhum item</div>'
 
 
-def _render_kanban_board(df: pd.DataFrame, title: str) -> None:
+def _render_kanban_board(df: pd.DataFrame, title: str, desired_status_order: List[str] | None = None) -> None:
     if df.empty:
         st.info(f"Nenhum item encontrado para **{title}**.")
         return
@@ -230,16 +262,19 @@ def _render_kanban_board(df: pd.DataFrame, title: str) -> None:
         st.dataframe(df.head(30), use_container_width=True, hide_index=True)
         return
 
-    def _norm(x: Any) -> str:
-        return _normalize_text_for_match(x)
+    if desired_status_order:
+        statuses = _ordered_statuses_with_extras(df, status_col, desired_status_order)
+    else:
+        def _norm(x: Any) -> str:
+            return _normalize_text_for_match(x)
 
-    statuses = [s for s in df[status_col].dropna().unique().tolist() if str(s).strip()]
+        statuses = [s for s in df[status_col].dropna().unique().tolist() if str(s).strip()]
 
-    def _sort_status_default(s: Any) -> tuple[int, str]:
-        s_str = str(s).strip()
-        return (0, s_str) if _norm(s_str) == "backlog" else (1, _norm(s_str))
+        def _sort_status_default(s: Any) -> tuple[int, str]:
+            s_str = str(s).strip()
+            return (0, s_str) if _norm(s_str) == "backlog" else (1, _norm(s_str))
 
-    statuses = sorted(statuses, key=_sort_status_default)
+        statuses = sorted(statuses, key=_sort_status_default)
     if not statuses:
         st.info("Nenhum status encontrado.")
         return
@@ -506,7 +541,24 @@ def render_acompanhamento_juridico_dashboard() -> None:
     df_solic, df_vig = _split_solicitacoes_vs_vigentes(df_f, status_col) if status_col else (df_f, df_f)
 
     with tab_solic:
-        _render_kanban_board(df_solic, "Solicitações (Jurídico)")
+        _render_kanban_board(
+            df_solic,
+            "Solicitações (Jurídico)",
+            desired_status_order=[
+                "Backlog",
+                "Pausados",
+                "Em elaboração",
+                "Conferência",
+                "Aguardando assinatura",
+                "Assinados",
+                "Finalizados",
+                "Rejeitados",
+            ],
+        )
     with tab_vig:
-        _render_kanban_board(df_vig, "Vigentes (Jurídico)")
+        _render_kanban_board(
+            df_vig,
+            "Vigentes (Jurídico)",
+            desired_status_order=["Vigente", "Em renovação", "Rescindido", "Arquivado"],
+        )
 
