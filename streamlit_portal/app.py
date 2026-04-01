@@ -221,7 +221,7 @@ PORTAL_APPS = [
     },
     {
         "key": "rh_portal",
-        "title": "👥 Acompanhamento e Indicadores de Gestão de Pessoas",
+        "title": "📊 Indicadores e acompanhamentos",
         "description": "Acompanhamento de solicitações e indicadores RH.",
         "required_permissions": [
             "administrativo.indicadores_gestao_pessoas",

@@ -27,11 +27,11 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-require_auth(dashboard_title="Acompanhamento e Indicadores de Gestão de Pessoas")
+require_auth(dashboard_title="Indicadores e acompanhamentos")
 require_page_access("administrativo")
 require_page_access("administrativo.indicadores_gestao_pessoas")
 
-st.title("👥 Acompanhamento e Indicadores de Gestão de Pessoas")
+st.title("📊 Indicadores e acompanhamentos")
 render_administrativo_navigation(current_key="indicadores_gestao_pessoas")
 
 st.markdown("---")

@@ -19,13 +19,13 @@ from navigation import ensure_administrativo_access  # noqa: E402
 
 
 st.set_page_config(
-    page_title="Acompanhamento e Indicadores de Gestão de Pessoas",
-    page_icon="👥",
+    page_title="Indicadores e acompanhamentos",
+    page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
-require_auth(dashboard_title="Acompanhamento e Indicadores de Gestão de Pessoas")
+require_auth(dashboard_title="Indicadores e acompanhamentos")
 require_page_access("administrativo")
 
 # Redirecionar automaticamente para a primeira aba disponível
