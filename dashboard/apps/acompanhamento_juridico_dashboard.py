@@ -197,8 +197,8 @@ def _split_solicitacoes_vs_vigentes(df: pd.DataFrame, status_col: str) -> tuple[
     return df_solic, df_vig
 
 
-def _get_area_like_value(df: pd.DataFrame, row: pd.Series) -> str:
-    """Retorna Área; se vazio, usa Empreendimento (fallback)."""
+def _get_area_and_empreendimento(df: pd.DataFrame, row: pd.Series) -> tuple[str, str]:
+    """Retorna (Área, Empreendimento) quando existirem."""
     area_col = _find_column(df, ["JRD - Área", "JRD Area", "Área", "Area"])
     emp_col = _find_column(df, ["JRD - Empreendimento", "JRD Empreendimento", "Empreendimento"])
 
@@ -209,14 +209,18 @@ def _get_area_like_value(df: pd.DataFrame, row: pd.Series) -> str:
         return str(v).strip() if v is not None else ""
 
     area_v = _pick(area_col)
-    if area_v and area_v.lower() not in {"none", "nan", "nat", "<na>"}:
-        return area_v
-
     emp_v = _pick(emp_col)
-    if emp_v and emp_v.lower() not in {"none", "nan", "nat", "<na>"}:
-        return emp_v
+    if area_v.lower() in {"none", "nan", "nat", "<na>"}:
+        area_v = ""
+    if emp_v.lower() in {"none", "nan", "nat", "<na>"}:
+        emp_v = ""
+    return area_v, emp_v
 
-    return ""
+
+def _get_area_like_value(df: pd.DataFrame, row: pd.Series) -> str:
+    """Para filtros/buckets: usa Área; se vazio, cai para Empreendimento."""
+    area_v, emp_v = _get_area_and_empreendimento(df, row)
+    return area_v or emp_v
 
 
 def _parse_date_cell(value: Any) -> pd.Timestamp | None:
@@ -437,13 +441,21 @@ def _build_kanban_column_html(
         else:
             data_html = ""
 
-        area_like = _get_area_like_value(df, row)
-        area_raw = _to_display_case(area_like) if area_like else ""
-        area = html.escape(area_raw)
-        # Mostrar "Área" logo abaixo do badge de tempo (Solicitações e Vigentes)
+        area_v, emp_v = _get_area_and_empreendimento(df, row)
+        area_raw = _to_display_case(area_v) if area_v else ""
+        emp_raw = _to_display_case(emp_v) if emp_v else ""
+        area_txt = html.escape(area_raw)
+        emp_txt = html.escape(emp_raw)
+
+        # Mostrar "Área" e "Empreendimento" logo abaixo do badge de tempo (Solicitações e Vigentes)
         area_html = (
-            f'<div class="kanban-card-line">🏢 {area}</div>'
-            if (area and time_mode in {"since_start", "until_deadline"})
+            f'<div class="kanban-card-line">🏢 {area_txt}</div>'
+            if (area_txt and time_mode in {"since_start", "until_deadline"})
+            else ""
+        )
+        emp_html = (
+            f'<div class="kanban-card-line">🏗 {emp_txt}</div>'
+            if (emp_txt and time_mode in {"since_start", "until_deadline"})
             else ""
         )
 
@@ -457,6 +469,7 @@ def _build_kanban_column_html(
                 {tipo_html}
             </div>
             {area_html}
+            {emp_html}
             {solicitante_html}
             {responsavel_html}
             {data_html}
