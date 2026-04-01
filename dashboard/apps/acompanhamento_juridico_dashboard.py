@@ -428,6 +428,9 @@ def _render_kanban_board(
         gap: 8px;
         flex-wrap: wrap;
         margin-bottom: 10px;
+        width: 100%;
+        max-width: 100%;
+        overflow: hidden;
     }}
     .kanban-card-badge {{
         display: inline-flex;
@@ -438,13 +441,19 @@ def _render_kanban_board(
         font-weight: 600;
         line-height: 1;
         max-width: 100%;
-        word-break: break-word;
-        overflow-wrap: anywhere;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        min-width: 0;
     }}
     .kanban-card-line {{
         font-size: 0.8rem;
         color: #374151;
         margin-bottom: 4px;
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }}
     </style>
     </head>
