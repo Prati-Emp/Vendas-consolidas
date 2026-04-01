@@ -830,6 +830,7 @@ def render_acompanhamento_juridico_dashboard() -> None:
                     use_container_width=True,
                 ):
                     st.session_state["jur_vig_area_bucket"] = None if selected else b
+                    st.rerun()
 
         df_vig_show = df_vig
         if area_col_vig and area_col_vig in df_vig.columns:
