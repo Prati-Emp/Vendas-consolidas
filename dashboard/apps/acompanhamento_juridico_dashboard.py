@@ -834,9 +834,22 @@ def render_acompanhamento_juridico_dashboard() -> None:
             n = _normalize_text_for_match(v)
             if not n:
                 return "Todo resto"
-            if "villa bella 1" in n or "villabella 1" in n:
+            # Villa Bella: tratar I/II como 1/2 (ex.: "Villa Bella II" == "Villa Bella 2")
+            villa_norm = n.replace(" villa ", " ").replace("-", " ").replace("_", " ")
+            villa_norm = re.sub(r"\s+", " ", villa_norm).strip()
+            if (
+                "villa bella 1" in villa_norm
+                or "villabella 1" in villa_norm
+                or "villa bella i" in villa_norm
+                or "villabella i" in villa_norm
+            ):
                 return "Villa Bella 1"
-            if "villa bella 2" in n or "villabella 2" in n:
+            if (
+                "villa bella 2" in villa_norm
+                or "villabella 2" in villa_norm
+                or "villa bella ii" in villa_norm
+                or "villabella ii" in villa_norm
+            ):
                 return "Villa Bella 2"
             if "carmel" in n:
                 return "Carmel"
