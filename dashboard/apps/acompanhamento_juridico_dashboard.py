@@ -788,8 +788,57 @@ def render_acompanhamento_juridico_dashboard() -> None:
             time_mode="since_start",
         )
     with tab_vig:
+        # Filtro clicável por Área (Vigentes)
+        area_col_vig = _find_column(df_vig, ["JRD - Área", "JRD Area", "Área", "Area"])
+
+        def _area_bucket(v: Any) -> str:
+            n = _normalize_text_for_match(v)
+            if not n:
+                return "Todo resto"
+            if "villa bella 1" in n or "villabella 1" in n:
+                return "Villa Bella 1"
+            if "villa bella 2" in n or "villabella 2" in n:
+                return "Villa Bella 2"
+            if "carmel" in n:
+                return "Carmel"
+            if "ducale" in n:
+                return "Ducale"
+            if "horizont" in n:
+                return "Horizont"
+            return "Todo resto"
+
+        buckets = [
+            "Villa Bella 1",
+            "Villa Bella 2",
+            "Carmel",
+            "Ducale",
+            "Horizont",
+            "Todo resto",
+        ]
+        if "jur_vig_area_bucket" not in st.session_state:
+            st.session_state["jur_vig_area_bucket"] = buckets[0]
+
+        cols = st.columns(len(buckets))
+        for col, b in zip(cols, buckets):
+            with col:
+                selected = st.session_state.get("jur_vig_area_bucket") == b
+                if st.button(
+                    b,
+                    key=f"jur_vig_area_btn_{_normalize_text_for_match(b) or b}",
+                    type="primary" if selected else "secondary",
+                    use_container_width=True,
+                ):
+                    st.session_state["jur_vig_area_bucket"] = b
+
+        df_vig_show = df_vig
+        if area_col_vig and area_col_vig in df_vig.columns:
+            bucket_series = df_vig[area_col_vig].apply(_area_bucket)
+            chosen = st.session_state.get("jur_vig_area_bucket")
+            if chosen:
+                df_vig_show = df_vig.loc[bucket_series == chosen].copy()
+
         _render_kanban_board(
-            df_vig,
+            df_vig_show,
             "Vigentes (Jurídico)",
             desired_status_order=["Vigente", "Em renovação", "Rescindido", "Arquivado"],
             time_mode="until_deadline",
