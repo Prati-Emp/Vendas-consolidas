@@ -223,6 +223,28 @@ def _get_area_like_value(df: pd.DataFrame, row: pd.Series) -> str:
     return area_v or emp_v
 
 
+def _normalize_area_emp_compare(value: Any) -> str:
+    """
+    Normalização específica para comparar Área vs Empreendimento.
+    Trata Villa Bella I/II como equivalente a 1/2 (e vice-versa).
+    """
+    n = _normalize_text_for_match(value)
+    if not n:
+        return ""
+
+    # Normalizar variações do Villa Bella
+    if "villa bella" in n or "villabella" in n:
+        # garantir espaço para facilitar substituições
+        s = n.replace("villabella", "villa bella")
+        s = re.sub(r"\s+", " ", s).strip()
+        # Romanos -> dígitos
+        s = re.sub(r"\bvilla bella ii\b", "villa bella 2", s)
+        s = re.sub(r"\bvilla bella i\b", "villa bella 1", s)
+        return s
+
+    return n
+
+
 def _parse_date_cell(value: Any) -> pd.Timestamp | None:
     """Converte valor em Timestamp normalizado (ou None)."""
     dt = pd.to_datetime(value, errors="coerce")
@@ -454,7 +476,9 @@ def _build_kanban_column_html(
             else ""
         )
         # Se Empreendimento repetir Área, não exibir (evita duplicidade visual)
-        show_emp = bool(emp_v) and (_normalize_text_for_match(emp_v) != _normalize_text_for_match(area_v))
+        show_emp = bool(emp_v) and (
+            _normalize_area_emp_compare(emp_v) != _normalize_area_emp_compare(area_v)
+        )
         emp_html = (
             f'<div class="kanban-card-line">🏗 {emp_txt}</div>'
             if (show_emp and emp_txt and time_mode in {"since_start", "until_deadline"})
