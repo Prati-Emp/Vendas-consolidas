@@ -26,6 +26,12 @@ TAB_DEFINITIONS: List[Dict[str, str]] = [
         "key": "indicadores_gestao_pessoas",
     },
     {
+        "label": "📈 Indicadores Jurídico",
+        "permission": "administrativo",
+        "page_path": "pages/9_Indicadores_Juridico.py",
+        "key": "indicadores_juridico",
+    },
+    {
         "label": "🧑‍💼 Acompanhamento RH",
         # A governança de dados já bloqueia quem não está autorizado (planilhas.quadro_rh_autorizacoes).
         # Então liberamos essa página para qualquer usuário com acesso ao `administrativo`.

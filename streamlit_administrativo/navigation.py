@@ -50,6 +50,12 @@ TAB_DEFINITIONS = [
         "key": "indicadores_gestao_pessoas",
     },
     {
+        "label": "📈 Indicadores Jurídico",
+        "permission": "administrativo",
+        "page_path": "pages/9_Indicadores_Juridico.py",
+        "key": "indicadores_juridico",
+    },
+    {
         "label": "🧑‍💼 Acompanhamento RH",
         "permission": "administrativo.acompanhamento_solicitacoes",
         "page_path": "pages/7_Acompanhamento_RH.py",
