@@ -1097,7 +1097,7 @@ def _render_kanban_board(df: pd.DataFrame, title: str, board_key: str = "") -> N
 
 def render_acompanhamento_solicitacoes_dashboard() -> None:
     """Renderiza o dashboard completo de Acompanhamento RH."""
-    st.subheader("📋 Acompanhamento RH")
+    st.subheader("🧑‍💼 Acompanhamento RH")
 
     with st.spinner("Carregando dados do Jira DHO..."):
         df_raw = load_jira_dho_acompanhamento()

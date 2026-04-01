@@ -26,7 +26,7 @@ TAB_DEFINITIONS: List[Dict[str, str]] = [
         "key": "indicadores_gestao_pessoas",
     },
     {
-        "label": "📋 Acompanhamento RH",
+        "label": "🧑‍💼 Acompanhamento RH",
         # A governança de dados já bloqueia quem não está autorizado (planilhas.quadro_rh_autorizacoes).
         # Então liberamos essa página para qualquer usuário com acesso ao `administrativo`.
         "permission": "administrativo",

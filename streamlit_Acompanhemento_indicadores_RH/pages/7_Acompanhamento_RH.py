@@ -22,7 +22,7 @@ from dashboard.apps.acompanhamento_solicitacoes_dashboard import (  # noqa: E402
 
 st.set_page_config(
     page_title="Indicadores RH - Acompanhamento RH",
-    page_icon="📋",
+    page_icon="🧑‍💼",
     layout="wide",
     initial_sidebar_state="expanded",
 )
