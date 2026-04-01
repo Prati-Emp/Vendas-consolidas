@@ -417,8 +417,12 @@ def _build_kanban_column_html(
 
         area_raw = _to_display_case(row.get(area_col, "")) if area_col else ""
         area = html.escape(area_raw)
-        # Pedido: mostrar "Área" logo abaixo do badge "desde criação" (aba Solicitações)
-        area_html = f'<div class="kanban-card-line">🏢 {area}</div>' if (time_mode == "since_start" and area) else ""
+        # Mostrar "Área" logo abaixo do badge de tempo (Solicitações e Vigentes)
+        area_html = (
+            f'<div class="kanban-card-line">🏢 {area}</div>'
+            if (area and time_mode in {"since_start", "until_deadline"})
+            else ""
+        )
 
         cards_html += f"""
         <div class="kanban-card" style="border-left: 4px solid {badge_color};">
