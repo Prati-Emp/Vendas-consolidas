@@ -815,8 +815,9 @@ def render_acompanhamento_juridico_dashboard() -> None:
             "Horizont",
             "Todo resto",
         ]
+        # Começa sem seleção (mostra tudo). Clicar 1x seleciona; clicar 2x na mesma opção limpa.
         if "jur_vig_area_bucket" not in st.session_state:
-            st.session_state["jur_vig_area_bucket"] = buckets[0]
+            st.session_state["jur_vig_area_bucket"] = None
 
         cols = st.columns(len(buckets))
         for col, b in zip(cols, buckets):
@@ -828,7 +829,7 @@ def render_acompanhamento_juridico_dashboard() -> None:
                     type="primary" if selected else "secondary",
                     use_container_width=True,
                 ):
-                    st.session_state["jur_vig_area_bucket"] = b
+                    st.session_state["jur_vig_area_bucket"] = None if selected else b
 
         df_vig_show = df_vig
         if area_col_vig and area_col_vig in df_vig.columns:
