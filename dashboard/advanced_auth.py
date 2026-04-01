@@ -27,7 +27,7 @@ USERS_DATABASE = {
         "created": "2024-10-21",
         "last_login": None,
         "active": True,
-        "subpages": ["operacoes.jira", "operacoes.compras", "operacoes.solicitacoes", "operacoes.contratos", "administrativo.repasses", "administrativo.contas_pagas", "administrativo.saldo_em_caixa", "administrativo.rh", "administrativo.indicadores_gestao_pessoas", "administrativo.acompanhamento_solicitacoes"]  # Páginas subordinadas permitidas (últimas 2 exclusivas Odair)
+        "subpages": ["operacoes.jira", "operacoes.compras", "operacoes.solicitacoes", "operacoes.contratos", "administrativo.repasses", "administrativo.contas_pagas", "administrativo.saldo_em_caixa", "administrativo.rh", "administrativo.indicadores_gestao_pessoas", "administrativo.acompanhamento_solicitacoes", "administrativo.acompanhamento_juridico"]  # Páginas subordinadas permitidas (últimas 3 exclusivas Odair)
     },
     "gustavo.sordi@grupoprati.com": {
         "password": "Pr@ti2024!Gustavo",
@@ -283,7 +283,7 @@ USERS_DATABASE = {
         "last_login": None,
         "active": True,
         "pages": ["administrativo"],
-        "subpages": ["administrativo.indicadores_gestao_pessoas", "administrativo.acompanhamento_solicitacoes"]
+        "subpages": ["administrativo.indicadores_gestao_pessoas", "administrativo.acompanhamento_solicitacoes", "administrativo.acompanhamento_juridico"]
     }
 }
 
