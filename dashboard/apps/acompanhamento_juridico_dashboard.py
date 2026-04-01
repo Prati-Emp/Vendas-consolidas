@@ -291,14 +291,19 @@ def _build_kanban_column_html(
 
         badge_color = _get_tag_color(motivo_raw or tipo_raw or "")
         resumo_html = f'<div class="kanban-card-resumo">{resumo}</div>' if resumo else ""
+        motivo_norm = _normalize_text_for_match(motivo_raw)
+        tipo_norm = _normalize_text_for_match(tipo_raw)
+        show_motivo = bool(motivo_norm)
+        show_tipo = bool(tipo_norm) and (tipo_norm != motivo_norm)
+
         motivo_html = (
             f'<div class="kanban-card-badge" style="background:{badge_color}; color:#fff;">{motivo}</div>'
-            if motivo
+            if show_motivo
             else ""
         )
         tipo_html = (
             f'<div class="kanban-card-badge" style="background:rgba(99,102,241,0.15); color:#C7D2FE; border:1px solid rgba(99,102,241,0.35);">{tipo}</div>'
-            if tipo
+            if show_tipo
             else ""
         )
         solicitante_html = f'<div class="kanban-card-line">👤 {solicitante}</div>' if solicitante else ""
