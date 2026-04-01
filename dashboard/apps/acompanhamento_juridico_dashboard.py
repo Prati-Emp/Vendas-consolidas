@@ -453,9 +453,11 @@ def _build_kanban_column_html(
             if (area_txt and time_mode in {"since_start", "until_deadline"})
             else ""
         )
+        # Se Empreendimento repetir Área, não exibir (evita duplicidade visual)
+        show_emp = bool(emp_v) and (_normalize_text_for_match(emp_v) != _normalize_text_for_match(area_v))
         emp_html = (
             f'<div class="kanban-card-line">🏗 {emp_txt}</div>'
-            if (emp_txt and time_mode in {"since_start", "until_deadline"})
+            if (show_emp and emp_txt and time_mode in {"since_start", "until_deadline"})
             else ""
         )
 
