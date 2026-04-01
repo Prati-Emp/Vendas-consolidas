@@ -197,6 +197,72 @@ def _split_solicitacoes_vs_vigentes(df: pd.DataFrame, status_col: str) -> tuple[
     return df_solic, df_vig
 
 
+def _parse_date_cell(value: Any) -> pd.Timestamp | None:
+    """Converte valor em Timestamp normalizado (ou None)."""
+    dt = pd.to_datetime(value, errors="coerce")
+    if pd.isna(dt):
+        return None
+    try:
+        return dt.normalize()
+    except Exception:
+        return pd.Timestamp(dt).normalize()
+
+
+def _tempo_badge_since_start(start_value: Any) -> tuple[str, str] | None:
+    """
+    Badge: X dias desde criação (Start_date).
+    Cores:
+    - até 7 dias: verde
+    - até 15 dias: amarelo
+    - depois: vermelho
+    """
+    start_dt = _parse_date_cell(start_value)
+    if start_dt is None:
+        return None
+    today = pd.Timestamp.today().normalize()
+    days = int((today - start_dt).days)
+    if days < 0:
+        days = 0
+
+    if days <= 7:
+        bg, fg = "#DCFCE7", "#166534"
+    elif days <= 15:
+        bg, fg = "#FEF3C7", "#92400E"
+    else:
+        bg, fg = "#FEE2E2", "#991B1B"
+
+    return (f"⏱ {days} dias desde criação", f"background:{bg}; color:{fg}; border:1px solid rgba(0,0,0,0.08);")
+
+
+def _tempo_badge_until_deadline(deadline_value: Any) -> tuple[str, str] | None:
+    """
+    Badge: contagem regressiva até a Data limite.
+    Cores (dias restantes):
+    - 30+ dias: verde
+    - 15-29 dias: amarelo
+    - 0-14 dias: vermelho
+    - atrasado: vermelho (mostra "Atrasado X dias")
+    """
+    end_dt = _parse_date_cell(deadline_value)
+    if end_dt is None:
+        return None
+    today = pd.Timestamp.today().normalize()
+    remaining = int((end_dt - today).days)
+
+    if remaining < 0:
+        bg, fg = "#FEE2E2", "#991B1B"
+        return (f"⏰ Atrasado {abs(remaining)} dias", f"background:{bg}; color:{fg}; border:1px solid rgba(0,0,0,0.08);")
+
+    if remaining >= 30:
+        bg, fg = "#DCFCE7", "#166534"
+    elif remaining >= 15:
+        bg, fg = "#FEF3C7", "#92400E"
+    else:
+        bg, fg = "#FEE2E2", "#991B1B"
+
+    return (f"⏰ Faltam {remaining} dias", f"background:{bg}; color:{fg}; border:1px solid rgba(0,0,0,0.08);")
+
+
 @st.cache_data(ttl=600)
 def load_jira_juridico_acompanhamento() -> pd.DataFrame:
     """Carrega dados da view administracao.Jira_projeto_juridico_consolidado."""
@@ -210,7 +276,13 @@ def load_jira_juridico_acompanhamento() -> pd.DataFrame:
 
 
 def _build_kanban_column_html(
-    df: pd.DataFrame, status_col: str, status_val: str, chave_col: str, resumo_col: str
+    df: pd.DataFrame,
+    status_col: str,
+    status_val: str,
+    chave_col: str,
+    resumo_col: str,
+    *,
+    time_mode: str = "",
 ) -> str:
     df_status = df[df[status_col] == status_val]
     if df_status.empty:
@@ -280,6 +352,7 @@ def _build_kanban_column_html(
             "start",
         ],
     )
+    start_col = _find_column(df, ["Start_date", "start date", "data de inicio", "data início", "inicio", "início"])
 
     cards_html = ""
     for _, row in df_status.iterrows():
@@ -301,6 +374,18 @@ def _build_kanban_column_html(
 
         tipo_raw = _to_display_case(row.get(tipo_col, "")) if tipo_col else ""
         tipo = html.escape(tipo_raw)
+
+        tempo_badge_html = ""
+        if time_mode == "since_start":
+            badge = _tempo_badge_since_start(row.get(start_col, None) if start_col else None)
+            if badge:
+                txt, style = badge
+                tempo_badge_html = f'<div class="kanban-card-badge" style="{style}">{html.escape(txt)}</div>'
+        elif time_mode == "until_deadline":
+            badge = _tempo_badge_until_deadline(row.get(data_col, None) if data_col else None)
+            if badge:
+                txt, style = badge
+                tempo_badge_html = f'<div class="kanban-card-badge" style="{style}">{html.escape(txt)}</div>'
 
         data_raw = _clean_text(row.get(data_col, "")) if data_col else ""
         data_txt = html.escape(data_raw)
@@ -324,13 +409,17 @@ def _build_kanban_column_html(
         )
         solicitante_html = f'<div class="kanban-card-line">👤 {solicitante}</div>' if solicitante else ""
         responsavel_html = f'<div class="kanban-card-line">Resp: {responsavel}</div>' if responsavel else ""
-        data_html = f'<div class="kanban-card-line">🗓 {data_txt}</div>' if data_txt else ""
+        if time_mode == "until_deadline":
+            data_html = f'<div class="kanban-card-line">📅 {data_txt}</div>' if data_txt else ""
+        else:
+            data_html = ""
 
         cards_html += f"""
         <div class="kanban-card" style="border-left: 4px solid {badge_color};">
             <div class="kanban-card-chave">{chave}</div>
             {resumo_html}
             <div class="kanban-card-meta">
+                {tempo_badge_html}
                 {motivo_html}
                 {tipo_html}
             </div>
@@ -347,6 +436,8 @@ def _render_kanban_board(
     title: str,
     desired_status_order: List[str] | None = None,
     status_display_map: Dict[str, str] | None = None,
+    *,
+    time_mode: str = "",
 ) -> None:
     if df.empty:
         st.info(f"Nenhum item encontrado para **{title}**.")
@@ -398,7 +489,14 @@ def _render_kanban_board(
     headers_html = ""
     cards_columns_html = ""
     for status_val in statuses:
-        cards = _build_kanban_column_html(df, status_col, status_val, chave_col, resumo_col)
+        cards = _build_kanban_column_html(
+            df,
+            status_col,
+            status_val,
+            chave_col,
+            resumo_col,
+            time_mode=time_mode,
+        )
         label = html.escape(_display_label_for_status(status_val, status_display_map))
         n_items = int((df[status_col] == status_val).sum())
         headers_html += f"""
@@ -676,11 +774,13 @@ def render_acompanhamento_juridico_dashboard() -> None:
                 "Rejeitados",
             ],
             status_display_map={"Backlog": "SOLICITAÇÕES"},
+            time_mode="since_start",
         )
     with tab_vig:
         _render_kanban_board(
             df_vig,
             "Vigentes (Jurídico)",
             desired_status_order=["Vigente", "Em renovação", "Rescindido", "Arquivado"],
+            time_mode="until_deadline",
         )
 
