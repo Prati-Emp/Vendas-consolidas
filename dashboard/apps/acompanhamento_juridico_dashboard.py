@@ -263,7 +263,23 @@ def _build_kanban_column_html(
     responsavel_col = _find_column(df, ["responsavel", "responsável", "owner"])
     solicitante_col = _find_column(df, ["solicitante", "requerente", "nome", "colaborador"])
     tipo_col = _find_column(df, ["tipo de contrato", "tipo", "contrato"])
-    data_col = _find_column(df, ["data de criacao", "data criação", "cria", "created", "start"])
+    # Data exibida no card: preferir "Data limite" (prazo), com fallback para criação/início
+    data_col = _find_column(
+        df,
+        [
+            "JRD - Data limite",
+            "JRD Data limite",
+            "Data limite",
+            "data limite",
+            "deadline",
+            "due date",
+            "data de criacao",
+            "data criação",
+            "cria",
+            "created",
+            "start",
+        ],
+    )
 
     cards_html = ""
     for _, row in df_status.iterrows():
