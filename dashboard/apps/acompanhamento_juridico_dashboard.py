@@ -197,6 +197,28 @@ def _split_solicitacoes_vs_vigentes(df: pd.DataFrame, status_col: str) -> tuple[
     return df_solic, df_vig
 
 
+def _get_area_like_value(df: pd.DataFrame, row: pd.Series) -> str:
+    """Retorna Área; se vazio, usa Empreendimento (fallback)."""
+    area_col = _find_column(df, ["JRD - Área", "JRD Area", "Área", "Area"])
+    emp_col = _find_column(df, ["JRD - Empreendimento", "JRD Empreendimento", "Empreendimento"])
+
+    def _pick(col_name: str) -> str:
+        if not col_name or col_name not in df.columns:
+            return ""
+        v = row.get(col_name, "")
+        return str(v).strip() if v is not None else ""
+
+    area_v = _pick(area_col)
+    if area_v and area_v.lower() not in {"none", "nan", "nat", "<na>"}:
+        return area_v
+
+    emp_v = _pick(emp_col)
+    if emp_v and emp_v.lower() not in {"none", "nan", "nat", "<na>"}:
+        return emp_v
+
+    return ""
+
+
 def _parse_date_cell(value: Any) -> pd.Timestamp | None:
     """Converte valor em Timestamp normalizado (ou None)."""
     dt = pd.to_datetime(value, errors="coerce")
@@ -415,7 +437,8 @@ def _build_kanban_column_html(
         else:
             data_html = ""
 
-        area_raw = _to_display_case(row.get(area_col, "")) if area_col else ""
+        area_like = _get_area_like_value(df, row)
+        area_raw = _to_display_case(area_like) if area_like else ""
         area = html.escape(area_raw)
         # Mostrar "Área" logo abaixo do badge de tempo (Solicitações e Vigentes)
         area_html = (
@@ -790,6 +813,7 @@ def render_acompanhamento_juridico_dashboard() -> None:
     with tab_vig:
         # Filtro clicável por Área (Vigentes)
         area_col_vig = _find_column(df_vig, ["JRD - Área", "JRD Area", "Área", "Area"])
+        emp_col_vig = _find_column(df_vig, ["JRD - Empreendimento", "JRD Empreendimento", "Empreendimento"])
 
         def _area_bucket(v: Any) -> str:
             n = _normalize_text_for_match(v)
@@ -833,8 +857,8 @@ def render_acompanhamento_juridico_dashboard() -> None:
                     st.rerun()
 
         df_vig_show = df_vig
-        if area_col_vig and area_col_vig in df_vig.columns:
-            bucket_series = df_vig[area_col_vig].apply(_area_bucket)
+        if (area_col_vig and area_col_vig in df_vig.columns) or (emp_col_vig and emp_col_vig in df_vig.columns):
+            bucket_series = df_vig.apply(lambda r: _area_bucket(_get_area_like_value(df_vig, r)), axis=1)
             chosen = st.session_state.get("jur_vig_area_bucket")
             if chosen:
                 df_vig_show = df_vig.loc[bucket_series == chosen].copy()
