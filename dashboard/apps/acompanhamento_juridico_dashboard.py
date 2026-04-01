@@ -361,7 +361,17 @@ def _render_kanban_board(
 
     # Colunas principais (heurística)
     chave_col = _find_column(df, ["chave", "key"]) or ("Chave" if "Chave" in df.columns else (df.columns[0] if len(df.columns) > 0 else ""))
-    resumo_col = _find_column(df, ["resumo", "summary", "titul", "título"]) or ("Resumo" if "Resumo" in df.columns else "")
+    resumo_col = _find_column(
+        df,
+        [
+            "JRD - Resumo",
+            "JRD Resumo",
+            "resumo",
+            "summary",
+            "titul",
+            "título",
+        ],
+    ) or ("Resumo" if "Resumo" in df.columns else "")
 
     # Altura dinâmica
     max_cards_in_column = 0
