@@ -102,12 +102,13 @@ def _display_label_for_status(status_val: Any, display_map: Dict[str, str] | Non
     if not raw:
         return ""
     if not display_map:
-        return raw
+        return raw.upper()
     n = _normalize_text_for_match(raw)
     for k, v in display_map.items():
         if _normalize_text_for_match(k) == n:
-            return str(v).strip() or raw
-    return raw
+            mapped = str(v).strip() or raw
+            return mapped.upper()
+    return raw.upper()
 
 
 def _split_solicitacoes_vs_vigentes(df: pd.DataFrame, status_col: str) -> tuple[pd.DataFrame, pd.DataFrame]:
