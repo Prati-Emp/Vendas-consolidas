@@ -1,4 +1,4 @@
-"""Página de Acompanhamento de Solicitações do dashboard de Administrativo."""
+"""Página de Acompanhamento RH do dashboard de Administrativo."""
 
 import sys
 from pathlib import Path
@@ -21,7 +21,7 @@ from dashboard.apps.acompanhamento_solicitacoes_dashboard import (  # noqa: E402
 )
 
 st.set_page_config(
-    page_title="Administrativo - Acompanhamento de Solicitações",
+    page_title="Administrativo - Acompanhamento RH",
     page_icon="📋",
     layout="wide",
     initial_sidebar_state="expanded",

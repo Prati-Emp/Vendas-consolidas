@@ -1,5 +1,5 @@
 """
-Dashboard de Acompanhamento de Solicitações - Quadros Kanban do Jira DHO.
+Dashboard de Acompanhamento RH - Quadros Kanban do Jira DHO.
 Exibe 4 quadros: Rotinas Trabalhistas, Movimentações (MC), Requisição de Vaga (RC), Treinamentos (T&D).
 """
 
@@ -1096,8 +1096,8 @@ def _render_kanban_board(df: pd.DataFrame, title: str, board_key: str = "") -> N
 
 
 def render_acompanhamento_solicitacoes_dashboard() -> None:
-    """Renderiza o dashboard completo de Acompanhamento de Solicitações."""
-    st.subheader("📋 Acompanhamento de Solicitações")
+    """Renderiza o dashboard completo de Acompanhamento RH."""
+    st.subheader("📋 Acompanhamento RH")
 
     with st.spinner("Carregando dados do Jira DHO..."):
         df_raw = load_jira_dho_acompanhamento()

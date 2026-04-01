@@ -50,9 +50,9 @@ TAB_DEFINITIONS = [
         "key": "indicadores_gestao_pessoas",
     },
     {
-        "label": "📋 Acompanhamento de Solicitações",
+        "label": "📋 Acompanhamento RH",
         "permission": "administrativo.acompanhamento_solicitacoes",
-        "page_path": "pages/7_Acompanhamento_Solicitacoes.py",
+        "page_path": "pages/7_Acompanhamento_RH.py",
         "key": "acompanhamento_solicitacoes",
     },
     {

@@ -3,7 +3,7 @@
 Mini-app standalone baseado na estrutura do `streamlit_administrativo`, mas com **somente duas páginas**:
 
 - `Indicadores Gestão de Pessoas`
-- `Acompanhamento de Solicitações`
+- `Acompanhamento RH`
 
 ## Deploy no Streamlit Cloud
 
