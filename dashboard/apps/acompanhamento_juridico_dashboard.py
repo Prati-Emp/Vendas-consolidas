@@ -96,6 +96,20 @@ def _ordered_statuses_with_extras(
     return statuses_out + extras
 
 
+def _display_label_for_status(status_val: Any, display_map: Dict[str, str] | None) -> str:
+    """Retorna rótulo de exibição para um status (usa normalização para casar)."""
+    raw = str(status_val).strip()
+    if not raw:
+        return ""
+    if not display_map:
+        return raw
+    n = _normalize_text_for_match(raw)
+    for k, v in display_map.items():
+        if _normalize_text_for_match(k) == n:
+            return str(v).strip() or raw
+    return raw
+
+
 def _split_solicitacoes_vs_vigentes(df: pd.DataFrame, status_col: str) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
     Divide o DataFrame em:
@@ -198,7 +212,8 @@ def _build_kanban_column_html(
 
     cards_html = ""
     for _, row in df_status.iterrows():
-        chave = html.escape(_clean_text(row.get(chave_col, "")) if chave_col else "")
+        chave_txt = _clean_text(row.get(chave_col, "")) if chave_col else ""
+        chave = html.escape(chave_txt.upper() if chave_txt else "")
         resumo_raw = _to_display_case(row.get(resumo_col, "")) if resumo_col else ""
         resumo_raw = resumo_raw[:140] + ("..." if len(resumo_raw) > 140 else "")
         resumo = html.escape(resumo_raw)
@@ -251,7 +266,12 @@ def _build_kanban_column_html(
     return cards_html if cards_html else '<div style="color: #888; font-style: italic; padding: 8px;">Nenhum item</div>'
 
 
-def _render_kanban_board(df: pd.DataFrame, title: str, desired_status_order: List[str] | None = None) -> None:
+def _render_kanban_board(
+    df: pd.DataFrame,
+    title: str,
+    desired_status_order: List[str] | None = None,
+    status_display_map: Dict[str, str] | None = None,
+) -> None:
     if df.empty:
         st.info(f"Nenhum item encontrado para **{title}**.")
         return
@@ -293,7 +313,7 @@ def _render_kanban_board(df: pd.DataFrame, title: str, desired_status_order: Lis
     cards_columns_html = ""
     for status_val in statuses:
         cards = _build_kanban_column_html(df, status_col, status_val, chave_col, resumo_col)
-        label = html.escape(str(status_val).strip())
+        label = html.escape(_display_label_for_status(status_val, status_display_map))
         n_items = int((df[status_col] == status_val).sum())
         headers_html += f"""
         <div class="kanban-column kanban-column-header-cell">
@@ -554,6 +574,7 @@ def render_acompanhamento_juridico_dashboard() -> None:
                 "Finalizados",
                 "Rejeitados",
             ],
+            status_display_map={"Backlog": "SOLICITAÇÕES"},
         )
     with tab_vig:
         _render_kanban_board(
