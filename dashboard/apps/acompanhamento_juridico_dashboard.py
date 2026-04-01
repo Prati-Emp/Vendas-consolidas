@@ -806,7 +806,18 @@ def render_acompanhamento_juridico_dashboard() -> None:
         st.markdown("### 🔎 Filtros")
         status_col = _get_status_column(df_raw)
         resp_col = _find_column(df_raw, ["responsavel", "responsável"])
-        motivo_col = _find_column(df_raw, ["jrd motivo da requisição consolidada", "motivo", "requisi"])
+        motivo_col = _find_column(
+            df_raw,
+            [
+                "motivo consolidado",
+                "jrd motivo consolidado",
+                "jrd - motivo consolidado",
+                "jrd motivo da requisição consolidada",
+                "motivo da requisição consolidada",
+                "motivo",
+                "requisi",
+            ],
+        )
         area_col = _find_column(df_raw, ["JRD - Área", "JRD Area", "Área", "Area"])
         emp_col = _find_column(df_raw, ["JRD - Empreendimento", "JRD Empreendimento", "Empreendimento"])
 
@@ -826,18 +837,18 @@ def render_acompanhamento_juridico_dashboard() -> None:
 
         # Ordem solicitada: Motivo no topo; remove filtro por Status; adiciona Área e Empreendimento
         sel_motivo = _multi("Motivo", motivo_col, "jur_filter_motivo") if motivo_col else []
-        sel_resp = _multi("Responsável", resp_col, "jur_filter_resp") if resp_col else []
         sel_area = _multi("Área", area_col, "jur_filter_area") if area_col else []
         sel_emp = _multi("Empreendimento", emp_col, "jur_filter_emp") if emp_col else []
+        sel_resp = _multi("Responsável", resp_col, "jur_filter_resp") if resp_col else []
 
-        if sel_resp and resp_col:
-            df_f = df_f[df_f[resp_col].astype(str).str.strip().isin(sel_resp)]
         if sel_motivo and motivo_col:
             df_f = df_f[df_f[motivo_col].astype(str).str.strip().isin(sel_motivo)]
         if sel_area and area_col:
             df_f = df_f[df_f[area_col].astype(str).str.strip().isin(sel_area)]
         if sel_emp and emp_col:
             df_f = df_f[df_f[emp_col].astype(str).str.strip().isin(sel_emp)]
+        if sel_resp and resp_col:
+            df_f = df_f[df_f[resp_col].astype(str).str.strip().isin(sel_resp)]
 
     # Abas internas: Solicitações x Vigentes (com base na coluna Status)
     tab_solic, tab_vig = st.tabs(["📩 Solicitações", "📌 Vigentes"])
