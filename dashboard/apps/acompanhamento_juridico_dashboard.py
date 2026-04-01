@@ -86,7 +86,12 @@ def _filter_by_row_email_access(df: pd.DataFrame) -> pd.DataFrame:
     if not user_email:
         return df.iloc[0:0].copy()
 
-    bypass = {"odair.santos@grupoprati.com", "odair2d@hotmail.com"}
+    bypass = {
+        "odair.santos@grupoprati.com",
+        "odair2d@hotmail.com",
+        "gustavo.sordi@grupoprati.com",
+        "joao.fantinel@grupoprati.com",
+    }
     if user_email in bypass:
         return df
 
