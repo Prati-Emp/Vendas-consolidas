@@ -170,128 +170,136 @@ def render_indicadores_juridico_dashboard() -> None:
 
     st.divider()
 
+    # Cria as abas para os indicadores
+    tab1, tab2, tab3, tab4 = st.tabs(
+        [
+            "✅ Finalizados",
+            "⏳ Tempo de elaboração",
+            "👤 Elaborada vs Conferência",
+            "❌ Rejeitadas",
+        ]
+    )
+
     # 1) QTD finalizados por mês: linhas com "Data de fechamento" preenchida (proxy de finalizado)
-    st.subheader("✅ Finalizados (Visão Geral)")
-    if not data_fechamento_col:
-        st.info("Coluna 'Data de fechamento' não encontrada na view.")
-    else:
-        fin = df_f.copy()
-        fin["_dt_fech"] = pd.to_datetime(fin[data_fechamento_col], errors="coerce")
-        fin = fin.loc[fin["_dt_fech"].notna()].copy()
-        if fin.empty:
-            st.info("Nenhuma linha com 'Data de fechamento' informada.")
+    with tab1:
+        st.subheader("✅ Finalizados (Visão Geral)")
+        if not data_fechamento_col:
+            st.info("Coluna 'Data de fechamento' não encontrada na view.")
         else:
-            fin["Mês"] = fin["_dt_fech"].dt.to_period("M").astype(str)
-            fin["Tipo de contrato"] = (
-                fin[tipo_contrato_col].astype(str).str.strip() if tipo_contrato_col else "Não informado"
-            )
-            fin["Motivo"] = fin[motivo_col].astype(str).str.strip() if motivo_col else "Não informado"
-            fin["Área"] = fin[area_col_ind].astype(str).str.strip() if area_col_ind else "Não informado"
-            fin["Empreendimento"] = fin[emp_col_ind].astype(str).str.strip() if emp_col_ind else "Não informado"
-            for c in ["Tipo de contrato", "Motivo", "Área", "Empreendimento"]:
-                fin[c] = fin[c].replace({"": "Não informado", "nan": "Não informado", "None": "Não informado"})
-
-            # Gráfico de evolução mensal
-            st.markdown("##### Evolução Mensal")
-            df_mes = fin.groupby("Mês").size().reset_index(name="Qtd").sort_values("Mês")
-            st.bar_chart(df_mes.set_index("Mês"), y="Qtd")
-
-            st.markdown("##### Detalhamento do Período")
-            col1, col2 = st.columns(2)
-
-            with col1:
-                st.markdown("**📍 Por Motivo / Tipo de Contrato**")
-                df_motivo = (
-                    fin.groupby(["Motivo", "Tipo de contrato"])
-                    .size()
-                    .reset_index(name="Qtd")
-                    .sort_values("Qtd", ascending=False)
+            fin = df_f.copy()
+            fin["_dt_fech"] = pd.to_datetime(fin[data_fechamento_col], errors="coerce")
+            fin = fin.loc[fin["_dt_fech"].notna()].copy()
+            if fin.empty:
+                st.info("Nenhuma linha com 'Data de fechamento' informada.")
+            else:
+                fin["Mês"] = fin["_dt_fech"].dt.to_period("M").astype(str)
+                fin["Tipo de contrato"] = (
+                    fin[tipo_contrato_col].astype(str).str.strip() if tipo_contrato_col else "Não informado"
                 )
-                st.dataframe(df_motivo, hide_index=True, use_container_width=True, key="jur_ind_fin_motivo")
+                fin["Motivo"] = fin[motivo_col].astype(str).str.strip() if motivo_col else "Não informado"
+                fin["Área"] = fin[area_col_ind].astype(str).str.strip() if area_col_ind else "Não informado"
+                fin["Empreendimento"] = fin[emp_col_ind].astype(str).str.strip() if emp_col_ind else "Não informado"
+                for c in ["Tipo de contrato", "Motivo", "Área", "Empreendimento"]:
+                    fin[c] = fin[c].replace({"": "Não informado", "nan": "Não informado", "None": "Não informado"})
 
-            with col2:
-                st.markdown("**🏢 Por Área / Empreendimento**")
-                df_area = (
-                    fin.groupby(["Área", "Empreendimento"])
-                    .size()
-                    .reset_index(name="Qtd")
-                    .sort_values("Qtd", ascending=False)
-                )
-                st.dataframe(df_area, hide_index=True, use_container_width=True, key="jur_ind_fin_area")
+                # Gráfico de evolução mensal
+                st.markdown("##### Evolução Mensal")
+                df_mes = fin.groupby("Mês").size().reset_index(name="Qtd").sort_values("Mês")
+                st.bar_chart(df_mes.set_index("Mês"), y="Qtd")
 
-    st.divider()
+                st.markdown("##### Detalhamento do Período")
+                col1, col2 = st.columns(2)
+
+                with col1:
+                    st.markdown("**📍 Por Motivo / Tipo de Contrato**")
+                    df_motivo = (
+                        fin.groupby(["Motivo", "Tipo de contrato"])
+                        .size()
+                        .reset_index(name="Qtd")
+                        .sort_values("Qtd", ascending=False)
+                    )
+                    st.dataframe(df_motivo, hide_index=True, use_container_width=True, key="jur_ind_fin_motivo")
+
+                with col2:
+                    st.markdown("**🏢 Por Área / Empreendimento**")
+                    df_area = (
+                        fin.groupby(["Área", "Empreendimento"])
+                        .size()
+                        .reset_index(name="Qtd")
+                        .sort_values("Qtd", ascending=False)
+                    )
+                    st.dataframe(df_area, hide_index=True, use_container_width=True, key="jur_ind_fin_area")
 
     # 2) Tempo de elaboração (proxy: hoje ou data limite - start_date) por tipo contrato
-    st.subheader("⏳ Tempo de elaboração (dias) por tipo de contrato")
-    if not created_col:
-        st.info("Coluna de início/criação não encontrada (Start_date/Criado em).")
-    else:
-        start_dt = pd.to_datetime(df_f[created_col], errors="coerce")
-        end_dt = pd.Timestamp.today().normalize()
-        if duedate_col and duedate_col in df_f.columns:
-            # usa data limite quando existir, senão hoje (proxy simples)
-            due = pd.to_datetime(df_f[duedate_col], errors="coerce").dt.normalize()
-            end_series = due.fillna(end_dt)
+    with tab2:
+        st.subheader("⏳ Tempo de elaboração (dias) por tipo de contrato")
+        if not created_col:
+            st.info("Coluna de início/criação não encontrada (Start_date/Criado em).")
         else:
-            end_series = pd.Series(end_dt, index=df_f.index)
-        dias = (end_series - start_dt.dt.normalize()).dt.days
-        dias = dias.where(dias.notna() & (dias >= 0))
+            start_dt = pd.to_datetime(df_f[created_col], errors="coerce")
+            end_dt = pd.Timestamp.today().normalize()
+            if duedate_col and duedate_col in df_f.columns:
+                # usa data limite quando existir, senão hoje (proxy simples)
+                due = pd.to_datetime(df_f[duedate_col], errors="coerce").dt.normalize()
+                end_series = due.fillna(end_dt)
+            else:
+                end_series = pd.Series(end_dt, index=df_f.index)
+            dias = (end_series - start_dt.dt.normalize()).dt.days
+            dias = dias.where(dias.notna() & (dias >= 0))
 
-        tipo_series = df_f[tipo_contrato_col].astype(str).str.strip() if tipo_contrato_col else pd.Series("Não informado", index=df_f.index)
-        tbl_tempo = (
-            pd.DataFrame({"Tipo de contrato": tipo_series, "Dias": dias})
-            .dropna(subset=["Dias"])
-            .groupby("Tipo de contrato", dropna=False)["Dias"]
-            .agg(Qtd="count", Media="mean", Mediana="median", P90=lambda s: float(s.quantile(0.9)))
-            .reset_index()
-            .sort_values("Media", ascending=False)
-        )
-        if tbl_tempo.empty:
-            st.info("Sem dados suficientes para calcular tempo de elaboração.")
-        else:
-            st.dataframe(tbl_tempo, hide_index=True, use_container_width=True, key="jur_ind_tempo_elaboracao")
-
-    st.divider()
+            tipo_series = df_f[tipo_contrato_col].astype(str).str.strip() if tipo_contrato_col else pd.Series("Não informado", index=df_f.index)
+            tbl_tempo = (
+                pd.DataFrame({"Tipo de contrato": tipo_series, "Dias": dias})
+                .dropna(subset=["Dias"])
+                .groupby("Tipo de contrato", dropna=False)["Dias"]
+                .agg(Qtd="count", Media="mean", Mediana="median", P90=lambda s: float(s.quantile(0.9)))
+                .reset_index()
+                .sort_values("Media", ascending=False)
+            )
+            if tbl_tempo.empty:
+                st.info("Sem dados suficientes para calcular tempo de elaboração.")
+            else:
+                st.dataframe(tbl_tempo, hide_index=True, use_container_width=True, key="jur_ind_tempo_elaboracao")
 
     # 3) Qtd elaborada e conferida por colaborador (Status = Em elaboração / Conferência)
-    st.subheader("👤 Elaborada vs Conferência por colaborador")
-    if not status_col or not responsavel_col:
-        st.info("Colunas de Status/Responsável não encontradas.")
-    else:
-        s_norm = df_f[status_col].astype(str).map(_normalize)
-        mask_ec = s_norm.isin({_normalize("Em elaboração"), _normalize("Conferência")})
-        ec = df_f.loc[mask_ec].copy()
-        if ec.empty:
-            st.info("Sem itens em Elaboração/Conferência.")
+    with tab3:
+        st.subheader("👤 Elaborada vs Conferência por colaborador")
+        if not status_col or not responsavel_col:
+            st.info("Colunas de Status/Responsável não encontradas.")
         else:
-            ec["_status"] = ec[status_col].astype(str).str.strip()
-            ec["_resp"] = ec[responsavel_col].astype(str).str.strip()
-            tbl_ec = (
-                ec.groupby(["_resp", "_status"])
-                .size()
-                .reset_index(name="Qtd")
-                .sort_values(["Qtd"], ascending=False)
-            )
-            st.dataframe(tbl_ec, hide_index=True, use_container_width=True, key="jur_ind_elab_conf_resp")
-
-    st.divider()
+            s_norm = df_f[status_col].astype(str).map(_normalize)
+            mask_ec = s_norm.isin({_normalize("Em elaboração"), _normalize("Conferência")})
+            ec = df_f.loc[mask_ec].copy()
+            if ec.empty:
+                st.info("Sem itens em Elaboração/Conferência.")
+            else:
+                ec["_status"] = ec[status_col].astype(str).str.strip()
+                ec["_resp"] = ec[responsavel_col].astype(str).str.strip()
+                tbl_ec = (
+                    ec.groupby(["_resp", "_status"])
+                    .size()
+                    .reset_index(name="Qtd")
+                    .sort_values(["Qtd"], ascending=False)
+                )
+                st.dataframe(tbl_ec, hide_index=True, use_container_width=True, key="jur_ind_elab_conf_resp")
 
     # 4) Qtd rejeitada por contrato e obra
-    st.subheader("❌ Rejeitadas por tipo de contrato e obra")
-    if not status_col:
-        st.info("Coluna de Status não encontrada.")
-    else:
-        rej = df_f.loc[df_f[status_col].apply(_status_is_rejeitado)].copy()
-        if rej.empty:
-            st.info("Sem itens rejeitados.")
+    with tab4:
+        st.subheader("❌ Rejeitadas por tipo de contrato e obra")
+        if not status_col:
+            st.info("Coluna de Status não encontrada.")
         else:
-            rej["_tipo"] = rej[tipo_contrato_col].astype(str).str.strip() if tipo_contrato_col else "Não informado"
-            rej["_obra"] = rej[obra_col].astype(str).str.strip() if obra_col else "Não informado"
-            tbl_rej = (
-                rej.groupby(["_tipo", "_obra"], dropna=False)
-                .size()
-                .reset_index(name="Qtd")
-                .sort_values("Qtd", ascending=False)
-            )
-            st.dataframe(tbl_rej, hide_index=True, use_container_width=True, key="jur_ind_rejeitados")
+            rej = df_f.loc[df_f[status_col].apply(_status_is_rejeitado)].copy()
+            if rej.empty:
+                st.info("Sem itens rejeitados.")
+            else:
+                rej["_tipo"] = rej[tipo_contrato_col].astype(str).str.strip() if tipo_contrato_col else "Não informado"
+                rej["_obra"] = rej[obra_col].astype(str).str.strip() if obra_col else "Não informado"
+                tbl_rej = (
+                    rej.groupby(["_tipo", "_obra"], dropna=False)
+                    .size()
+                    .reset_index(name="Qtd")
+                    .sort_values("Qtd", ascending=False)
+                )
+                st.dataframe(tbl_rej, hide_index=True, use_container_width=True, key="jur_ind_rejeitados")
 
