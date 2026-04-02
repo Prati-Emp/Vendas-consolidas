@@ -114,9 +114,10 @@ def _empreendimento_label_tabela(value: Any) -> str:
     return t
 
 
-# Margens fixas para os 3 gráficos alinharem entre si (eixo Y no mesmo offset)
-_JUR_HBAR_ML = 268
-_JUR_HBAR_MR = 58
+# Margens fixas para os 3 gráficos alinharem entre si. Evitar ML excessivo: em colunas estreitas do Streamlit
+# rouba a área útil e as barras ficam “finas”; ~185–195px costuma equilibrar rótulo vs amplitude.
+_JUR_HBAR_ML = 188
+_JUR_HBAR_MR = 52
 _JUR_HBAR_TITLE_SZ = 17
 _JUR_HBAR_Y_TICK_SZ = 13
 _JUR_HBAR_BAR_TEXT_SZ = 13
@@ -177,7 +178,8 @@ def _plot_juridico_hbar_qtd(title: str, df: pd.DataFrame, label_col: str, *, max
         # Sem eixo X visível (evita rótulos/espelhamento estranho no Streamlit); valores ficam nas barras + hover
         xaxis=dict(
             visible=False,
-            range=[0, x_max * 1.2] if x_max else None,
+            # Menos folga à direita => barra máxima usa mais largura do gráfico
+            range=[0, max(x_max * 1.06, 1)] if x_max else None,
             fixedrange=True,
         ),
         yaxis=dict(
@@ -186,7 +188,7 @@ def _plot_juridico_hbar_qtd(title: str, df: pd.DataFrame, label_col: str, *, max
             tickfont=dict(size=_JUR_HBAR_Y_TICK_SZ, color="#E0E0E0"),
         ),
         showlegend=False,
-        bargap=0.28,
+        bargap=0.22,
     )
     return fig
 
