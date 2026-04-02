@@ -220,47 +220,115 @@ def render_indicadores_juridico_dashboard() -> None:
                 for c in ["Tipo de contrato", "Motivo", "Área", "Empreendimento"]:
                     fin[c] = fin[c].replace({"": "Não informado", "nan": "Não informado", "None": "Não informado"})
 
+                # Base com chave de empreendimento padronizada (alinhada à tabela «Por Empreendimento»)
+                fin_base = fin.copy()
+                fin_base["_emp_filt"] = fin_base["Empreendimento"].map(_empreendimento_label_tabela)
+
+                mot_opts = sorted({str(x) for x in fin_base["Motivo"].tolist() if str(x).strip()})
+                area_opts = sorted({str(x) for x in fin_base["Área"].tolist() if str(x).strip()})
+                emp_opts = sorted({str(x) for x in fin_base["_emp_filt"].tolist() if str(x).strip()})
+
                 st.markdown("##### Detalhamento do Período")
+                st.caption(
+                    "Filtros em conjunto: Motivo, Área e Empreendimento aplicam-se a **todas** as tabelas desta seção e ao gráfico de evolução mensal."
+                )
+                f1, f2, f3 = st.columns(3)
+                with f1:
+                    sel_mot_det = st.multiselect(
+                        "Filtrar por motivo",
+                        options=mot_opts,
+                        default=[],
+                        key="jur_fin_det_motivo",
+                        placeholder="Todos",
+                    )
+                with f2:
+                    sel_area_det = st.multiselect(
+                        "Filtrar por área",
+                        options=area_opts,
+                        default=[],
+                        key="jur_fin_det_area",
+                        placeholder="Todos",
+                    )
+                with f3:
+                    sel_emp_det = st.multiselect(
+                        "Filtrar por empreendimento",
+                        options=emp_opts,
+                        default=[],
+                        key="jur_fin_det_emp",
+                        placeholder="Todos",
+                    )
+
+                fin_f = fin_base
+                if sel_mot_det:
+                    fin_f = fin_f.loc[fin_f["Motivo"].isin(sel_mot_det)]
+                if sel_area_det:
+                    fin_f = fin_f.loc[fin_f["Área"].isin(sel_area_det)]
+                if sel_emp_det:
+                    fin_f = fin_f.loc[fin_f["_emp_filt"].isin(sel_emp_det)]
+
                 col1, col2, col3 = st.columns(3)
 
                 with col1:
                     st.markdown("**📍 Por Motivo**")
-                    df_motivo = (
-                        fin.groupby("Motivo")
-                        .size()
-                        .reset_index(name="Qtd")
-                        .sort_values("Qtd", ascending=False)
-                    )
-                    st.dataframe(df_motivo, hide_index=True, use_container_width=True, key="jur_ind_fin_motivo")
+                    if fin_f.empty:
+                        st.info("Sem registros para os filtros atuais.")
+                    else:
+                        df_motivo = (
+                            fin_f.groupby("Motivo")
+                            .size()
+                            .reset_index(name="Qtd")
+                            .sort_values("Qtd", ascending=False)
+                        )
+                        st.dataframe(
+                            df_motivo,
+                            hide_index=True,
+                            use_container_width=True,
+                            key="jur_ind_fin_motivo",
+                        )
 
                 with col2:
                     st.markdown("**🏢 Por Área**")
-                    df_area = (
-                        fin.groupby("Área")
-                        .size()
-                        .reset_index(name="Qtd")
-                        .sort_values("Qtd", ascending=False)
-                    )
-                    st.dataframe(df_area, hide_index=True, use_container_width=True, key="jur_ind_fin_area")
+                    if fin_f.empty:
+                        st.info("Sem registros para os filtros atuais.")
+                    else:
+                        df_area = (
+                            fin_f.groupby("Área")
+                            .size()
+                            .reset_index(name="Qtd")
+                            .sort_values("Qtd", ascending=False)
+                        )
+                        st.dataframe(
+                            df_area,
+                            hide_index=True,
+                            use_container_width=True,
+                            key="jur_ind_fin_area",
+                        )
 
                 with col3:
                     st.markdown("**🏗️ Por Empreendimento**")
-                    fin_emp = fin.assign(
-                        **{
-                            "Empreendimento": fin["Empreendimento"].map(_empreendimento_label_tabela),
-                        }
-                    )
-                    df_emp = (
-                        fin_emp.groupby("Empreendimento")
-                        .size()
-                        .reset_index(name="Qtd")
-                        .sort_values("Qtd", ascending=False)
-                    )
-                    st.dataframe(df_emp, hide_index=True, use_container_width=True, key="jur_ind_fin_emp")
+                    if fin_f.empty:
+                        st.info("Sem registros para os filtros atuais.")
+                    else:
+                        df_emp = (
+                            fin_f.groupby("_emp_filt")
+                            .size()
+                            .reset_index(name="Qtd")
+                            .rename(columns={"_emp_filt": "Empreendimento"})
+                            .sort_values("Qtd", ascending=False)
+                        )
+                        st.dataframe(
+                            df_emp,
+                            hide_index=True,
+                            use_container_width=True,
+                            key="jur_ind_fin_emp",
+                        )
 
                 st.markdown("##### Evolução Mensal")
-                df_mes = fin.groupby("Mês").size().reset_index(name="Qtd").sort_values("Mês")
-                st.bar_chart(df_mes.set_index("Mês"), y="Qtd")
+                if fin_f.empty:
+                    st.info("Sem dados para o gráfico com os filtros atuais.")
+                else:
+                    df_mes = fin_f.groupby("Mês").size().reset_index(name="Qtd").sort_values("Mês")
+                    st.bar_chart(df_mes.set_index("Mês"), y="Qtd")
 
     # 2) Tempo de elaboração (proxy: hoje ou data limite - start_date) por tipo contrato
     with tab2:
