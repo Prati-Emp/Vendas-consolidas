@@ -171,7 +171,7 @@ def render_indicadores_juridico_dashboard() -> None:
     st.divider()
 
     # 1) QTD finalizados por mês: linhas com "Data de fechamento" preenchida (proxy de finalizado)
-    st.subheader("✅ Finalizados por mês")
+    st.subheader("✅ Finalizados (Visão Geral)")
     if not data_fechamento_col:
         st.info("Coluna 'Data de fechamento' não encontrada na view.")
     else:
@@ -191,13 +191,33 @@ def render_indicadores_juridico_dashboard() -> None:
             for c in ["Tipo de contrato", "Motivo", "Área", "Empreendimento"]:
                 fin[c] = fin[c].replace({"": "Não informado", "nan": "Não informado", "None": "Não informado"})
 
-            tbl_fin = (
-                fin.groupby(["Mês", "Tipo de contrato", "Motivo", "Área", "Empreendimento"], dropna=False)
-                .size()
-                .reset_index(name="Qtd")
-                .sort_values(["Mês", "Qtd"], ascending=[True, False])
-            )
-            st.dataframe(tbl_fin, hide_index=True, use_container_width=True, key="jur_ind_finalizados_mes")
+            # Gráfico de evolução mensal
+            st.markdown("##### Evolução Mensal")
+            df_mes = fin.groupby("Mês").size().reset_index(name="Qtd").sort_values("Mês")
+            st.bar_chart(df_mes.set_index("Mês"), y="Qtd")
+
+            st.markdown("##### Detalhamento do Período")
+            col1, col2 = st.columns(2)
+
+            with col1:
+                st.markdown("**📍 Por Motivo / Tipo de Contrato**")
+                df_motivo = (
+                    fin.groupby(["Motivo", "Tipo de contrato"])
+                    .size()
+                    .reset_index(name="Qtd")
+                    .sort_values("Qtd", ascending=False)
+                )
+                st.dataframe(df_motivo, hide_index=True, use_container_width=True, key="jur_ind_fin_motivo")
+
+            with col2:
+                st.markdown("**🏢 Por Área / Empreendimento**")
+                df_area = (
+                    fin.groupby(["Área", "Empreendimento"])
+                    .size()
+                    .reset_index(name="Qtd")
+                    .sort_values("Qtd", ascending=False)
+                )
+                st.dataframe(df_area, hide_index=True, use_container_width=True, key="jur_ind_fin_area")
 
     st.divider()
 
