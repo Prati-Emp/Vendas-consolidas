@@ -12,6 +12,7 @@ import unicodedata
 from typing import Any, List, Optional
 
 import pandas as pd
+import plotly.graph_objects as go
 import streamlit as st
 
 from dashboard.utils.md_conn import get_md_connection
@@ -111,6 +112,64 @@ def _empreendimento_label_tabela(value: Any) -> str:
     t = re.sub(r"(?i)(\d*villa\s*bella)\s+II\b", r"\1 2", s)
     t = re.sub(r"(?i)(\d*villa\s*bella)\s+I\b", r"\1 1", t)
     return t
+
+
+def _plot_juridico_hbar_qtd(title: str, df: pd.DataFrame, label_col: str, *, max_categorias: int = 30) -> go.Figure:
+    """
+    Barras horizontais (tema escuro, barras azuis), quantidade no fim da barra — alinhado ao estilo «funil» de reservas.
+    """
+    if df.empty or label_col not in df.columns:
+        fig = go.Figure()
+        fig.update_layout(
+            template="plotly_dark",
+            paper_bgcolor="#0E1117",
+            plot_bgcolor="#0E1117",
+            title=dict(text=title, font=dict(size=14, color="#FAFAFA")),
+            height=200,
+            margin=dict(l=8, r=8, t=48, b=8),
+        )
+        return fig
+
+    d = df.sort_values("Qtd", ascending=True).tail(max_categorias).copy()
+    raw_lbl = d[label_col].astype(str).str.strip()
+    labels = raw_lbl.apply(lambda s: (s[:46] + "…") if len(s) > 47 else s)
+    qty = d["Qtd"].astype(int)
+
+    fig = go.Figure(
+        go.Bar(
+            x=qty,
+            y=labels,
+            orientation="h",
+            marker=dict(color="#4FC3F7", line=dict(width=0)),
+            text=qty.astype(str),
+            textposition="outside",
+            textfont=dict(color="#ECEFF1", size=11),
+            cliponaxis=False,
+            hovertemplate="%{y}<br>Qtd: %{x}<extra></extra>",
+        )
+    )
+    x_max = int(qty.max()) if len(qty) else 1
+    dtick = max(1, x_max // 6) if x_max > 6 else 1
+    h = min(640, max(200, 26 * len(labels) + 110))
+    fig.update_layout(
+        template="plotly_dark",
+        paper_bgcolor="#0E1117",
+        plot_bgcolor="#0E1117",
+        title=dict(text=title, font=dict(size=14, color="#FAFAFA")),
+        margin=dict(l=8, r=52, t=52, b=36),
+        height=h,
+        xaxis=dict(
+            title="Qtd",
+            gridcolor="#30363D",
+            zeroline=False,
+            dtick=dtick,
+            range=[0, x_max * 1.18] if x_max else None,
+        ),
+        yaxis=dict(title="", automargin=True, tickfont=dict(size=11, color="#E0E0E0")),
+        showlegend=False,
+        bargap=0.32,
+    )
+    return fig
 
 
 def render_indicadores_juridico_dashboard() -> None:
@@ -315,18 +374,36 @@ def render_indicadores_juridico_dashboard() -> None:
                 if sel_emp_det:
                     fin_f = fin_f.loc[fin_f["_emp_filt"].isin(sel_emp_det)]
 
+                df_motivo = pd.DataFrame()
+                df_area = pd.DataFrame()
+                df_emp = pd.DataFrame()
+                if not fin_f.empty:
+                    df_motivo = (
+                        fin_f.groupby("Motivo")
+                        .size()
+                        .reset_index(name="Qtd")
+                        .sort_values("Qtd", ascending=False)
+                    )
+                    df_area = (
+                        fin_f.groupby("Área")
+                        .size()
+                        .reset_index(name="Qtd")
+                        .sort_values("Qtd", ascending=False)
+                    )
+                    df_emp = (
+                        fin_f.groupby("_emp_filt")
+                        .size()
+                        .reset_index(name="Qtd")
+                        .rename(columns={"_emp_filt": "Empreendimento"})
+                        .sort_values("Qtd", ascending=False)
+                    )
+
                 col1, col2, col3 = st.columns(3)
 
                 with col1:
                     if fin_f.empty:
                         st.info("Sem registros para os filtros atuais.")
                     else:
-                        df_motivo = (
-                            fin_f.groupby("Motivo")
-                            .size()
-                            .reset_index(name="Qtd")
-                            .sort_values("Qtd", ascending=False)
-                        )
                         st.dataframe(
                             df_motivo,
                             hide_index=True,
@@ -338,12 +415,6 @@ def render_indicadores_juridico_dashboard() -> None:
                     if fin_f.empty:
                         st.info("Sem registros para os filtros atuais.")
                     else:
-                        df_area = (
-                            fin_f.groupby("Área")
-                            .size()
-                            .reset_index(name="Qtd")
-                            .sort_values("Qtd", ascending=False)
-                        )
                         st.dataframe(
                             df_area,
                             hide_index=True,
@@ -355,19 +426,31 @@ def render_indicadores_juridico_dashboard() -> None:
                     if fin_f.empty:
                         st.info("Sem registros para os filtros atuais.")
                     else:
-                        df_emp = (
-                            fin_f.groupby("_emp_filt")
-                            .size()
-                            .reset_index(name="Qtd")
-                            .rename(columns={"_emp_filt": "Empreendimento"})
-                            .sort_values("Qtd", ascending=False)
-                        )
                         st.dataframe(
                             df_emp,
                             hide_index=True,
                             use_container_width=True,
                             key="jur_ind_fin_emp",
                         )
+
+                st.markdown("##### Distribuição (barras horizontais)")
+                if fin_f.empty:
+                    st.info("Sem dados para os gráficos com os filtros atuais.")
+                else:
+                    st.caption(
+                        "Mesmos totais das tabelas acima. Até **30** categorias por gráfico (maiores quantidades). "
+                        "Quantidade exibida ao fim de cada barra."
+                    )
+                    gc1, gc2, gc3 = st.columns(3)
+                    with gc1:
+                        fig_m = _plot_juridico_hbar_qtd("📍 Por Motivo", df_motivo, "Motivo")
+                        st.plotly_chart(fig_m, use_container_width=True, key="jur_hbar_motivo")
+                    with gc2:
+                        fig_a = _plot_juridico_hbar_qtd("🏢 Por Área", df_area, "Área")
+                        st.plotly_chart(fig_a, use_container_width=True, key="jur_hbar_area")
+                    with gc3:
+                        fig_e = _plot_juridico_hbar_qtd("🏗️ Por Empreendimento", df_emp, "Empreendimento")
+                        st.plotly_chart(fig_e, use_container_width=True, key="jur_hbar_emp")
 
                 st.markdown("##### Evolução Mensal")
                 if fin_f.empty:
