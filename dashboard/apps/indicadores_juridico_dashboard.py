@@ -114,25 +114,36 @@ def _empreendimento_label_tabela(value: Any) -> str:
     return t
 
 
+# Margens fixas para os 3 gráficos alinharem entre si (eixo Y no mesmo offset)
+_JUR_HBAR_ML = 268
+_JUR_HBAR_MR = 58
+_JUR_HBAR_TITLE_SZ = 17
+_JUR_HBAR_Y_TICK_SZ = 13
+_JUR_HBAR_BAR_TEXT_SZ = 13
+
+
 def _plot_juridico_hbar_qtd(title: str, df: pd.DataFrame, label_col: str, *, max_categorias: int = 30) -> go.Figure:
     """
     Barras horizontais (tema escuro, barras azuis), quantidade no fim da barra — alinhado ao estilo «funil» de reservas.
     """
+    _tit = dict(
+        text=title,
+        font=dict(size=_JUR_HBAR_TITLE_SZ, color="#FAFAFA"),
+        x=0.5,
+        xanchor="center",
+        yanchor="top",
+    )
+    _marg = dict(l=_JUR_HBAR_ML, r=_JUR_HBAR_MR, t=62, b=12)
+
     if df.empty or label_col not in df.columns:
         fig = go.Figure()
         fig.update_layout(
             template="plotly_dark",
             paper_bgcolor="#0E1117",
             plot_bgcolor="#0E1117",
-            title=dict(
-                text=title,
-                font=dict(size=14, color="#FAFAFA"),
-                x=0.5,
-                xanchor="center",
-                yanchor="top",
-            ),
-            height=200,
-            margin=dict(l=8, r=8, t=52, b=8),
+            title=_tit,
+            height=240,
+            margin=_marg,
         )
         return fig
 
@@ -149,37 +160,33 @@ def _plot_juridico_hbar_qtd(title: str, df: pd.DataFrame, label_col: str, *, max
             marker=dict(color="#4FC3F7", line=dict(width=0)),
             text=qty.astype(str),
             textposition="outside",
-            textfont=dict(color="#ECEFF1", size=11),
+            textfont=dict(color="#ECEFF1", size=_JUR_HBAR_BAR_TEXT_SZ),
             cliponaxis=False,
             hovertemplate="%{y}<br>Qtd: %{x}<extra></extra>",
         )
     )
     x_max = int(qty.max()) if len(qty) else 1
-    dtick = max(1, x_max // 6) if x_max > 6 else 1
-    h = min(640, max(200, 26 * len(labels) + 110))
+    h = min(820, max(280, 34 * len(labels) + 140))
     fig.update_layout(
         template="plotly_dark",
         paper_bgcolor="#0E1117",
         plot_bgcolor="#0E1117",
-        title=dict(
-            text=title,
-            font=dict(size=14, color="#FAFAFA"),
-            x=0.5,
-            xanchor="center",
-            yanchor="top",
-        ),
-        margin=dict(l=8, r=52, t=56, b=40),
+        title=_tit,
+        margin=_marg,
         height=h,
+        # Sem eixo X visível (evita rótulos/espelhamento estranho no Streamlit); valores ficam nas barras + hover
         xaxis=dict(
-            title=dict(text="Qtd", standoff=8),
-            gridcolor="#30363D",
-            zeroline=False,
-            dtick=dtick,
-            range=[0, x_max * 1.18] if x_max else None,
+            visible=False,
+            range=[0, x_max * 1.2] if x_max else None,
+            fixedrange=True,
         ),
-        yaxis=dict(title="", automargin=True, tickfont=dict(size=11, color="#E0E0E0")),
+        yaxis=dict(
+            title="",
+            automargin=False,
+            tickfont=dict(size=_JUR_HBAR_Y_TICK_SZ, color="#E0E0E0"),
+        ),
         showlegend=False,
-        bargap=0.32,
+        bargap=0.28,
     )
     return fig
 
@@ -485,7 +492,21 @@ def render_indicadores_juridico_dashboard() -> None:
                 if fin_f.empty:
                     st.info("Sem dados para os gráficos com os filtros atuais.")
                 else:
-                    gc1, gc2, gc3 = st.columns(3)
+                    st.markdown(
+                        """
+                        <style>
+                        div[data-testid="column"]:has(div[data-testid="stPlotlyChart"]) {
+                            padding-left: 0.15rem !important;
+                            padding-right: 0.15rem !important;
+                        }
+                        </style>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+                    try:
+                        gc1, gc2, gc3 = st.columns(3, gap="small")
+                    except TypeError:
+                        gc1, gc2, gc3 = st.columns(3)
                     with gc1:
                         fig_m = _plot_juridico_hbar_qtd("📍 Por Motivo", df_motivo, "Motivo")
                         st.plotly_chart(fig_m, use_container_width=True, key="jur_hbar_motivo")
