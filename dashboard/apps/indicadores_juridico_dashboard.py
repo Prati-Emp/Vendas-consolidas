@@ -249,8 +249,8 @@ def render_indicadores_juridico_dashboard() -> None:
     with st.sidebar:
         st.markdown("### 🔎 Filtros (Jurídico)")
         st.caption(
-            "O intervalo de **Data de fechamento** fica na aba **Finalizados**, "
-            "logo abaixo de «Detalhamento do Período»."
+            "O intervalo de **Data de fechamento** fica no **topo da aba Finalizados**, "
+            "acima dos filtros por motivo, área e empreendimento."
         )
 
     if df_f.empty:
@@ -276,7 +276,6 @@ def render_indicadores_juridico_dashboard() -> None:
             st.info("Coluna 'Data de fechamento' não encontrada na view.")
         else:
             if _jur_date_ok and _jur_d_lo is not None and _jur_d_hi is not None:
-                st.markdown("##### Detalhamento do Período")
                 st.markdown(
                     """
                     <style>
@@ -295,7 +294,7 @@ def render_indicadores_juridico_dashboard() -> None:
                 )
                 cdi, cdf, _gap = st.columns([1, 1, 4])
                 with cdi:
-                    st.caption("Início")
+                    st.caption("Data inicial")
                     st.date_input(
                         "Data de fechamento — início",
                         min_value=_jur_d_lo,
@@ -305,7 +304,7 @@ def render_indicadores_juridico_dashboard() -> None:
                         label_visibility="collapsed",
                     )
                 with cdf:
-                    st.caption("Fim")
+                    st.caption("Data final")
                     st.date_input(
                         "Data de fechamento — fim",
                         min_value=_jur_d_lo,
