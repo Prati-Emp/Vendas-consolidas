@@ -220,11 +220,6 @@ def render_indicadores_juridico_dashboard() -> None:
                 for c in ["Tipo de contrato", "Motivo", "Área", "Empreendimento"]:
                     fin[c] = fin[c].replace({"": "Não informado", "nan": "Não informado", "None": "Não informado"})
 
-                # Gráfico de evolução mensal
-                st.markdown("##### Evolução Mensal")
-                df_mes = fin.groupby("Mês").size().reset_index(name="Qtd").sort_values("Mês")
-                st.bar_chart(df_mes.set_index("Mês"), y="Qtd")
-
                 st.markdown("##### Detalhamento do Período")
                 col1, col2, col3 = st.columns(3)
 
@@ -262,6 +257,10 @@ def render_indicadores_juridico_dashboard() -> None:
                         .sort_values("Qtd", ascending=False)
                     )
                     st.dataframe(df_emp, hide_index=True, use_container_width=True, key="jur_ind_fin_emp")
+
+                st.markdown("##### Evolução Mensal")
+                df_mes = fin.groupby("Mês").size().reset_index(name="Qtd").sort_values("Mês")
+                st.bar_chart(df_mes.set_index("Mês"), y="Qtd")
 
     # 2) Tempo de elaboração (proxy: hoje ou data limite - start_date) por tipo contrato
     with tab2:
