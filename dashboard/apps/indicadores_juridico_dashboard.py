@@ -363,8 +363,43 @@ def render_indicadores_juridico_dashboard() -> None:
                 if fin_f.empty:
                     st.info("Sem dados para o gráfico com os filtros atuais.")
                 else:
-                    df_mes = fin_f.groupby("Mês").size().reset_index(name="Qtd").sort_values("Mês")
-                    st.bar_chart(df_mes.set_index("Mês"), y="Qtd")
+                    st.caption(
+                        "Itens com **data de fechamento** no mês (eixo X). Cada linha é uma **situação** "
+                        "(status no Jira no momento dos dados). Respeita os mesmos filtros do detalhamento."
+                    )
+                    if status_col and status_col in fin_f.columns:
+                        sit_s = fin_f[status_col].astype(str).str.strip()
+                        sit_s = sit_s.replace(
+                            {
+                                "": "Não informado",
+                                "nan": "Não informado",
+                                "None": "Não informado",
+                                "<na>": "Não informado",
+                            }
+                        )
+                    else:
+                        sit_s = pd.Series("Situação não informada", index=fin_f.index, dtype=str)
+
+                    df_line = (
+                        fin_f.assign(Situação=sit_s)
+                        .groupby(["Mês", "Situação"], dropna=False)
+                        .size()
+                        .unstack(fill_value=0)
+                        .sort_index()
+                    )
+                    # Até 12 situações no gráfico; demais somadas em «Outros» (leitura mais clara)
+                    _max_sit = 12
+                    if df_line.shape[1] > _max_sit:
+                        _tot = df_line.sum(axis=0).sort_values(ascending=False)
+                        _main = list(_tot.head(_max_sit).index)
+                        _rest = [c for c in df_line.columns if c not in _main]
+                        if _rest:
+                            _out = df_line[_rest].sum(axis=1)
+                            df_line = pd.concat([df_line[_main], _out.rename("Outros")], axis=1)
+                        else:
+                            df_line = df_line[_main]
+
+                    st.line_chart(df_line)
 
     # 2) Tempo de elaboração (proxy: hoje ou data limite - start_date) por tipo contrato
     with tab2:
