@@ -231,18 +231,22 @@ def render_indicadores_juridico_dashboard() -> None:
             else:
                 d_lo = _dt_valid.min().normalize().date()
                 d_hi = _dt_valid.max().normalize().date()
-                rng = st.date_input(
-                    "Data de fechamento (intervalo)",
-                    value=(d_lo, d_hi),
+                ds = st.date_input(
+                    "Data de fechamento — início",
+                    value=d_lo,
                     min_value=d_lo,
                     max_value=d_hi,
-                    key="jur_ind_fechamento_range",
-                    help="Início e fim inclusivos com base na coluna Data de fechamento.",
+                    key="jur_ind_fechamento_inicio",
+                    help="Primeiro dia do intervalo (inclusivo).",
                 )
-                if isinstance(rng, (tuple, list)) and len(rng) == 2:
-                    ds, de = rng[0], rng[1]
-                else:
-                    ds = de = rng
+                de = st.date_input(
+                    "Data de fechamento — fim",
+                    value=d_hi,
+                    min_value=d_lo,
+                    max_value=d_hi,
+                    key="jur_ind_fechamento_fim",
+                    help="Último dia do intervalo (inclusivo).",
+                )
                 ts_a = pd.Timestamp(ds).normalize()
                 ts_b = pd.Timestamp(de).normalize()
                 if ts_a > ts_b:
