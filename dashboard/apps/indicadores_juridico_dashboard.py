@@ -6,7 +6,6 @@ Base: view administracao.Jira_projeto_juridico_consolidado
 
 from __future__ import annotations
 
-import inspect
 import re
 import unicodedata
 from typing import Any, List, Optional
@@ -279,7 +278,6 @@ def render_indicadores_juridico_dashboard() -> None:
             if fin.empty:
                 st.info("Nenhuma linha com 'Data de fechamento' informada.")
             else:
-                fin["Mês"] = fin["_dt_fech"].dt.to_period("M").astype(str)
                 fin["Tipo de contrato"] = (
                     fin[tipo_contrato_col].astype(str).str.strip() if tipo_contrato_col else "Não informado"
                 )
@@ -340,7 +338,7 @@ def render_indicadores_juridico_dashboard() -> None:
 
                 st.markdown("##### Detalhamento do Período")
                 st.caption(
-                    "Filtros em conjunto nas tabelas e no gráfico. **As opções de cada lista já respeitam o que foi "
+                    "Filtros em conjunto nas tabelas e nos gráficos de barras. **As opções de cada lista já respeitam o que foi "
                     "escolhido nos outros filtros** (apenas combinações que existem na base)."
                 )
                 f1, f2, f3 = st.columns(3)
@@ -451,50 +449,6 @@ def render_indicadores_juridico_dashboard() -> None:
                     with gc3:
                         fig_e = _plot_juridico_hbar_qtd("🏗️ Por Empreendimento", df_emp, "Empreendimento")
                         st.plotly_chart(fig_e, use_container_width=True, key="jur_hbar_emp")
-
-                st.markdown("##### Evolução Mensal")
-                if fin_f.empty:
-                    st.info("Sem dados para o gráfico com os filtros atuais.")
-                else:
-                    st.caption(
-                        "Barras por **mês** de fechamento e **situação** (status no Jira). "
-                        "Mesma lógica das tabelas acima; barras agrupadas por situação em cada mês."
-                    )
-                    if status_col and status_col in fin_f.columns:
-                        sit_s = fin_f[status_col].astype(str).str.strip()
-                        sit_s = sit_s.replace(
-                            {
-                                "": "Não informado",
-                                "nan": "Não informado",
-                                "None": "Não informado",
-                                "<na>": "Não informado",
-                            }
-                        )
-                    else:
-                        sit_s = pd.Series("Situação não informada", index=fin_f.index, dtype=str)
-
-                    df_bars = (
-                        fin_f.assign(Situação=sit_s)
-                        .groupby(["Mês", "Situação"], dropna=False)
-                        .size()
-                        .unstack(fill_value=0)
-                        .sort_index()
-                    )
-                    _max_sit = 12
-                    if df_bars.shape[1] > _max_sit:
-                        _tot = df_bars.sum(axis=0).sort_values(ascending=False)
-                        _main = list(_tot.head(_max_sit).index)
-                        _rest = [c for c in df_bars.columns if c not in _main]
-                        if _rest:
-                            _out = df_bars[_rest].sum(axis=1)
-                            df_bars = pd.concat([df_bars[_main], _out.rename("Outros")], axis=1)
-                        else:
-                            df_bars = df_bars[_main]
-
-                    _bar_kw: dict = {}
-                    if "stack" in inspect.signature(st.bar_chart).parameters:
-                        _bar_kw["stack"] = False
-                    st.bar_chart(df_bars, **_bar_kw)
 
     # 2) Tempo de elaboração (proxy: hoje ou data limite - start_date) por tipo contrato
     with tab2:
