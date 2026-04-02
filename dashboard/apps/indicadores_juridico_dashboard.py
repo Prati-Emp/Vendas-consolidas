@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import re
 import unicodedata
+from datetime import date as date_type
 from typing import Any, List, Optional
 
 import pandas as pd
@@ -217,42 +218,40 @@ def render_indicadores_juridico_dashboard() -> None:
     created_col = _find_col(df_raw, ["start_date", "criado em", "created", "data de criacao", "data criação"])
     duedate_col = _find_col(df_raw, ["data limite", "duedate", "deadline"])
 
-    # Sidebar: apenas intervalo por Data de fechamento (afeta todo o painel)
+    # Período por Data de fechamento: estado na sessão + recorte em df_f (afeta todas as abas)
+    df_f = df_raw.copy()
+    _jur_date_ok = False
+    _jur_d_lo: Optional[date_type] = None
+    _jur_d_hi: Optional[date_type] = None
+    _k_fech_i, _k_fech_f = "jur_ind_fechamento_inicio", "jur_ind_fechamento_fim"
+
+    if data_fechamento_col:
+        _dt_jur = pd.to_datetime(df_raw[data_fechamento_col], errors="coerce")
+        _ok_jur = _dt_jur.dropna()
+        if not _ok_jur.empty:
+            _jur_date_ok = True
+            _jur_d_lo = _ok_jur.min().normalize().date()
+            _jur_d_hi = _ok_jur.max().normalize().date()
+            for _k, _d in ((_k_fech_i, _jur_d_lo), (_k_fech_f, _jur_d_hi)):
+                if _k not in st.session_state:
+                    st.session_state[_k] = _d
+                else:
+                    v = st.session_state[_k]
+                    if not isinstance(v, date_type) or v < _jur_d_lo or v > _jur_d_hi:
+                        st.session_state[_k] = _d
+            ts_a = pd.Timestamp(st.session_state[_k_fech_i]).normalize()
+            ts_b = pd.Timestamp(st.session_state[_k_fech_f]).normalize()
+            if ts_a > ts_b:
+                ts_a, ts_b = ts_b, ts_a
+            _mask_dt = _dt_jur.notna() & (_dt_jur.dt.normalize() >= ts_a) & (_dt_jur.dt.normalize() <= ts_b)
+            df_f = df_raw.loc[_mask_dt].copy()
+
     with st.sidebar:
         st.markdown("### 🔎 Filtros (Jurídico)")
-        df_f = df_raw.copy()
-        if not data_fechamento_col:
-            st.warning("Coluna **Data de fechamento** não encontrada; filtro de período indisponível.")
-        else:
-            _dt_side = pd.to_datetime(df_f[data_fechamento_col], errors="coerce")
-            _dt_valid = _dt_side.dropna()
-            if _dt_valid.empty:
-                st.info("Não há datas de fechamento preenchidas para filtrar.")
-            else:
-                d_lo = _dt_valid.min().normalize().date()
-                d_hi = _dt_valid.max().normalize().date()
-                ds = st.date_input(
-                    "Data de fechamento — início",
-                    value=d_lo,
-                    min_value=d_lo,
-                    max_value=d_hi,
-                    key="jur_ind_fechamento_inicio",
-                    help="Primeiro dia do intervalo (inclusivo).",
-                )
-                de = st.date_input(
-                    "Data de fechamento — fim",
-                    value=d_hi,
-                    min_value=d_lo,
-                    max_value=d_hi,
-                    key="jur_ind_fechamento_fim",
-                    help="Último dia do intervalo (inclusivo).",
-                )
-                ts_a = pd.Timestamp(ds).normalize()
-                ts_b = pd.Timestamp(de).normalize()
-                if ts_a > ts_b:
-                    ts_a, ts_b = ts_b, ts_a
-                _mask_dt = _dt_side.notna() & (_dt_side.dt.normalize() >= ts_a) & (_dt_side.dt.normalize() <= ts_b)
-                df_f = df_f.loc[_mask_dt].copy()
+        st.caption(
+            "O intervalo de **Data de fechamento** fica na aba **Finalizados**, "
+            "logo abaixo de «Detalhamento do Período»."
+        )
 
     if df_f.empty:
         st.info("Nenhum item após filtros.")
@@ -276,6 +275,28 @@ def render_indicadores_juridico_dashboard() -> None:
         if not data_fechamento_col:
             st.info("Coluna 'Data de fechamento' não encontrada na view.")
         else:
+            if _jur_date_ok and _jur_d_lo is not None and _jur_d_hi is not None:
+                st.markdown("##### Detalhamento do Período")
+                cdi, cdf = st.columns(2)
+                with cdi:
+                    st.date_input(
+                        "Data de fechamento — início",
+                        min_value=_jur_d_lo,
+                        max_value=_jur_d_hi,
+                        key=_k_fech_i,
+                        help="Primeiro dia do intervalo (inclusivo).",
+                    )
+                with cdf:
+                    st.date_input(
+                        "Data de fechamento — fim",
+                        min_value=_jur_d_lo,
+                        max_value=_jur_d_hi,
+                        key=_k_fech_f,
+                        help="Último dia do intervalo (inclusivo).",
+                    )
+            elif not _jur_date_ok:
+                st.info("Não há datas de fechamento preenchidas para filtrar o período.")
+
             fin = df_f.copy()
             fin["_dt_fech"] = pd.to_datetime(fin[data_fechamento_col], errors="coerce")
             fin = fin.loc[fin["_dt_fech"].notna()].copy()
@@ -340,7 +361,6 @@ def render_indicadores_juridico_dashboard() -> None:
                 st.session_state[_k_a] = sa
                 st.session_state[_k_e] = se
 
-                st.markdown("##### Detalhamento do Período")
                 st.caption(
                     "Filtros em conjunto nas tabelas e nos gráficos de barras. **As opções de cada lista já respeitam o que foi "
                     "escolhido nos outros filtros** (apenas combinações que existem na base)."
