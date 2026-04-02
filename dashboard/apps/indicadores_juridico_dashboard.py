@@ -224,37 +224,76 @@ def render_indicadores_juridico_dashboard() -> None:
                 fin_base = fin.copy()
                 fin_base["_emp_filt"] = fin_base["Empreendimento"].map(_empreendimento_label_tabela)
 
-                mot_opts = sorted({str(x) for x in fin_base["Motivo"].tolist() if str(x).strip()})
-                area_opts = sorted({str(x) for x in fin_base["Área"].tolist() if str(x).strip()})
-                emp_opts = sorted({str(x) for x in fin_base["_emp_filt"].tolist() if str(x).strip()})
+                # Opções em cascata: cada filtro restringe as listas dos outros (seleções inválidas são descartadas)
+                _k_m, _k_a, _k_e = "jur_fin_det_motivo", "jur_fin_det_area", "jur_fin_det_emp"
+                sm = list(st.session_state.get(_k_m, []) or [])
+                sa = list(st.session_state.get(_k_a, []) or [])
+                se = list(st.session_state.get(_k_e, []) or [])
+                if not isinstance(sm, list):
+                    sm = []
+                if not isinstance(sa, list):
+                    sa = []
+                if not isinstance(se, list):
+                    se = []
+
+                for _ in range(12):
+                    dm = fin_base
+                    if sa:
+                        dm = dm.loc[dm["Área"].isin(sa)]
+                    if se:
+                        dm = dm.loc[dm["_emp_filt"].isin(se)]
+                    mot_opts = sorted({str(x) for x in dm["Motivo"].tolist() if str(x).strip()})
+
+                    da = fin_base
+                    if sm:
+                        da = da.loc[da["Motivo"].isin(sm)]
+                    if se:
+                        da = da.loc[da["_emp_filt"].isin(se)]
+                    area_opts = sorted({str(x) for x in da["Área"].tolist() if str(x).strip()})
+
+                    de = fin_base
+                    if sm:
+                        de = de.loc[de["Motivo"].isin(sm)]
+                    if sa:
+                        de = de.loc[de["Área"].isin(sa)]
+                    emp_opts = sorted({str(x) for x in de["_emp_filt"].tolist() if str(x).strip()})
+
+                    sm2 = [x for x in sm if x in mot_opts]
+                    sa2 = [x for x in sa if x in area_opts]
+                    se2 = [x for x in se if x in emp_opts]
+                    if sm2 == sm and sa2 == sa and se2 == se:
+                        break
+                    sm, sa, se = sm2, sa2, se2
+
+                st.session_state[_k_m] = sm
+                st.session_state[_k_a] = sa
+                st.session_state[_k_e] = se
 
                 st.markdown("##### Detalhamento do Período")
                 st.caption(
-                    "Filtros em conjunto: Motivo, Área e Empreendimento aplicam-se a **todas** as tabelas desta seção e ao gráfico de evolução mensal."
+                    "Filtros em conjunto nas tabelas e no gráfico. **As opções de cada lista já respeitam o que foi "
+                    "escolhido nos outros filtros** (apenas combinações que existem na base)."
                 )
                 f1, f2, f3 = st.columns(3)
                 with f1:
                     sel_mot_det = st.multiselect(
                         "📍 Por Motivo",
                         options=mot_opts,
-                        default=[],
-                        key="jur_fin_det_motivo",
+                        key=_k_m,
                         placeholder="Todos",
                     )
                 with f2:
                     sel_area_det = st.multiselect(
                         "🏢 Por Área",
                         options=area_opts,
-                        default=[],
-                        key="jur_fin_det_area",
+                        key=_k_a,
                         placeholder="Todos",
                     )
                 with f3:
                     sel_emp_det = st.multiselect(
                         "🏗️ Por Empreendimento",
                         options=emp_opts,
-                        default=[],
-                        key="jur_fin_det_emp",
+                        key=_k_e,
                         placeholder="Todos",
                     )
 
