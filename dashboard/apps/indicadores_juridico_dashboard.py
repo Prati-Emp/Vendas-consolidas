@@ -277,22 +277,42 @@ def render_indicadores_juridico_dashboard() -> None:
         else:
             if _jur_date_ok and _jur_d_lo is not None and _jur_d_hi is not None:
                 st.markdown("##### Detalhamento do Período")
-                cdi, cdf = st.columns(2)
+                st.markdown(
+                    """
+                    <style>
+                    /* Campos de data do período: mais compactos */
+                    div[data-testid="stVerticalBlockBorderWrapper"]:has(div[data-baseweb="datepicker"]) {
+                        max-width: 200px;
+                    }
+                    div[data-testid="column"]:has(div[data-baseweb="datepicker"]) {
+                        flex: 0 0 auto !important;
+                        width: min(200px, 100%) !important;
+                        min-width: unset !important;
+                    }
+                    </style>
+                    """,
+                    unsafe_allow_html=True,
+                )
+                cdi, cdf, _gap = st.columns([1, 1, 4])
                 with cdi:
+                    st.caption("Início")
                     st.date_input(
                         "Data de fechamento — início",
                         min_value=_jur_d_lo,
                         max_value=_jur_d_hi,
                         key=_k_fech_i,
                         help="Primeiro dia do intervalo (inclusivo).",
+                        label_visibility="collapsed",
                     )
                 with cdf:
+                    st.caption("Fim")
                     st.date_input(
                         "Data de fechamento — fim",
                         min_value=_jur_d_lo,
                         max_value=_jur_d_hi,
                         key=_k_fech_f,
                         help="Último dia do intervalo (inclusivo).",
+                        label_visibility="collapsed",
                     )
             elif not _jur_date_ok:
                 st.info("Não há datas de fechamento preenchidas para filtrar o período.")
