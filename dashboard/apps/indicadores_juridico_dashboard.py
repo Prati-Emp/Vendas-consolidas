@@ -208,12 +208,12 @@ def render_indicadores_juridico_dashboard() -> None:
                 st.bar_chart(df_mes.set_index("Mês"), y="Qtd")
 
                 st.markdown("##### Detalhamento do Período")
-                col1, col2 = st.columns(2)
+                col1, col2, col3 = st.columns(3)
 
                 with col1:
-                    st.markdown("**📍 Por Motivo / Tipo de Contrato**")
+                    st.markdown("**📍 Por Motivo**")
                     df_motivo = (
-                        fin.groupby(["Motivo", "Tipo de contrato"])
+                        fin.groupby("Motivo")
                         .size()
                         .reset_index(name="Qtd")
                         .sort_values("Qtd", ascending=False)
@@ -221,14 +221,24 @@ def render_indicadores_juridico_dashboard() -> None:
                     st.dataframe(df_motivo, hide_index=True, use_container_width=True, key="jur_ind_fin_motivo")
 
                 with col2:
-                    st.markdown("**🏢 Por Área / Empreendimento**")
+                    st.markdown("**🏢 Por Área**")
                     df_area = (
-                        fin.groupby(["Área", "Empreendimento"])
+                        fin.groupby("Área")
                         .size()
                         .reset_index(name="Qtd")
                         .sort_values("Qtd", ascending=False)
                     )
                     st.dataframe(df_area, hide_index=True, use_container_width=True, key="jur_ind_fin_area")
+
+                with col3:
+                    st.markdown("**🏗️ Por Empreendimento**")
+                    df_emp = (
+                        fin.groupby("Empreendimento")
+                        .size()
+                        .reset_index(name="Qtd")
+                        .sort_values("Qtd", ascending=False)
+                    )
+                    st.dataframe(df_emp, hide_index=True, use_container_width=True, key="jur_ind_fin_emp")
 
     # 2) Tempo de elaboração (proxy: hoje ou data limite - start_date) por tipo contrato
     with tab2:
