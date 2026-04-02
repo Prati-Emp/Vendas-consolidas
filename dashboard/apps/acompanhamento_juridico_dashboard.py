@@ -122,6 +122,27 @@ def _normalize_status_list(values: List[str]) -> List[str]:
     return [_normalize_text_for_match(v) for v in values if str(v).strip()]
 
 
+def _normalized_status_synonyms_for_column(status_val: str) -> frozenset[str]:
+    """
+    Valores normalizados que devem cair na mesma coluna do Kanban que `status_val`.
+    O Jira costuma enviar singular («Finalizado», «Rejeitado») e o quadro usa plural no rótulo.
+    """
+    n = _normalize_text_for_match(status_val)
+    if n == "finalizados":
+        return frozenset({"finalizados", "finalizado"})
+    if n == "rejeitados":
+        return frozenset({"rejeitados", "rejeitado"})
+    return frozenset({n})
+
+
+def _mask_rows_for_kanban_column(df: pd.DataFrame, status_col: str, status_val: str) -> pd.Series:
+    """Máscara booleana: linhas pertencentes à coluna de status `status_val` (com sinônimos)."""
+    if df.empty or not status_col or status_col not in df.columns:
+        return pd.Series(False, index=df.index)
+    s_norm = df[status_col].astype(str).str.strip().map(_normalize_text_for_match)
+    return s_norm.isin(_normalized_status_synonyms_for_column(status_val))
+
+
 def _ordered_statuses_with_extras(
     df: pd.DataFrame, status_col: str, desired_status_order: List[str]
 ) -> List[str]:
@@ -136,6 +157,11 @@ def _ordered_statuses_with_extras(
     desired = [s for s in desired_status_order if str(s).strip()]
     desired_norm = _normalize_status_list(desired)
     desired_norm_set = set(desired_norm)
+    # Evita coluna duplicada quando o Jira manda singular e o catálogo tem plural
+    if "finalizados" in desired_norm_set:
+        desired_norm_set.add("finalizado")
+    if "rejeitados" in desired_norm_set:
+        desired_norm_set.add("rejeitado")
 
     # Mantém o rótulo original informado no catálogo
     statuses_out = list(desired)
@@ -183,21 +209,27 @@ def _split_solicitacoes_vs_vigentes(df: pd.DataFrame, status_col: str) -> tuple[
     s_norm = df[status_col].astype(str).str.strip().map(_normalize_text_for_match)
 
     # Catálogo de status por aba (definido pelo negócio)
-    solicit_catalog = _normalize_status_list(
-        [
-            "Backlog",
-            "Pausados",
-            "Em elaboração",
-            "Conferência",
-            "Aguardando assinatura",
-            "Assinados",
-            "Finalizados",
-            "Rejeitados",
-        ]
+    solicit_catalog = set(
+        _normalize_status_list(
+            [
+                "Backlog",
+                "Pausados",
+                "Em elaboração",
+                "Conferência",
+                "Aguardando assinatura",
+                "Assinados",
+                "Finalizados",
+                "Rejeitados",
+            ]
+        )
     )
+    # Jira: workflow muitas vezes singular («Finalizado», «Rejeitado»), igual na planilha exportada
+    solicit_catalog.add("finalizado")
+    solicit_catalog.add("rejeitado")
+
     vig_catalog = _normalize_status_list(["Vigente", "Em renovação", "Rescindido", "Arquivado"])
 
-    df_solic = df.loc[s_norm.isin(set(solicit_catalog))].copy()
+    df_solic = df.loc[s_norm.isin(solicit_catalog)].copy()
     df_vig = df.loc[s_norm.isin(set(vig_catalog))].copy()
     return df_solic, df_vig
 
@@ -337,7 +369,8 @@ def _build_kanban_column_html(
     *,
     time_mode: str = "",
 ) -> str:
-    df_status = df[df[status_col] == status_val]
+    mask = _mask_rows_for_kanban_column(df, status_col, status_val)
+    df_status = df.loc[mask]
     if df_status.empty:
         return '<div style="color: #888; font-style: italic; padding: 8px;">Nenhum item</div>'
 
@@ -561,7 +594,9 @@ def _render_kanban_board(
     # Altura dinâmica
     max_cards_in_column = 0
     for status_val in statuses:
-        max_cards_in_column = max(max_cards_in_column, int((df[status_col] == status_val).sum()))
+        max_cards_in_column = max(
+            max_cards_in_column, int(_mask_rows_for_kanban_column(df, status_col, status_val).sum())
+        )
     board_height = max(520, min(1400, 200 + (max_cards_in_column * 150)))
 
     headers_html = ""
@@ -576,7 +611,7 @@ def _render_kanban_board(
             time_mode=time_mode,
         )
         label = html.escape(_display_label_for_status(status_val, status_display_map))
-        n_items = int((df[status_col] == status_val).sum())
+        n_items = int(_mask_rows_for_kanban_column(df, status_col, status_val).sum())
         headers_html += f"""
         <div class="kanban-column kanban-column-header-cell">
             <div class="kanban-column-title">{label} <span class="kanban-column-count">({n_items})</span></div>

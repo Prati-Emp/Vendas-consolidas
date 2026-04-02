@@ -19,6 +19,11 @@ from dashboard.utils.md_conn import get_md_connection
 from advanced_auth import get_current_user
 
 
+def _jur_fin_mark_pull_main_to_graf() -> None:
+    """Quando o usuário altera os filtros do topo, copia o estado para a linha acima dos gráficos no próximo run."""
+    st.session_state["jur_fin_pull_main_to_graf"] = True
+
+
 def _normalize(value: Any) -> str:
     if value is None:
         return ""
@@ -116,8 +121,8 @@ def _empreendimento_label_tabela(value: Any) -> str:
 
 # Margens fixas para os 3 gráficos alinharem entre si. Evitar ML excessivo: em colunas estreitas do Streamlit
 # rouba a área útil e as barras ficam “finas”; ~185–195px costuma equilibrar rótulo vs amplitude.
-_JUR_HBAR_ML = 188
-_JUR_HBAR_MR = 52
+_JUR_HBAR_ML = 168
+_JUR_HBAR_MR = 50
 _JUR_HBAR_TITLE_SZ = 17
 _JUR_HBAR_Y_TICK_SZ = 13
 _JUR_HBAR_BAR_TEXT_SZ = 13
@@ -179,7 +184,7 @@ def _plot_juridico_hbar_qtd(title: str, df: pd.DataFrame, label_col: str, *, max
         xaxis=dict(
             visible=False,
             # Menos folga à direita => barra máxima usa mais largura do gráfico
-            range=[0, max(x_max * 1.06, 1)] if x_max else None,
+            range=[0, max(x_max * 1.03, 1)] if x_max else None,
             fixedrange=True,
         ),
         yaxis=dict(
@@ -188,9 +193,80 @@ def _plot_juridico_hbar_qtd(title: str, df: pd.DataFrame, label_col: str, *, max
             tickfont=dict(size=_JUR_HBAR_Y_TICK_SZ, color="#E0E0E0"),
         ),
         showlegend=False,
-        bargap=0.22,
+        bargap=0.18,
     )
     return fig
+
+
+def _jur_cascade_opcoes(
+    fin_base: pd.DataFrame, km: str, ka: str, ke: str
+) -> tuple[List[str], List[str], List[str]]:
+    """Sanitiza seleções na session e devolve listas ordenadas para multiselect (Motivo / Área / Empreendimento)."""
+    sm = list(st.session_state.get(km, []) or [])
+    sa = list(st.session_state.get(ka, []) or [])
+    se = list(st.session_state.get(ke, []) or [])
+    if not isinstance(sm, list):
+        sm = []
+    if not isinstance(sa, list):
+        sa = []
+    if not isinstance(se, list):
+        se = []
+
+    for _ in range(12):
+        dm = fin_base
+        if sa:
+            dm = dm.loc[dm["Área"].isin(sa)]
+        if se:
+            dm = dm.loc[dm["_emp_filt"].isin(se)]
+        mot_opts = sorted({str(x) for x in dm["Motivo"].tolist() if str(x).strip()})
+
+        da = fin_base
+        if sm:
+            da = da.loc[da["Motivo"].isin(sm)]
+        if se:
+            da = da.loc[da["_emp_filt"].isin(se)]
+        area_opts = sorted({str(x) for x in da["Área"].tolist() if str(x).strip()})
+
+        de = fin_base
+        if sm:
+            de = de.loc[de["Motivo"].isin(sm)]
+        if sa:
+            de = de.loc[de["Área"].isin(sa)]
+        emp_opts = sorted({str(x) for x in de["_emp_filt"].tolist() if str(x).strip()})
+
+        sm2 = [x for x in sm if x in mot_opts]
+        sa2 = [x for x in sa if x in area_opts]
+        se2 = [x for x in se if x in emp_opts]
+        if sm2 == sm and sa2 == sa and se2 == se:
+            break
+        sm, sa, se = sm2, sa2, se2
+
+    st.session_state[km] = sm
+    st.session_state[ka] = sa
+    st.session_state[ke] = se
+
+    dm = fin_base
+    if sa:
+        dm = dm.loc[dm["Área"].isin(sa)]
+    if se:
+        dm = dm.loc[dm["_emp_filt"].isin(se)]
+    mot_opts_f = sorted({str(x) for x in dm["Motivo"].tolist() if str(x).strip()})
+
+    da = fin_base
+    if sm:
+        da = da.loc[da["Motivo"].isin(sm)]
+    if se:
+        da = da.loc[da["_emp_filt"].isin(se)]
+    area_opts_f = sorted({str(x) for x in da["Área"].tolist() if str(x).strip()})
+
+    de = fin_base
+    if sm:
+        de = de.loc[de["Motivo"].isin(sm)]
+    if sa:
+        de = de.loc[de["Área"].isin(sa)]
+    emp_opts_f = sorted({str(x) for x in de["_emp_filt"].tolist() if str(x).strip()})
+
+    return mot_opts_f, area_opts_f, emp_opts_f
 
 
 def render_indicadores_juridico_dashboard() -> None:
@@ -270,8 +346,8 @@ def render_indicadores_juridico_dashboard() -> None:
     with st.sidebar:
         st.markdown("### 🔎 Filtros (Jurídico)")
         st.caption(
-            "O intervalo de **Data de fechamento** fica no **topo da aba Finalizados**, "
-            "acima dos filtros por motivo, área e empreendimento."
+            "O intervalo de **Data de fechamento** e os filtros por motivo, área e empreendimento ficam "
+            "no **topo da aba Finalizados** e **repetidos acima dos gráficos** (mesmo efeito nas tabelas e nos gráficos)."
         )
 
     if df_f.empty:
@@ -323,6 +399,7 @@ def render_indicadores_juridico_dashboard() -> None:
                         key=_k_fech_i,
                         help="Primeiro dia do intervalo (inclusivo).",
                         label_visibility="collapsed",
+                        on_change=_jur_fin_mark_pull_main_to_graf,
                     )
                 with cdf:
                     st.caption("Data final")
@@ -333,6 +410,7 @@ def render_indicadores_juridico_dashboard() -> None:
                         key=_k_fech_f,
                         help="Último dia do intervalo (inclusivo).",
                         label_visibility="collapsed",
+                        on_change=_jur_fin_mark_pull_main_to_graf,
                     )
             elif not _jur_date_ok:
                 st.info("Não há datas de fechamento preenchidas para filtrar o período.")
@@ -358,48 +436,7 @@ def render_indicadores_juridico_dashboard() -> None:
 
                 # Opções em cascata: cada filtro restringe as listas dos outros (seleções inválidas são descartadas)
                 _k_m, _k_a, _k_e = "jur_fin_det_motivo", "jur_fin_det_area", "jur_fin_det_emp"
-                sm = list(st.session_state.get(_k_m, []) or [])
-                sa = list(st.session_state.get(_k_a, []) or [])
-                se = list(st.session_state.get(_k_e, []) or [])
-                if not isinstance(sm, list):
-                    sm = []
-                if not isinstance(sa, list):
-                    sa = []
-                if not isinstance(se, list):
-                    se = []
-
-                for _ in range(12):
-                    dm = fin_base
-                    if sa:
-                        dm = dm.loc[dm["Área"].isin(sa)]
-                    if se:
-                        dm = dm.loc[dm["_emp_filt"].isin(se)]
-                    mot_opts = sorted({str(x) for x in dm["Motivo"].tolist() if str(x).strip()})
-
-                    da = fin_base
-                    if sm:
-                        da = da.loc[da["Motivo"].isin(sm)]
-                    if se:
-                        da = da.loc[da["_emp_filt"].isin(se)]
-                    area_opts = sorted({str(x) for x in da["Área"].tolist() if str(x).strip()})
-
-                    de = fin_base
-                    if sm:
-                        de = de.loc[de["Motivo"].isin(sm)]
-                    if sa:
-                        de = de.loc[de["Área"].isin(sa)]
-                    emp_opts = sorted({str(x) for x in de["_emp_filt"].tolist() if str(x).strip()})
-
-                    sm2 = [x for x in sm if x in mot_opts]
-                    sa2 = [x for x in sa if x in area_opts]
-                    se2 = [x for x in se if x in emp_opts]
-                    if sm2 == sm and sa2 == sa and se2 == se:
-                        break
-                    sm, sa, se = sm2, sa2, se2
-
-                st.session_state[_k_m] = sm
-                st.session_state[_k_a] = sa
-                st.session_state[_k_e] = se
+                mot_opts, area_opts, emp_opts = _jur_cascade_opcoes(fin_base, _k_m, _k_a, _k_e)
 
                 f1, f2, f3 = st.columns(3)
                 with f1:
@@ -408,6 +445,7 @@ def render_indicadores_juridico_dashboard() -> None:
                         options=mot_opts,
                         key=_k_m,
                         placeholder="Todos",
+                        on_change=_jur_fin_mark_pull_main_to_graf,
                     )
                 with f2:
                     sel_area_det = st.multiselect(
@@ -415,6 +453,7 @@ def render_indicadores_juridico_dashboard() -> None:
                         options=area_opts,
                         key=_k_a,
                         placeholder="Todos",
+                        on_change=_jur_fin_mark_pull_main_to_graf,
                     )
                 with f3:
                     sel_emp_det = st.multiselect(
@@ -422,6 +461,7 @@ def render_indicadores_juridico_dashboard() -> None:
                         options=emp_opts,
                         key=_k_e,
                         placeholder="Todos",
+                        on_change=_jur_fin_mark_pull_main_to_graf,
                     )
 
                 fin_f = fin_base
@@ -490,6 +530,103 @@ def render_indicadores_juridico_dashboard() -> None:
                             use_container_width=True,
                             key="jur_ind_fin_emp",
                         )
+
+                # Mesmos filtros do topo, acima dos gráficos (chaves _graf + sincronização com o topo)
+                _k_f_i_g = f"{_k_fech_i}_graf"
+                _k_f_f_g = f"{_k_fech_f}_graf"
+                _k_m_g, _k_a_g, _k_e_g = f"{_k_m}_graf", f"{_k_a}_graf", f"{_k_e}_graf"
+                _pull = bool(st.session_state.pop("jur_fin_pull_main_to_graf", False))
+                if _pull or _k_m_g not in st.session_state:
+                    if _jur_date_ok:
+                        st.session_state[_k_f_i_g] = st.session_state[_k_fech_i]
+                        st.session_state[_k_f_f_g] = st.session_state[_k_fech_f]
+                    st.session_state[_k_m_g] = list(st.session_state.get(_k_m, []) or [])
+                    st.session_state[_k_a_g] = list(st.session_state.get(_k_a, []) or [])
+                    st.session_state[_k_e_g] = list(st.session_state.get(_k_e, []) or [])
+
+                if _jur_date_ok and _jur_d_lo is not None and _jur_d_hi is not None:
+                    st.markdown(
+                        """
+                        <style>
+                        div[data-testid="column"]:has(div[data-baseweb="datepicker"]) {
+                            flex: 0 0 auto !important;
+                            width: min(200px, 100%) !important;
+                            min-width: unset !important;
+                        }
+                        </style>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+                    gdi, gdf, _ggap = st.columns([1, 1, 4])
+                    with gdi:
+                        st.caption("Data inicial")
+                        st.date_input(
+                            "Data de fechamento — início (gráficos)",
+                            min_value=_jur_d_lo,
+                            max_value=_jur_d_hi,
+                            key=_k_f_i_g,
+                            help="Igual ao filtro do topo; afeta tabelas e gráficos.",
+                            label_visibility="collapsed",
+                        )
+                    with gdf:
+                        st.caption("Data final")
+                        st.date_input(
+                            "Data de fechamento — fim (gráficos)",
+                            min_value=_jur_d_lo,
+                            max_value=_jur_d_hi,
+                            key=_k_f_f_g,
+                            help="Igual ao filtro do topo; afeta tabelas e gráficos.",
+                            label_visibility="collapsed",
+                        )
+
+                mot_g, area_g, emp_g = _jur_cascade_opcoes(fin_base, _k_m_g, _k_a_g, _k_e_g)
+                gf1, gf2, gf3 = st.columns(3)
+                with gf1:
+                    st.multiselect(
+                        "📍 Por Motivo",
+                        options=mot_g,
+                        key=_k_m_g,
+                        placeholder="Todos",
+                    )
+                with gf2:
+                    st.multiselect(
+                        "🏢 Por Área",
+                        options=area_g,
+                        key=_k_a_g,
+                        placeholder="Todos",
+                    )
+                with gf3:
+                    st.multiselect(
+                        "🏗️ Por Empreendimento",
+                        options=emp_g,
+                        key=_k_e_g,
+                        placeholder="Todos",
+                    )
+
+                _graf_diff = False
+                if _jur_date_ok:
+                    if st.session_state.get(_k_f_i_g) != st.session_state.get(_k_fech_i):
+                        _graf_diff = True
+                    if st.session_state.get(_k_f_f_g) != st.session_state.get(_k_fech_f):
+                        _graf_diff = True
+                if list(st.session_state.get(_k_m_g, []) or []) != list(
+                    st.session_state.get(_k_m, []) or []
+                ) or list(st.session_state.get(_k_a_g, []) or []) != list(
+                    st.session_state.get(_k_a, []) or []
+                ) or list(st.session_state.get(_k_e_g, []) or []) != list(
+                    st.session_state.get(_k_e, []) or []
+                ):
+                    _graf_diff = True
+                if _graf_diff:
+                    if _jur_date_ok:
+                        st.session_state[_k_fech_i] = st.session_state[_k_f_i_g]
+                        st.session_state[_k_fech_f] = st.session_state[_k_f_f_g]
+                    st.session_state[_k_m] = list(st.session_state.get(_k_m_g, []) or [])
+                    st.session_state[_k_a] = list(st.session_state.get(_k_a_g, []) or [])
+                    st.session_state[_k_e] = list(st.session_state.get(_k_e_g, []) or [])
+                    # No próximo run a cascata do topo pode podar seleções; puxar de volta evita divergência _graf vs main.
+                    st.session_state["jur_fin_pull_main_to_graf"] = True
+                    st.rerun()
 
                 if fin_f.empty:
                     st.info("Sem dados para os gráficos com os filtros atuais.")
