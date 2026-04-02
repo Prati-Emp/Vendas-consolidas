@@ -6,6 +6,7 @@ Base: view administracao.Jira_projeto_juridico_consolidado
 
 from __future__ import annotations
 
+import inspect
 import re
 import unicodedata
 from typing import Any, List, Optional
@@ -158,29 +159,38 @@ def render_indicadores_juridico_dashboard() -> None:
     created_col = _find_col(df_raw, ["start_date", "criado em", "created", "data de criacao", "data criação"])
     duedate_col = _find_col(df_raw, ["data limite", "duedate", "deadline"])
 
-    # Filtros rápidos (tipo/obra) na sidebar
+    # Sidebar: apenas intervalo por Data de fechamento (afeta todo o painel)
     with st.sidebar:
         st.markdown("### 🔎 Filtros (Jurídico)")
         df_f = df_raw.copy()
-
-        def _ms(label: str, col: str, key: str) -> List[str]:
-            if not col or col not in df_f.columns:
-                return []
-            opts = sorted(
-                {
-                    v
-                    for v in df_f[col].dropna().astype(str).str.strip().tolist()
-                    if v and v.lower() not in {"none", "nan", "nat", "<na>"}
-                }
-            )
-            return st.multiselect(label, options=opts, default=[], key=key, placeholder="")
-
-        sel_tipo = _ms("Tipo de contrato", tipo_contrato_col, "jur_ind_tipo") if tipo_contrato_col else []
-        sel_obra = _ms("Obra", obra_col, "jur_ind_obra") if obra_col else []
-        if sel_tipo and tipo_contrato_col:
-            df_f = df_f[df_f[tipo_contrato_col].astype(str).str.strip().isin(sel_tipo)]
-        if sel_obra and obra_col:
-            df_f = df_f[df_f[obra_col].astype(str).str.strip().isin(sel_obra)]
+        if not data_fechamento_col:
+            st.warning("Coluna **Data de fechamento** não encontrada; filtro de período indisponível.")
+        else:
+            _dt_side = pd.to_datetime(df_f[data_fechamento_col], errors="coerce")
+            _dt_valid = _dt_side.dropna()
+            if _dt_valid.empty:
+                st.info("Não há datas de fechamento preenchidas para filtrar.")
+            else:
+                d_lo = _dt_valid.min().normalize().date()
+                d_hi = _dt_valid.max().normalize().date()
+                rng = st.date_input(
+                    "Data de fechamento (intervalo)",
+                    value=(d_lo, d_hi),
+                    min_value=d_lo,
+                    max_value=d_hi,
+                    key="jur_ind_fechamento_range",
+                    help="Início e fim inclusivos com base na coluna Data de fechamento.",
+                )
+                if isinstance(rng, (tuple, list)) and len(rng) == 2:
+                    ds, de = rng[0], rng[1]
+                else:
+                    ds = de = rng
+                ts_a = pd.Timestamp(ds).normalize()
+                ts_b = pd.Timestamp(de).normalize()
+                if ts_a > ts_b:
+                    ts_a, ts_b = ts_b, ts_a
+                _mask_dt = _dt_side.notna() & (_dt_side.dt.normalize() >= ts_a) & (_dt_side.dt.normalize() <= ts_b)
+                df_f = df_f.loc[_mask_dt].copy()
 
     if df_f.empty:
         st.info("Nenhum item após filtros.")
@@ -364,8 +374,8 @@ def render_indicadores_juridico_dashboard() -> None:
                     st.info("Sem dados para o gráfico com os filtros atuais.")
                 else:
                     st.caption(
-                        "Itens com **data de fechamento** no mês (eixo X). Cada linha é uma **situação** "
-                        "(status no Jira no momento dos dados). Respeita os mesmos filtros do detalhamento."
+                        "Barras por **mês** de fechamento e **situação** (status no Jira). "
+                        "Mesma lógica das tabelas acima; barras agrupadas por situação em cada mês."
                     )
                     if status_col and status_col in fin_f.columns:
                         sit_s = fin_f[status_col].astype(str).str.strip()
@@ -380,26 +390,28 @@ def render_indicadores_juridico_dashboard() -> None:
                     else:
                         sit_s = pd.Series("Situação não informada", index=fin_f.index, dtype=str)
 
-                    df_line = (
+                    df_bars = (
                         fin_f.assign(Situação=sit_s)
                         .groupby(["Mês", "Situação"], dropna=False)
                         .size()
                         .unstack(fill_value=0)
                         .sort_index()
                     )
-                    # Até 12 situações no gráfico; demais somadas em «Outros» (leitura mais clara)
                     _max_sit = 12
-                    if df_line.shape[1] > _max_sit:
-                        _tot = df_line.sum(axis=0).sort_values(ascending=False)
+                    if df_bars.shape[1] > _max_sit:
+                        _tot = df_bars.sum(axis=0).sort_values(ascending=False)
                         _main = list(_tot.head(_max_sit).index)
-                        _rest = [c for c in df_line.columns if c not in _main]
+                        _rest = [c for c in df_bars.columns if c not in _main]
                         if _rest:
-                            _out = df_line[_rest].sum(axis=1)
-                            df_line = pd.concat([df_line[_main], _out.rename("Outros")], axis=1)
+                            _out = df_bars[_rest].sum(axis=1)
+                            df_bars = pd.concat([df_bars[_main], _out.rename("Outros")], axis=1)
                         else:
-                            df_line = df_line[_main]
+                            df_bars = df_bars[_main]
 
-                    st.line_chart(df_line)
+                    _bar_kw: dict = {}
+                    if "stack" in inspect.signature(st.bar_chart).parameters:
+                        _bar_kw["stack"] = False
+                    st.bar_chart(df_bars, **_bar_kw)
 
     # 2) Tempo de elaboração (proxy: hoje ou data limite - start_date) por tipo contrato
     with tab2:
