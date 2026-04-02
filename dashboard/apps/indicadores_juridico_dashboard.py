@@ -124,9 +124,15 @@ def _plot_juridico_hbar_qtd(title: str, df: pd.DataFrame, label_col: str, *, max
             template="plotly_dark",
             paper_bgcolor="#0E1117",
             plot_bgcolor="#0E1117",
-            title=dict(text=title, font=dict(size=14, color="#FAFAFA")),
+            title=dict(
+                text=title,
+                font=dict(size=14, color="#FAFAFA"),
+                x=0.5,
+                xanchor="center",
+                yanchor="top",
+            ),
             height=200,
-            margin=dict(l=8, r=8, t=48, b=8),
+            margin=dict(l=8, r=8, t=52, b=8),
         )
         return fig
 
@@ -155,11 +161,17 @@ def _plot_juridico_hbar_qtd(title: str, df: pd.DataFrame, label_col: str, *, max
         template="plotly_dark",
         paper_bgcolor="#0E1117",
         plot_bgcolor="#0E1117",
-        title=dict(text=title, font=dict(size=14, color="#FAFAFA")),
-        margin=dict(l=8, r=52, t=52, b=36),
+        title=dict(
+            text=title,
+            font=dict(size=14, color="#FAFAFA"),
+            x=0.5,
+            xanchor="center",
+            yanchor="top",
+        ),
+        margin=dict(l=8, r=52, t=56, b=40),
         height=h,
         xaxis=dict(
-            title="Qtd",
+            title=dict(text="Qtd", standoff=8),
             gridcolor="#30363D",
             zeroline=False,
             dtick=dtick,
@@ -470,14 +482,9 @@ def render_indicadores_juridico_dashboard() -> None:
                             key="jur_ind_fin_emp",
                         )
 
-                st.markdown("##### Distribuição (barras horizontais)")
                 if fin_f.empty:
                     st.info("Sem dados para os gráficos com os filtros atuais.")
                 else:
-                    st.caption(
-                        "Mesmos totais das tabelas acima. Até **30** categorias por gráfico (maiores quantidades). "
-                        "Quantidade exibida ao fim de cada barra."
-                    )
                     gc1, gc2, gc3 = st.columns(3)
                     with gc1:
                         fig_m = _plot_juridico_hbar_qtd("📍 Por Motivo", df_motivo, "Motivo")
