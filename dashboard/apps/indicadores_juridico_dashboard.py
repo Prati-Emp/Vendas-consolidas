@@ -381,10 +381,6 @@ def render_indicadores_juridico_dashboard() -> None:
                 st.session_state[_k_a] = sa
                 st.session_state[_k_e] = se
 
-                st.caption(
-                    "Filtros em conjunto nas tabelas e nos gráficos de barras. **As opções de cada lista já respeitam o que foi "
-                    "escolhido nos outros filtros** (apenas combinações que existem na base)."
-                )
                 f1, f2, f3 = st.columns(3)
                 with f1:
                     sel_mot_det = st.multiselect(
