@@ -94,6 +94,24 @@ def _status_is_rejeitado(s: Any) -> bool:
     return bool(n) and ("rejeit" in n or "reprov" in n)
 
 
+def _empreendimento_label_tabela(value: Any) -> str:
+    """
+    Rótulo exibido só na tabela «Por Empreendimento»: padroniza Villa Bella I/II para 1/2.
+    (Ex.: «Obra 0villa bella I» → «Obra 0villa bella 1».)
+    """
+    if value is None or (isinstance(value, float) and pd.isna(value)):
+        return "Não informado"
+    s = str(value).strip()
+    if not s:
+        return "Não informado"
+    if _normalize(s) == "nao informado":
+        return s
+    # II antes de I para não pegar o primeiro «I» de «II»
+    t = re.sub(r"(?i)(\d*villa\s*bella)\s+II\b", r"\1 2", s)
+    t = re.sub(r"(?i)(\d*villa\s*bella)\s+I\b", r"\1 1", t)
+    return t
+
+
 def render_indicadores_juridico_dashboard() -> None:
     st.subheader("📈 Indicadores Jurídico")
 
@@ -232,8 +250,13 @@ def render_indicadores_juridico_dashboard() -> None:
 
                 with col3:
                     st.markdown("**🏗️ Por Empreendimento**")
+                    fin_emp = fin.assign(
+                        **{
+                            "Empreendimento": fin["Empreendimento"].map(_empreendimento_label_tabela),
+                        }
+                    )
                     df_emp = (
-                        fin.groupby("Empreendimento")
+                        fin_emp.groupby("Empreendimento")
                         .size()
                         .reset_index(name="Qtd")
                         .sort_values("Qtd", ascending=False)
