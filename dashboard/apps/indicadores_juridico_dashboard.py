@@ -235,7 +235,7 @@ def render_indicadores_juridico_dashboard() -> None:
                 f1, f2, f3 = st.columns(3)
                 with f1:
                     sel_mot_det = st.multiselect(
-                        "Filtrar por motivo",
+                        "📍 Por Motivo",
                         options=mot_opts,
                         default=[],
                         key="jur_fin_det_motivo",
@@ -243,7 +243,7 @@ def render_indicadores_juridico_dashboard() -> None:
                     )
                 with f2:
                     sel_area_det = st.multiselect(
-                        "Filtrar por área",
+                        "🏢 Por Área",
                         options=area_opts,
                         default=[],
                         key="jur_fin_det_area",
@@ -251,7 +251,7 @@ def render_indicadores_juridico_dashboard() -> None:
                     )
                 with f3:
                     sel_emp_det = st.multiselect(
-                        "Filtrar por empreendimento",
+                        "🏗️ Por Empreendimento",
                         options=emp_opts,
                         default=[],
                         key="jur_fin_det_emp",
@@ -269,7 +269,6 @@ def render_indicadores_juridico_dashboard() -> None:
                 col1, col2, col3 = st.columns(3)
 
                 with col1:
-                    st.markdown("**📍 Por Motivo**")
                     if fin_f.empty:
                         st.info("Sem registros para os filtros atuais.")
                     else:
@@ -287,7 +286,6 @@ def render_indicadores_juridico_dashboard() -> None:
                         )
 
                 with col2:
-                    st.markdown("**🏢 Por Área**")
                     if fin_f.empty:
                         st.info("Sem registros para os filtros atuais.")
                     else:
@@ -305,7 +303,6 @@ def render_indicadores_juridico_dashboard() -> None:
                         )
 
                 with col3:
-                    st.markdown("**🏗️ Por Empreendimento**")
                     if fin_f.empty:
                         st.info("Sem registros para os filtros atuais.")
                     else:
