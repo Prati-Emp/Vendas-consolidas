@@ -89,19 +89,9 @@ def load_jira_juridico_consolidado() -> pd.DataFrame:
         return pd.DataFrame()
 
 
-def _status_is_finalizado(s: Any) -> bool:
-    n = _normalize(s)
-    return bool(n) and ("finaliz" in n or n in {"done", "closed"} or "conclu" in n or "resolvid" in n)
-
-
 def _status_is_rejeitado(s: Any) -> bool:
     n = _normalize(s)
     return bool(n) and ("rejeit" in n or "reprov" in n)
-
-
-def _month_key(dt: pd.Series) -> pd.Series:
-    d = pd.to_datetime(dt, errors="coerce")
-    return d.dt.to_period("M").astype(str)
 
 
 def render_indicadores_juridico_dashboard() -> None:
@@ -123,11 +113,32 @@ def render_indicadores_juridico_dashboard() -> None:
     status_col = _find_col(df_raw, ["status", "jrd - status", "jrd status"])
     tipo_contrato_col = _find_col(df_raw, ["tipo de contrato", "jrd - tipo de contrato", "contrato"])
     obra_col = _find_col(df_raw, ["obra", "empreendimento", "area", "área"])
+    motivo_col = _find_col(
+        df_raw,
+        [
+            "motivo consolidado",
+            "jrd motivo consolidado",
+            "jrd - motivo consolidado",
+            "jrd motivo da requisicao consolidada",
+            "jrd motivo da requisição consolidada",
+            "motivo da requisição consolidada",
+            "motivo",
+        ],
+    )
+    area_col_ind = _find_col(df_raw, ["jrd - área", "jrd area", "área", "area"])
+    emp_col_ind = _find_col(df_raw, ["jrd - empreendimento", "jrd empreendimento", "empreendimento"])
+    data_fechamento_col = _find_col(
+        df_raw,
+        [
+            "data de fechamento",
+            "jrd - data de fechamento",
+            "data fechamento",
+            "fechamento",
+        ],
+    )
     responsavel_col = _find_col(df_raw, ["responsavel", "responsável", "assignee"])
     created_col = _find_col(df_raw, ["start_date", "criado em", "created", "data de criacao", "data criação"])
-    updated_col = _find_col(df_raw, ["atualizado em", "updated"])
     duedate_col = _find_col(df_raw, ["data limite", "duedate", "deadline"])
-    resolved_col = _find_col(df_raw, ["resolutiondate", "resolvido", "data de resolucao", "data de resolução", "data final"])
 
     # Filtros rápidos (tipo/obra) na sidebar
     with st.sidebar:
@@ -159,26 +170,32 @@ def render_indicadores_juridico_dashboard() -> None:
 
     st.divider()
 
-    # 1) QTD finalizados por mês (tipo contrato x obra)
+    # 1) QTD finalizados por mês: linhas com "Data de fechamento" preenchida (proxy de finalizado)
     st.subheader("✅ Finalizados por mês")
-    if not status_col:
-        st.info("Coluna de Status não encontrada.")
+    if not data_fechamento_col:
+        st.info("Coluna 'Data de fechamento' não encontrada na view.")
     else:
-        fin_mask = df_f[status_col].apply(_status_is_finalizado)
-        fin = df_f.loc[fin_mask].copy()
-        date_src = resolved_col or updated_col or created_col
-        if fin.empty or not date_src:
-            st.info("Sem itens finalizados (ou colunas de data não encontradas).")
+        fin = df_f.copy()
+        fin["_dt_fech"] = pd.to_datetime(fin[data_fechamento_col], errors="coerce")
+        fin = fin.loc[fin["_dt_fech"].notna()].copy()
+        if fin.empty:
+            st.info("Nenhuma linha com 'Data de fechamento' informada.")
         else:
-            fin["_mes"] = _month_key(fin[date_src])
-            fin["_tipo"] = fin[tipo_contrato_col].astype(str).str.strip() if tipo_contrato_col else "Não informado"
-            fin["_obra"] = fin[obra_col].astype(str).str.strip() if obra_col else "Não informado"
+            fin["Mês"] = fin["_dt_fech"].dt.to_period("M").astype(str)
+            fin["Tipo de contrato"] = (
+                fin[tipo_contrato_col].astype(str).str.strip() if tipo_contrato_col else "Não informado"
+            )
+            fin["Motivo"] = fin[motivo_col].astype(str).str.strip() if motivo_col else "Não informado"
+            fin["Área"] = fin[area_col_ind].astype(str).str.strip() if area_col_ind else "Não informado"
+            fin["Empreendimento"] = fin[emp_col_ind].astype(str).str.strip() if emp_col_ind else "Não informado"
+            for c in ["Tipo de contrato", "Motivo", "Área", "Empreendimento"]:
+                fin[c] = fin[c].replace({"": "Não informado", "nan": "Não informado", "None": "Não informado"})
 
             tbl_fin = (
-                fin.groupby(["_mes", "_tipo", "_obra"], dropna=False)
+                fin.groupby(["Mês", "Tipo de contrato", "Motivo", "Área", "Empreendimento"], dropna=False)
                 .size()
                 .reset_index(name="Qtd")
-                .sort_values(["_mes", "Qtd"], ascending=[True, False])
+                .sort_values(["Mês", "Qtd"], ascending=[True, False])
             )
             st.dataframe(tbl_fin, hide_index=True, use_container_width=True, key="jur_ind_finalizados_mes")
 
