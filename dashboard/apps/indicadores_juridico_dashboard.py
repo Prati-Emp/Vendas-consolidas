@@ -10,7 +10,7 @@ import html
 import re
 import unicodedata
 from datetime import date as date_type
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional
 
 import pandas as pd
 import plotly.graph_objects as go
@@ -1238,23 +1238,108 @@ def render_indicadores_juridico_dashboard() -> None:
                     key="jur_ind_elab_conf_detail",
                 )
 
-    # 4) Qtd rejeitada por contrato e obra
+    # 4) Rejeitadas: resumos por tipo×obra e por responsável
     with tab4:
-        st.subheader("❌ Rejeitadas por tipo de contrato e obra")
+        st.subheader("❌ Rejeitadas")
+        st.caption(
+            "Itens cujo **Status** indica rejeição ou reprovação, no recorte de **data de fechamento** das demais abas."
+        )
         if not status_col:
-            st.info("Coluna de Status não encontrada.")
+            st.info("Coluna de **Status** não encontrada na view.")
         else:
             rej = df_f.loc[df_f[status_col].apply(_status_is_rejeitado)].copy()
             if rej.empty:
-                st.info("Sem itens rejeitados.")
+                st.info("Nenhum item rejeitado no período filtrado.")
             else:
-                rej["_tipo"] = rej[tipo_contrato_col].astype(str).str.strip() if tipo_contrato_col else "Não informado"
+                rej["_tipo"] = (
+                    rej[tipo_contrato_col].astype(str).str.strip() if tipo_contrato_col else "Não informado"
+                )
                 rej["_obra"] = rej[obra_col].astype(str).str.strip() if obra_col else "Não informado"
-                tbl_rej = (
+                for _c in ("_tipo", "_obra"):
+                    rej[_c] = rej[_c].replace(
+                        {"": "Não informado", "nan": "Não informado", "None": "Não informado"}
+                    )
+
+                if responsavel_col and responsavel_col in rej.columns:
+                    rej["_resp"] = rej[responsavel_col].astype(str).str.strip()
+                else:
+                    rej["_resp"] = "Não informado"
+                rej["_resp"] = rej["_resp"].replace(
+                    {"": "Não informado", "nan": "Não informado", "None": "Não informado"}
+                )
+
+                tbl_rej_tipo = (
                     rej.groupby(["_tipo", "_obra"], dropna=False)
                     .size()
-                    .reset_index(name="Qtd")
-                    .sort_values("Qtd", ascending=False)
+                    .reset_index(name="Quantidade")
+                    .rename(columns={"_tipo": "Tipo de contrato", "_obra": "Obra / empreendimento"})
+                    .sort_values("Quantidade", ascending=False)
                 )
-                st.dataframe(tbl_rej, hide_index=True, use_container_width=True, key="jur_ind_rejeitados")
+                tbl_rej_resp = (
+                    rej.groupby("_resp", dropna=False)
+                    .size()
+                    .reset_index(name="Quantidade")
+                    .rename(columns={"_resp": "Responsável"})
+                    .sort_values("Quantidade", ascending=False)
+                )
+
+                c_r1, c_r2 = st.columns(2)
+                with c_r1:
+                    st.markdown("**Por tipo de contrato e obra**")
+                    st.dataframe(
+                        tbl_rej_tipo,
+                        hide_index=True,
+                        use_container_width=True,
+                        height=min(480, 40 + 36 * len(tbl_rej_tipo)),
+                        key="jur_ind_rejeitados_tipo_obra",
+                    )
+                with c_r2:
+                    st.markdown("**Por responsável**")
+                    st.dataframe(
+                        tbl_rej_resp,
+                        hide_index=True,
+                        use_container_width=True,
+                        height=min(480, 40 + 36 * len(tbl_rej_resp)),
+                        key="jur_ind_rejeitados_resp",
+                    )
+
+                st.markdown("**Detalhamento por issue**")
+                chave_r = (
+                    rej[chave_col].astype(str).str.strip()
+                    if chave_col and chave_col in rej.columns
+                    else pd.Series("", index=rej.index)
+                )
+                stat_r = (
+                    rej[status_col].astype(str).str.strip()
+                    if status_col and status_col in rej.columns
+                    else pd.Series("", index=rej.index)
+                )
+                resumo_r = (
+                    rej[resumo_col_ind].astype(str).str.strip()
+                    if resumo_col_ind and resumo_col_ind in rej.columns
+                    else pd.Series("", index=rej.index)
+                )
+                detail_cols: Dict[str, pd.Series] = {
+                    "Chave": chave_r,
+                    "Status": stat_r,
+                    "Responsável": rej["_resp"],
+                    "Tipo de contrato": rej["_tipo"],
+                    "Obra / empreendimento": rej["_obra"],
+                }
+                if data_fechamento_col and data_fechamento_col in rej.columns:
+                    _fech_r = pd.to_datetime(rej[data_fechamento_col], errors="coerce")
+                    _fech_s = _fech_r.dt.strftime("%d/%m/%Y")
+                    detail_cols["Data de fechamento"] = _fech_s.mask(_fech_r.isna(), "")
+                detail_cols["Resumo"] = resumo_r
+                detail_rej = pd.DataFrame(detail_cols)
+                detail_rej = detail_rej.sort_values(
+                    ["Tipo de contrato", "Obra / empreendimento", "Chave"], ascending=[True, True, True]
+                )
+                st.dataframe(
+                    detail_rej,
+                    hide_index=True,
+                    use_container_width=True,
+                    height=min(520, 40 + 36 * min(len(detail_rej), 14)),
+                    key="jur_ind_rejeitados_detail",
+                )
 
