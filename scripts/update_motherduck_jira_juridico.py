@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """
 Atualização do Jira Jurídico no MotherDuck
-Executa a API do Jira para o projeto JRD e atualiza a tabela Jira_projeto_juridico
+- Tabela Jira_projeto_juridico: issues com todos os campos (*all)
+- Tabela Jira_projeto_juridico_changelog: GET /issue/{key}?expand=changelog
+  (tempo por status calculado a partir do histórico)
 """
 
 import os
@@ -28,11 +30,13 @@ def sistema_jira_juridico():
     try:
         # Importar módulos necessários
         from scripts.cv_jira_juridico_api import obter_dados_jira_juridico
+        from scripts.cv_jira_juridico_changelog_api import (
+            obter_dados_jira_juridico_changelog,
+        )
         import duckdb
-        import pandas as pd
 
-        # 1. Coletar dados do Jira Jurídico
-        print("\n1. Coletando dados do projeto JRD do Jira...")
+        # 1. Coletar dados do Jira Jurídico (issues completas)
+        print("\n1. Coletando dados do projeto JRD do Jira (campos *all)...")
         df_jira_juridico = obter_dados_jira_juridico()
 
         if df_jira_juridico.empty:
@@ -40,6 +44,14 @@ def sistema_jira_juridico():
             return False
 
         print(f"OK: Jira Jurídico: {len(df_jira_juridico)} registros")
+
+        # 1b. Changelog / tempo por status (1 GET por issue)
+        print("\n1b. Coletando changelog por issue (pode demorar)...")
+        df_changelog = obter_dados_jira_juridico_changelog()
+        if df_changelog.empty:
+            print("AVISO: Nenhuma linha de changelog — tabela changelog pode ficar vazia")
+        else:
+            print(f"OK: Changelog: {len(df_changelog)} registros")
 
         # 2. Upload para MotherDuck
         print("\n2. Fazendo upload para MotherDuck...")
@@ -65,6 +77,17 @@ def sistema_jira_juridico():
             "SELECT COUNT(*) FROM Jira_projeto_juridico"
         ).fetchone()[0]
         print(f"OK: Jira Jurídico upload: {count_jira_juridico:,} registros")
+
+        if not df_changelog.empty:
+            print("   - Fazendo upload Jira Jurídico (changelog)...")
+            conn.register("df_jira_chg", df_changelog)
+            conn.execute(
+                "CREATE OR REPLACE TABLE Jira_projeto_juridico_changelog AS SELECT * FROM df_jira_chg"
+            )
+            nchg = conn.sql(
+                "SELECT COUNT(*) FROM Jira_projeto_juridico_changelog"
+            ).fetchone()[0]
+            print(f"OK: Jira Jurídico changelog upload: {nchg:,} registros")
 
         # Verificar tabela criada
         print("\n3. Verificando tabela criada...")
@@ -99,7 +122,10 @@ def sistema_jira_juridico():
         print(f"Duracao: {duration}")
         print("Resumo:")
         print(f"   - Jira Jurídico Issues: {len(df_jira_juridico):,} registros")
+        if not df_changelog.empty:
+            print(f"   - Changelog: {len(df_changelog):,} registros")
         print("   - Tabela: Jira_projeto_juridico")
+        print("   - Tabela: Jira_projeto_juridico_changelog")
         print("   - Banco: reservas (MotherDuck)")
 
         return True
