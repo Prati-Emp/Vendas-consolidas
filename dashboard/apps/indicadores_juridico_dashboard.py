@@ -6,6 +6,7 @@ Base: view administracao.Jira_projeto_juridico_consolidado
 
 from __future__ import annotations
 
+import html
 import re
 import unicodedata
 from datetime import date as date_type
@@ -17,6 +18,34 @@ import streamlit as st
 
 from dashboard.utils.md_conn import get_md_connection
 from advanced_auth import get_current_user
+
+
+# Textos longos da aba → tooltip no «?» ao lado de «Por motivo»
+_JUR_TT_TEMPO_ELAB_ABA = (
+    "Usa a coluna Tempo em elaboração (min) da view (tempo acumulado no status, via Time in Status). "
+    "Valores convertidos para horas. O período é o da data de fechamento (datas ao lado); "
+    "o filtro Por motivo aplica-se só a esta aba."
+)
+_JUR_TT_ELAB_CONF_ABA = (
+    "Por issue: lemos Linha do tempo (status) (transições de → para). "
+    "Elaborada = passou por Em elaboração ao menos uma vez; Conferida = passou por Conferência ao menos uma vez. "
+    "Repetições da mesma etapa contam uma vez por issue. Resumos: Motivo à esquerda e Responsável à direita. "
+    "O filtro Por motivo no topo restringe só esta aba."
+)
+
+
+def _jur_por_motivo_label_with_tooltip(*, tooltip: str) -> str:
+    """Rótulo «📍 Por motivo» + interrogação com tooltip nativo (atributo title)."""
+    t_attr = html.escape(" ".join(tooltip.split()))
+    return (
+        '<div style="font-size:0.875rem;color:rgba(250,250,250,0.82);margin:0 0 0.25rem 0;'
+        'display:flex;align-items:center;gap:0.35rem;flex-wrap:wrap;">'
+        "<span>📍 Por motivo</span>"
+        f'<abbr title="{t_attr}" style="cursor:help;text-decoration:none;display:inline-flex;align-items:center;'
+        "justify-content:center;min-width:1.1rem;height:1.1rem;border:1px solid rgba(250,250,250,0.35);"
+        'border-radius:999px;font-size:0.72rem;font-weight:600;line-height:1;color:rgba(250,250,250,0.92);">?</abbr>'
+        "</div>"
+    )
 
 
 def _jur_fin_mark_pull_main_to_graf() -> None:
@@ -889,7 +918,10 @@ def render_indicadores_juridico_dashboard() -> None:
             )
             te_mot, te_di, te_df, _te_gap = st.columns([2.4, 1, 1, 2.6])
             with te_mot:
-                st.caption("📍 Por motivo")
+                st.markdown(
+                    _jur_por_motivo_label_with_tooltip(tooltip=_JUR_TT_TEMPO_ELAB_ABA),
+                    unsafe_allow_html=True,
+                )
                 if not motivo_col or motivo_col not in df_f.columns:
                     st.caption("_Coluna Motivo não disponível._")
                 elif not _te_mot_opts:
@@ -929,11 +961,6 @@ def render_indicadores_juridico_dashboard() -> None:
             pass
         elif not _jur_date_ok:
             st.info("Não há datas de fechamento preenchidas para filtrar o período.")
-        st.caption(
-            "Usa a coluna **Tempo em elaboração (min)** da view (tempo acumulado no status, via *Time in Status*). "
-            "Valores convertidos para **horas**. O **período** é o da **data de fechamento** (datas ao lado); o filtro "
-            "**Por motivo** aplica-se só a esta aba."
-        )
         if not tempo_elab_min_col or tempo_elab_min_col not in df_f.columns:
             st.info(
                 "Coluna **Tempo em elaboração (min)** não encontrada na view. "
@@ -1025,14 +1052,8 @@ def render_indicadores_juridico_dashboard() -> None:
     with tab3:
         st.subheader("👤 Elaborada vs Conferência")
         if not responsavel_col or responsavel_col not in df_f.columns:
-            st.caption(
-                "Por issue: lemos **Linha do tempo (status)**. **Elaborada** / **Conferida** = passou pela etapa ao menos uma vez."
-            )
             st.info("Coluna **Responsável** não encontrada na view.")
         elif not linha_tempo_col or linha_tempo_col not in df_f.columns:
-            st.caption(
-                "Por issue: lemos **Linha do tempo (status)**. **Elaborada** / **Conferida** = passou pela etapa ao menos uma vez."
-            )
             st.info(
                 "Coluna **Linha do tempo (status)** não localizada. "
                 "Ela vem do changelog no pipeline jurídico consolidado."
@@ -1069,7 +1090,10 @@ def render_indicadores_juridico_dashboard() -> None:
                 )
                 ec_mot, ec_di, ec_df, _ec_gap = st.columns([2.4, 1, 1, 2.6])
                 with ec_mot:
-                    st.caption("📍 Por motivo")
+                    st.markdown(
+                        _jur_por_motivo_label_with_tooltip(tooltip=_JUR_TT_ELAB_CONF_ABA),
+                        unsafe_allow_html=True,
+                    )
                     if not motivo_col or motivo_col not in df_f.columns:
                         st.caption("_Coluna Motivo não disponível._")
                     elif not _ec_mot_opts:
@@ -1107,13 +1131,6 @@ def render_indicadores_juridico_dashboard() -> None:
                     )
             elif data_fechamento_col and not _jur_date_ok:
                 st.info("Não há datas de fechamento preenchidas para filtrar o período.")
-
-            st.caption(
-                "Por issue: lemos **Linha do tempo (status)** (transições `de -> para`). "
-                "**Elaborada** = passou por **Em elaboração** ao menos uma vez; **Conferida** = passou por **Conferência** ao menos uma vez. "
-                "Repetições da mesma etapa contam **uma** vez por issue. Os resumos abaixo: **Motivo** à esquerda e **Responsável** à direita; "
-                "**Por motivo** no topo restringe só esta aba."
-            )
 
             w = df_f.copy()
             w["_resp"] = w[responsavel_col].astype(str).str.strip()
