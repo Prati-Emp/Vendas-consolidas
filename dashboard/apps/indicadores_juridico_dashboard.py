@@ -307,6 +307,138 @@ def _jur_motivo_series(df: pd.DataFrame, motivo_col: str) -> pd.Series:
     return s
 
 
+def _jur_statuses_from_linha_tempo(value: Any) -> set[str]:
+    """
+    Extrai nomes de status já visitados a partir de «Linha do tempo (status)».
+    Formato esperado: trechos «de -> para @ data» separados por «|» (changelog).
+    """
+    if value is None or (isinstance(value, float) and pd.isna(value)):
+        return set()
+    raw = str(value).strip()
+    if not raw or raw.lower() in {"none", "nan", "nat", "<na>"}:
+        return set()
+    out: set[str] = set()
+    for segment in re.split(r"\s*\|\s*", raw):
+        segment = segment.strip()
+        if "->" not in segment:
+            continue
+        left, right = segment.split("->", 1)
+        de = left.strip()
+        para = right.split("@", 1)[0].strip()
+        if de:
+            out.add(_normalize(de))
+        if para:
+            out.add(_normalize(para))
+    return out
+
+
+def _jur_passou_em_elaboracao_linha(linha_timeline: Any) -> bool:
+    """1 se a issue passou por «Em elaboração» ao menos uma vez (indiferente de quantas)."""
+    st_set = _jur_statuses_from_linha_tempo(linha_timeline)
+    for x in st_set:
+        if "em elaboracao" in x:
+            return True
+    return False
+
+
+def _jur_passou_conferencia_linha(linha_timeline: Any) -> bool:
+    """1 se a issue passou por «Conferência» ao menos uma vez (indiferente de quantas)."""
+    st_set = _jur_statuses_from_linha_tempo(linha_timeline)
+    for x in st_set:
+        if "conferencia" in x:
+            return True
+    return False
+
+
+def _plot_juridico_grouped_elab_conf(df: pd.DataFrame, *, max_resp: int = 28) -> go.Figure:
+    """Barras horizontais agrupadas: Qtd elaborada e Qtd conferida por responsável."""
+    _tit = dict(
+        text="Quantidade por responsável",
+        font=dict(size=_JUR_HBAR_TITLE_SZ, color="#FAFAFA"),
+        x=0.5,
+        xanchor="center",
+        yanchor="top",
+    )
+    _marg = dict(l=_JUR_HBAR_ML, r=max(_JUR_HBAR_MR, 88), t=62, b=12)
+
+    need = {"Responsável", "Qtd elaborada", "Qtd conferida"}
+    if df.empty or not need.issubset(df.columns):
+        fig = go.Figure()
+        fig.update_layout(
+            template="plotly_dark",
+            paper_bgcolor="#0E1117",
+            plot_bgcolor="#0E1117",
+            title=_tit,
+            height=260,
+            margin=_marg,
+        )
+        return fig
+
+    d = df.sort_values(["Qtd elaborada", "Qtd conferida"], ascending=True).tail(max_resp).copy()
+    ylab = d["Responsável"].astype(str).str.strip().apply(lambda s: (s[:42] + "…") if len(s) > 43 else s)
+    qe = d["Qtd elaborada"].astype(int)
+    qc = d["Qtd conferida"].astype(int)
+
+    fig = go.Figure()
+    fig.add_trace(
+        go.Bar(
+            name="Elaborada",
+            y=ylab,
+            x=qe,
+            orientation="h",
+            marker=dict(color="#4FC3F7", line=dict(width=0)),
+            text=qe.astype(str),
+            textposition="outside",
+            textfont=dict(color="#ECEFF1", size=_JUR_HBAR_BAR_TEXT_SZ - 1),
+            hovertemplate="%{y}<br>Elaborada: %{x}<extra></extra>",
+        )
+    )
+    fig.add_trace(
+        go.Bar(
+            name="Conferida",
+            y=ylab,
+            x=qc,
+            orientation="h",
+            marker=dict(color="#81C784", line=dict(width=0)),
+            text=qc.astype(str),
+            textposition="outside",
+            textfont=dict(color="#ECEFF1", size=_JUR_HBAR_BAR_TEXT_SZ - 1),
+            hovertemplate="%{y}<br>Conferida: %{x}<extra></extra>",
+        )
+    )
+    x_max = float(max(qe.max() if len(qe) else 0, qc.max() if len(qc) else 0, 1))
+    h = min(820, max(300, 40 * len(ylab) + 160))
+    fig.update_layout(
+        template="plotly_dark",
+        paper_bgcolor="#0E1117",
+        plot_bgcolor="#0E1117",
+        title=_tit,
+        margin=_marg,
+        height=h,
+        barmode="group",
+        bargap=0.14,
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="center",
+            x=0.5,
+            font=dict(size=12, color="#E0E0E0"),
+        ),
+        xaxis=dict(
+            visible=False,
+            range=[0, max(x_max * 1.12, 1)] if x_max else None,
+            fixedrange=True,
+        ),
+        yaxis=dict(
+            title="",
+            automargin=False,
+            tickfont=dict(size=_JUR_HBAR_Y_TICK_SZ, color="#E0E0E0"),
+        ),
+    )
+    return fig
+
+
 def _jur_cascade_opcoes(
     fin_base: pd.DataFrame, km: str, ka: str, ke: str
 ) -> tuple[List[str], List[str], List[str]]:
@@ -435,6 +567,14 @@ def render_indicadores_juridico_dashboard() -> None:
             "tempo em elaboracao (min)",
             "tempo elaboração (min)",
             "tempo elaboracao (min)",
+        ],
+    )
+    linha_tempo_col = _find_col(
+        df_raw,
+        [
+            "linha do tempo (status)",
+            "linha do tempo status",
+            "linha tempo status",
         ],
     )
 
@@ -947,27 +1087,99 @@ def render_indicadores_juridico_dashboard() -> None:
                     key="jur_ind_tempo_elab_detail",
                 )
 
-    # 3) Qtd elaborada e conferida por colaborador (Status = Em elaboração / Conferência)
+    # 3) Elaborada vs Conferência: passagens via «Linha do tempo (status)», agregado por Responsável
     with tab3:
-        st.subheader("👤 Elaborada vs Conferência por colaborador")
-        if not status_col or not responsavel_col:
-            st.info("Colunas de Status/Responsável não encontradas.")
+        st.subheader("👤 Elaborada vs Conferência por responsável")
+        st.caption(
+            "Por issue: lemos **Linha do tempo (status)** (transições `de -> para`). "
+            "**Elaborada** = passou por **Em elaboração** ao menos uma vez; **Conferida** = passou por **Conferência** ao menos uma vez. "
+            "Repetições da mesma etapa contam **uma** vez por issue."
+        )
+        if not responsavel_col or responsavel_col not in df_f.columns:
+            st.info("Coluna **Responsável** não encontrada na view.")
+        elif not linha_tempo_col or linha_tempo_col not in df_f.columns:
+            st.info(
+                "Coluna **Linha do tempo (status)** não encontrada. "
+                "Ela é preenchida a partir do changelog no pipeline jurídico consolidado."
+            )
         else:
-            s_norm = df_f[status_col].astype(str).map(_normalize)
-            mask_ec = s_norm.isin({_normalize("Em elaboração"), _normalize("Conferência")})
-            ec = df_f.loc[mask_ec].copy()
-            if ec.empty:
-                st.info("Sem itens em Elaboração/Conferência.")
-            else:
-                ec["_status"] = ec[status_col].astype(str).str.strip()
-                ec["_resp"] = ec[responsavel_col].astype(str).str.strip()
-                tbl_ec = (
-                    ec.groupby(["_resp", "_status"])
-                    .size()
-                    .reset_index(name="Qtd")
-                    .sort_values(["Qtd"], ascending=False)
+            w = df_f.copy()
+            w["_resp"] = w[responsavel_col].astype(str).str.strip()
+            w["_resp"] = w["_resp"].replace({"": "Não informado", "nan": "Não informado", "None": "Não informado"})
+            w["_elab"] = w[linha_tempo_col].apply(_jur_passou_em_elaboracao_linha)
+            w["_conf"] = w[linha_tempo_col].apply(_jur_passou_conferencia_linha)
+
+            tbl_ec = (
+                w.groupby("_resp", dropna=False)
+                .agg(_elab_sum=("_elab", "sum"), _conf_sum=("_conf", "sum"))
+                .reset_index()
+                .rename(
+                    columns={
+                        "_resp": "Responsável",
+                        "_elab_sum": "Qtd elaborada",
+                        "_conf_sum": "Qtd conferida",
+                    }
                 )
-                st.dataframe(tbl_ec, hide_index=True, use_container_width=True, key="jur_ind_elab_conf_resp")
+                .sort_values(["Qtd elaborada", "Qtd conferida"], ascending=False)
+            )
+            if tbl_ec.empty or (tbl_ec["Qtd elaborada"].sum() == 0 and tbl_ec["Qtd conferida"].sum() == 0):
+                st.info(
+                    "Nenhuma passagem por **Em elaboração** ou **Conferência** detectada na linha do tempo, "
+                    "no período filtrado."
+                )
+            else:
+                cte, cge = st.columns(2)
+                with cte:
+                    st.markdown("**Resumo por responsável**")
+                    st.dataframe(
+                        tbl_ec,
+                        hide_index=True,
+                        use_container_width=True,
+                        height=min(480, 40 + 36 * len(tbl_ec)),
+                        key="jur_ind_elab_conf_tbl",
+                    )
+                with cge:
+                    fig_ec = _plot_juridico_grouped_elab_conf(tbl_ec)
+                    st.plotly_chart(fig_ec, use_container_width=True, key="jur_chart_elab_conf")
+
+                st.markdown("**Detalhamento por issue**")
+                chave_d = (
+                    w[chave_col].astype(str).str.strip()
+                    if chave_col and chave_col in w.columns
+                    else pd.Series("", index=w.index)
+                )
+                resumo_d = (
+                    w[resumo_col_ind].astype(str).str.strip()
+                    if resumo_col_ind and resumo_col_ind in w.columns
+                    else pd.Series("", index=w.index)
+                )
+                def _trunc_lt(val: Any) -> str:
+                    s = str(val).strip() if val is not None else ""
+                    if s.lower() in {"none", "nan", "nat", "<na>"}:
+                        return ""
+                    return (s[:220] + "…") if len(s) > 220 else s
+
+                lt_short = w[linha_tempo_col].apply(_trunc_lt)
+                detail_ec = pd.DataFrame(
+                    {
+                        "Chave": chave_d,
+                        "Responsável": w["_resp"],
+                        "Elaboração": w["_elab"].map({True: "Sim", False: "Não"}),
+                        "Conferência": w["_conf"].map({True: "Sim", False: "Não"}),
+                        "Resumo": resumo_d,
+                        "Linha do tempo (trecho)": lt_short,
+                    }
+                )
+                detail_ec = detail_ec.sort_values(
+                    ["Elaboração", "Conferência", "Chave"], ascending=[False, False, True]
+                )
+                st.dataframe(
+                    detail_ec,
+                    hide_index=True,
+                    use_container_width=True,
+                    height=min(520, 40 + 36 * min(len(detail_ec), 14)),
+                    key="jur_ind_elab_conf_detail",
+                )
 
     # 4) Qtd rejeitada por contrato e obra
     with tab4:
