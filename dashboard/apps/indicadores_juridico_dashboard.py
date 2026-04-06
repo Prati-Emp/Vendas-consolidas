@@ -1021,7 +1021,7 @@ def render_indicadores_juridico_dashboard() -> None:
                     key="jur_ind_tempo_elab_detail",
                 )
 
-    # 3) Elaborada vs Conferência: linha do tempo; resumos por Responsável e por Motivo
+    # 3) Elaborada vs Conferência: linha do tempo; resumos por Motivo (esq.) e Responsável (dir.)
     with tab3:
         st.subheader("👤 Elaborada vs Conferência")
         if not responsavel_col or responsavel_col not in df_f.columns:
@@ -1111,7 +1111,7 @@ def render_indicadores_juridico_dashboard() -> None:
             st.caption(
                 "Por issue: lemos **Linha do tempo (status)** (transições `de -> para`). "
                 "**Elaborada** = passou por **Em elaboração** ao menos uma vez; **Conferida** = passou por **Conferência** ao menos uma vez. "
-                "Repetições da mesma etapa contam **uma** vez por issue. Os resumos abaixo agregam por **Responsável** e por **Motivo**; "
+                "Repetições da mesma etapa contam **uma** vez por issue. Os resumos abaixo: **Motivo** à esquerda e **Responsável** à direita; "
                 "**Por motivo** no topo restringe só esta aba."
             )
 
@@ -1162,15 +1162,6 @@ def render_indicadores_juridico_dashboard() -> None:
             else:
                 cte, cge = st.columns(2)
                 with cte:
-                    st.markdown("**Resumo por responsável**")
-                    st.dataframe(
-                        tbl_ec,
-                        hide_index=True,
-                        use_container_width=True,
-                        height=min(480, 40 + 36 * len(tbl_ec)),
-                        key="jur_ind_elab_conf_tbl",
-                    )
-                with cge:
                     st.markdown("**Resumo por motivo**")
                     st.dataframe(
                         tbl_mot,
@@ -1178,6 +1169,15 @@ def render_indicadores_juridico_dashboard() -> None:
                         use_container_width=True,
                         height=min(480, 40 + 36 * len(tbl_mot)),
                         key="jur_ind_elab_conf_mot_tbl",
+                    )
+                with cge:
+                    st.markdown("**Resumo por responsável**")
+                    st.dataframe(
+                        tbl_ec,
+                        hide_index=True,
+                        use_container_width=True,
+                        height=min(480, 40 + 36 * len(tbl_ec)),
+                        key="jur_ind_elab_conf_tbl",
                     )
 
                 st.markdown("**Detalhamento por issue**")
