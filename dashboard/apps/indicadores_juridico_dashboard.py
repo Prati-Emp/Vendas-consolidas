@@ -350,95 +350,6 @@ def _jur_passou_conferencia_linha(linha_timeline: Any) -> bool:
     return False
 
 
-def _plot_juridico_grouped_elab_conf(df: pd.DataFrame, *, max_resp: int = 28) -> go.Figure:
-    """Barras horizontais agrupadas: Qtd elaborada e Qtd conferida por responsável."""
-    _tit = dict(
-        text="Quantidade por responsável",
-        font=dict(size=_JUR_HBAR_TITLE_SZ, color="#FAFAFA"),
-        x=0.5,
-        xanchor="center",
-        yanchor="top",
-    )
-    _marg = dict(l=_JUR_HBAR_ML, r=max(_JUR_HBAR_MR, 88), t=62, b=12)
-
-    need = {"Responsável", "Qtd elaborada", "Qtd conferida"}
-    if df.empty or not need.issubset(df.columns):
-        fig = go.Figure()
-        fig.update_layout(
-            template="plotly_dark",
-            paper_bgcolor="#0E1117",
-            plot_bgcolor="#0E1117",
-            title=_tit,
-            height=260,
-            margin=_marg,
-        )
-        return fig
-
-    d = df.sort_values(["Qtd elaborada", "Qtd conferida"], ascending=True).tail(max_resp).copy()
-    ylab = d["Responsável"].astype(str).str.strip().apply(lambda s: (s[:42] + "…") if len(s) > 43 else s)
-    qe = d["Qtd elaborada"].astype(int)
-    qc = d["Qtd conferida"].astype(int)
-
-    fig = go.Figure()
-    fig.add_trace(
-        go.Bar(
-            name="Elaborada",
-            y=ylab,
-            x=qe,
-            orientation="h",
-            marker=dict(color="#4FC3F7", line=dict(width=0)),
-            text=qe.astype(str),
-            textposition="outside",
-            textfont=dict(color="#ECEFF1", size=_JUR_HBAR_BAR_TEXT_SZ - 1),
-            hovertemplate="%{y}<br>Elaborada: %{x}<extra></extra>",
-        )
-    )
-    fig.add_trace(
-        go.Bar(
-            name="Conferida",
-            y=ylab,
-            x=qc,
-            orientation="h",
-            marker=dict(color="#81C784", line=dict(width=0)),
-            text=qc.astype(str),
-            textposition="outside",
-            textfont=dict(color="#ECEFF1", size=_JUR_HBAR_BAR_TEXT_SZ - 1),
-            hovertemplate="%{y}<br>Conferida: %{x}<extra></extra>",
-        )
-    )
-    x_max = float(max(qe.max() if len(qe) else 0, qc.max() if len(qc) else 0, 1))
-    h = min(820, max(300, 40 * len(ylab) + 160))
-    fig.update_layout(
-        template="plotly_dark",
-        paper_bgcolor="#0E1117",
-        plot_bgcolor="#0E1117",
-        title=_tit,
-        margin=_marg,
-        height=h,
-        barmode="group",
-        bargap=0.14,
-        legend=dict(
-            orientation="h",
-            yanchor="bottom",
-            y=1.02,
-            xanchor="center",
-            x=0.5,
-            font=dict(size=12, color="#E0E0E0"),
-        ),
-        xaxis=dict(
-            visible=False,
-            range=[0, max(x_max * 1.12, 1)] if x_max else None,
-            fixedrange=True,
-        ),
-        yaxis=dict(
-            title="",
-            automargin=False,
-            tickfont=dict(size=_JUR_HBAR_Y_TICK_SZ, color="#E0E0E0"),
-        ),
-    )
-    return fig
-
-
 def _jur_cascade_opcoes(
     fin_base: pd.DataFrame, km: str, ka: str, ke: str
 ) -> tuple[List[str], List[str], List[str]]:
@@ -1087,13 +998,13 @@ def render_indicadores_juridico_dashboard() -> None:
                     key="jur_ind_tempo_elab_detail",
                 )
 
-    # 3) Elaborada vs Conferência: passagens via «Linha do tempo (status)», agregado por Responsável
+    # 3) Elaborada vs Conferência: linha do tempo; resumos por Responsável e por Motivo
     with tab3:
-        st.subheader("👤 Elaborada vs Conferência por responsável")
+        st.subheader("👤 Elaborada vs Conferência")
         st.caption(
             "Por issue: lemos **Linha do tempo (status)** (transições `de -> para`). "
             "**Elaborada** = passou por **Em elaboração** ao menos uma vez; **Conferida** = passou por **Conferência** ao menos uma vez. "
-            "Repetições da mesma etapa contam **uma** vez por issue."
+            "Repetições da mesma etapa contam **uma** vez por issue. Os resumos ao lado agregam por **Responsável** e por **Motivo**."
         )
         if not responsavel_col or responsavel_col not in df_f.columns:
             st.info("Coluna **Responsável** não encontrada na view.")
@@ -1108,6 +1019,7 @@ def render_indicadores_juridico_dashboard() -> None:
             w["_resp"] = w["_resp"].replace({"": "Não informado", "nan": "Não informado", "None": "Não informado"})
             w["_elab"] = w[linha_tempo_col].apply(_jur_passou_em_elaboracao_linha)
             w["_conf"] = w[linha_tempo_col].apply(_jur_passou_conferencia_linha)
+            w["Motivo"] = _jur_motivo_series(w, motivo_col)
 
             tbl_ec = (
                 w.groupby("_resp", dropna=False)
@@ -1116,6 +1028,18 @@ def render_indicadores_juridico_dashboard() -> None:
                 .rename(
                     columns={
                         "_resp": "Responsável",
+                        "_elab_sum": "Qtd elaborada",
+                        "_conf_sum": "Qtd conferida",
+                    }
+                )
+                .sort_values(["Qtd elaborada", "Qtd conferida"], ascending=False)
+            )
+            tbl_mot = (
+                w.groupby("Motivo", dropna=False)
+                .agg(_elab_sum=("_elab", "sum"), _conf_sum=("_conf", "sum"))
+                .reset_index()
+                .rename(
+                    columns={
                         "_elab_sum": "Qtd elaborada",
                         "_conf_sum": "Qtd conferida",
                     }
@@ -1139,8 +1063,14 @@ def render_indicadores_juridico_dashboard() -> None:
                         key="jur_ind_elab_conf_tbl",
                     )
                 with cge:
-                    fig_ec = _plot_juridico_grouped_elab_conf(tbl_ec)
-                    st.plotly_chart(fig_ec, use_container_width=True, key="jur_chart_elab_conf")
+                    st.markdown("**Resumo por motivo**")
+                    st.dataframe(
+                        tbl_mot,
+                        hide_index=True,
+                        use_container_width=True,
+                        height=min(480, 40 + 36 * len(tbl_mot)),
+                        key="jur_ind_elab_conf_mot_tbl",
+                    )
 
                 st.markdown("**Detalhamento por issue**")
                 chave_d = (
@@ -1164,6 +1094,7 @@ def render_indicadores_juridico_dashboard() -> None:
                     {
                         "Chave": chave_d,
                         "Responsável": w["_resp"],
+                        "Motivo": w["Motivo"],
                         "Elaboração": w["_elab"].map({True: "Sim", False: "Não"}),
                         "Conferência": w["_conf"].map({True: "Sim", False: "Não"}),
                         "Resumo": resumo_d,
@@ -1171,7 +1102,8 @@ def render_indicadores_juridico_dashboard() -> None:
                     }
                 )
                 detail_ec = detail_ec.sort_values(
-                    ["Elaboração", "Conferência", "Chave"], ascending=[False, False, True]
+                    ["Elaboração", "Conferência", "Motivo", "Chave"],
+                    ascending=[False, False, True, True],
                 )
                 st.dataframe(
                     detail_ec,
