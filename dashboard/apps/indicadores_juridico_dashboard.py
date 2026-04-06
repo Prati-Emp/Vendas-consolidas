@@ -198,6 +198,89 @@ def _plot_juridico_hbar_qtd(title: str, df: pd.DataFrame, label_col: str, *, max
     return fig
 
 
+def _plot_juridico_hbar_horas(
+    title: str,
+    df: pd.DataFrame,
+    label_col: str,
+    value_col: str = "Total_h",
+    *,
+    max_categorias: int = 30,
+) -> go.Figure:
+    """Barras horizontais com total de horas (eixo X numérico contínuo)."""
+    _tit = dict(
+        text=title,
+        font=dict(size=_JUR_HBAR_TITLE_SZ, color="#FAFAFA"),
+        x=0.5,
+        xanchor="center",
+        yanchor="top",
+    )
+    _marg = dict(l=_JUR_HBAR_ML, r=_JUR_HBAR_MR, t=62, b=12)
+
+    if df.empty or label_col not in df.columns or value_col not in df.columns:
+        fig = go.Figure()
+        fig.update_layout(
+            template="plotly_dark",
+            paper_bgcolor="#0E1117",
+            plot_bgcolor="#0E1117",
+            title=_tit,
+            height=240,
+            margin=_marg,
+        )
+        return fig
+
+    d = df.sort_values(value_col, ascending=True).tail(max_categorias).copy()
+    raw_lbl = d[label_col].astype(str).str.strip()
+    labels = raw_lbl.apply(lambda s: (s[:46] + "…") if len(s) > 47 else s)
+    val = d[value_col].astype(float)
+
+    fig = go.Figure(
+        go.Bar(
+            x=val,
+            y=labels,
+            orientation="h",
+            marker=dict(color="#4FC3F7", line=dict(width=0)),
+            text=val.map(lambda x: f"{x:.1f}"),
+            textposition="outside",
+            textfont=dict(color="#ECEFF1", size=_JUR_HBAR_BAR_TEXT_SZ),
+            cliponaxis=False,
+            hovertemplate="%{y}<br>Total: %{x:.2f} h<extra></extra>",
+        )
+    )
+    x_max = float(val.max()) if len(val) else 1.0
+    h = min(820, max(280, 34 * len(labels) + 140))
+    fig.update_layout(
+        template="plotly_dark",
+        paper_bgcolor="#0E1117",
+        plot_bgcolor="#0E1117",
+        title=_tit,
+        margin=_marg,
+        height=h,
+        xaxis=dict(
+            visible=False,
+            range=[0, max(x_max * 1.06, 0.01)] if x_max > 0 else None,
+            fixedrange=True,
+        ),
+        yaxis=dict(
+            title="",
+            automargin=False,
+            tickfont=dict(size=_JUR_HBAR_Y_TICK_SZ, color="#E0E0E0"),
+        ),
+        showlegend=False,
+        bargap=0.18,
+    )
+    return fig
+
+
+def _jur_motivo_series(df: pd.DataFrame, motivo_col: str) -> pd.Series:
+    """Mesma lógica visual da aba Finalizados para o campo Motivo."""
+    if motivo_col and motivo_col in df.columns:
+        s = df[motivo_col].astype(str).str.strip()
+    else:
+        s = pd.Series("Não informado", index=df.index)
+    s = s.replace({"": "Não informado", "nan": "Não informado", "None": "Não informado"})
+    return s
+
+
 def _jur_cascade_opcoes(
     fin_base: pd.DataFrame, km: str, ka: str, ke: str
 ) -> tuple[List[str], List[str], List[str]]:
@@ -314,6 +397,20 @@ def render_indicadores_juridico_dashboard() -> None:
     responsavel_col = _find_col(df_raw, ["responsavel", "responsável", "assignee"])
     created_col = _find_col(df_raw, ["start_date", "criado em", "created", "data de criacao", "data criação"])
     duedate_col = _find_col(df_raw, ["data limite", "duedate", "deadline"])
+    chave_col = _find_col(df_raw, ["chave", "issue key", "key"])
+    resumo_col_ind = _find_col(
+        df_raw,
+        ["jrd - resumo", "jrd resumo", "resumo", "summary", "título", "titulo"],
+    )
+    tempo_elab_min_col = _find_col(
+        df_raw,
+        [
+            "tempo em elaboração (min)",
+            "tempo em elaboracao (min)",
+            "tempo elaboração (min)",
+            "tempo elaboracao (min)",
+        ],
+    )
 
     # Período por Data de fechamento: estado na sessão + recorte em df_f (afeta todas as abas)
     df_f = df_raw.copy()
@@ -656,36 +753,92 @@ def render_indicadores_juridico_dashboard() -> None:
                         fig_e = _plot_juridico_hbar_qtd("🏗️ Por Empreendimento", df_emp, "Empreendimento")
                         st.plotly_chart(fig_e, use_container_width=True, key="jur_hbar_emp")
 
-    # 2) Tempo de elaboração (proxy: hoje ou data limite - start_date) por tipo contrato
+    # 2) Tempo em «Em elaboração» (min na view → h), por motivo + detalhe por issue
     with tab2:
-        st.subheader("⏳ Tempo de elaboração (dias) por tipo de contrato")
-        if not created_col:
-            st.info("Coluna de início/criação não encontrada (Start_date/Criado em).")
-        else:
-            start_dt = pd.to_datetime(df_f[created_col], errors="coerce")
-            end_dt = pd.Timestamp.today().normalize()
-            if duedate_col and duedate_col in df_f.columns:
-                # usa data limite quando existir, senão hoje (proxy simples)
-                due = pd.to_datetime(df_f[duedate_col], errors="coerce").dt.normalize()
-                end_series = due.fillna(end_dt)
-            else:
-                end_series = pd.Series(end_dt, index=df_f.index)
-            dias = (end_series - start_dt.dt.normalize()).dt.days
-            dias = dias.where(dias.notna() & (dias >= 0))
-
-            tipo_series = df_f[tipo_contrato_col].astype(str).str.strip() if tipo_contrato_col else pd.Series("Não informado", index=df_f.index)
-            tbl_tempo = (
-                pd.DataFrame({"Tipo de contrato": tipo_series, "Dias": dias})
-                .dropna(subset=["Dias"])
-                .groupby("Tipo de contrato", dropna=False)["Dias"]
-                .agg(Qtd="count", Media="mean", Mediana="median", P90=lambda s: float(s.quantile(0.9)))
-                .reset_index()
-                .sort_values("Media", ascending=False)
+        st.subheader("⏳ Tempo de elaboração")
+        st.caption(
+            "Usa a coluna **Tempo em elaboração (min)** da view (tempo acumulado no status, via *Time in Status*). "
+            "Valores convertidos para **horas**. O recorte de **data de fechamento** (topo) aplica-se a todas as abas."
+        )
+        if not tempo_elab_min_col or tempo_elab_min_col not in df_f.columns:
+            st.info(
+                "Coluna **Tempo em elaboração (min)** não encontrada na view. "
+                "Confira se a view `Jira_projeto_juridico_consolidado` expõe essa métrica."
             )
-            if tbl_tempo.empty:
-                st.info("Sem dados suficientes para calcular tempo de elaboração.")
+        else:
+            te = df_f.copy()
+            te["_min_elab"] = pd.to_numeric(te[tempo_elab_min_col], errors="coerce")
+            te = te.loc[te["_min_elab"].notna()].copy()
+            te["Tempo (h)"] = te["_min_elab"] / 60.0
+            te["Motivo"] = _jur_motivo_series(te, motivo_col)
+
+            if te.empty:
+                st.info("Nenhuma linha com tempo em elaboração (min) preenchido no período filtrado.")
             else:
-                st.dataframe(tbl_tempo, hide_index=True, use_container_width=True, key="jur_ind_tempo_elaboracao")
+                tbl_by_motivo = (
+                    te.groupby("Motivo", dropna=False)
+                    .agg(Qtd=("Tempo (h)", "count"), Total_h=("Tempo (h)", "sum"), Media_h=("Tempo (h)", "mean"))
+                    .reset_index()
+                    .sort_values("Total_h", ascending=False)
+                )
+                tbl_display = tbl_by_motivo.assign(
+                    **{
+                        "Total (h)": tbl_by_motivo["Total_h"].round(2),
+                        "Média (h)": tbl_by_motivo["Media_h"].round(2),
+                    }
+                )[["Motivo", "Qtd", "Total (h)", "Média (h)"]]
+
+                ct, cg = st.columns(2)
+                with ct:
+                    st.markdown("**Por motivo**")
+                    st.dataframe(
+                        tbl_display,
+                        hide_index=True,
+                        use_container_width=True,
+                        height=min(420, 40 + 36 * len(tbl_display)),
+                        key="jur_ind_tempo_elab_motivo_tbl",
+                    )
+                with cg:
+                    fig_h = _plot_juridico_hbar_horas(
+                        "Total de horas por motivo",
+                        tbl_by_motivo,
+                        "Motivo",
+                        "Total_h",
+                    )
+                    st.plotly_chart(fig_h, use_container_width=True, key="jur_hbar_tempo_motivo")
+
+                st.markdown("**Detalhamento por issue**")
+                chave_s = (
+                    te[chave_col].astype(str).str.strip()
+                    if chave_col and chave_col in te.columns
+                    else pd.Series("", index=te.index)
+                )
+                resp_s = (
+                    te[responsavel_col].astype(str).str.strip()
+                    if responsavel_col and responsavel_col in te.columns
+                    else pd.Series("", index=te.index)
+                )
+                resumo_s = (
+                    te[resumo_col_ind].astype(str).str.strip()
+                    if resumo_col_ind and resumo_col_ind in te.columns
+                    else pd.Series("", index=te.index)
+                )
+                detail = pd.DataFrame(
+                    {
+                        "Chave": chave_s,
+                        "Motivo": te["Motivo"],
+                        "Responsável": resp_s,
+                        "Resumo": resumo_s,
+                        "Tempo (h)": te["Tempo (h)"].round(2),
+                    }
+                ).sort_values("Tempo (h)", ascending=False)
+                st.dataframe(
+                    detail,
+                    hide_index=True,
+                    use_container_width=True,
+                    height=min(520, 40 + 36 * min(len(detail), 14)),
+                    key="jur_ind_tempo_elab_detail",
+                )
 
     # 3) Qtd elaborada e conferida por colaborador (Status = Em elaboração / Conferência)
     with tab3:
