@@ -28,6 +28,7 @@ _K_FECH_I = "jur_ind_fechamento_inicio"
 _K_FECH_F = "jur_ind_fechamento_fim"
 _KT_ELAB_FECH_I = "jur_ind_tempo_elab_fech_inicio"
 _KT_ELAB_FECH_F = "jur_ind_tempo_elab_fech_fim"
+_KT_ELAB_MOT = "jur_ind_tempo_elab_motivo"
 
 
 def _jur_sync_main_fech_to_tempo_tab() -> None:
@@ -786,6 +787,17 @@ def render_indicadores_juridico_dashboard() -> None:
     with tab2:
         st.subheader("⏳ Tempo de elaboração")
         if _jur_date_ok and _jur_d_lo is not None and _jur_d_hi is not None and data_fechamento_col:
+            _te_mot_opts: List[str] = []
+            if motivo_col and motivo_col in df_f.columns:
+                _tmp_m = df_f.copy()
+                _tmp_m["Motivo"] = _jur_motivo_series(_tmp_m, motivo_col)
+                if tempo_elab_min_col and tempo_elab_min_col in df_f.columns:
+                    _nm = pd.to_numeric(_tmp_m[tempo_elab_min_col], errors="coerce")
+                    _tmp_m = _tmp_m.loc[_nm.notna()]
+                _te_mot_opts = sorted(
+                    {str(x) for x in _tmp_m["Motivo"].tolist() if str(x).strip()}
+                )
+
             st.markdown(
                 """
                 <style>
@@ -801,7 +813,22 @@ def render_indicadores_juridico_dashboard() -> None:
                 """,
                 unsafe_allow_html=True,
             )
-            te_di, te_df, _te_gap = st.columns([1, 1, 4])
+            te_mot, te_di, te_df, _te_gap = st.columns([2.4, 1, 1, 2.6])
+            with te_mot:
+                st.caption("📍 Por motivo")
+                if not motivo_col or motivo_col not in df_f.columns:
+                    st.caption("_Coluna Motivo não disponível._")
+                elif not _te_mot_opts:
+                    st.caption("_Nenhum motivo com tempo em elaboração neste período._")
+                else:
+                    st.multiselect(
+                        "Filtro motivo — tempo elaboração",
+                        options=_te_mot_opts,
+                        placeholder="Todos",
+                        key=_KT_ELAB_MOT,
+                        help="Restringe tabela, gráfico e detalhe nesta aba apenas.",
+                        label_visibility="collapsed",
+                    )
             with te_di:
                 st.caption("Data inicial")
                 st.date_input(
@@ -830,7 +857,8 @@ def render_indicadores_juridico_dashboard() -> None:
             st.info("Não há datas de fechamento preenchidas para filtrar o período.")
         st.caption(
             "Usa a coluna **Tempo em elaboração (min)** da view (tempo acumulado no status, via *Time in Status*). "
-            "Valores convertidos para **horas**. O período acima é o mesmo **data de fechamento** das demais abas."
+            "Valores convertidos para **horas**. O **período** é o da **data de fechamento** (datas ao lado); o filtro "
+            "**Por motivo** aplica-se só a esta aba."
         )
         if not tempo_elab_min_col or tempo_elab_min_col not in df_f.columns:
             st.info(
@@ -843,6 +871,13 @@ def render_indicadores_juridico_dashboard() -> None:
             te = te.loc[te["_min_elab"].notna()].copy()
             te["Tempo (h)"] = te["_min_elab"] / 60.0
             te["Motivo"] = _jur_motivo_series(te, motivo_col)
+
+            _sel_tm = list(st.session_state.get(_KT_ELAB_MOT, []) or [])
+            if _sel_tm:
+                _mot_valid = set(te["Motivo"].astype(str).unique())
+                _sel_tm = [x for x in _sel_tm if str(x) in _mot_valid]
+                if _sel_tm:
+                    te = te.loc[te["Motivo"].isin(_sel_tm)].copy()
 
             if te.empty:
                 st.info("Nenhuma linha com tempo em elaboração (min) preenchido no período filtrado.")
