@@ -29,6 +29,9 @@ _K_FECH_F = "jur_ind_fechamento_fim"
 _KT_ELAB_FECH_I = "jur_ind_tempo_elab_fech_inicio"
 _KT_ELAB_FECH_F = "jur_ind_tempo_elab_fech_fim"
 _KT_ELAB_MOT = "jur_ind_tempo_elab_motivo"
+_K_EC_FECH_I = "jur_ind_elab_conf_fech_inicio"
+_K_EC_FECH_F = "jur_ind_elab_conf_fech_fim"
+_K_EC_MOT = "jur_ind_elab_conf_motivo"
 
 
 def _jur_sync_main_fech_to_tempo_tab() -> None:
@@ -37,9 +40,16 @@ def _jur_sync_main_fech_to_tempo_tab() -> None:
     st.session_state[_KT_ELAB_FECH_F] = st.session_state[_K_FECH_F]
 
 
+def _jur_sync_main_fech_to_elab_conf_tab() -> None:
+    """Espelha o período global nas datas da aba Elaborada vs Conferência."""
+    st.session_state[_K_EC_FECH_I] = st.session_state[_K_FECH_I]
+    st.session_state[_K_EC_FECH_F] = st.session_state[_K_FECH_F]
+
+
 def _jur_fin_main_fech_change_sync_tempo() -> None:
     _jur_fin_mark_pull_main_to_graf()
     _jur_sync_main_fech_to_tempo_tab()
+    _jur_sync_main_fech_to_elab_conf_tab()
 
 
 def _jur_tempo_elab_fech_change_apply_main() -> None:
@@ -47,6 +57,16 @@ def _jur_tempo_elab_fech_change_apply_main() -> None:
     st.session_state[_K_FECH_I] = st.session_state[_KT_ELAB_FECH_I]
     st.session_state[_K_FECH_F] = st.session_state[_KT_ELAB_FECH_F]
     _jur_fin_mark_pull_main_to_graf()
+    _jur_sync_main_fech_to_elab_conf_tab()
+    st.rerun()
+
+
+def _jur_elab_conf_fech_change_apply_main() -> None:
+    """Alteração nas datas na aba Elaborada vs Conferência atualiza o período global."""
+    st.session_state[_K_FECH_I] = st.session_state[_K_EC_FECH_I]
+    st.session_state[_K_FECH_F] = st.session_state[_K_EC_FECH_F]
+    _jur_fin_mark_pull_main_to_graf()
+    _jur_sync_main_fech_to_tempo_tab()
     st.rerun()
 
 
@@ -510,8 +530,11 @@ def render_indicadores_juridico_dashboard() -> None:
                     v = st.session_state[_k]
                     if not isinstance(v, date_type) or v < _jur_d_lo or v > _jur_d_hi:
                         st.session_state[_k] = _d
-            # Mesmo período na aba Tempo de elaboração (chaves espelhadas; on_change sincroniza com o topo)
+            # Mesmo período nas abas Tempo de elaboração e Elaborada vs Conferência
             for _kt, _km in ((_KT_ELAB_FECH_I, _k_fech_i), (_KT_ELAB_FECH_F, _k_fech_f)):
+                if _kt not in st.session_state:
+                    st.session_state[_kt] = st.session_state[_km]
+            for _kt, _km in ((_K_EC_FECH_I, _k_fech_i), (_K_EC_FECH_F, _k_fech_f)):
                 if _kt not in st.session_state:
                     st.session_state[_kt] = st.session_state[_km]
             ts_a = pd.Timestamp(st.session_state[_k_fech_i]).normalize()
@@ -524,8 +547,8 @@ def render_indicadores_juridico_dashboard() -> None:
     with st.sidebar:
         st.markdown("### 🔎 Filtros (Jurídico)")
         st.caption(
-            "O intervalo de **Data de fechamento** pode ser ajustado na aba **Finalizados**, na aba **Tempo de elaboração** "
-            "ou acima dos gráficos (Finalizados); os filtros por motivo, área e empreendimento ficam na aba Finalizados."
+            "O intervalo de **Data de fechamento** pode ser ajustado na aba **Finalizados**, **Tempo de elaboração**, "
+            "**Elaborada vs Conferência** ou acima dos gráficos (Finalizados); motivo/área/empreendimento da aba Finalizados."
         )
 
     if df_f.empty:
@@ -1001,25 +1024,110 @@ def render_indicadores_juridico_dashboard() -> None:
     # 3) Elaborada vs Conferência: linha do tempo; resumos por Responsável e por Motivo
     with tab3:
         st.subheader("👤 Elaborada vs Conferência")
-        st.caption(
-            "Por issue: lemos **Linha do tempo (status)** (transições `de -> para`). "
-            "**Elaborada** = passou por **Em elaboração** ao menos uma vez; **Conferida** = passou por **Conferência** ao menos uma vez. "
-            "Repetições da mesma etapa contam **uma** vez por issue. Os resumos ao lado agregam por **Responsável** e por **Motivo**."
-        )
         if not responsavel_col or responsavel_col not in df_f.columns:
+            st.caption(
+                "Por issue: lemos **Linha do tempo (status)**. **Elaborada** / **Conferida** = passou pela etapa ao menos uma vez."
+            )
             st.info("Coluna **Responsável** não encontrada na view.")
         elif not linha_tempo_col or linha_tempo_col not in df_f.columns:
+            st.caption(
+                "Por issue: lemos **Linha do tempo (status)**. **Elaborada** / **Conferida** = passou pela etapa ao menos uma vez."
+            )
             st.info(
-                "Coluna **Linha do tempo (status)** não encontrada. "
-                "Ela é preenchida a partir do changelog no pipeline jurídico consolidado."
+                "Coluna **Linha do tempo (status)** não localizada. "
+                "Ela vem do changelog no pipeline jurídico consolidado."
             )
         else:
+            _ec_mot_opts: List[str] = []
+            if motivo_col and motivo_col in df_f.columns:
+                _ec_tmp = df_f.copy()
+                _ec_tmp["Motivo"] = _jur_motivo_series(_ec_tmp, motivo_col)
+                _lt_ec = _ec_tmp[linha_tempo_col].astype(str).str.strip()
+                _ec_tmp = _ec_tmp.loc[
+                    _lt_ec.ne("")
+                    & ~_lt_ec.str.lower().isin({"none", "nan", "nat", "<na>"})
+                ]
+                _ec_mot_opts = sorted(
+                    {str(x) for x in _ec_tmp["Motivo"].tolist() if str(x).strip()}
+                )
+
+            if _jur_date_ok and _jur_d_lo is not None and _jur_d_hi is not None and data_fechamento_col:
+                st.markdown(
+                    """
+                    <style>
+                    div[data-testid="stVerticalBlockBorderWrapper"]:has(div[data-baseweb="datepicker"]) {
+                        max-width: 200px;
+                    }
+                    div[data-testid="column"]:has(div[data-baseweb="datepicker"]) {
+                        flex: 0 0 auto !important;
+                        width: min(200px, 100%) !important;
+                        min-width: unset !important;
+                    }
+                    </style>
+                    """,
+                    unsafe_allow_html=True,
+                )
+                ec_mot, ec_di, ec_df, _ec_gap = st.columns([2.4, 1, 1, 2.6])
+                with ec_mot:
+                    st.caption("📍 Por motivo")
+                    if not motivo_col or motivo_col not in df_f.columns:
+                        st.caption("_Coluna Motivo não disponível._")
+                    elif not _ec_mot_opts:
+                        st.caption("_Nenhum motivo com linha do tempo neste período._")
+                    else:
+                        st.multiselect(
+                            "Filtro motivo — elaborada vs conferência",
+                            options=_ec_mot_opts,
+                            placeholder="Todos",
+                            key=_K_EC_MOT,
+                            help="Restringe só esta aba (tabelas e detalhe).",
+                            label_visibility="collapsed",
+                        )
+                with ec_di:
+                    st.caption("Data inicial")
+                    st.date_input(
+                        "Data de fechamento — início (elab. vs conf.)",
+                        min_value=_jur_d_lo,
+                        max_value=_jur_d_hi,
+                        key=_K_EC_FECH_I,
+                        help="Recorte global por data de fechamento (igual às outras abas).",
+                        label_visibility="collapsed",
+                        on_change=_jur_elab_conf_fech_change_apply_main,
+                    )
+                with ec_df:
+                    st.caption("Data final")
+                    st.date_input(
+                        "Data de fechamento — fim (elab. vs conf.)",
+                        min_value=_jur_d_lo,
+                        max_value=_jur_d_hi,
+                        key=_K_EC_FECH_F,
+                        help="Recorte global por data de fechamento (igual às outras abas).",
+                        label_visibility="collapsed",
+                        on_change=_jur_elab_conf_fech_change_apply_main,
+                    )
+            elif data_fechamento_col and not _jur_date_ok:
+                st.info("Não há datas de fechamento preenchidas para filtrar o período.")
+
+            st.caption(
+                "Por issue: lemos **Linha do tempo (status)** (transições `de -> para`). "
+                "**Elaborada** = passou por **Em elaboração** ao menos uma vez; **Conferida** = passou por **Conferência** ao menos uma vez. "
+                "Repetições da mesma etapa contam **uma** vez por issue. Os resumos abaixo agregam por **Responsável** e por **Motivo**; "
+                "**Por motivo** no topo restringe só esta aba."
+            )
+
             w = df_f.copy()
             w["_resp"] = w[responsavel_col].astype(str).str.strip()
             w["_resp"] = w["_resp"].replace({"": "Não informado", "nan": "Não informado", "None": "Não informado"})
             w["_elab"] = w[linha_tempo_col].apply(_jur_passou_em_elaboracao_linha)
             w["_conf"] = w[linha_tempo_col].apply(_jur_passou_conferencia_linha)
             w["Motivo"] = _jur_motivo_series(w, motivo_col)
+
+            _sel_ec_m = list(st.session_state.get(_K_EC_MOT, []) or [])
+            if _sel_ec_m:
+                _mot_v = set(w["Motivo"].astype(str).unique())
+                _sel_ec_m = [str(x) for x in _sel_ec_m if str(x) in _mot_v]
+                if _sel_ec_m:
+                    w = w.loc[w["Motivo"].isin(_sel_ec_m)].copy()
 
             tbl_ec = (
                 w.groupby("_resp", dropna=False)
