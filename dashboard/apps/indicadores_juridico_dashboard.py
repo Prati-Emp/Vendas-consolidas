@@ -24,6 +24,31 @@ def _jur_fin_mark_pull_main_to_graf() -> None:
     st.session_state["jur_fin_pull_main_to_graf"] = True
 
 
+_K_FECH_I = "jur_ind_fechamento_inicio"
+_K_FECH_F = "jur_ind_fechamento_fim"
+_KT_ELAB_FECH_I = "jur_ind_tempo_elab_fech_inicio"
+_KT_ELAB_FECH_F = "jur_ind_tempo_elab_fech_fim"
+
+
+def _jur_sync_main_fech_to_tempo_tab() -> None:
+    """Mantém o filtro de datas da aba Tempo de elaboração alinhado ao da aba Finalizados."""
+    st.session_state[_KT_ELAB_FECH_I] = st.session_state[_K_FECH_I]
+    st.session_state[_KT_ELAB_FECH_F] = st.session_state[_K_FECH_F]
+
+
+def _jur_fin_main_fech_change_sync_tempo() -> None:
+    _jur_fin_mark_pull_main_to_graf()
+    _jur_sync_main_fech_to_tempo_tab()
+
+
+def _jur_tempo_elab_fech_change_apply_main() -> None:
+    """Alteração nas datas na aba Tempo de elaboração atualiza o período global (data de fechamento)."""
+    st.session_state[_K_FECH_I] = st.session_state[_KT_ELAB_FECH_I]
+    st.session_state[_K_FECH_F] = st.session_state[_KT_ELAB_FECH_F]
+    _jur_fin_mark_pull_main_to_graf()
+    st.rerun()
+
+
 def _normalize(value: Any) -> str:
     if value is None:
         return ""
@@ -433,6 +458,10 @@ def render_indicadores_juridico_dashboard() -> None:
                     v = st.session_state[_k]
                     if not isinstance(v, date_type) or v < _jur_d_lo or v > _jur_d_hi:
                         st.session_state[_k] = _d
+            # Mesmo período na aba Tempo de elaboração (chaves espelhadas; on_change sincroniza com o topo)
+            for _kt, _km in ((_KT_ELAB_FECH_I, _k_fech_i), (_KT_ELAB_FECH_F, _k_fech_f)):
+                if _kt not in st.session_state:
+                    st.session_state[_kt] = st.session_state[_km]
             ts_a = pd.Timestamp(st.session_state[_k_fech_i]).normalize()
             ts_b = pd.Timestamp(st.session_state[_k_fech_f]).normalize()
             if ts_a > ts_b:
@@ -443,8 +472,8 @@ def render_indicadores_juridico_dashboard() -> None:
     with st.sidebar:
         st.markdown("### 🔎 Filtros (Jurídico)")
         st.caption(
-            "O intervalo de **Data de fechamento** e os filtros por motivo, área e empreendimento ficam "
-            "no **topo da aba Finalizados** e **repetidos acima dos gráficos** (mesmo efeito nas tabelas e nos gráficos)."
+            "O intervalo de **Data de fechamento** pode ser ajustado na aba **Finalizados**, na aba **Tempo de elaboração** "
+            "ou acima dos gráficos (Finalizados); os filtros por motivo, área e empreendimento ficam na aba Finalizados."
         )
 
     if df_f.empty:
@@ -496,7 +525,7 @@ def render_indicadores_juridico_dashboard() -> None:
                         key=_k_fech_i,
                         help="Primeiro dia do intervalo (inclusivo).",
                         label_visibility="collapsed",
-                        on_change=_jur_fin_mark_pull_main_to_graf,
+                        on_change=_jur_fin_main_fech_change_sync_tempo,
                     )
                 with cdf:
                     st.caption("Data final")
@@ -507,7 +536,7 @@ def render_indicadores_juridico_dashboard() -> None:
                         key=_k_fech_f,
                         help="Último dia do intervalo (inclusivo).",
                         label_visibility="collapsed",
-                        on_change=_jur_fin_mark_pull_main_to_graf,
+                        on_change=_jur_fin_main_fech_change_sync_tempo,
                     )
             elif not _jur_date_ok:
                 st.info("Não há datas de fechamento preenchidas para filtrar o período.")
@@ -756,9 +785,52 @@ def render_indicadores_juridico_dashboard() -> None:
     # 2) Tempo em «Em elaboração» (min na view → h), por motivo + detalhe por issue
     with tab2:
         st.subheader("⏳ Tempo de elaboração")
+        if _jur_date_ok and _jur_d_lo is not None and _jur_d_hi is not None and data_fechamento_col:
+            st.markdown(
+                """
+                <style>
+                div[data-testid="stVerticalBlockBorderWrapper"]:has(div[data-baseweb="datepicker"]) {
+                    max-width: 200px;
+                }
+                div[data-testid="column"]:has(div[data-baseweb="datepicker"]) {
+                    flex: 0 0 auto !important;
+                    width: min(200px, 100%) !important;
+                    min-width: unset !important;
+                }
+                </style>
+                """,
+                unsafe_allow_html=True,
+            )
+            te_di, te_df, _te_gap = st.columns([1, 1, 4])
+            with te_di:
+                st.caption("Data inicial")
+                st.date_input(
+                    "Data de fechamento — início (tempo elaboração)",
+                    min_value=_jur_d_lo,
+                    max_value=_jur_d_hi,
+                    key=_KT_ELAB_FECH_I,
+                    help="Recorte por data de fechamento (igual à aba Finalizados). Atualiza todas as abas.",
+                    label_visibility="collapsed",
+                    on_change=_jur_tempo_elab_fech_change_apply_main,
+                )
+            with te_df:
+                st.caption("Data final")
+                st.date_input(
+                    "Data de fechamento — fim (tempo elaboração)",
+                    min_value=_jur_d_lo,
+                    max_value=_jur_d_hi,
+                    key=_KT_ELAB_FECH_F,
+                    help="Recorte por data de fechamento (igual à aba Finalizados). Atualiza todas as abas.",
+                    label_visibility="collapsed",
+                    on_change=_jur_tempo_elab_fech_change_apply_main,
+                )
+        elif not data_fechamento_col:
+            pass
+        elif not _jur_date_ok:
+            st.info("Não há datas de fechamento preenchidas para filtrar o período.")
         st.caption(
             "Usa a coluna **Tempo em elaboração (min)** da view (tempo acumulado no status, via *Time in Status*). "
-            "Valores convertidos para **horas**. O recorte de **data de fechamento** (topo) aplica-se a todas as abas."
+            "Valores convertidos para **horas**. O período acima é o mesmo **data de fechamento** das demais abas."
         )
         if not tempo_elab_min_col or tempo_elab_min_col not in df_f.columns:
             st.info(
