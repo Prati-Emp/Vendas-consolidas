@@ -52,6 +52,16 @@ def _jur_por_motivo_label_with_tooltip(*, tooltip: str) -> str:
     )
 
 
+def _jur_filter_top_label(text: str) -> str:
+    """Rótulo padrão para alinhar os campos no topo das abas."""
+    return (
+        '<div style="font-size:0.875rem;color:rgba(250,250,250,0.82);'
+        'margin:0 0 0.25rem 0;line-height:1.2;">'
+        f"{html.escape(text)}"
+        "</div>"
+    )
+
+
 def _jur_fin_mark_pull_main_to_graf() -> None:
     """Quando o usuário altera os filtros do topo, copia o estado para a linha acima dos gráficos no próximo run."""
     st.session_state["jur_fin_pull_main_to_graf"] = True
@@ -966,7 +976,7 @@ def render_indicadores_juridico_dashboard() -> None:
                         label_visibility="collapsed",
                     )
             with te_di:
-                st.caption("Data inicial")
+                st.markdown(_jur_filter_top_label("Data inicial"), unsafe_allow_html=True)
                 st.date_input(
                     "Data de fechamento — início (tempo elaboração)",
                     min_value=_jur_d_lo,
@@ -977,7 +987,7 @@ def render_indicadores_juridico_dashboard() -> None:
                     on_change=_jur_tempo_elab_fech_change_apply_main,
                 )
             with te_df:
-                st.caption("Data final")
+                st.markdown(_jur_filter_top_label("Data final"), unsafe_allow_html=True)
                 st.date_input(
                     "Data de fechamento — fim (tempo elaboração)",
                     min_value=_jur_d_lo,
@@ -1138,7 +1148,7 @@ def render_indicadores_juridico_dashboard() -> None:
                             label_visibility="collapsed",
                         )
                 with ec_di:
-                    st.caption("Data inicial")
+                    st.markdown(_jur_filter_top_label("Data inicial"), unsafe_allow_html=True)
                     st.date_input(
                         "Data de fechamento — início (elab. vs conf.)",
                         min_value=_jur_d_lo,
@@ -1149,7 +1159,7 @@ def render_indicadores_juridico_dashboard() -> None:
                         on_change=_jur_elab_conf_fech_change_apply_main,
                     )
                 with ec_df:
-                    st.caption("Data final")
+                    st.markdown(_jur_filter_top_label("Data final"), unsafe_allow_html=True)
                     st.date_input(
                         "Data de fechamento — fim (elab. vs conf.)",
                         min_value=_jur_d_lo,
@@ -1319,7 +1329,7 @@ def render_indicadores_juridico_dashboard() -> None:
                             label_visibility="collapsed",
                         )
                 with rj_di:
-                    st.caption("Data inicial")
+                    st.markdown(_jur_filter_top_label("Data inicial"), unsafe_allow_html=True)
                     st.date_input(
                         "Data de fechamento — início (rejeitadas)",
                         min_value=_jur_d_lo,
@@ -1330,7 +1340,7 @@ def render_indicadores_juridico_dashboard() -> None:
                         on_change=_jur_rejeitadas_fech_change_apply_main,
                     )
                 with rj_df:
-                    st.caption("Data final")
+                    st.markdown(_jur_filter_top_label("Data final"), unsafe_allow_html=True)
                     st.date_input(
                         "Data de fechamento — fim (rejeitadas)",
                         min_value=_jur_d_lo,
