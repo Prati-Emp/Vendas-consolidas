@@ -577,6 +577,19 @@ def render_indicadores_juridico_dashboard() -> None:
         df_raw,
         ["jrd - resumo", "jrd resumo", "resumo", "summary", "título", "titulo"],
     )
+    ultimo_comentario_col = _find_col(
+        df_raw,
+        [
+            "ultimo_comentario",
+            "último comentário",
+            "ultimo comentario",
+            "último_comentário",
+            "jrd - ultimo comentario",
+            "jrd - último comentário",
+            "ultimo comentário",
+            "last comment",
+        ],
+    )
     tempo_elab_min_col = _find_col(
         df_raw,
         [
@@ -1451,6 +1464,11 @@ def render_indicadores_juridico_dashboard() -> None:
                     if resumo_col_ind and resumo_col_ind in rej.columns
                     else pd.Series("", index=rej.index)
                 )
+                ult_com_r = (
+                    rej[ultimo_comentario_col].astype(str).str.strip()
+                    if ultimo_comentario_col and ultimo_comentario_col in rej.columns
+                    else pd.Series("", index=rej.index)
+                )
                 detail_cols = {
                     "Chave": chave_r,
                     "Status": stat_r,
@@ -1463,6 +1481,7 @@ def render_indicadores_juridico_dashboard() -> None:
                     _fech_s = _fech_r.dt.strftime("%d/%m/%Y")
                     detail_cols["Data de fechamento"] = _fech_s.mask(_fech_r.isna(), "")
                 detail_cols["Resumo"] = resumo_r
+                detail_cols["Último comentário"] = ult_com_r
                 detail_rej = pd.DataFrame(detail_cols)
                 detail_rej = detail_rej.sort_values(
                     ["Motivo", "Obra / empreendimento", "Chave"], ascending=[True, True, True]
