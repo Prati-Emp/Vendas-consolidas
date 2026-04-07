@@ -264,39 +264,51 @@ _JUR_HBAR_MARKER = "#002b55"
 _JUR_HBAR_ANNO_QSZ = 14
 
 
-def _jur_hex_luminance_is_dark(hex_color: str) -> bool:
-    """True se #hex for fundo escuro (tema System sem `theme.base`)."""
+def _jur_hex_luminance(hex_color: str) -> float | None:
+    """Luminância perceptiva 0–255 para #hex; None se inválido."""
     s = str(hex_color or "").strip().lower()
     if not s.startswith("#"):
-        return False
+        return None
     s = s.lstrip("#")
     if len(s) == 3:
         s = "".join(ch * 2 for ch in s)
     if len(s) != 6:
-        return False
+        return None
     try:
         r = int(s[0:2], 16)
         g = int(s[2:4], 16)
         b = int(s[4:6], 16)
     except ValueError:
-        return False
-    lum = 0.299 * r + 0.587 * g + 0.114 * b
-    return lum < 140
+        return None
+    return 0.299 * r + 0.587 * g + 0.114 * b
 
 
 def _jur_hbar_annotation_value_color() -> str:
     """
-    Valores à direita da barra: branco no UI escuro (como Repasses);
-    escuro no tema claro (branco no fundo branco some com tema Streamlit no Plotly).
+    Valores à direita da barra: branco no UI escuro; #111827 no claro.
+    Com System ou `theme.base` vazio no servidor, usa fundo secundário e textColor para inferir.
     """
     base = (st.get_option("theme.base") or "").strip().lower()
     if base == "light":
         return "#111827"
     if base == "dark":
         return "#FFFFFF"
+
     bg = (st.get_option("theme.backgroundColor") or "").strip()
-    if _jur_hex_luminance_is_dark(bg):
+    lum_bg = _jur_hex_luminance(bg)
+    if lum_bg is not None and lum_bg < 140:
         return "#FFFFFF"
+
+    sb = (st.get_option("theme.secondaryBackgroundColor") or "").strip()
+    lum_sb = _jur_hex_luminance(sb)
+    if lum_sb is not None and lum_sb < 140:
+        return "#FFFFFF"
+
+    tc = (st.get_option("theme.textColor") or "").strip()
+    lum_tx = _jur_hex_luminance(tc)
+    if lum_tx is not None and lum_tx >= 140:
+        return "#FFFFFF"
+
     return "#111827"
 
 
