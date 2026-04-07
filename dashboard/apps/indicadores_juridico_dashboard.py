@@ -331,18 +331,10 @@ def _jur_ui_is_dark() -> bool:
     return False
 
 
-def _jur_hbar_plotly_style() -> tuple[str, str]:
-    """Template + cor de texto (padrão proposto para Diversidade RH: plotly vs plotly_dark)."""
-    if _jur_ui_is_dark():
-        return "plotly_dark", "#E5E7EB"
-    return "plotly", "#111827"
-
-
 def _jur_hbar_value_annotations(
-    y_labels: List[Any], x_values: List[float], fmt: Callable[[Any], str], *, font_color: str
+    y_labels: List[Any], x_values: List[float], fmt: Callable[[Any], str]
 ) -> list[dict[str, Any]]:
-    """Quantidade/valor à direita da barra, negrito."""
-    ac = font_color
+    """Quantidade/valor à direita da barra, negrito (cor vem do tema Streamlit no plotly_chart)."""
     annotations: list[dict[str, Any]] = []
     for y, raw in zip(y_labels, x_values):
         fv = float(raw)
@@ -355,7 +347,7 @@ def _jur_hbar_value_annotations(
                 xanchor="left",
                 yanchor="middle",
                 showarrow=False,
-                font=dict(color=ac, size=_JUR_HBAR_ANNO_QSZ),
+                font=dict(size=_JUR_HBAR_ANNO_QSZ),
             )
         )
     return annotations
@@ -363,13 +355,12 @@ def _jur_hbar_value_annotations(
 
 def _plot_juridico_hbar_qtd(title: str, df: pd.DataFrame, label_col: str, *, max_categorias: int = 30) -> go.Figure:
     """
-    Barras horizontais: barra #002b55, fundo transparente, template Plotly claro/escuro + texto explícito
-    e `st.plotly_chart(..., theme=None)` — mesmo critério da Diversidade (RH) para tema.
+    Barras horizontais: cor institucional, fundo transparente.
+    Deve ser exibido com ``st.plotly_chart(..., theme="streamlit")`` para herdar Light/Dark/System.
     """
-    _tmpl, _fc = _jur_hbar_plotly_style()
     _tit = dict(
         text=title,
-        font=dict(size=_JUR_HBAR_TITLE_SZ, color=_fc),
+        font=dict(size=_JUR_HBAR_TITLE_SZ),
         x=0.5,
         xanchor="center",
         yanchor="top",
@@ -379,10 +370,8 @@ def _plot_juridico_hbar_qtd(title: str, df: pd.DataFrame, label_col: str, *, max
     if df.empty or label_col not in df.columns:
         fig = go.Figure()
         fig.update_layout(
-            template=_tmpl,
             paper_bgcolor="rgba(0,0,0,0)",
             plot_bgcolor="rgba(0,0,0,0)",
-            font=dict(color=_fc),
             title=_tit,
             height=240,
             margin=_marg,
@@ -396,7 +385,7 @@ def _plot_juridico_hbar_qtd(title: str, df: pd.DataFrame, label_col: str, *, max
     x_max = int(qty.max()) if len(qty) else 1
     y_list = labels.tolist()
     q_list = [float(x) for x in qty.tolist()]
-    annos = _jur_hbar_value_annotations(y_list, q_list, lambda v: str(int(v)), font_color=_fc)
+    annos = _jur_hbar_value_annotations(y_list, q_list, lambda v: str(int(v)))
     _marg_dyn = dict(l=_JUR_HBAR_ML, r=88, t=62, b=12)
     # Folga para o número após a barra (todas as linhas têm anotação).
     x_hi_pad = 1.42
@@ -413,10 +402,8 @@ def _plot_juridico_hbar_qtd(title: str, df: pd.DataFrame, label_col: str, *, max
     )
     h = min(820, max(280, 34 * len(labels) + 140))
     fig.update_layout(
-        template=_tmpl,
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(color=_fc),
         title=_tit,
         margin=_marg_dyn,
         height=h,
@@ -429,7 +416,7 @@ def _plot_juridico_hbar_qtd(title: str, df: pd.DataFrame, label_col: str, *, max
         yaxis=dict(
             title="",
             automargin=False,
-            tickfont=dict(size=_JUR_HBAR_Y_TICK_SZ, color=_fc),
+            tickfont=dict(size=_JUR_HBAR_Y_TICK_SZ),
         ),
         showlegend=False,
         bargap=0.18,
@@ -445,11 +432,10 @@ def _plot_juridico_hbar_horas(
     *,
     max_categorias: int = 30,
 ) -> go.Figure:
-    """Barras horizontais (horas) — mesmo critério de tema que `_plot_juridico_hbar_qtd`."""
-    _tmpl, _fc = _jur_hbar_plotly_style()
+    """Barras horizontais (horas) — usar com ``st.plotly_chart(..., theme="streamlit")``."""
     _tit = dict(
         text=title,
-        font=dict(size=_JUR_HBAR_TITLE_SZ, color=_fc),
+        font=dict(size=_JUR_HBAR_TITLE_SZ),
         x=0.5,
         xanchor="center",
         yanchor="top",
@@ -459,10 +445,8 @@ def _plot_juridico_hbar_horas(
     if df.empty or label_col not in df.columns or value_col not in df.columns:
         fig = go.Figure()
         fig.update_layout(
-            template=_tmpl,
             paper_bgcolor="rgba(0,0,0,0)",
             plot_bgcolor="rgba(0,0,0,0)",
-            font=dict(color=_fc),
             title=_tit,
             height=240,
             margin=_marg,
@@ -476,7 +460,7 @@ def _plot_juridico_hbar_horas(
     x_max = float(val.max()) if len(val) else 1.0
     y_list = labels.tolist()
     v_list = [float(x) for x in val.tolist()]
-    annos = _jur_hbar_value_annotations(y_list, v_list, lambda v: f"{float(v):.1f}", font_color=_fc)
+    annos = _jur_hbar_value_annotations(y_list, v_list, lambda v: f"{float(v):.1f}")
     _marg_dyn = dict(l=_JUR_HBAR_ML, r=88, t=62, b=12)
     x_hi_pad = 1.42
 
@@ -492,10 +476,8 @@ def _plot_juridico_hbar_horas(
     )
     h = min(820, max(280, 34 * len(labels) + 140))
     fig.update_layout(
-        template=_tmpl,
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(color=_fc),
         title=_tit,
         margin=_marg_dyn,
         height=h,
@@ -508,7 +490,7 @@ def _plot_juridico_hbar_horas(
         yaxis=dict(
             title="",
             automargin=False,
-            tickfont=dict(size=_JUR_HBAR_Y_TICK_SZ, color=_fc),
+            tickfont=dict(size=_JUR_HBAR_Y_TICK_SZ),
         ),
         showlegend=False,
         bargap=0.18,
@@ -1065,13 +1047,13 @@ def render_indicadores_juridico_dashboard() -> None:
                         gc1, gc2, gc3 = st.columns(3)
                     with gc1:
                         fig_m = _plot_juridico_hbar_qtd("📍 Por Motivo", df_motivo, "Motivo")
-                        st.plotly_chart(fig_m, use_container_width=True, key="jur_hbar_motivo", theme=None)
+                        st.plotly_chart(fig_m, use_container_width=True, key="jur_hbar_motivo", theme="streamlit")
                     with gc2:
                         fig_a = _plot_juridico_hbar_qtd("🏢 Por Área", df_area, "Área")
-                        st.plotly_chart(fig_a, use_container_width=True, key="jur_hbar_area", theme=None)
+                        st.plotly_chart(fig_a, use_container_width=True, key="jur_hbar_area", theme="streamlit")
                     with gc3:
                         fig_e = _plot_juridico_hbar_qtd("🏗️ Por Empreendimento", df_emp, "Empreendimento")
-                        st.plotly_chart(fig_e, use_container_width=True, key="jur_hbar_emp", theme=None)
+                        st.plotly_chart(fig_e, use_container_width=True, key="jur_hbar_emp", theme="streamlit")
 
     # 2) Tempo em «Em elaboração» (min na view → h), por motivo + detalhe por issue
     with tab2:
@@ -1200,7 +1182,7 @@ def render_indicadores_juridico_dashboard() -> None:
                         "Motivo",
                         "Total_h",
                     )
-                    st.plotly_chart(fig_h, use_container_width=True, key="jur_hbar_tempo_motivo", theme=None)
+                    st.plotly_chart(fig_h, use_container_width=True, key="jur_hbar_tempo_motivo", theme="streamlit")
 
                 st.markdown("**Detalhamento por issue**")
                 chave_s = (
