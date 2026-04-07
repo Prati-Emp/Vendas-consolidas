@@ -294,9 +294,11 @@ def _jur_plot_theme() -> dict[str, str]:
             "template": "plotly_dark",
             "paper": "#0E1117",
             "plot": "#0E1117",
-            "title": text or "#FAFAFA",
-            "ticks": text or "#E0E0E0",
-            "bar_text": text or "#ECEFF1",
+            # No modo escuro, usar cores claras fixas evita depender de textColor
+            # quando o tema/camada externa fornece contraste incorreto.
+            "title": "#FAFAFA",
+            "ticks": "#E5E7EB",
+            "bar_text": "#F3F4F6",
         }
     return {
         "template": "plotly",
