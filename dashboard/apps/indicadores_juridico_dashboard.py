@@ -1006,13 +1006,13 @@ def render_indicadores_juridico_dashboard() -> None:
                         gc1, gc2, gc3 = st.columns(3)
                     with gc1:
                         fig_m = _plot_juridico_hbar_qtd("📍 Por Motivo", df_motivo, "Motivo")
-                        st.plotly_chart(fig_m, use_container_width=True, key="jur_hbar_motivo")
+                        st.plotly_chart(fig_m, use_container_width=True, key="jur_hbar_motivo", theme=None)
                     with gc2:
                         fig_a = _plot_juridico_hbar_qtd("🏢 Por Área", df_area, "Área")
-                        st.plotly_chart(fig_a, use_container_width=True, key="jur_hbar_area")
+                        st.plotly_chart(fig_a, use_container_width=True, key="jur_hbar_area", theme=None)
                     with gc3:
                         fig_e = _plot_juridico_hbar_qtd("🏗️ Por Empreendimento", df_emp, "Empreendimento")
-                        st.plotly_chart(fig_e, use_container_width=True, key="jur_hbar_emp")
+                        st.plotly_chart(fig_e, use_container_width=True, key="jur_hbar_emp", theme=None)
 
     # 2) Tempo em «Em elaboração» (min na view → h), por motivo + detalhe por issue
     with tab2:
@@ -1141,7 +1141,7 @@ def render_indicadores_juridico_dashboard() -> None:
                         "Motivo",
                         "Total_h",
                     )
-                    st.plotly_chart(fig_h, use_container_width=True, key="jur_hbar_tempo_motivo")
+                    st.plotly_chart(fig_h, use_container_width=True, key="jur_hbar_tempo_motivo", theme=None)
 
                 st.markdown("**Detalhamento por issue**")
                 chave_s = (
