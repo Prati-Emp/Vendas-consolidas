@@ -42,21 +42,26 @@ _JUR_TT_REJEITADAS_ABA = (
 def _jur_por_motivo_label_with_tooltip(*, tooltip: str) -> str:
     """Rótulo «📍 Por motivo» + interrogação com tooltip nativo (atributo title)."""
     t_attr = html.escape(" ".join(tooltip.split()))
+    if _jur_ui_is_dark():
+        fg, bd, q = "rgba(250,250,250,0.82)", "rgba(250,250,250,0.35)", "rgba(250,250,250,0.92)"
+    else:
+        fg, bd, q = "rgba(17,24,39,0.88)", "rgba(17,24,39,0.35)", "rgba(17,24,39,0.92)"
     return (
-        '<div style="font-size:0.875rem;color:rgba(250,250,250,0.82);margin:0 0 0.08rem 0;line-height:1.1;'
+        f'<div style="font-size:0.875rem;color:{fg};margin:0 0 0.08rem 0;line-height:1.1;'
         'display:flex;align-items:center;gap:0.35rem;flex-wrap:wrap;">'
         "<span>📍 Por motivo</span>"
         f'<abbr title="{t_attr}" style="cursor:help;text-decoration:none;display:inline-flex;align-items:center;'
-        "justify-content:center;min-width:1.1rem;height:1.1rem;border:1px solid rgba(250,250,250,0.35);"
-        'border-radius:999px;font-size:0.72rem;font-weight:600;line-height:1;color:rgba(250,250,250,0.92);">?</abbr>'
+        f"justify-content:center;min-width:1.1rem;height:1.1rem;border:1px solid {bd};"
+        f'border-radius:999px;font-size:0.72rem;font-weight:600;line-height:1;color:{q};">?</abbr>'
         "</div>"
     )
 
 
 def _jur_filter_top_label(text: str) -> str:
     """Rótulo padrão para alinhar os campos no topo das abas."""
+    fg = "rgba(250,250,250,0.82)" if _jur_ui_is_dark() else "rgba(17,24,39,0.88)"
     return (
-        '<div style="font-size:0.875rem;color:rgba(250,250,250,0.82);'
+        f'<div style="font-size:0.875rem;color:{fg};'
         'margin:0 0 0.25rem 0;line-height:1.2;">'
         f"{html.escape(text)}"
         "</div>"
@@ -283,9 +288,30 @@ def _jur_hex_luminance(hex_color: str) -> float | None:
     return 0.299 * r + 0.587 * g + 0.114 * b
 
 
+def _jur_resolved_theme_base() -> str:
+    """
+    Tema efetivo visto pelo navegador (inclui «System» já resolvido).
+    Prioriza st.context.theme; evita texto Plotly escuro em fundo escuro quando get_option fica «light» vazio.
+    """
+    try:
+        ctx = getattr(st, "context", None)
+        theme = getattr(ctx, "theme", None) if ctx is not None else None
+        if theme is not None:
+            if isinstance(theme, dict):
+                raw = theme.get("base") or theme.get("type")
+            else:
+                raw = getattr(theme, "base", None) or getattr(theme, "type", None)
+            name = str(raw or "").strip().lower()
+            if name in ("dark", "light"):
+                return name
+    except Exception:
+        pass
+    return (st.get_option("theme.base") or "").strip().lower()
+
+
 def _jur_ui_is_dark() -> bool:
-    """Mesma inferência usada no RH (Dark / Light / System escuro)."""
-    base = (st.get_option("theme.base") or "").strip().lower()
+    """Dark / Light / System (via context) + heurística por cores do tema no .streamlit/config."""
+    base = _jur_resolved_theme_base()
     if base == "dark":
         return True
     if base == "light":
