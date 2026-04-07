@@ -62,6 +62,27 @@ def _jur_filter_top_label(text: str) -> str:
     )
 
 
+def _jur_add_total_row(df: pd.DataFrame, total_label: str = "Total") -> pd.DataFrame:
+    """Adiciona uma linha final de total para colunas numéricas."""
+    if df is None or df.empty:
+        return df
+
+    out = df.copy()
+    total_row: dict[str, Any] = {}
+    numeric_cols = [c for c in out.columns if pd.api.types.is_numeric_dtype(out[c])]
+
+    for c in out.columns:
+        if c in numeric_cols:
+            total_row[c] = out[c].fillna(0).sum()
+        else:
+            total_row[c] = ""
+
+    label_col = next((c for c in out.columns if c not in numeric_cols), out.columns[0])
+    total_row[label_col] = total_label
+
+    return pd.concat([out, pd.DataFrame([total_row])], ignore_index=True)
+
+
 def _jur_fin_mark_pull_main_to_graf() -> None:
     """Quando o usuário altera os filtros do topo, copia o estado para a linha acima dos gráficos no próximo run."""
     st.session_state["jur_fin_pull_main_to_graf"] = True
@@ -773,7 +794,7 @@ def render_indicadores_juridico_dashboard() -> None:
                         st.info("Sem registros para os filtros atuais.")
                     else:
                         st.dataframe(
-                            df_motivo,
+                            _jur_add_total_row(df_motivo),
                             hide_index=True,
                             use_container_width=True,
                             key="jur_ind_fin_motivo",
@@ -784,7 +805,7 @@ def render_indicadores_juridico_dashboard() -> None:
                         st.info("Sem registros para os filtros atuais.")
                     else:
                         st.dataframe(
-                            df_area,
+                            _jur_add_total_row(df_area),
                             hide_index=True,
                             use_container_width=True,
                             key="jur_ind_fin_area",
@@ -795,7 +816,7 @@ def render_indicadores_juridico_dashboard() -> None:
                         st.info("Sem registros para os filtros atuais.")
                     else:
                         st.dataframe(
-                            df_emp,
+                            _jur_add_total_row(df_emp),
                             hide_index=True,
                             use_container_width=True,
                             key="jur_ind_fin_emp",
@@ -1040,7 +1061,7 @@ def render_indicadores_juridico_dashboard() -> None:
                 with ct:
                     st.markdown("**Por motivo**")
                     st.dataframe(
-                        tbl_display,
+                        _jur_add_total_row(tbl_display),
                         hide_index=True,
                         use_container_width=True,
                         height=min(420, 40 + 36 * len(tbl_display)),
@@ -1081,7 +1102,7 @@ def render_indicadores_juridico_dashboard() -> None:
                     }
                 ).sort_values("Tempo (h)", ascending=False)
                 st.dataframe(
-                    detail,
+                    _jur_add_total_row(detail),
                     hide_index=True,
                     use_container_width=True,
                     height=min(520, 40 + 36 * min(len(detail), 14)),
@@ -1221,7 +1242,7 @@ def render_indicadores_juridico_dashboard() -> None:
                 with cte:
                     st.markdown("**Resumo por motivo**")
                     st.dataframe(
-                        tbl_mot,
+                        _jur_add_total_row(tbl_mot),
                         hide_index=True,
                         use_container_width=True,
                         height=min(480, 40 + 36 * len(tbl_mot)),
@@ -1230,7 +1251,7 @@ def render_indicadores_juridico_dashboard() -> None:
                 with cge:
                     st.markdown("**Resumo por responsável**")
                     st.dataframe(
-                        tbl_ec,
+                        _jur_add_total_row(tbl_ec),
                         hide_index=True,
                         use_container_width=True,
                         height=min(480, 40 + 36 * len(tbl_ec)),
@@ -1271,7 +1292,7 @@ def render_indicadores_juridico_dashboard() -> None:
                     ascending=[False, False, True, True],
                 )
                 st.dataframe(
-                    detail_ec,
+                    _jur_add_total_row(detail_ec),
                     hide_index=True,
                     use_container_width=True,
                     height=min(520, 40 + 36 * min(len(detail_ec), 14)),
@@ -1398,7 +1419,7 @@ def render_indicadores_juridico_dashboard() -> None:
                 with c_r1:
                     st.markdown("**Por motivo e obra**")
                     st.dataframe(
-                        tbl_rej_tipo,
+                        _jur_add_total_row(tbl_rej_tipo),
                         hide_index=True,
                         use_container_width=True,
                         height=min(480, 40 + 36 * len(tbl_rej_tipo)),
@@ -1407,7 +1428,7 @@ def render_indicadores_juridico_dashboard() -> None:
                 with c_r2:
                     st.markdown("**Por responsável**")
                     st.dataframe(
-                        tbl_rej_resp,
+                        _jur_add_total_row(tbl_rej_resp),
                         hide_index=True,
                         use_container_width=True,
                         height=min(480, 40 + 36 * len(tbl_rej_resp)),
@@ -1447,7 +1468,7 @@ def render_indicadores_juridico_dashboard() -> None:
                     ["Motivo", "Obra / empreendimento", "Chave"], ascending=[True, True, True]
                 )
                 st.dataframe(
-                    detail_rej,
+                    _jur_add_total_row(detail_rej),
                     hide_index=True,
                     use_container_width=True,
                     height=min(520, 40 + 36 * min(len(detail_rej), 14)),
