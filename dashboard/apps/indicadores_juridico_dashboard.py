@@ -264,11 +264,45 @@ _JUR_HBAR_MARKER = "#002b55"
 _JUR_HBAR_ANNO_QSZ = 14
 
 
+def _jur_hex_luminance_is_dark(hex_color: str) -> bool:
+    """True se #hex for fundo escuro (tema System sem `theme.base`)."""
+    s = str(hex_color or "").strip().lower()
+    if not s.startswith("#"):
+        return False
+    s = s.lstrip("#")
+    if len(s) == 3:
+        s = "".join(ch * 2 for ch in s)
+    if len(s) != 6:
+        return False
+    try:
+        r = int(s[0:2], 16)
+        g = int(s[2:4], 16)
+        b = int(s[4:6], 16)
+    except ValueError:
+        return False
+    lum = 0.299 * r + 0.587 * g + 0.114 * b
+    return lum < 140
+
+
+def _jur_hbar_annotation_value_color() -> str:
+    """
+    Valores à direita da barra: branco no UI escuro (como Repasses);
+    escuro no tema claro (branco no fundo branco some com tema Streamlit no Plotly).
+    """
+    base = (st.get_option("theme.base") or "").strip().lower()
+    if base == "light":
+        return "#111827"
+    if base == "dark":
+        return "#FFFFFF"
+    bg = (st.get_option("theme.backgroundColor") or "").strip()
+    if _jur_hex_luminance_is_dark(bg):
+        return "#FFFFFF"
+    return "#111827"
+
+
 def _jur_hbar_value_annotations(y_labels: List[Any], x_values: List[float], fmt: Callable[[Any], str]) -> list[dict[str, Any]]:
-    """
-    Quantidade/valor à direita da barra, negrito — igual `repasses_dashboard._render_situacao_chart`:
-    `font=dict(color="white", size=14)` + `st.plotly_chart` **sem** `theme=None` para o Streamlit aplicar o tema Plotly.
-    """
+    """Quantidade/valor à direita da barra, negrito; cor do número conforme tema claro/escuro."""
+    ac = _jur_hbar_annotation_value_color()
     annotations: list[dict[str, Any]] = []
     for y, raw in zip(y_labels, x_values):
         fv = float(raw)
@@ -281,7 +315,7 @@ def _jur_hbar_value_annotations(y_labels: List[Any], x_values: List[float], fmt:
                 xanchor="left",
                 yanchor="middle",
                 showarrow=False,
-                font=dict(color="white", size=_JUR_HBAR_ANNO_QSZ),
+                font=dict(color=ac, size=_JUR_HBAR_ANNO_QSZ),
             )
         )
     return annotations
@@ -289,8 +323,8 @@ def _jur_hbar_value_annotations(y_labels: List[Any], x_values: List[float], fmt:
 
 def _plot_juridico_hbar_qtd(title: str, df: pd.DataFrame, label_col: str, *, max_categorias: int = 30) -> go.Figure:
     """
-    Barras horizontais como Repasses: fundo transparente, barra #002b55, anotações brancas;
-    sem cores fixas em título/eixo — o tema padrão do `st.plotly_chart` ajusta claro/escuro.
+    Barras horizontais como Repasses: fundo transparente, barra #002b55;
+    valores em anotação com cor clara/escura conforme tema; título/eixo pelo `st.plotly_chart` padrão.
     """
     _tit = dict(
         text=title,
