@@ -258,11 +258,10 @@ _JUR_HBAR_ML = 168
 _JUR_HBAR_MR = 50
 _JUR_HBAR_TITLE_SZ = 17
 _JUR_HBAR_Y_TICK_SZ = 13
-_JUR_HBAR_BAR_TEXT_SZ = 13
 # Mesmo padrão visual do dashboard de Repasses (integração nativa de tema do Streamlit + Plotly).
 _JUR_HBAR_MARKER = "#002b55"
-# Barras mais estreitas que esta fração do máximo: rótulo fica fora (dentro da barra só cabe bem com largura suficiente).
-_JUR_HBAR_TEXT_OUTSIDE_REL = 0.20
+# Tamanho do número à direita da barra (Repasses usa 14 nas anotações de quantidade).
+_JUR_HBAR_ANNO_QSZ = 14
 
 
 def _jur_hbar_outside_label_color() -> str:
@@ -274,46 +273,29 @@ def _jur_hbar_outside_label_color() -> str:
     return "#F3F4F6" if base == "dark" else "#111827"
 
 
-def _jur_hbar_bar_text_and_annotations(
-    y_labels: List[Any],
-    x_values: List[float],
-    x_max: float,
-    fmt: Callable[[Any], str],
-) -> tuple[list[str], list[str], list[str], list[dict[str, Any]]]:
+def _jur_hbar_value_annotations(y_labels: List[Any], x_values: List[float], fmt: Callable[[Any], str]) -> list[dict[str, Any]]:
     """
-    Rótulo dentro da barra quando há largura suficiente; caso contrário usa anotação após o fim da barra
-    (``textposition='outside'`` é cortado com eixo X oculto — mesma ideia do Repasses com annotations).
+    Quantidade/valor sempre à direita da barra, em negrito — mesmo padrão do Repasses (`annotations` + `<b>`).
     """
-    xm = float(x_max) if x_max is not None and float(x_max) > 0 else 0.0
     out_c = _jur_hbar_outside_label_color()
-    texts: list[str] = []
-    positions: list[str] = []
-    colors: list[str] = []
     annotations: list[dict[str, Any]] = []
     for y, raw in zip(y_labels, x_values):
         fv = float(raw)
-        use_outside = xm <= 0 or (fv / xm) < _JUR_HBAR_TEXT_OUTSIDE_REL
         s = fmt(raw)
-        if use_outside:
-            texts.append("")
-            positions.append("none")
-            colors.append("white")
-            annotations.append(
-                {
-                    "x": fv,
-                    "y": y,
-                    "text": f"  <b>{s}</b>",
-                    "xanchor": "left",
-                    "yanchor": "middle",
-                    "showarrow": False,
-                    "font": dict(color=out_c, size=_JUR_HBAR_BAR_TEXT_SZ),
-                }
-            )
-        else:
-            texts.append(s)
-            positions.append("inside")
-            colors.append("white")
-    return texts, positions, colors, annotations
+        annotations.append(
+            {
+                "xref": "x",
+                "yref": "y",
+                "x": fv,
+                "y": y,
+                "text": f" <b>{s}</b>",
+                "xanchor": "left",
+                "yanchor": "middle",
+                "showarrow": False,
+                "font": dict(color=out_c, size=_JUR_HBAR_ANNO_QSZ),
+            }
+        )
+    return annotations
 
 
 def _plot_juridico_hbar_qtd(title: str, df: pd.DataFrame, label_col: str, *, max_categorias: int = 30) -> go.Figure:
@@ -348,17 +330,10 @@ def _plot_juridico_hbar_qtd(title: str, df: pd.DataFrame, label_col: str, *, max
     x_max = int(qty.max()) if len(qty) else 1
     y_list = labels.tolist()
     q_list = [float(x) for x in qty.tolist()]
-    texts, tpos, tcolors, annos = _jur_hbar_bar_text_and_annotations(
-        y_list, q_list, float(x_max), lambda v: str(int(v))
-    )
-    any_out = bool(annos)
-    _marg_dyn = dict(
-        l=_JUR_HBAR_ML,
-        r=72 if any_out else _JUR_HBAR_MR,
-        t=62,
-        b=12,
-    )
-    x_hi_pad = 1.32 if any_out else 1.15
+    annos = _jur_hbar_value_annotations(y_list, q_list, lambda v: str(int(v)))
+    _marg_dyn = dict(l=_JUR_HBAR_ML, r=72, t=62, b=12)
+    # Folga para o número após a barra (todas as linhas têm anotação).
+    x_hi_pad = 1.35
 
     fig = go.Figure(
         go.Bar(
@@ -366,10 +341,6 @@ def _plot_juridico_hbar_qtd(title: str, df: pd.DataFrame, label_col: str, *, max
             y=labels,
             orientation="h",
             marker=dict(color=_JUR_HBAR_MARKER, line=dict(width=0)),
-            text=texts,
-            textposition=tpos,
-            insidetextanchor="middle",
-            textfont=dict(color=tcolors, size=_JUR_HBAR_BAR_TEXT_SZ),
             cliponaxis=False,
             hovertemplate="%{y}<br>Qtd: %{x}<extra></extra>",
         )
@@ -434,17 +405,9 @@ def _plot_juridico_hbar_horas(
     x_max = float(val.max()) if len(val) else 1.0
     y_list = labels.tolist()
     v_list = [float(x) for x in val.tolist()]
-    texts, tpos, tcolors, annos = _jur_hbar_bar_text_and_annotations(
-        y_list, v_list, x_max, lambda v: f"{float(v):.1f}"
-    )
-    any_out = bool(annos)
-    _marg_dyn = dict(
-        l=_JUR_HBAR_ML,
-        r=72 if any_out else _JUR_HBAR_MR,
-        t=62,
-        b=12,
-    )
-    x_hi_pad = 1.32 if any_out else 1.15
+    annos = _jur_hbar_value_annotations(y_list, v_list, lambda v: f"{float(v):.1f}")
+    _marg_dyn = dict(l=_JUR_HBAR_ML, r=72, t=62, b=12)
+    x_hi_pad = 1.35
 
     fig = go.Figure(
         go.Bar(
@@ -452,10 +415,6 @@ def _plot_juridico_hbar_horas(
             y=labels,
             orientation="h",
             marker=dict(color=_JUR_HBAR_MARKER, line=dict(width=0)),
-            text=texts,
-            textposition=tpos,
-            insidetextanchor="middle",
-            textfont=dict(color=tcolors, size=_JUR_HBAR_BAR_TEXT_SZ),
             cliponaxis=False,
             hovertemplate="%{y}<br>Total: %{x:.2f} h<extra></extra>",
         )
