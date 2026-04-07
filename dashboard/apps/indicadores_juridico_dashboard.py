@@ -261,13 +261,36 @@ _JUR_HBAR_Y_TICK_SZ = 13
 _JUR_HBAR_BAR_TEXT_SZ = 13
 
 
+def _jur_plot_theme() -> dict[str, str]:
+    """Retorna configuração visual dos gráficos conforme tema atual do Streamlit."""
+    base = (st.get_option("theme.base") or "").strip().lower()
+    if base == "dark":
+        return {
+            "template": "plotly_dark",
+            "paper": "#0E1117",
+            "plot": "#0E1117",
+            "title": "#FAFAFA",
+            "ticks": "#E0E0E0",
+            "bar_text": "#ECEFF1",
+        }
+    return {
+        "template": "plotly",
+        "paper": "rgba(0,0,0,0)",
+        "plot": "rgba(0,0,0,0)",
+        "title": "#111827",
+        "ticks": "#1F2937",
+        "bar_text": "#111827",
+    }
+
+
 def _plot_juridico_hbar_qtd(title: str, df: pd.DataFrame, label_col: str, *, max_categorias: int = 30) -> go.Figure:
     """
     Barras horizontais (tema escuro, barras azuis), quantidade no fim da barra — alinhado ao estilo «funil» de reservas.
     """
+    _theme = _jur_plot_theme()
     _tit = dict(
         text=title,
-        font=dict(size=_JUR_HBAR_TITLE_SZ, color="#FAFAFA"),
+        font=dict(size=_JUR_HBAR_TITLE_SZ, color=_theme["title"]),
         x=0.5,
         xanchor="center",
         yanchor="top",
@@ -277,9 +300,9 @@ def _plot_juridico_hbar_qtd(title: str, df: pd.DataFrame, label_col: str, *, max
     if df.empty or label_col not in df.columns:
         fig = go.Figure()
         fig.update_layout(
-            template="plotly_dark",
-            paper_bgcolor="#0E1117",
-            plot_bgcolor="#0E1117",
+            template=_theme["template"],
+            paper_bgcolor=_theme["paper"],
+            plot_bgcolor=_theme["plot"],
             title=_tit,
             height=240,
             margin=_marg,
@@ -299,7 +322,7 @@ def _plot_juridico_hbar_qtd(title: str, df: pd.DataFrame, label_col: str, *, max
             marker=dict(color="#4FC3F7", line=dict(width=0)),
             text=qty.astype(str),
             textposition="outside",
-            textfont=dict(color="#ECEFF1", size=_JUR_HBAR_BAR_TEXT_SZ),
+            textfont=dict(color=_theme["bar_text"], size=_JUR_HBAR_BAR_TEXT_SZ),
             cliponaxis=False,
             hovertemplate="%{y}<br>Qtd: %{x}<extra></extra>",
         )
@@ -307,9 +330,9 @@ def _plot_juridico_hbar_qtd(title: str, df: pd.DataFrame, label_col: str, *, max
     x_max = int(qty.max()) if len(qty) else 1
     h = min(820, max(280, 34 * len(labels) + 140))
     fig.update_layout(
-        template="plotly_dark",
-        paper_bgcolor="#0E1117",
-        plot_bgcolor="#0E1117",
+        template=_theme["template"],
+        paper_bgcolor=_theme["paper"],
+        plot_bgcolor=_theme["plot"],
         title=_tit,
         margin=_marg,
         height=h,
@@ -323,7 +346,7 @@ def _plot_juridico_hbar_qtd(title: str, df: pd.DataFrame, label_col: str, *, max
         yaxis=dict(
             title="",
             automargin=False,
-            tickfont=dict(size=_JUR_HBAR_Y_TICK_SZ, color="#E0E0E0"),
+            tickfont=dict(size=_JUR_HBAR_Y_TICK_SZ, color=_theme["ticks"]),
         ),
         showlegend=False,
         bargap=0.18,
@@ -340,9 +363,10 @@ def _plot_juridico_hbar_horas(
     max_categorias: int = 30,
 ) -> go.Figure:
     """Barras horizontais com total de horas (eixo X numérico contínuo)."""
+    _theme = _jur_plot_theme()
     _tit = dict(
         text=title,
-        font=dict(size=_JUR_HBAR_TITLE_SZ, color="#FAFAFA"),
+        font=dict(size=_JUR_HBAR_TITLE_SZ, color=_theme["title"]),
         x=0.5,
         xanchor="center",
         yanchor="top",
@@ -352,9 +376,9 @@ def _plot_juridico_hbar_horas(
     if df.empty or label_col not in df.columns or value_col not in df.columns:
         fig = go.Figure()
         fig.update_layout(
-            template="plotly_dark",
-            paper_bgcolor="#0E1117",
-            plot_bgcolor="#0E1117",
+            template=_theme["template"],
+            paper_bgcolor=_theme["paper"],
+            plot_bgcolor=_theme["plot"],
             title=_tit,
             height=240,
             margin=_marg,
@@ -374,7 +398,7 @@ def _plot_juridico_hbar_horas(
             marker=dict(color="#4FC3F7", line=dict(width=0)),
             text=val.map(lambda x: f"{x:.1f}"),
             textposition="outside",
-            textfont=dict(color="#ECEFF1", size=_JUR_HBAR_BAR_TEXT_SZ),
+            textfont=dict(color=_theme["bar_text"], size=_JUR_HBAR_BAR_TEXT_SZ),
             cliponaxis=False,
             hovertemplate="%{y}<br>Total: %{x:.2f} h<extra></extra>",
         )
@@ -382,9 +406,9 @@ def _plot_juridico_hbar_horas(
     x_max = float(val.max()) if len(val) else 1.0
     h = min(820, max(280, 34 * len(labels) + 140))
     fig.update_layout(
-        template="plotly_dark",
-        paper_bgcolor="#0E1117",
-        plot_bgcolor="#0E1117",
+        template=_theme["template"],
+        paper_bgcolor=_theme["paper"],
+        plot_bgcolor=_theme["plot"],
         title=_tit,
         margin=_marg,
         height=h,
@@ -396,7 +420,7 @@ def _plot_juridico_hbar_horas(
         yaxis=dict(
             title="",
             automargin=False,
-            tickfont=dict(size=_JUR_HBAR_Y_TICK_SZ, color="#E0E0E0"),
+            tickfont=dict(size=_JUR_HBAR_Y_TICK_SZ, color=_theme["ticks"]),
         ),
         showlegend=False,
         bargap=0.18,
