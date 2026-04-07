@@ -10,7 +10,7 @@ import html
 import re
 import unicodedata
 from datetime import date as date_type
-from typing import Any, Dict, List, Optional
+from typing import Any, List, Optional
 
 import pandas as pd
 import plotly.graph_objects as go
@@ -31,6 +31,10 @@ _JUR_TT_ELAB_CONF_ABA = (
     "Elaborada = passou por Em elaboração ao menos uma vez; Conferida = passou por Conferência ao menos uma vez. "
     "Repetições da mesma etapa contam uma vez por issue. Resumos: Motivo à esquerda e Responsável à direita. "
     "O filtro Por motivo no topo restringe só esta aba."
+)
+_JUR_TT_REJEITADAS_ABA = (
+    "Filtro por **motivo** da requisição (consolidado): aplica-se somente à aba **Rejeitadas**. "
+    "As **datas** seguem o mesmo recorte global de **data de fechamento** das demais abas."
 )
 
 
@@ -61,6 +65,9 @@ _KT_ELAB_MOT = "jur_ind_tempo_elab_motivo"
 _K_EC_FECH_I = "jur_ind_elab_conf_fech_inicio"
 _K_EC_FECH_F = "jur_ind_elab_conf_fech_fim"
 _K_EC_MOT = "jur_ind_elab_conf_motivo"
+_K_REJ_FECH_I = "jur_ind_rejeitadas_fech_inicio"
+_K_REJ_FECH_F = "jur_ind_rejeitadas_fech_fim"
+_K_REJ_MOT = "jur_ind_rejeitadas_motivo"
 
 
 def _jur_sync_main_fech_to_tempo_tab() -> None:
@@ -75,10 +82,17 @@ def _jur_sync_main_fech_to_elab_conf_tab() -> None:
     st.session_state[_K_EC_FECH_F] = st.session_state[_K_FECH_F]
 
 
+def _jur_sync_main_fech_to_rejeitadas_tab() -> None:
+    """Espelha o período global nas datas da aba Rejeitadas."""
+    st.session_state[_K_REJ_FECH_I] = st.session_state[_K_FECH_I]
+    st.session_state[_K_REJ_FECH_F] = st.session_state[_K_FECH_F]
+
+
 def _jur_fin_main_fech_change_sync_tempo() -> None:
     _jur_fin_mark_pull_main_to_graf()
     _jur_sync_main_fech_to_tempo_tab()
     _jur_sync_main_fech_to_elab_conf_tab()
+    _jur_sync_main_fech_to_rejeitadas_tab()
 
 
 def _jur_tempo_elab_fech_change_apply_main() -> None:
@@ -87,6 +101,7 @@ def _jur_tempo_elab_fech_change_apply_main() -> None:
     st.session_state[_K_FECH_F] = st.session_state[_KT_ELAB_FECH_F]
     _jur_fin_mark_pull_main_to_graf()
     _jur_sync_main_fech_to_elab_conf_tab()
+    _jur_sync_main_fech_to_rejeitadas_tab()
     st.rerun()
 
 
@@ -96,6 +111,17 @@ def _jur_elab_conf_fech_change_apply_main() -> None:
     st.session_state[_K_FECH_F] = st.session_state[_K_EC_FECH_F]
     _jur_fin_mark_pull_main_to_graf()
     _jur_sync_main_fech_to_tempo_tab()
+    _jur_sync_main_fech_to_rejeitadas_tab()
+    st.rerun()
+
+
+def _jur_rejeitadas_fech_change_apply_main() -> None:
+    """Alteração nas datas na aba Rejeitadas atualiza o período global."""
+    st.session_state[_K_FECH_I] = st.session_state[_K_REJ_FECH_I]
+    st.session_state[_K_FECH_F] = st.session_state[_K_REJ_FECH_F]
+    _jur_fin_mark_pull_main_to_graf()
+    _jur_sync_main_fech_to_tempo_tab()
+    _jur_sync_main_fech_to_elab_conf_tab()
     st.rerun()
 
 
@@ -566,6 +592,9 @@ def render_indicadores_juridico_dashboard() -> None:
             for _kt, _km in ((_K_EC_FECH_I, _k_fech_i), (_K_EC_FECH_F, _k_fech_f)):
                 if _kt not in st.session_state:
                     st.session_state[_kt] = st.session_state[_km]
+            for _kt, _km in ((_K_REJ_FECH_I, _k_fech_i), (_K_REJ_FECH_F, _k_fech_f)):
+                if _kt not in st.session_state:
+                    st.session_state[_kt] = st.session_state[_km]
             ts_a = pd.Timestamp(st.session_state[_k_fech_i]).normalize()
             ts_b = pd.Timestamp(st.session_state[_k_fech_f]).normalize()
             if ts_a > ts_b:
@@ -577,7 +606,8 @@ def render_indicadores_juridico_dashboard() -> None:
         st.markdown("### 🔎 Filtros (Jurídico)")
         st.caption(
             "O intervalo de **Data de fechamento** pode ser ajustado na aba **Finalizados**, **Tempo de elaboração**, "
-            "**Elaborada vs Conferência** ou acima dos gráficos (Finalizados); motivo/área/empreendimento da aba Finalizados."
+            "**Elaborada vs Conferência**, **Rejeitadas** ou acima dos gráficos (Finalizados); "
+            "motivo/área/empreendimento da aba Finalizados."
         )
 
     if df_f.empty:
@@ -1238,7 +1268,7 @@ def render_indicadores_juridico_dashboard() -> None:
                     key="jur_ind_elab_conf_detail",
                 )
 
-    # 4) Rejeitadas: resumos por tipo×obra e por responsável
+    # 4) Rejeitadas: filtros (motivo + período) e resumos por tipo×obra e por responsável
     with tab4:
         st.subheader("❌ Rejeitadas")
         st.caption(
@@ -1247,7 +1277,80 @@ def render_indicadores_juridico_dashboard() -> None:
         if not status_col:
             st.info("Coluna de **Status** não encontrada na view.")
         else:
-            rej = df_f.loc[df_f[status_col].apply(_status_is_rejeitado)].copy()
+            rej_base = df_f.loc[df_f[status_col].apply(_status_is_rejeitado)].copy()
+            rej_base["Motivo"] = _jur_motivo_series(rej_base, motivo_col)
+            _rej_mot_opts = sorted(
+                {str(x) for x in rej_base["Motivo"].tolist() if str(x).strip()}
+            )
+
+            if _jur_date_ok and _jur_d_lo is not None and _jur_d_hi is not None and data_fechamento_col:
+                st.markdown(
+                    """
+                    <style>
+                    div[data-testid="stVerticalBlockBorderWrapper"]:has(div[data-baseweb="datepicker"]) {
+                        max-width: 200px;
+                    }
+                    div[data-testid="column"]:has(div[data-baseweb="datepicker"]) {
+                        flex: 0 0 auto !important;
+                        width: min(200px, 100%) !important;
+                        min-width: unset !important;
+                    }
+                    </style>
+                    """,
+                    unsafe_allow_html=True,
+                )
+                rj_mot, rj_di, rj_df, _rj_gap = st.columns([2.4, 1, 1, 2.6])
+                with rj_mot:
+                    st.markdown(
+                        _jur_por_motivo_label_with_tooltip(tooltip=_JUR_TT_REJEITADAS_ABA),
+                        unsafe_allow_html=True,
+                    )
+                    if not motivo_col or motivo_col not in df_f.columns:
+                        st.caption("_Coluna Motivo não disponível._")
+                    elif not _rej_mot_opts:
+                        st.caption("_Nenhum motivo entre rejeitados neste período._")
+                    else:
+                        st.multiselect(
+                            "Filtro motivo — rejeitadas",
+                            options=_rej_mot_opts,
+                            placeholder="Todos",
+                            key=_K_REJ_MOT,
+                            help="Restringe só esta aba (tabelas e detalhe).",
+                            label_visibility="collapsed",
+                        )
+                with rj_di:
+                    st.caption("Data inicial")
+                    st.date_input(
+                        "Data de fechamento — início (rejeitadas)",
+                        min_value=_jur_d_lo,
+                        max_value=_jur_d_hi,
+                        key=_K_REJ_FECH_I,
+                        help="Recorte global por data de fechamento (igual às outras abas).",
+                        label_visibility="collapsed",
+                        on_change=_jur_rejeitadas_fech_change_apply_main,
+                    )
+                with rj_df:
+                    st.caption("Data final")
+                    st.date_input(
+                        "Data de fechamento — fim (rejeitadas)",
+                        min_value=_jur_d_lo,
+                        max_value=_jur_d_hi,
+                        key=_K_REJ_FECH_F,
+                        help="Recorte global por data de fechamento (igual às outras abas).",
+                        label_visibility="collapsed",
+                        on_change=_jur_rejeitadas_fech_change_apply_main,
+                    )
+            elif data_fechamento_col and not _jur_date_ok:
+                st.info("Não há datas de fechamento preenchidas para filtrar o período.")
+
+            rej = rej_base.copy()
+            _sel_rj_m = list(st.session_state.get(_K_REJ_MOT, []) or [])
+            if _sel_rj_m:
+                _mot_v_r = set(rej["Motivo"].astype(str).unique())
+                _sel_rj_m = [str(x) for x in _sel_rj_m if str(x) in _mot_v_r]
+                if _sel_rj_m:
+                    rej = rej.loc[rej["Motivo"].isin(_sel_rj_m)].copy()
+
             if rej.empty:
                 st.info("Nenhum item rejeitado no período filtrado.")
             else:
@@ -1319,9 +1422,10 @@ def render_indicadores_juridico_dashboard() -> None:
                     if resumo_col_ind and resumo_col_ind in rej.columns
                     else pd.Series("", index=rej.index)
                 )
-                detail_cols: Dict[str, pd.Series] = {
+                detail_cols = {
                     "Chave": chave_r,
                     "Status": stat_r,
+                    "Motivo": rej["Motivo"],
                     "Responsável": rej["_resp"],
                     "Tipo de contrato": rej["_tipo"],
                     "Obra / empreendimento": rej["_obra"],
@@ -1333,7 +1437,8 @@ def render_indicadores_juridico_dashboard() -> None:
                 detail_cols["Resumo"] = resumo_r
                 detail_rej = pd.DataFrame(detail_cols)
                 detail_rej = detail_rej.sort_values(
-                    ["Tipo de contrato", "Obra / empreendimento", "Chave"], ascending=[True, True, True]
+                    ["Motivo", "Tipo de contrato", "Obra / empreendimento", "Chave"],
+                    ascending=[True, True, True, True],
                 )
                 st.dataframe(
                     detail_rej,
