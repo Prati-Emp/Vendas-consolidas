@@ -261,6 +261,31 @@ _JUR_HBAR_Y_TICK_SZ = 13
 _JUR_HBAR_BAR_TEXT_SZ = 13
 # Mesmo padrão visual do dashboard de Repasses (integração nativa de tema do Streamlit + Plotly).
 _JUR_HBAR_MARKER = "#002b55"
+# Barras mais estreitas que esta fração do máximo: rótulo fica fora (dentro da barra só cabe bem com largura suficiente).
+_JUR_HBAR_TEXT_OUTSIDE_REL = 0.20
+
+
+def _jur_hbar_outside_label_color() -> str:
+    """Cor do texto quando o rótulo fica fora da barra (fundo = página Streamlit, não a barra escura)."""
+    tc = (st.get_option("theme.textColor") or "").strip()
+    if tc.startswith("#") and 4 <= len(tc) <= 9:
+        return tc
+    base = (st.get_option("theme.base") or "").strip().lower()
+    return "#F3F4F6" if base == "dark" else "#111827"
+
+
+def _jur_hbar_text_pos_and_colors(values, x_max: float) -> tuple[list[str], list[str]]:
+    """Para cada valor: textposition ('inside' | 'outside') e cor do texto (branco na barra ou cor de tema fora)."""
+    xm = float(x_max) if x_max is not None and float(x_max) > 0 else 0.0
+    out_c = _jur_hbar_outside_label_color()
+    pos: list[str] = []
+    cols: list[str] = []
+    for v in values:
+        fv = float(v)
+        use_outside = xm <= 0 or (fv / xm) < _JUR_HBAR_TEXT_OUTSIDE_REL
+        pos.append("outside" if use_outside else "inside")
+        cols.append(out_c if use_outside else "white")
+    return pos, cols
 
 
 def _plot_juridico_hbar_qtd(title: str, df: pd.DataFrame, label_col: str, *, max_categorias: int = 30) -> go.Figure:
@@ -292,6 +317,8 @@ def _plot_juridico_hbar_qtd(title: str, df: pd.DataFrame, label_col: str, *, max
     raw_lbl = d[label_col].astype(str).str.strip()
     labels = raw_lbl.apply(lambda s: (s[:46] + "…") if len(s) > 47 else s)
     qty = d["Qtd"].astype(int)
+    x_max = int(qty.max()) if len(qty) else 1
+    tpos, tcolors = _jur_hbar_text_pos_and_colors(qty.tolist(), float(x_max))
 
     fig = go.Figure(
         go.Bar(
@@ -300,14 +327,13 @@ def _plot_juridico_hbar_qtd(title: str, df: pd.DataFrame, label_col: str, *, max
             orientation="h",
             marker=dict(color=_JUR_HBAR_MARKER, line=dict(width=0)),
             text=qty.astype(str),
-            textposition="inside",
+            textposition=tpos,
             insidetextanchor="middle",
-            textfont=dict(color="white", size=_JUR_HBAR_BAR_TEXT_SZ),
+            textfont=dict(color=tcolors, size=_JUR_HBAR_BAR_TEXT_SZ),
             cliponaxis=False,
             hovertemplate="%{y}<br>Qtd: %{x}<extra></extra>",
         )
     )
-    x_max = int(qty.max()) if len(qty) else 1
     h = min(820, max(280, 34 * len(labels) + 140))
     fig.update_layout(
         paper_bgcolor="rgba(0,0,0,0)",
@@ -364,6 +390,8 @@ def _plot_juridico_hbar_horas(
     raw_lbl = d[label_col].astype(str).str.strip()
     labels = raw_lbl.apply(lambda s: (s[:46] + "…") if len(s) > 47 else s)
     val = d[value_col].astype(float)
+    x_max = float(val.max()) if len(val) else 1.0
+    tpos, tcolors = _jur_hbar_text_pos_and_colors(val.tolist(), x_max)
 
     fig = go.Figure(
         go.Bar(
@@ -372,14 +400,13 @@ def _plot_juridico_hbar_horas(
             orientation="h",
             marker=dict(color=_JUR_HBAR_MARKER, line=dict(width=0)),
             text=val.map(lambda x: f"{x:.1f}"),
-            textposition="inside",
+            textposition=tpos,
             insidetextanchor="middle",
-            textfont=dict(color="white", size=_JUR_HBAR_BAR_TEXT_SZ),
+            textfont=dict(color=tcolors, size=_JUR_HBAR_BAR_TEXT_SZ),
             cliponaxis=False,
             hovertemplate="%{y}<br>Total: %{x:.2f} h<extra></extra>",
         )
     )
-    x_max = float(val.max()) if len(val) else 1.0
     h = min(820, max(280, 34 * len(labels) + 140))
     fig.update_layout(
         paper_bgcolor="rgba(0,0,0,0)",
