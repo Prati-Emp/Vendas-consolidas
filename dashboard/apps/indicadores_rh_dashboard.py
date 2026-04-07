@@ -18,6 +18,7 @@ from dashboard.apps.acompanhamento_solicitacoes_dashboard import (  # noqa: E402
     COL_TEMPO_APROVACAO_VAGA,
     COL_TEMPO_FECHAMENTO_VAGA,
     COL_TEMPO_TOTAL_CONTRATACAO,
+    _normalize_text_for_match,
     compute_requisicao_vaga_tempos_table,
     compute_solicitacoes_matrix_by_quadro,
     load_jira_dho_acompanhamento,
@@ -1470,9 +1471,9 @@ def _build_tempos_por_cargo_table(tbl: pd.DataFrame) -> pd.DataFrame:
         columns={
             "Cargo": "Cargo",
             "vagas_finalizadas": "Vagas finalizadas",
-            "tempo_fechamento_medio": "Tempo data aprovação (média)",
-            "tempo_aprovacao_medio": "Data de aceite (média)",
-            "tempo_total_contratacao_medio": "Data de fechamento (média)",
+            "tempo_fechamento_medio": "Tempo de aprovação (média)",
+            "tempo_aprovacao_medio": "Tempo de fechamento (média)",
+            "tempo_total_contratacao_medio": "Tempo total de processo (média)",
         }
     )
     grp = grp.sort_values(
@@ -1487,11 +1488,11 @@ def render_jira_requisicao_vaga_tempos() -> None:
     st.caption(
         "Somente o quadro **Requisição de vaga (RC)** com status **Finalizado** (e equivalentes). "
         "**Início**: *Start date*; se ausente, *Data de início*. "
-        "**Tempo data aprovação**: do início até **Data de aprovação**. "
-        "**Data de aceite**: do início até **Data de fechamento**; se a **Data finalização** "
+        "**Tempo de aprovação**: do início até **Data de aprovação**. "
+        "**Tempo de fechamento**: do início até **Data de fechamento**; se a **Data finalização** "
         "for anterior (processo já encerrado, mas fechamento preenchido depois no Jira), usa-se a **Data finalização** "
         "como data final desse prazo. "
-        "**Data de fechamento**: do início até **Data finalização** (tempo total do ciclo da vaga). "
+        "**Tempo total de processo**: do início até **Data finalização** (tempo total do ciclo da vaga). "
         "Cálculo em **dias corridos**."
     )
     df = load_jira_dho_acompanhamento()
@@ -1503,29 +1504,105 @@ def render_jira_requisicao_vaga_tempos() -> None:
         )
         return
 
-    n1, m1, d1 = _tempo_stats(tbl, COL_TEMPO_FECHAMENTO_VAGA)
-    n2, m2, d2 = _tempo_stats(tbl, COL_TEMPO_APROVACAO_VAGA)
-    n3, m3, d3 = _tempo_stats(tbl, COL_TEMPO_TOTAL_CONTRATACAO)
+    ts_ini_tbl = pd.to_datetime(tbl["Início"], errors="coerce")
+    ts_fim_tbl = pd.to_datetime(tbl["Data finalização"], errors="coerce")
+    dates_ini = ts_ini_tbl.dropna()
+    dates_fim = ts_fim_tbl.dropna()
+    if dates_ini.empty and dates_fim.empty:
+        d_range_lo = date.today() - timedelta(days=365)
+        d_range_hi = date.today()
+    else:
+        parts: list[date] = []
+        if not dates_ini.empty:
+            parts.extend([dates_ini.min().date(), dates_ini.max().date()])
+        if not dates_fim.empty:
+            parts.extend([dates_fim.min().date(), dates_fim.max().date()])
+        d_range_lo, d_range_hi = min(parts), max(parts)
 
-    k1, h1 = _format_mean_median_dias(n1, m1, d1)
-    k2, h2 = _format_mean_median_dias(n2, m2, d2)
-    k3, h3 = _format_mean_median_dias(n3, m3, d3)
+    st.caption(
+        "**Filtros**: período por **data de início** e **data de finalização** do processo "
+        "(mantém linhas em que ambas caem no intervalo; exige finalização preenchida). "
+        "Opcional: **Supervisão**."
+    )
+    f1, f2, f3 = st.columns(3)
+    with f1:
+        filtro_ini = st.date_input(
+            "Período — a partir de (início do processo)",
+            value=d_range_lo,
+            min_value=d_range_lo,
+            max_value=d_range_hi,
+            key="ind_rh_req_vaga_filtro_ini",
+        )
+    with f2:
+        filtro_fim = st.date_input(
+            "Período — até (finalização do processo)",
+            value=d_range_hi,
+            min_value=d_range_lo,
+            max_value=d_range_hi,
+            key="ind_rh_req_vaga_filtro_fim",
+        )
+    with f3:
+        sup_opts = sorted(
+            {v for v in tbl["Supervisão"].astype(str).str.strip().unique() if v},
+            key=lambda x: x.lower(),
+        )
+        sup_sel = st.multiselect(
+            "Supervisão",
+            options=sup_opts,
+            default=[],
+            key="ind_rh_req_vaga_filtro_sup",
+            placeholder="Todas",
+        )
+
+    if filtro_ini > filtro_fim:
+        st.warning("A data inicial do período é maior que a final; ajuste o filtro.")
+        return
+
+    ts_a = pd.Timestamp(filtro_ini).normalize()
+    ts_b = pd.Timestamp(filtro_fim).normalize()
+    mask_date = (
+        ts_ini_tbl.notna()
+        & ts_fim_tbl.notna()
+        & (ts_ini_tbl.dt.normalize() >= ts_a)
+        & (ts_ini_tbl.dt.normalize() <= ts_b)
+        & (ts_fim_tbl.dt.normalize() >= ts_a)
+        & (ts_fim_tbl.dt.normalize() <= ts_b)
+    )
+    tbl_f = tbl.loc[mask_date].copy()
+    if sup_sel:
+        sel_norm = {_normalize_text_for_match(v) for v in sup_sel if v}
+        sup_norm = tbl_f["Supervisão"].map(_normalize_text_for_match)
+        tbl_f = tbl_f[sup_norm.isin(sel_norm)]
+
+    if tbl_f.empty:
+        st.info("Nenhuma solicitação no recorte de datas e supervisão selecionados.")
+        return
+
+    n1, m1, d1 = _tempo_stats(tbl_f, COL_TEMPO_FECHAMENTO_VAGA)
+    n2, m2, d2 = _tempo_stats(tbl_f, COL_TEMPO_APROVACAO_VAGA)
+    n3, m3, d3 = _tempo_stats(tbl_f, COL_TEMPO_TOTAL_CONTRATACAO)
+
+    k1, _ = _format_mean_median_dias(n1, m1, d1)
+    k2, _ = _format_mean_median_dias(n2, m2, d2)
+    k3, _ = _format_mean_median_dias(n3, m3, d3)
 
     r1, r2, r3 = st.columns(3)
     with r1:
-        st.metric("Tempo data aprovação (média)", k1, help="Início → data de aprovação")
+        st.metric("Tempo de aprovação (média)", k1, help="Início → data de aprovação")
     with r2:
         st.metric(
-            "Data de aceite (média)",
+            "Tempo de fechamento (média)",
             k2,
             help="Início → data de fechamento; se finalização for mais cedo, usa-se ela como fim.",
         )
     with r3:
-        st.metric("Data de fechamento (média)", k3, help="Início → data finalização (ciclo total)")
+        st.metric(
+            "Tempo total de processo (média)", k3, help="Início → data finalização (ciclo total)"
+        )
 
     st.subheader("Tempos por cargo")
     st.caption("Média em dias corridos por cargo, considerando apenas vagas finalizadas.")
-    tbl_cargo = _build_tempos_por_cargo_table(tbl)
+    tbl_cargo = _build_tempos_por_cargo_table(tbl_f)
     if tbl_cargo.empty:
         st.info("Sem dados suficientes de cargo para montar o quadro por cargo.")
     else:
@@ -1536,16 +1613,16 @@ def render_jira_requisicao_vaga_tempos() -> None:
             key="ind_rh_req_vaga_tempos_por_cargo_tbl",
             column_config={
                 "Vagas finalizadas": st.column_config.NumberColumn(format="%d"),
-                "Tempo data aprovação (média)": st.column_config.NumberColumn(format="%.1f"),
-                "Data de aceite (média)": st.column_config.NumberColumn(format="%.1f"),
-                "Data de fechamento (média)": st.column_config.NumberColumn(format="%.1f"),
+                "Tempo de aprovação (média)": st.column_config.NumberColumn(format="%.1f"),
+                "Tempo de fechamento (média)": st.column_config.NumberColumn(format="%.1f"),
+                "Tempo total de processo (média)": st.column_config.NumberColumn(format="%.1f"),
             },
         )
 
     st.subheader("Detalhamento por solicitação")
     num_cfg = st.column_config.NumberColumn(format="%d")
     st.dataframe(
-        tbl,
+        tbl_f,
         hide_index=True,
         use_container_width=True,
         key="ind_rh_req_vaga_tempos_tbl",

@@ -393,10 +393,10 @@ def _series_day_diff_days(start: pd.Series, end: pd.Series) -> pd.Series:
 
 
 # Colunas de saída (tabela de tempos — requisição de vagas)
-# Ordem de negócio: Data de aprovação -> Data de aceite -> Data de fechamento
-COL_TEMPO_FECHAMENTO_VAGA = "Tempo data aprovação (dias)"
-COL_TEMPO_APROVACAO_VAGA = "Data de aceite (dias)"
-COL_TEMPO_TOTAL_CONTRATACAO = "Data de fechamento (dias)"
+# Ordem de negócio: aprovação -> fechamento (aceite) -> ciclo total até finalização
+COL_TEMPO_FECHAMENTO_VAGA = "Tempo de aprovação (dias)"
+COL_TEMPO_APROVACAO_VAGA = "Tempo de fechamento (dias)"
+COL_TEMPO_TOTAL_CONTRATACAO = "Tempo total de processo (dias)"
 
 
 def compute_requisicao_vaga_tempos_table(df: pd.DataFrame) -> pd.DataFrame:
@@ -405,11 +405,11 @@ def compute_requisicao_vaga_tempos_table(df: pd.DataFrame) -> pd.DataFrame:
 
     Métricas (dias corridos), sempre a partir do **início**:
     - **Início**: `Start_date` por linha; onde vazio, usa-se `Data_de_inicio`.
-    - **Tempo data aprovação**: do início até **Data de aprovação**.
-    - **Data de aceite**: do início até **Data de fechamento**. Se houver **Data finalização**
+    - **Tempo de aprovação**: do início até **Data de aprovação**.
+    - **Tempo de fechamento**: do início até **Data de fechamento**. Se houver **Data finalização**
       anterior à data de fechamento (processo já encerrado no Jira, mas campo de fechamento atualizado
       depois), usa-se **Data finalização** como fim desse prazo para não inflar o indicador.
-    - **Data de fechamento**: do início até **Data finalização** (tempo total do ciclo da vaga).
+    - **Tempo total de processo**: do início até **Data finalização** (tempo total do ciclo da vaga).
 
     Colunas de data na view consolidada: `Data_de_aprovação`, `Data_de_fechamento`, `Data_de_finalizacao`.
     (A view normaliza textos para **DATE**, tentando ISO Y-M-D e, se inválido, Y-D-M, ex. `2025-30-12` → 30/12/2025.)
@@ -458,6 +458,9 @@ def compute_requisicao_vaga_tempos_table(df: pd.DataFrame) -> pd.DataFrame:
 
     resumo_col = _find_dataframe_column_normalized(done, "Resumo")
     cargo_col = _find_dataframe_column_normalized(done, "Cargo")
+    supervisao_col = _find_dataframe_column_normalized(done, "Supervisão") or _find_dataframe_column_normalized(
+        done, "Supervisao"
+    )
 
     out = pd.DataFrame()
     out["Chave"] = done[chave_col].astype(str).str.strip()
@@ -467,6 +470,12 @@ def compute_requisicao_vaga_tempos_table(df: pd.DataFrame) -> pd.DataFrame:
         )
     else:
         out["Cargo"] = ""
+    if supervisao_col and supervisao_col in done.columns:
+        out["Supervisão"] = done[supervisao_col].apply(
+            lambda x: str(x).strip() if pd.notna(x) else ""
+        )
+    else:
+        out["Supervisão"] = ""
     if resumo_col and resumo_col in done.columns:
         out["Resumo"] = done[resumo_col].apply(lambda x: str(x).strip() if pd.notna(x) else "")
 
