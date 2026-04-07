@@ -313,11 +313,38 @@ def _jur_ui_is_dark() -> bool:
 
 
 def _jur_plot_readable_text_color() -> str:
-    """Título, eixo Y e anotações: theme.textColor normalizado ou fallback claro/escuro."""
+    """
+    Título, eixo Y e anotações. No tema escuro o Streamlit às vezes devolve textColor escuro;
+    nesse caso forçamos texto claro (senão anotações somem no fundo escuro).
+    """
+    base = (st.get_option("theme.base") or "").strip().lower()
     tx = _jur_normalize_theme_hex((st.get_option("theme.textColor") or "").strip())
-    if tx:
+
+    if base == "dark":
+        if tx and not _jur_is_dark_color(tx):
+            return tx
+        return "#FAFAFA"
+
+    if base == "light":
+        if tx and _jur_is_dark_color(tx):
+            return tx
+        return "#111827"
+
+    bg_n = _jur_normalize_theme_hex((st.get_option("theme.backgroundColor") or "").strip())
+    if not base and bg_n and _jur_is_dark_color(bg_n):
+        if tx and not _jur_is_dark_color(tx):
+            return tx
+        return "#FAFAFA"
+
+    # System ou base vazio: inferir (mantém legível sem depender só de textColor errado).
+    if _jur_ui_is_dark():
+        if tx and not _jur_is_dark_color(tx):
+            return tx
+        return "#FAFAFA"
+
+    if tx and _jur_is_dark_color(tx):
         return tx
-    return "#FAFAFA" if _jur_ui_is_dark() else "#111827"
+    return "#111827"
 
 
 def _jur_hbar_value_annotations(y_labels: List[Any], x_values: List[float], fmt: Callable[[Any], str]) -> list[dict[str, Any]]:
