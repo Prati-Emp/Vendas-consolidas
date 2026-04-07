@@ -264,20 +264,50 @@ _JUR_HBAR_MARKER = "#002b55"
 _JUR_HBAR_ANNO_QSZ = 14
 
 
-def _jur_hbar_outside_label_color() -> str:
-    """Cor do texto quando o rótulo fica fora da barra (fundo = página Streamlit, não a barra escura)."""
-    tc = (st.get_option("theme.textColor") or "").strip()
-    if tc.startswith("#") and 4 <= len(tc) <= 9:
-        return tc
+def _jur_is_dark_color(hex_color: str) -> bool:
+    """True se a cor em #hex for escura (para inferir tema real quando base é System)."""
+    s = str(hex_color or "").strip().lower()
+    if not s.startswith("#"):
+        return False
+    s = s.lstrip("#")
+    if len(s) == 3:
+        s = "".join(ch * 2 for ch in s)
+    if len(s) != 6:
+        return False
+    try:
+        r = int(s[0:2], 16)
+        g = int(s[2:4], 16)
+        b = int(s[4:6], 16)
+    except ValueError:
+        return False
+    lum = 0.299 * r + 0.587 * g + 0.114 * b
+    return lum < 140
+
+
+def _jur_ui_is_dark() -> bool:
+    """Tema escuro efetivo: evita usar theme.textColor escuro no fundo escuro (caso System/base inconsistente)."""
     base = (st.get_option("theme.base") or "").strip().lower()
-    return "#F3F4F6" if base == "dark" else "#111827"
+    bg = (st.get_option("theme.backgroundColor") or "").strip()
+    if bg and _jur_is_dark_color(bg):
+        return True
+    return base == "dark"
+
+
+def _jur_hbar_annotation_label_color() -> str:
+    """Cor das anotações de valor à direita da barra: claro no UI escuro, escuro no UI claro."""
+    if _jur_ui_is_dark():
+        return "#FAFAFA"
+    tc = (st.get_option("theme.textColor") or "").strip()
+    if tc.startswith("#") and 4 <= len(tc) <= 9 and (not _jur_is_dark_color(tc)):
+        return tc
+    return "#111827"
 
 
 def _jur_hbar_value_annotations(y_labels: List[Any], x_values: List[float], fmt: Callable[[Any], str]) -> list[dict[str, Any]]:
     """
     Quantidade/valor sempre à direita da barra, em negrito — mesmo padrão do Repasses (`annotations` + `<b>`).
     """
-    out_c = _jur_hbar_outside_label_color()
+    out_c = _jur_hbar_annotation_label_color()
     annotations: list[dict[str, Any]] = []
     for y, raw in zip(y_labels, x_values):
         fv = float(raw)
@@ -300,8 +330,8 @@ def _jur_hbar_value_annotations(y_labels: List[Any], x_values: List[float], fmt:
 
 def _plot_juridico_hbar_qtd(title: str, df: pd.DataFrame, label_col: str, *, max_categorias: int = 30) -> go.Figure:
     """
-    Barras horizontais no mesmo estilo do Repasses: fundo transparente, barra escura, texto branco na barra,
-    cores de eixo/título pelo tema Streamlit (claro/escuro).
+    Barras horizontais no mesmo estilo do Repasses: fundo transparente, barra escura, quantidade em anotação
+    à direita da barra (negrito); eixo/título pelo tema Streamlit (claro/escuro).
     """
     _tit = dict(
         text=title,
