@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import html
 import re
+import textwrap
 import unicodedata
 from datetime import date as date_type
 from typing import Any, List, Optional
@@ -1486,11 +1487,19 @@ def render_indicadores_juridico_dashboard() -> None:
                 detail_rej = detail_rej.sort_values(
                     ["Motivo", "Obra / empreendimento", "Chave"], ascending=[True, True, True]
                 )
-                st.dataframe(
-                    detail_rej,
+                detail_rej_view = detail_rej.copy()
+                detail_rej_view["Último comentário"] = detail_rej_view["Último comentário"].apply(
+                    lambda v: textwrap.fill(str(v), width=110, break_long_words=False, break_on_hyphens=False)
+                    if str(v).strip()
+                    else ""
+                )
+                st.data_editor(
+                    detail_rej_view,
                     hide_index=True,
                     use_container_width=False,
                     width=2200,
+                    disabled=True,
+                    row_height=78,
                     column_config={
                         "Último comentário": st.column_config.TextColumn(
                             "Último comentário", width="large"
