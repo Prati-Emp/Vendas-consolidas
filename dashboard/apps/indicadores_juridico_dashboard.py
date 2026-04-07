@@ -42,7 +42,7 @@ def _jur_por_motivo_label_with_tooltip(*, tooltip: str) -> str:
     """Rótulo «📍 Por motivo» + interrogação com tooltip nativo (atributo title)."""
     t_attr = html.escape(" ".join(tooltip.split()))
     return (
-        '<div style="font-size:0.875rem;color:rgba(250,250,250,0.82);margin:0 0 0.25rem 0;'
+        '<div style="font-size:0.875rem;color:rgba(250,250,250,0.82);margin:0 0 0.08rem 0;line-height:1.1;'
         'display:flex;align-items:center;gap:0.35rem;flex-wrap:wrap;">'
         "<span>📍 Por motivo</span>"
         f'<abbr title="{t_attr}" style="cursor:help;text-decoration:none;display:inline-flex;align-items:center;'
