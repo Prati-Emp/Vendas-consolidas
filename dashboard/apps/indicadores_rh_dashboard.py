@@ -59,53 +59,6 @@ def _format_pct(n: float, decimals: int = 1) -> str:
     return f"{float(n):.{decimals}f}%".replace(".", ",")
 
 
-def _rh_theme_hex_luminance(hex_color: str) -> float | None:
-    s = str(hex_color or "").strip().lower()
-    if not s.startswith("#"):
-        return None
-    s = s.lstrip("#")
-    if len(s) == 3:
-        s = "".join(c * 2 for c in s)
-    if len(s) != 6:
-        return None
-    try:
-        r = int(s[0:2], 16)
-        g = int(s[2:4], 16)
-        b = int(s[4:6], 16)
-    except ValueError:
-        return None
-    return 0.299 * r + 0.587 * g + 0.114 * b
-
-
-def _rh_ui_is_dark() -> bool:
-    """Alinha ao app (Dark, System escuro, etc.)."""
-    base = (st.get_option("theme.base") or "").strip().lower()
-    if base == "dark":
-        return True
-    if base == "light":
-        return False
-    bg = (st.get_option("theme.backgroundColor") or "").strip()
-    lum = _rh_theme_hex_luminance(bg)
-    if lum is not None and lum < 140:
-        return True
-    sb = (st.get_option("theme.secondaryBackgroundColor") or "").strip()
-    lum2 = _rh_theme_hex_luminance(sb)
-    if lum2 is not None and lum2 < 140:
-        return True
-    tc = (st.get_option("theme.textColor") or "").strip()
-    lum3 = _rh_theme_hex_luminance(tc)
-    if lum3 is not None and lum3 >= 140:
-        return True
-    return False
-
-
-def _rh_div_plotly_style() -> Tuple[str, str]:
-    """Template Plotly + cor de texto para gráficos da aba Diversidade (rótulos e eixos legíveis)."""
-    if _rh_ui_is_dark():
-        return "plotly_dark", "#E5E7EB"
-    return "plotly", "#111827"
-
-
 @st.cache_data(ttl=600)
 def load_tecsmart_consolidado() -> pd.DataFrame:
     md = get_md_connection()
@@ -945,8 +898,6 @@ def _render_demografia_rh() -> None:
                 # Se houver poucas barras, texto "dentro" costuma ficar espremido em barras pequenas.
                 return "outside" if n <= 6 else "inside"
 
-            _div_tmpl, _div_fc = _rh_div_plotly_style()
-
             total = int(div.shape[0])
             feminino = int(sexo_div.str.lower().str.contains("femin", na=False).sum())
             perc_fem = (feminino / total * 100.0) if total else 0.0
@@ -1013,15 +964,13 @@ def _render_demografia_rh() -> None:
                     rotation=93,
                     domain={"x": [0.15, 0.85], "y": [0.15, 0.85]},
                     marker=dict(line=dict(color="#0B1220", width=0.8)),
-                    textfont=dict(color=_div_fc),
                 )
                 fig_sexo.update_layout(
-                    template=_div_tmpl,
-                    font=dict(color=_div_fc),
+                    template="plotly_dark",
                     legend_title_text="",
                     margin=dict(l=10, r=10, t=50, b=10),
                 )
-                st.plotly_chart(fig_sexo, use_container_width=True, theme=None)
+                st.plotly_chart(fig_sexo, use_container_width=True)
             with c2:
                 raca_tbl = (
                     raca_div.value_counts().rename_axis("Raça").reset_index(name="Quantidade")
@@ -1038,17 +987,15 @@ def _render_demografia_rh() -> None:
                     text="Quantidade",
                 )
                 fig_raca.update_layout(
-                    template=_div_tmpl,
-                    font=dict(color=_div_fc),
+                    template="plotly_dark",
                     coloraxis_showscale=False,
                     margin=dict(l=10, r=10, t=50, b=10),
                 )
                 fig_raca.update_traces(
                     textposition=_bar_textpos_for_count(len(raca_tbl)),
                     texttemplate="<b>%{text}</b>",
-                    textfont=dict(color=_div_fc),
                 )
-                st.plotly_chart(fig_raca, use_container_width=True, theme=None)
+                st.plotly_chart(fig_raca, use_container_width=True)
 
             c3, c4 = st.columns(2)
             with c3:
@@ -1066,17 +1013,15 @@ def _render_demografia_rh() -> None:
                     text="Quantidade",
                 )
                 fig_nac.update_layout(
-                    template=_div_tmpl,
-                    font=dict(color=_div_fc),
+                    template="plotly_dark",
                     coloraxis_showscale=False,
                     margin=dict(l=10, r=10, t=50, b=10),
                 )
                 fig_nac.update_traces(
                     textposition=_bar_textpos_for_count(len(nac_tbl.head(10))),
                     texttemplate="<b>%{text}</b>",
-                    textfont=dict(color=_div_fc),
                 )
-                st.plotly_chart(fig_nac, use_container_width=True, theme=None)
+                st.plotly_chart(fig_nac, use_container_width=True)
             with c4:
                 estado_tbl = (
                     estado_div.value_counts().rename_axis("Estado civil").reset_index(name="Quantidade")
@@ -1093,17 +1038,15 @@ def _render_demografia_rh() -> None:
                     text="Quantidade",
                 )
                 fig_estado.update_layout(
-                    template=_div_tmpl,
-                    font=dict(color=_div_fc),
+                    template="plotly_dark",
                     coloraxis_showscale=False,
                     margin=dict(l=10, r=10, t=50, b=10),
                 )
                 fig_estado.update_traces(
                     textposition=_bar_textpos_for_count(len(estado_tbl)),
                     texttemplate="<b>%{text}</b>",
-                    textfont=dict(color=_div_fc),
                 )
-                st.plotly_chart(fig_estado, use_container_width=True, theme=None)
+                st.plotly_chart(fig_estado, use_container_width=True)
 
             st.divider()
             st.subheader("Diversidade (detalhado)")
