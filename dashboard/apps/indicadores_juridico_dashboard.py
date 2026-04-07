@@ -1278,7 +1278,7 @@ def render_indicadores_juridico_dashboard() -> None:
                     key="jur_ind_elab_conf_detail",
                 )
 
-    # 4) Rejeitadas: filtros (motivo + período) e resumos por tipo×obra e por responsável
+    # 4) Rejeitadas: filtros (motivo + período) e resumos por motivo×obra e por responsável
     with tab4:
         st.subheader("❌ Rejeitadas")
         st.caption(
@@ -1364,11 +1364,9 @@ def render_indicadores_juridico_dashboard() -> None:
             if rej.empty:
                 st.info("Nenhum item rejeitado no período filtrado.")
             else:
-                rej["_tipo"] = (
-                    rej[tipo_contrato_col].astype(str).str.strip() if tipo_contrato_col else "Não informado"
-                )
+                rej["_motivo"] = rej["Motivo"].astype(str).str.strip()
                 rej["_obra"] = rej[obra_col].astype(str).str.strip() if obra_col else "Não informado"
-                for _c in ("_tipo", "_obra"):
+                for _c in ("_motivo", "_obra"):
                     rej[_c] = rej[_c].replace(
                         {"": "Não informado", "nan": "Não informado", "None": "Não informado"}
                     )
@@ -1382,10 +1380,10 @@ def render_indicadores_juridico_dashboard() -> None:
                 )
 
                 tbl_rej_tipo = (
-                    rej.groupby(["_tipo", "_obra"], dropna=False)
+                    rej.groupby(["_motivo", "_obra"], dropna=False)
                     .size()
                     .reset_index(name="Quantidade")
-                    .rename(columns={"_tipo": "Tipo de contrato", "_obra": "Obra / empreendimento"})
+                    .rename(columns={"_motivo": "Motivo", "_obra": "Obra / empreendimento"})
                     .sort_values("Quantidade", ascending=False)
                 )
                 tbl_rej_resp = (
@@ -1398,7 +1396,7 @@ def render_indicadores_juridico_dashboard() -> None:
 
                 c_r1, c_r2 = st.columns(2)
                 with c_r1:
-                    st.markdown("**Por tipo de contrato e obra**")
+                    st.markdown("**Por motivo e obra**")
                     st.dataframe(
                         tbl_rej_tipo,
                         hide_index=True,
@@ -1437,7 +1435,6 @@ def render_indicadores_juridico_dashboard() -> None:
                     "Status": stat_r,
                     "Motivo": rej["Motivo"],
                     "Responsável": rej["_resp"],
-                    "Tipo de contrato": rej["_tipo"],
                     "Obra / empreendimento": rej["_obra"],
                 }
                 if data_fechamento_col and data_fechamento_col in rej.columns:
@@ -1447,8 +1444,7 @@ def render_indicadores_juridico_dashboard() -> None:
                 detail_cols["Resumo"] = resumo_r
                 detail_rej = pd.DataFrame(detail_cols)
                 detail_rej = detail_rej.sort_values(
-                    ["Motivo", "Tipo de contrato", "Obra / empreendimento", "Chave"],
-                    ascending=[True, True, True, True],
+                    ["Motivo", "Obra / empreendimento", "Chave"], ascending=[True, True, True]
                 )
                 st.dataframe(
                     detail_rej,
