@@ -1519,9 +1519,6 @@ def render_jira_requisicao_vaga_tempos() -> None:
             parts.extend([dates_fim.min().date(), dates_fim.max().date()])
         d_range_lo, d_range_hi = min(parts), max(parts)
 
-    # KPIs no topo visual: placeholder preenchido após os widgets de filtro (ordem de execução do Streamlit).
-    kpis_slot = st.empty()
-
     st.caption(
         "**Filtros**: período por **data de início** e **data de finalização** do processo "
         "(mantém linhas em que ambas caem no intervalo; exige finalização preenchida). "
@@ -1589,22 +1586,19 @@ def render_jira_requisicao_vaga_tempos() -> None:
     k2, _ = _format_mean_median_dias(n2, m2, d2)
     k3, _ = _format_mean_median_dias(n3, m3, d3)
 
-    with kpis_slot.container():
-        r1, r2, r3 = st.columns(3)
-        with r1:
-            st.metric("Tempo de aprovação (média)", k1, help="Início → data de aprovação")
-        with r2:
-            st.metric(
-                "Tempo de fechamento (média)",
-                k2,
-                help="Início → data de fechamento; se finalização for mais cedo, usa-se ela como fim.",
-            )
-        with r3:
-            st.metric(
-                "Tempo total de processo (média)",
-                k3,
-                help="Início → data finalização (ciclo total)",
-            )
+    r1, r2, r3 = st.columns(3)
+    with r1:
+        st.metric("Tempo de aprovação (média)", k1, help="Início → data de aprovação")
+    with r2:
+        st.metric(
+            "Tempo de fechamento (média)",
+            k2,
+            help="Início → data de fechamento; se finalização for mais cedo, usa-se ela como fim.",
+        )
+    with r3:
+        st.metric(
+            "Tempo total de processo (média)", k3, help="Início → data finalização (ciclo total)"
+        )
 
     st.subheader("Tempos por cargo")
     st.caption("Média em dias corridos por cargo, considerando apenas vagas finalizadas.")
