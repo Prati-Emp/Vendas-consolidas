@@ -1487,9 +1487,15 @@ def render_indicadores_juridico_dashboard() -> None:
                     ["Motivo", "Obra / empreendimento", "Chave"], ascending=[True, True, True]
                 )
                 st.dataframe(
-                    _jur_add_total_row(detail_rej),
+                    detail_rej,
                     hide_index=True,
-                    use_container_width=True,
+                    use_container_width=False,
+                    width=2200,
+                    column_config={
+                        "Último comentário": st.column_config.TextColumn(
+                            "Último comentário", width="large"
+                        )
+                    },
                     height=min(520, 40 + 36 * min(len(detail_rej), 14)),
                     key="jur_ind_rejeitados_detail",
                 )
