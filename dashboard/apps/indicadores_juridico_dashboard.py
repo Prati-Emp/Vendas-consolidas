@@ -261,25 +261,50 @@ _JUR_HBAR_Y_TICK_SZ = 13
 _JUR_HBAR_BAR_TEXT_SZ = 13
 
 
+def _jur_is_dark_color(hex_color: str) -> bool:
+    """Retorna True se a cor hexadecimal for escura."""
+    s = str(hex_color or "").strip().lower()
+    if not s.startswith("#"):
+        return False
+    s = s.lstrip("#")
+    if len(s) == 3:
+        s = "".join(ch * 2 for ch in s)
+    if len(s) != 6:
+        return False
+    try:
+        r = int(s[0:2], 16)
+        g = int(s[2:4], 16)
+        b = int(s[4:6], 16)
+    except ValueError:
+        return False
+    # Luminância perceptiva aproximada
+    lum = 0.299 * r + 0.587 * g + 0.114 * b
+    return lum < 140
+
+
 def _jur_plot_theme() -> dict[str, str]:
     """Retorna configuração visual dos gráficos conforme tema atual do Streamlit."""
     base = (st.get_option("theme.base") or "").strip().lower()
-    if base == "dark":
+    bg = (st.get_option("theme.backgroundColor") or "").strip()
+    text = (st.get_option("theme.textColor") or "").strip()
+
+    is_dark = base == "dark" or _jur_is_dark_color(bg)
+    if is_dark:
         return {
             "template": "plotly_dark",
             "paper": "#0E1117",
             "plot": "#0E1117",
-            "title": "#FAFAFA",
-            "ticks": "#E0E0E0",
-            "bar_text": "#ECEFF1",
+            "title": text or "#FAFAFA",
+            "ticks": text or "#E0E0E0",
+            "bar_text": text or "#ECEFF1",
         }
     return {
         "template": "plotly",
         "paper": "rgba(0,0,0,0)",
         "plot": "rgba(0,0,0,0)",
-        "title": "#111827",
-        "ticks": "#1F2937",
-        "bar_text": "#111827",
+        "title": text or "#111827",
+        "ticks": text or "#1F2937",
+        "bar_text": text or "#111827",
     }
 
 
