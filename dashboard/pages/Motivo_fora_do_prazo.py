@@ -285,41 +285,39 @@ analise_empreendimento['Valor Total'] = analise_empreendimento['Valor Total'].ap
 
 st.table(analise_empreendimento)
 
-@st.cache_data
-def get_reservation_messages(idreserva):
-    """Busca as mensagens de uma reserva específica"""
-    url = f"https://prati.cvcrm.com.br/api/v2/cv/reservas/{idreserva}/mensagens"
-    
-    # Ordem de tentativa de credenciais: secrets > fallback original
-    candidate_headers = []
-    
-    secrets_headers = SecureConfig.get_cvcrm_headers()
-    if secrets_headers:
-        candidate_headers.append(("secrets", secrets_headers))
-    
-    fallback_headers = {
-        "accept": "application/json",
-        "email": "djonathan.souza@grupoprati.com",
-        "token": "394f594bc6192c86d94f329355ae13ca0b78a2a9",
-    }
-    candidate_headers.append(("fallback", fallback_headers))
-    
-    for origin, headers in candidate_headers:
-        try:
-            response = requests.get(url, headers=headers, timeout=10)
-            response.raise_for_status()
-            data = response.json()
-            messages = data.get("dados", [])
-            return messages
-        except requests.exceptions.HTTPError:
-            # Se as credenciais atuais falharem, tentar o próximo conjunto
-            continue
-        except Exception:
-            # Para outros erros, seguir tentando demais opções
-            continue
-    
-    # Se todas as tentativas falharem, retornar lista vazia
+def _extract_mensagens_cvcrm(data):
+    """Extrai lista de mensagens do JSON da API (estrutura pode variar entre versões/chaves)."""
+    if data is None:
+        return []
+    if isinstance(data, list):
+        return data
+    if not isinstance(data, dict):
+        return []
+    for key in ("dados", "data", "mensagens"):
+        val = data.get(key)
+        if isinstance(val, list):
+            return val
     return []
+
+
+@st.cache_data(ttl=600, show_spinner=False)
+def get_reservation_messages(idreserva):
+    """Busca mensagens da reserva na API CVCRM.
+
+    Credenciais: apenas ``CVCRM_EMAIL`` e ``CVCRM_TOKEN`` (Streamlit secrets / env via ``SecureConfig``).
+    """
+    url = f"https://prati.cvcrm.com.br/api/v2/cv/reservas/{idreserva}/mensagens"
+    headers = SecureConfig.get_cvcrm_headers()
+    if not headers:
+        return []
+    try:
+        response = requests.get(url, headers=headers, timeout=15)
+        if response.status_code >= 400:
+            return []
+        data = response.json()
+        return _extract_mensagens_cvcrm(data)
+    except (requests.RequestException, ValueError, TypeError):
+        return []
 
 st.divider()
 
