@@ -105,6 +105,7 @@ USERS_DATABASE = {
         "created": "2025-01-23",
         "last_login": None,
         "active": True,
+        "pages": ["operacoes"],
         "subpages": [
             "operacoes.jira",
             "operacoes.compras",
