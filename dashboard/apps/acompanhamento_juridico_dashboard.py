@@ -91,6 +91,7 @@ def _filter_by_row_email_access(df: pd.DataFrame) -> pd.DataFrame:
         "odair2d@hotmail.com",
         "gustavo.sordi@grupoprati.com",
         "joao.fantinel@grupoprati.com",
+        "angelica.moreira@grupoprati.com",
     }
     if user_email in bypass:
         return df
