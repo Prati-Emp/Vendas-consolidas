@@ -1524,6 +1524,15 @@ def render_jira_requisicao_vaga_tempos() -> None:
 
     f1, f2, f3, f4 = st.columns(4)
     with f1:
+        situacao_opts = ["Finalizada", "Aberta"]
+        situacao_sel = st.multiselect(
+            "Situação da vaga",
+            options=situacao_opts,
+            default=[],
+            key="ind_rh_req_vaga_filtro_situacao",
+            placeholder="Todas",
+        )
+    with f2:
         sup_opts = sorted(
             {v for v in tbl["Supervisão"].astype(str).str.strip().unique() if v},
             key=lambda x: x.lower(),
@@ -1533,15 +1542,6 @@ def render_jira_requisicao_vaga_tempos() -> None:
             options=sup_opts,
             default=[],
             key="ind_rh_req_vaga_filtro_sup",
-            placeholder="Todas",
-        )
-    with f2:
-        situacao_opts = ["Finalizada", "Aberta"]
-        situacao_sel = st.multiselect(
-            "Situação da vaga",
-            options=situacao_opts,
-            default=[],
-            key="ind_rh_req_vaga_filtro_situacao",
             placeholder="Todas",
         )
     with f3:
