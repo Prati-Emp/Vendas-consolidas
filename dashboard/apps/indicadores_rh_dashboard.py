@@ -1486,8 +1486,7 @@ def _build_tempos_por_cargo_table(tbl: pd.DataFrame) -> pd.DataFrame:
 
 def render_jira_requisicao_vaga_tempos() -> None:
     """Tempos médios no quadro RC para vagas finalizadas e abertas."""
-    st.subheader("Requisição de vagas — tempos")
-    st.caption(
+    help_requisicao_tempos = (
         "Somente o quadro **Requisição de vaga (RC)**. "
         "**Início**: *Start date*; se ausente, *Data de início*. "
         "**Tempo de aprovação**: do início até **Data de aprovação**. "
@@ -1495,8 +1494,12 @@ def render_jira_requisicao_vaga_tempos() -> None:
         "for anterior (processo já encerrado, mas fechamento preenchido depois no Jira), usa-se a **Data finalização** "
         "como data final desse prazo. "
         "**Tempo total de processo**: do início até **Data finalização**; para vagas abertas, usa-se **a data atual**. "
-        "Cálculo em **dias corridos**."
+        "Cálculo em **dias corridos**.\n\n"
+        "**Filtros**: período por **data de referência** da vaga. "
+        "Para vagas finalizadas: **Data finalização**. Para vagas abertas: **Início** (*Start date* / *Data de início*). "
+        "Opcional: **Supervisão**."
     )
+    st.subheader("Requisição de vagas — tempos", help=help_requisicao_tempos)
     df = load_jira_dho_acompanhamento()
     tbl = compute_requisicao_vaga_tempos_table(df)
     if tbl.empty:
@@ -1519,11 +1522,6 @@ def render_jira_requisicao_vaga_tempos() -> None:
         d_range_lo = dates_ref.min().date()
         d_range_hi = dates_ref.max().date()
 
-    st.caption(
-        "**Filtros**: período por **data de referência** da vaga. "
-        "Para vagas finalizadas: **Data finalização**. Para vagas abertas: **Início** (*Start date* / *Data de início*). "
-        "Opcional: **Supervisão**."
-    )
     f1, f2, f3, f4 = st.columns(4)
     with f1:
         sup_opts = sorted(
@@ -1608,9 +1606,9 @@ def render_jira_requisicao_vaga_tempos() -> None:
             "Tempo total de processo (média)", k3, help="Início → data finalização (ciclo total)"
         )
 
-    st.subheader("Tempos por cargo")
-    st.caption(
-        "Média em dias corridos por cargo, com contagem de vagas finalizadas e abertas no período filtrado."
+    st.subheader(
+        "Tempos por cargo",
+        help="Média em dias corridos por cargo, com contagem de vagas finalizadas e abertas no período filtrado.",
     )
     tbl_cargo = _build_tempos_por_cargo_table(tbl_f)
     if tbl_cargo.empty:
