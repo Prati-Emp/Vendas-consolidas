@@ -302,7 +302,11 @@ USERS_DATABASE = {
         "last_login": None,
         "active": True,
         "pages": ["administrativo"],
-        "subpages": ["administrativo.acompanhamento_solicitacoes"]
+        "subpages": [
+            "administrativo.acompanhamento_solicitacoes",
+            "administrativo.indicadores_juridico",
+            "administrativo.acompanhamento_juridico",
+        ]
     },
     "camila.almeida@grupoprati.com": {
         "password": "C4m!la#Jur26",
