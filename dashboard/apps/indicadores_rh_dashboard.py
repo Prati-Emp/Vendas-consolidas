@@ -1459,7 +1459,8 @@ def _build_tempos_por_cargo_table(tbl: pd.DataFrame) -> pd.DataFrame:
     grp = (
         base.groupby("Cargo", dropna=False)
         .agg(
-            vagas_finalizadas=("Chave", "count"),
+            vagas_finalizadas=("Situação da vaga", lambda s: int((s == "Finalizada").sum())),
+            vagas_abertas=("Situação da vaga", lambda s: int((s != "Finalizada").sum())),
             tempo_fechamento_medio=(COL_TEMPO_FECHAMENTO_VAGA, "mean"),
             tempo_aprovacao_medio=(COL_TEMPO_APROVACAO_VAGA, "mean"),
             tempo_total_contratacao_medio=(COL_TEMPO_TOTAL_CONTRATACAO, "mean"),
@@ -1471,41 +1472,42 @@ def _build_tempos_por_cargo_table(tbl: pd.DataFrame) -> pd.DataFrame:
         columns={
             "Cargo": "Cargo",
             "vagas_finalizadas": "Vagas finalizadas",
+            "vagas_abertas": "Vagas abertas",
             "tempo_fechamento_medio": "Tempo de aprovação (média)",
             "tempo_aprovacao_medio": "Tempo de fechamento (média)",
             "tempo_total_contratacao_medio": "Tempo total de processo (média)",
         }
     )
     grp = grp.sort_values(
-        by=["Vagas finalizadas", "Cargo"], ascending=[False, True]
+        by=["Vagas finalizadas", "Vagas abertas", "Cargo"], ascending=[False, False, True]
     ).reset_index(drop=True)
     return grp
 
 
 def render_jira_requisicao_vaga_tempos() -> None:
-    """Tempos médios no quadro RC para issues finalizadas."""
-    st.subheader("Requisição de vagas — tempos (Finalizado)")
+    """Tempos médios no quadro RC para vagas finalizadas e abertas."""
+    st.subheader("Requisição de vagas — tempos")
     st.caption(
-        "Somente o quadro **Requisição de vaga (RC)** com status **Finalizado** (e equivalentes). "
+        "Somente o quadro **Requisição de vaga (RC)**. "
         "**Início**: *Start date*; se ausente, *Data de início*. "
         "**Tempo de aprovação**: do início até **Data de aprovação**. "
         "**Tempo de fechamento**: do início até **Data de fechamento**; se a **Data finalização** "
         "for anterior (processo já encerrado, mas fechamento preenchido depois no Jira), usa-se a **Data finalização** "
         "como data final desse prazo. "
-        "**Tempo total de processo**: do início até **Data finalização** (tempo total do ciclo da vaga). "
+        "**Tempo total de processo**: do início até **Data finalização**; para vagas abertas, usa-se **a data atual**. "
         "Cálculo em **dias corridos**."
     )
     df = load_jira_dho_acompanhamento()
     tbl = compute_requisicao_vaga_tempos_table(df)
     if tbl.empty:
         st.info(
-            "Nenhuma requisição de vaga **finalizada** encontrada, ou faltam colunas de data/início "
+            "Nenhuma requisição de vaga encontrada, ou faltam colunas de data/início "
             "para calcular os tempos."
         )
         return
 
     ts_ini_tbl = pd.to_datetime(tbl["Início"], errors="coerce")
-    ts_fim_tbl = pd.to_datetime(tbl["Data finalização"], errors="coerce")
+    ts_fim_tbl = pd.to_datetime(tbl["Data fim do processo"], errors="coerce")
     dates_ini = ts_ini_tbl.dropna()
     dates_fim = ts_fim_tbl.dropna()
     if dates_ini.empty and dates_fim.empty:
@@ -1521,7 +1523,7 @@ def render_jira_requisicao_vaga_tempos() -> None:
 
     st.caption(
         "**Filtros**: período por **data de início** e **data de finalização** do processo "
-        "(mantém linhas em que ambas caem no intervalo; exige finalização preenchida). "
+        "(mantém linhas em que ambas caem no intervalo; para vagas abertas, considera a data atual como fim). "
         "Opcional: **Supervisão**."
     )
     f1, f2, f3 = st.columns(3)
@@ -1535,7 +1537,7 @@ def render_jira_requisicao_vaga_tempos() -> None:
         )
     with f2:
         filtro_fim = st.date_input(
-            "Período — até (finalização do processo)",
+            "Período — até (fim do processo)",
             value=d_range_hi,
             min_value=d_range_lo,
             max_value=d_range_hi,
@@ -1601,7 +1603,9 @@ def render_jira_requisicao_vaga_tempos() -> None:
         )
 
     st.subheader("Tempos por cargo")
-    st.caption("Média em dias corridos por cargo, considerando apenas vagas finalizadas.")
+    st.caption(
+        "Média em dias corridos por cargo, com contagem de vagas finalizadas e abertas no período filtrado."
+    )
     tbl_cargo = _build_tempos_por_cargo_table(tbl_f)
     if tbl_cargo.empty:
         st.info("Sem dados suficientes de cargo para montar o quadro por cargo.")
@@ -1613,6 +1617,7 @@ def render_jira_requisicao_vaga_tempos() -> None:
             key="ind_rh_req_vaga_tempos_por_cargo_tbl",
             column_config={
                 "Vagas finalizadas": st.column_config.NumberColumn(format="%d"),
+                "Vagas abertas": st.column_config.NumberColumn(format="%d"),
                 "Tempo de aprovação (média)": st.column_config.NumberColumn(format="%.1f"),
                 "Tempo de fechamento (média)": st.column_config.NumberColumn(format="%.1f"),
                 "Tempo total de processo (média)": st.column_config.NumberColumn(format="%.1f"),

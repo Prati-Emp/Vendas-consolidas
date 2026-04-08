@@ -401,7 +401,7 @@ COL_TEMPO_TOTAL_CONTRATACAO = "Tempo total de processo (dias)"
 
 def compute_requisicao_vaga_tempos_table(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Quadro **Requisição de vaga (RC)**, apenas registros com status em **Concluídas** (ex.: Finalizado).
+    Quadro **Requisição de vaga (RC)**, incluindo vagas finalizadas e não finalizadas.
 
     Métricas (dias corridos), sempre a partir do **início**:
     - **Início**: `Start_date` por linha; onde vazio, usa-se `Data_de_inicio`.
@@ -422,72 +422,72 @@ def compute_requisicao_vaga_tempos_table(df: pd.DataFrame) -> pd.DataFrame:
     if base.empty or not status_col:
         return pd.DataFrame()
 
-    done_mask = base[status_col].apply(
-        lambda s: classify_jira_status_bucket(s) == "Concluídas"
-    )
-    done = base.loc[done_mask].copy()
-    if done.empty:
+    rc = base.copy()
+    if rc.empty:
         return pd.DataFrame()
 
-    col_start = _find_dataframe_column_normalized(done, "Start_date")
-    col_data_inicio = _find_dataframe_column_normalized(done, "Data_de_inicio")
+    col_start = _find_dataframe_column_normalized(rc, "Start_date")
+    col_data_inicio = _find_dataframe_column_normalized(rc, "Data_de_inicio")
     if not col_start and not col_data_inicio:
         return pd.DataFrame()
 
-    inicio = pd.Series(pd.NaT, index=done.index, dtype="datetime64[ns]")
-    if col_start and col_start in done.columns:
-        inicio = pd.to_datetime(done[col_start], errors="coerce")
-    if col_data_inicio and col_data_inicio in done.columns:
-        alt = pd.to_datetime(done[col_data_inicio], errors="coerce")
+    inicio = pd.Series(pd.NaT, index=rc.index, dtype="datetime64[ns]")
+    if col_start and col_start in rc.columns:
+        inicio = pd.to_datetime(rc[col_start], errors="coerce")
+    if col_data_inicio and col_data_inicio in rc.columns:
+        alt = pd.to_datetime(rc[col_data_inicio], errors="coerce")
         inicio = inicio.fillna(alt)
 
     if inicio.isna().all():
         return pd.DataFrame()
 
-    col_aprov = _find_dataframe_column_normalized(done, "Data_de_aprovacao")
-    col_fech = _find_dataframe_column_normalized(done, "Data_de_fechamento")
-    col_fin = _find_dataframe_column_normalized(done, "Data_de_finalizacao") or _find_dataframe_column_normalized(
-        done, "Data_de_finalização"
+    col_aprov = _find_dataframe_column_normalized(rc, "Data_de_aprovacao")
+    col_fech = _find_dataframe_column_normalized(rc, "Data_de_fechamento")
+    col_fin = _find_dataframe_column_normalized(rc, "Data_de_finalizacao") or _find_dataframe_column_normalized(
+        rc, "Data_de_finalização"
     )
 
-    chave_col = _find_dataframe_column_normalized(done, "Chave") or (
-        "Chave" if "Chave" in done.columns else ""
+    chave_col = _find_dataframe_column_normalized(rc, "Chave") or (
+        "Chave" if "Chave" in rc.columns else ""
     )
     if not chave_col:
         return pd.DataFrame()
 
-    resumo_col = _find_dataframe_column_normalized(done, "Resumo")
-    cargo_col = _find_dataframe_column_normalized(done, "Cargo")
-    supervisao_col = _find_dataframe_column_normalized(done, "Supervisão") or _find_dataframe_column_normalized(
-        done, "Supervisao"
+    resumo_col = _find_dataframe_column_normalized(rc, "Resumo")
+    cargo_col = _find_dataframe_column_normalized(rc, "Cargo")
+    supervisao_col = _find_dataframe_column_normalized(rc, "Supervisão") or _find_dataframe_column_normalized(
+        rc, "Supervisao"
     )
+    bucket = rc[status_col].apply(classify_jira_status_bucket)
+    is_done = bucket == "Concluídas"
 
     out = pd.DataFrame()
-    out["Chave"] = done[chave_col].astype(str).str.strip()
-    if cargo_col and cargo_col in done.columns:
-        out["Cargo"] = done[cargo_col].apply(
+    out["Chave"] = rc[chave_col].astype(str).str.strip()
+    out["Situação da vaga"] = is_done.map({True: "Finalizada", False: "Aberta"})
+    if cargo_col and cargo_col in rc.columns:
+        out["Cargo"] = rc[cargo_col].apply(
             lambda x: str(x).strip() if pd.notna(x) else ""
         )
     else:
         out["Cargo"] = ""
-    if supervisao_col and supervisao_col in done.columns:
-        out["Supervisão"] = done[supervisao_col].apply(
+    if supervisao_col and supervisao_col in rc.columns:
+        out["Supervisão"] = rc[supervisao_col].apply(
             lambda x: str(x).strip() if pd.notna(x) else ""
         )
     else:
         out["Supervisão"] = ""
-    if resumo_col and resumo_col in done.columns:
-        out["Resumo"] = done[resumo_col].apply(lambda x: str(x).strip() if pd.notna(x) else "")
+    if resumo_col and resumo_col in rc.columns:
+        out["Resumo"] = rc[resumo_col].apply(lambda x: str(x).strip() if pd.notna(x) else "")
 
     out["Início"] = inicio.dt.strftime("%Y-%m-%d")
     out.loc[inicio.isna(), "Início"] = ""
 
     d_fi_series: Optional[pd.Series] = None
-    if col_fin and col_fin in done.columns:
-        d_fi_series = pd.to_datetime(done[col_fin], errors="coerce")
+    if col_fin and col_fin in rc.columns:
+        d_fi_series = pd.to_datetime(rc[col_fin], errors="coerce")
 
-    if col_aprov and col_aprov in done.columns:
-        d_ap = pd.to_datetime(done[col_aprov], errors="coerce")
+    if col_aprov and col_aprov in rc.columns:
+        d_ap = pd.to_datetime(rc[col_aprov], errors="coerce")
         out["Data de aprovação"] = d_ap.dt.strftime("%Y-%m-%d")
         out.loc[d_ap.isna(), "Data de aprovação"] = ""
         out[COL_TEMPO_FECHAMENTO_VAGA] = _series_day_diff_days(inicio, d_ap)
@@ -495,8 +495,8 @@ def compute_requisicao_vaga_tempos_table(df: pd.DataFrame) -> pd.DataFrame:
         out["Data de aprovação"] = ""
         out[COL_TEMPO_FECHAMENTO_VAGA] = pd.Series(pd.NA, index=out.index, dtype="Int64")
 
-    if col_fech and col_fech in done.columns:
-        d_fe = pd.to_datetime(done[col_fech], errors="coerce")
+    if col_fech and col_fech in rc.columns:
+        d_fe = pd.to_datetime(rc[col_fech], errors="coerce")
         out["Data de fechamento"] = d_fe.dt.strftime("%Y-%m-%d")
         out.loc[d_fe.isna(), "Data de fechamento"] = ""
 
@@ -514,10 +514,16 @@ def compute_requisicao_vaga_tempos_table(df: pd.DataFrame) -> pd.DataFrame:
     if d_fi_series is not None:
         out["Data finalização"] = d_fi_series.dt.strftime("%Y-%m-%d")
         out.loc[d_fi_series.isna(), "Data finalização"] = ""
-        out[COL_TEMPO_TOTAL_CONTRATACAO] = _series_day_diff_days(inicio, d_fi_series)
     else:
         out["Data finalização"] = ""
-        out[COL_TEMPO_TOTAL_CONTRATACAO] = pd.Series(pd.NA, index=out.index, dtype="Int64")
+
+    # Para vagas abertas (não finalizadas), o fim do processo é a data atual.
+    hoje = pd.Timestamp.today().normalize()
+    fim_processo = pd.Series(hoje, index=out.index, dtype="datetime64[ns]")
+    if d_fi_series is not None:
+        fim_processo = fim_processo.where(~is_done, d_fi_series)
+    out["Data fim do processo"] = fim_processo.dt.strftime("%Y-%m-%d")
+    out[COL_TEMPO_TOTAL_CONTRATACAO] = _series_day_diff_days(inicio, fim_processo)
 
     # Ordenar: maior tempo total primeiro (quando houver)
     if out[COL_TEMPO_TOTAL_CONTRATACAO].notna().any():
