@@ -1524,7 +1524,7 @@ def render_jira_requisicao_vaga_tempos() -> None:
         "Para vagas finalizadas: **Data finalização**. Para vagas abertas: **Início** (*Start date* / *Data de início*). "
         "Opcional: **Supervisão**."
     )
-    f1, f2, f3 = st.columns(3)
+    f1, f2, f3, f4 = st.columns(4)
     with f1:
         filtro_ini = st.date_input(
             "Data de início",
@@ -1542,6 +1542,15 @@ def render_jira_requisicao_vaga_tempos() -> None:
             key="ind_rh_req_vaga_filtro_fim",
         )
     with f3:
+        situacao_opts = ["Finalizada", "Aberta"]
+        situacao_sel = st.multiselect(
+            "Situação da vaga",
+            options=situacao_opts,
+            default=situacao_opts,
+            key="ind_rh_req_vaga_filtro_situacao",
+            placeholder="Todas",
+        )
+    with f4:
         sup_opts = sorted(
             {v for v in tbl["Supervisão"].astype(str).str.strip().unique() if v},
             key=lambda x: x.lower(),
@@ -1566,6 +1575,10 @@ def render_jira_requisicao_vaga_tempos() -> None:
         & (data_ref_filtro.dt.normalize() <= ts_b)
     )
     tbl_f = tbl.loc[mask_date].copy()
+    if situacao_sel:
+        tbl_f = tbl_f[tbl_f["Situação da vaga"].isin(situacao_sel)]
+    else:
+        tbl_f = tbl_f.iloc[0:0].copy()
     if sup_sel:
         sel_norm = {_normalize_text_for_match(v) for v in sup_sel if v}
         sup_norm = tbl_f["Supervisão"].map(_normalize_text_for_match)
