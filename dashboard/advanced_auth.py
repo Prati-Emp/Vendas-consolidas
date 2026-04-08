@@ -352,6 +352,17 @@ USERS_DATABASE = {
         "pages": ["administrativo"],
         "subpages": ["administrativo.acompanhamento_juridico"]
     },
+    "jackson.frey@grupoprati.com": {
+        "password": "J@cks0n#RH26",
+        "role": "analyst",
+        "name": "Jackson Frey",
+        "department": "RH",
+        "created": "2026-04-08",
+        "last_login": None,
+        "active": True,
+        "pages": ["administrativo"],
+        "subpages": ["administrativo.acompanhamento_solicitacoes"]
+    },
     "odair2d@hotmail.com": {
         "password": "Pr@ti2025!Odair2",
         "role": "analyst",
@@ -688,6 +699,7 @@ def setup_auth_environment():
             <li>Pamela Elias (analyst) - pamela.elias@grupoprati.com</li>
             <li>Cristiane Barbosa (analyst) - cristiane.barbosa@grupoprati.com</li>
             <li>Diogo Senise (analyst) - diogo.senise@grupoprati.com</li>
+            <li>Jackson Frey (analyst) - jackson.frey@grupoprati.com</li>
         </ul>
         <p><strong>⚠️ Importante:</strong> Senhas são fornecidas individualmente por segurança!</p>
     </div>
