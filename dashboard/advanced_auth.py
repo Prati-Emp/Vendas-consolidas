@@ -27,7 +27,7 @@ USERS_DATABASE = {
         "created": "2024-10-21",
         "last_login": None,
         "active": True,
-        "subpages": ["operacoes.jira", "operacoes.compras", "operacoes.solicitacoes", "operacoes.contratos", "administrativo.repasses", "administrativo.contas_pagas", "administrativo.saldo_em_caixa", "administrativo.rh", "administrativo.indicadores_gestao_pessoas", "administrativo.acompanhamento_solicitacoes", "administrativo.acompanhamento_juridico"]  # Páginas subordinadas permitidas (últimas 3 exclusivas Odair)
+        "subpages": ["operacoes.jira", "operacoes.compras", "operacoes.solicitacoes", "operacoes.contratos", "administrativo.repasses", "administrativo.contas_pagas", "administrativo.saldo_em_caixa", "administrativo.rh", "administrativo.indicadores_gestao_pessoas", "administrativo.indicadores_juridico", "administrativo.acompanhamento_solicitacoes", "administrativo.acompanhamento_juridico"]  # Páginas subordinadas permitidas (últimas 3 exclusivas Odair)
     },
     "gustavo.sordi@grupoprati.com": {
         "password": "Pr@ti2024!Gustavo",
@@ -47,6 +47,7 @@ USERS_DATABASE = {
             "administrativo.saldo_em_caixa",
             "administrativo.rh",
             "administrativo.indicadores_gestao_pessoas",
+            "administrativo.indicadores_juridico",
             "administrativo.acompanhamento_solicitacoes",
         ]
     },
@@ -90,6 +91,7 @@ USERS_DATABASE = {
         "active": True,
         "subpages": [
             "operacoes.jira",
+            "administrativo.indicadores_juridico",
             "administrativo.indicadores_gestao_pessoas",
             "administrativo.acompanhamento_solicitacoes",
         ],  # Jira em Operações + páginas RH no Administrativo
@@ -225,7 +227,10 @@ USERS_DATABASE = {
         "last_login": None,
         "active": True,
         "pages": ["administrativo"],
-        "subpages": ["administrativo.acompanhamento_solicitacoes"]
+        "subpages": [
+            "administrativo.indicadores_juridico",
+            "administrativo.acompanhamento_solicitacoes",
+        ]
     },
     "monya.vitoria@grupoprati.com": {
         "password": "&P6fBXB2Z*$u",
@@ -298,6 +303,50 @@ USERS_DATABASE = {
         "active": True,
         "pages": ["administrativo"],
         "subpages": ["administrativo.acompanhamento_solicitacoes"]
+    },
+    "camila.almeida@grupoprati.com": {
+        "password": "C4m!la#Jur26",
+        "role": "analyst",
+        "name": "Camila Almeida",
+        "department": "Juridico",
+        "created": "2026-04-08",
+        "last_login": None,
+        "active": True,
+        "pages": ["administrativo"],
+        "subpages": ["administrativo.acompanhamento_juridico"]
+    },
+    "pamela.elias@grupoprati.com": {
+        "password": "P@m3la*Jur26",
+        "role": "analyst",
+        "name": "Pamela Elias",
+        "department": "Juridico",
+        "created": "2026-04-08",
+        "last_login": None,
+        "active": True,
+        "pages": ["administrativo"],
+        "subpages": ["administrativo.acompanhamento_juridico"]
+    },
+    "cristiane.barbosa@grupoprati.com": {
+        "password": "Cr!st14n3#26",
+        "role": "analyst",
+        "name": "Cristiane Barbosa",
+        "department": "Juridico",
+        "created": "2026-04-08",
+        "last_login": None,
+        "active": True,
+        "pages": ["administrativo"],
+        "subpages": ["administrativo.acompanhamento_juridico"]
+    },
+    "diogo.senise@grupoprati.com": {
+        "password": "D10g0$Jur#26",
+        "role": "analyst",
+        "name": "Diogo Senise",
+        "department": "Juridico",
+        "created": "2026-04-08",
+        "last_login": None,
+        "active": True,
+        "pages": ["administrativo"],
+        "subpages": ["administrativo.acompanhamento_juridico"]
     },
     "odair2d@hotmail.com": {
         "password": "Pr@ti2025!Odair2",
@@ -631,6 +680,10 @@ def setup_auth_environment():
             <li>Gustavo Prati (analyst) - GustavoPrati@Pratiemp318.onmicrosoft.com</li>
             <li>Lucas Moura (analyst) - lucas.moura@grupoprati.com</li>
             <li>Guilherme Stenzel (analyst) - guilherme.stenzel@grupoprati.com</li>
+            <li>Camila Almeida (analyst) - camila.almeida@grupoprati.com</li>
+            <li>Pamela Elias (analyst) - pamela.elias@grupoprati.com</li>
+            <li>Cristiane Barbosa (analyst) - cristiane.barbosa@grupoprati.com</li>
+            <li>Diogo Senise (analyst) - diogo.senise@grupoprati.com</li>
         </ul>
         <p><strong>⚠️ Importante:</strong> Senhas são fornecidas individualmente por segurança!</p>
     </div>

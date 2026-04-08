@@ -28,7 +28,7 @@ st.set_page_config(
 )
 
 require_auth(dashboard_title="Dashboard Administrativo")
-require_page_access("administrativo")
+require_page_access("administrativo.indicadores_juridico")
 
 st.title("🏛️ Dashboard Administrativo")
 render_administrativo_navigation(current_key="indicadores_juridico")
