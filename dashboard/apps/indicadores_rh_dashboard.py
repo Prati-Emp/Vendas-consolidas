@@ -1507,29 +1507,27 @@ def render_jira_requisicao_vaga_tempos() -> None:
         return
 
     ts_ini_tbl = pd.to_datetime(tbl["Início"], errors="coerce")
-    ts_fim_tbl = pd.to_datetime(tbl["Data fim do processo"], errors="coerce")
-    dates_ini = ts_ini_tbl.dropna()
-    dates_fim = ts_fim_tbl.dropna()
-    if dates_ini.empty and dates_fim.empty:
+    ts_finalizacao_tbl = pd.to_datetime(tbl["Data finalização"], errors="coerce")
+    is_finalizada = tbl["Situação da vaga"].astype(str).str.strip().eq("Finalizada")
+    data_ref_filtro = ts_finalizacao_tbl.where(is_finalizada, ts_ini_tbl).fillna(ts_ini_tbl)
+
+    dates_ref = data_ref_filtro.dropna()
+    if dates_ref.empty:
         d_range_lo = date.today() - timedelta(days=365)
         d_range_hi = date.today()
     else:
-        parts: list[date] = []
-        if not dates_ini.empty:
-            parts.extend([dates_ini.min().date(), dates_ini.max().date()])
-        if not dates_fim.empty:
-            parts.extend([dates_fim.min().date(), dates_fim.max().date()])
-        d_range_lo, d_range_hi = min(parts), max(parts)
+        d_range_lo = dates_ref.min().date()
+        d_range_hi = dates_ref.max().date()
 
     st.caption(
-        "**Filtros**: período por **data de início** e **data de finalização** do processo "
-        "(mantém linhas em que ambas caem no intervalo; para vagas abertas, considera a data atual como fim). "
+        "**Filtros**: período por **data de referência** da vaga. "
+        "Para vagas finalizadas: **Data finalização**. Para vagas abertas: **Início** (*Start date* / *Data de início*). "
         "Opcional: **Supervisão**."
     )
     f1, f2, f3 = st.columns(3)
     with f1:
         filtro_ini = st.date_input(
-            "Período — a partir de (início do processo)",
+            "Data de início",
             value=d_range_lo,
             min_value=d_range_lo,
             max_value=d_range_hi,
@@ -1537,7 +1535,7 @@ def render_jira_requisicao_vaga_tempos() -> None:
         )
     with f2:
         filtro_fim = st.date_input(
-            "Período — até (fim do processo)",
+            "Data de fim",
             value=d_range_hi,
             min_value=d_range_lo,
             max_value=d_range_hi,
@@ -1563,12 +1561,9 @@ def render_jira_requisicao_vaga_tempos() -> None:
     ts_a = pd.Timestamp(filtro_ini).normalize()
     ts_b = pd.Timestamp(filtro_fim).normalize()
     mask_date = (
-        ts_ini_tbl.notna()
-        & ts_fim_tbl.notna()
-        & (ts_ini_tbl.dt.normalize() >= ts_a)
-        & (ts_ini_tbl.dt.normalize() <= ts_b)
-        & (ts_fim_tbl.dt.normalize() >= ts_a)
-        & (ts_fim_tbl.dt.normalize() <= ts_b)
+        data_ref_filtro.notna()
+        & (data_ref_filtro.dt.normalize() >= ts_a)
+        & (data_ref_filtro.dt.normalize() <= ts_b)
     )
     tbl_f = tbl.loc[mask_date].copy()
     if sup_sel:
