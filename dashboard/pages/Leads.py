@@ -1094,7 +1094,8 @@ else:
             # Somar todas as colunas, tratando NaN como 0
             tempo_pivot['Total'] = tempo_pivot.fillna(0).sum(axis=1)
 
-            tempo_pivot_display = tempo_pivot.applymap(formatar_tempo_minutos).reset_index()
+            # Compatibilidade entre versões do pandas: evita depender de DataFrame.applymap
+            tempo_pivot_display = tempo_pivot.apply(lambda col: col.map(formatar_tempo_minutos)).reset_index()
             tempo_pivot_display = tempo_pivot_display.rename(columns={"corretor_consolidado": "Corretor"})
             
             # Reordenar colunas para colocar "Total" no final
