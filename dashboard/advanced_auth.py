@@ -116,6 +116,20 @@ USERS_DATABASE = {
             "administrativo.acompanhamento_juridico",
         ]
     },
+    "frederico.ferreira@grupoprati.com": {
+        "password": "Pr@ti2026!Frederico",
+        "role": "analyst",
+        "name": "Frederico Ferreira",
+        "department": "Operações",
+        "created": "2026-04-08",
+        "last_login": None,
+        "active": True,
+        "pages": ["administrativo"],
+        "subpages": [
+            "administrativo.acompanhamento_solicitacoes",
+            "administrativo.acompanhamento_juridico",
+        ],
+    },
     "raul.lunkes@grupoprati.com": {
         "password": "Pr@ti2025!Raul",
         "role": "analyst",
@@ -685,6 +699,7 @@ def setup_auth_environment():
             <li>Evelyn Padilha (analyst) - evelyn.padilha@grupoprati.com</li>
             <li>João Fantinel (analyst) - joao.fantinel@grupoprati.com</li>
             <li>André Pozza (analyst) - andre.pozza@grupoprati.com</li>
+            <li>Frederico Ferreira (analyst) - frederico.ferreira@grupoprati.com</li>
             <li>Raul Lunkes (analyst) - raul.lunkes@grupoprati.com</li>
             <li>Michael Seidenstucker (analyst) - michael.seidenstucker@grupoprati.com</li>
             <li>Marlos Bendo (analyst) - marlos.bendo@grupoprati.com</li>
