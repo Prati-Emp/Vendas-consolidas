@@ -1146,6 +1146,7 @@ def render_acompanhamento_solicitacoes_dashboard() -> None:
         "joao.fantinel@grupoprati.com",
         "airton.silva@grupoprati.com",
         "gustavo.sordi@grupoprati.com",
+        "guilherme.stenzel@grupoprati.com",
     }
     user_data = get_current_user()
     user_email = (user_data or {}).get("email", "") if user_data else ""
