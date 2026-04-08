@@ -105,19 +105,15 @@ USERS_DATABASE = {
         "created": "2025-01-23",
         "last_login": None,
         "active": True,
-        "pages": ["operacoes"],
+        "pages": ["operacoes", "administrativo"],
         "subpages": [
             "operacoes.jira",
             "operacoes.compras",
             "operacoes.solicitacoes",
             "operacoes.contratos",
             "operacoes.evolucao_obra",
-            "administrativo.repasses",
-            "administrativo.contas_pagas",
-            "administrativo.saldo_em_caixa",
-            "administrativo.rh",
-            "administrativo.indicadores_gestao_pessoas",
             "administrativo.acompanhamento_solicitacoes",
+            "administrativo.acompanhamento_juridico",
         ]
     },
     "raul.lunkes@grupoprati.com": {
