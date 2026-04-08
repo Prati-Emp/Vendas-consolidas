@@ -274,6 +274,20 @@ USERS_DATABASE = {
         "pages": ["administrativo"],
         "subpages": ["administrativo.acompanhamento_solicitacoes"]
     },
+    "guilherme.stenzel@grupoprati.com": {
+        "password": "8r$Pq2!mZ7@L",
+        "role": "analyst",
+        "name": "Guilherme Stenzel",
+        "department": "RH",
+        "created": "2026-04-08",
+        "last_login": None,
+        "active": True,
+        "pages": ["administrativo"],
+        "subpages": [
+            "administrativo.indicadores_gestao_pessoas",
+            "administrativo.acompanhamento_solicitacoes",
+        ]
+    },
     "angelica.moreira@grupoprati.com": {
         "password": "vt2hHQ2Gc&R7",
         "role": "analyst",
@@ -616,6 +630,7 @@ def setup_auth_environment():
             <li>Ricardo (analyst) - ricardo@grupoprati.com</li>
             <li>Gustavo Prati (analyst) - GustavoPrati@Pratiemp318.onmicrosoft.com</li>
             <li>Lucas Moura (analyst) - lucas.moura@grupoprati.com</li>
+            <li>Guilherme Stenzel (analyst) - guilherme.stenzel@grupoprati.com</li>
         </ul>
         <p><strong>⚠️ Importante:</strong> Senhas são fornecidas individualmente por segurança!</p>
     </div>
