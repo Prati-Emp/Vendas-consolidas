@@ -1389,13 +1389,13 @@ def tab_por_dimensao(
 
 def render_jira_matriz_solicitacoes_por_quadro() -> None:
     """Matriz quadros × (Aguardando atendimento / Em andamento / Concluídas / Rejeitadas), mesma base do Kanban."""
-    st.subheader("Matriz de solicitações por quadro")
-    st.caption(
+    help_matriz_solicitacoes = (
         "Fonte: `administracao.Jira_projeto_dho_consolidado`, com o mesmo recorte de cada quadro "
         "do acompanhamento Kanban. **Aguardando atendimento**: status *Backlog*. **Em andamento**: demais etapas do fluxo "
         "até conclusão ou rejeição. **Concluídas**: *Finalizado* (também Done, Closed, Resolvido). "
         "**Rejeitadas**: *Rejeitado* (ou Rejected)."
     )
+    st.subheader("Matriz de solicitações por quadro", help=help_matriz_solicitacoes)
     df = load_jira_dho_acompanhamento()
     if df.empty:
         st.warning("Sem dados do Jira para exibir a matriz.")
