@@ -1474,7 +1474,7 @@ def _build_tempos_por_cargo_table(tbl: pd.DataFrame) -> pd.DataFrame:
             "vagas_finalizadas": "Vagas finalizadas",
             "vagas_abertas": "Vagas abertas",
             "tempo_fechamento_medio": "Tempo de aprovação (média)",
-            "tempo_aprovacao_medio": "Tempo de fechamento (média)",
+            "tempo_aprovacao_medio": "Tempo até aceite candidato (média)",
             "tempo_total_contratacao_medio": "Tempo total de processo (média)",
         }
     )
@@ -1490,10 +1490,11 @@ def render_jira_requisicao_vaga_tempos() -> None:
         "Somente o quadro **Requisição de vaga (RC)**. "
         "**Início**: *Start date*; se ausente, *Data de início*. "
         "**Tempo de aprovação**: do início até **Data de aprovação**. "
-        "**Tempo de fechamento**: do início até **Data de fechamento**; se a **Data finalização** "
+        "**Tempo até aceite candidato**: do início até **Data de fechamento**; se a **Data finalização** "
         "for anterior (processo já encerrado, mas fechamento preenchido depois no Jira), usa-se a **Data finalização** "
         "como data final desse prazo. "
-        "**Tempo total de processo**: do início até **Data finalização**; para vagas abertas, usa-se **a data atual**. "
+        "**Tempo total de processo**: do início até **Data finalização**. Para vagas abertas, usa-se **a data atual**, "
+        "exceto em **Rejeitadas** sem finalização (usa a última data disponível ou não calcula se não houver data). "
         "Cálculo em **dias corridos**.\n\n"
         "**Filtros**: período por **data de referência** da vaga. "
         "Para vagas finalizadas: **Data finalização**. Para vagas abertas: **Início** (*Start date* / *Data de início*). "
@@ -1597,7 +1598,7 @@ def render_jira_requisicao_vaga_tempos() -> None:
         st.metric("Tempo de aprovação (média)", k1, help="Início → data de aprovação")
     with r2:
         st.metric(
-            "Tempo de fechamento (média)",
+            "Tempo até aceite candidato (média)",
             k2,
             help="Início → data de fechamento; se finalização for mais cedo, usa-se ela como fim.",
         )
@@ -1623,7 +1624,7 @@ def render_jira_requisicao_vaga_tempos() -> None:
                 "Vagas finalizadas": st.column_config.NumberColumn(format="%d"),
                 "Vagas abertas": st.column_config.NumberColumn(format="%d"),
                 "Tempo de aprovação (média)": st.column_config.NumberColumn(format="%.1f"),
-                "Tempo de fechamento (média)": st.column_config.NumberColumn(format="%.1f"),
+                "Tempo até aceite candidato (média)": st.column_config.NumberColumn(format="%.1f"),
                 "Tempo total de processo (média)": st.column_config.NumberColumn(format="%.1f"),
             },
         )

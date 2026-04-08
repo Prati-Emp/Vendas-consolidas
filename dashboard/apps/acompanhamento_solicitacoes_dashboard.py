@@ -395,7 +395,7 @@ def _series_day_diff_days(start: pd.Series, end: pd.Series) -> pd.Series:
 # Colunas de saída (tabela de tempos — requisição de vagas)
 # Ordem de negócio: aprovação -> fechamento (aceite) -> ciclo total até finalização
 COL_TEMPO_FECHAMENTO_VAGA = "Tempo de aprovação (dias)"
-COL_TEMPO_APROVACAO_VAGA = "Tempo de fechamento (dias)"
+COL_TEMPO_APROVACAO_VAGA = "Tempo até aceite candidato (dias)"
 COL_TEMPO_TOTAL_CONTRATACAO = "Tempo total de processo (dias)"
 
 
@@ -406,7 +406,7 @@ def compute_requisicao_vaga_tempos_table(df: pd.DataFrame) -> pd.DataFrame:
     Métricas (dias corridos), sempre a partir do **início**:
     - **Início**: `Start_date` por linha; onde vazio, usa-se `Data_de_inicio`.
     - **Tempo de aprovação**: do início até **Data de aprovação**.
-    - **Tempo de fechamento**: do início até **Data de fechamento**. Se houver **Data finalização**
+    - **Tempo até aceite candidato**: do início até **Data de fechamento**. Se houver **Data finalização**
       anterior à data de fechamento (processo já encerrado no Jira, mas campo de fechamento atualizado
       depois), usa-se **Data finalização** como fim desse prazo para não inflar o indicador.
     - **Tempo total de processo**: do início até **Data finalização** (tempo total do ciclo da vaga).
@@ -518,8 +518,24 @@ def compute_requisicao_vaga_tempos_table(df: pd.DataFrame) -> pd.DataFrame:
         out["Data finalização"] = ""
 
     # Para vagas abertas (não finalizadas), o fim do processo é a data atual.
+    # Exceção: status rejeitado sem data de finalização não usa "hoje".
+    # Nesse caso, usa a última data disponível (fechamento -> aprovação); se não houver, fica sem cálculo.
     hoje = pd.Timestamp.today().normalize()
-    fim_processo = pd.Series(hoje, index=out.index, dtype="datetime64[ns]")
+    fim_processo = pd.Series(pd.NaT, index=out.index, dtype="datetime64[ns]")
+    rejeitada_sem_final = (bucket == "Rejeitadas") & (~is_done)
+
+    # Regra padrão: abertas não rejeitadas usam hoje.
+    fim_processo = fim_processo.where(~((~is_done) & (~rejeitada_sem_final)), hoje)
+
+    # Rejeitadas sem finalização: usa última data disponível para evitar inflar com "hoje".
+    if "Data de fechamento" in out.columns:
+        d_fech_out = pd.to_datetime(out["Data de fechamento"], errors="coerce")
+        fim_processo = fim_processo.where(~rejeitada_sem_final, d_fech_out)
+    if "Data de aprovação" in out.columns:
+        d_aprov_out = pd.to_datetime(out["Data de aprovação"], errors="coerce")
+        fim_processo = fim_processo.where(~(rejeitada_sem_final & fim_processo.isna()), d_aprov_out)
+
+    # Finalizadas sempre usam data finalização quando houver.
     if d_fi_series is not None:
         fim_processo = fim_processo.where(~is_done, d_fi_series)
     out["Data fim do processo"] = fim_processo.dt.strftime("%Y-%m-%d")
