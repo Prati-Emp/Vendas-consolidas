@@ -588,6 +588,7 @@ def get_vgv_prosoluto_resumo() -> pd.DataFrame:
                 END
             ) AS vgv_vendido
         FROM informacoes_consolidadas.cv_vgv_empreendimentos_consolidado
+        WHERE LOWER(TRIM(COALESCE("unidades.situacao", ''))) NOT LIKE 'bloquead%'
         GROUP BY id_empreendimento, nome_empreendimento
     ),
     vgv AS (
@@ -688,6 +689,7 @@ def get_vgv_por_situacao() -> pd.DataFrame:
         COALESCE(NULLIF(TRIM("unidades.situacao"), ''), 'Não informado') AS situacao,
         SUM(COALESCE("unidades.valor_total", 0)) AS valor
     FROM informacoes_consolidadas.cv_vgv_empreendimentos_consolidado
+    WHERE LOWER(TRIM(COALESCE("unidades.situacao", ''))) NOT LIKE 'bloquead%'
     GROUP BY id_empreendimento, nome_empreendimento, COALESCE(NULLIF(TRIM("unidades.situacao"), ''), 'Não informado')
     ORDER BY nome_empreendimento, situacao
     """
@@ -707,6 +709,7 @@ def get_vgv_quantidade_por_situacao() -> pd.DataFrame:
         COALESCE(NULLIF(TRIM("unidades.situacao"), ''), 'Não informado') AS situacao,
         COUNT(*) AS quantidade
     FROM informacoes_consolidadas.cv_vgv_empreendimentos_consolidado
+    WHERE LOWER(TRIM(COALESCE("unidades.situacao", ''))) NOT LIKE 'bloquead%'
     GROUP BY id_empreendimento, nome_empreendimento, COALESCE(NULLIF(TRIM("unidades.situacao"), ''), 'Não informado')
     ORDER BY nome_empreendimento, situacao
     """
