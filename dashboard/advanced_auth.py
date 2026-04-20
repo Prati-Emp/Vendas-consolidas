@@ -130,6 +130,48 @@ USERS_DATABASE = {
             "administrativo.acompanhamento_juridico",
         ],
     },
+    "allana.oliveira@grupoprati.com": {
+        "password": "Pr@ti2026!Allana",
+        "role": "analyst",
+        "name": "Allana Oliveira",
+        "department": "Juridico",
+        "created": "2026-04-20",
+        "last_login": None,
+        "active": True,
+        "pages": ["administrativo"],
+        "subpages": [
+            "administrativo.indicadores_juridico",
+            "administrativo.acompanhamento_juridico",
+        ],
+    },
+    "fernanda.tomio@grupoprati.com": {
+        "password": "Pr@ti2026!Fernanda",
+        "role": "analyst",
+        "name": "Fernanda Tomio",
+        "department": "Juridico",
+        "created": "2026-04-20",
+        "last_login": None,
+        "active": True,
+        "pages": ["administrativo"],
+        "subpages": [
+            "administrativo.indicadores_juridico",
+            "administrativo.acompanhamento_juridico",
+        ],
+    },
+    "vitoria.almeida@grupoprati.com": {
+        "password": "Pr@ti2026!Vitoria",
+        "role": "analyst",
+        "name": "Vitoria Almeida",
+        "department": "Juridico",
+        "created": "2026-04-20",
+        "last_login": None,
+        "active": True,
+        "pages": ["administrativo"],
+        "subpages": [
+            "administrativo.indicadores_juridico",
+            "administrativo.acompanhamento_juridico",
+        ],
+    },
     "raul.lunkes@grupoprati.com": {
         "password": "Pr@ti2025!Raul",
         "role": "analyst",
@@ -700,6 +742,9 @@ def setup_auth_environment():
             <li>João Fantinel (analyst) - joao.fantinel@grupoprati.com</li>
             <li>André Pozza (analyst) - andre.pozza@grupoprati.com</li>
             <li>Frederico Ferreira (analyst) - frederico.ferreira@grupoprati.com</li>
+            <li>Allana Oliveira (analyst) - allana.oliveira@grupoprati.com</li>
+            <li>Fernanda Tomio (analyst) - fernanda.tomio@grupoprati.com</li>
+            <li>Vitoria Almeida (analyst) - vitoria.almeida@grupoprati.com</li>
             <li>Raul Lunkes (analyst) - raul.lunkes@grupoprati.com</li>
             <li>Michael Seidenstucker (analyst) - michael.seidenstucker@grupoprati.com</li>
             <li>Marlos Bendo (analyst) - marlos.bendo@grupoprati.com</li>
