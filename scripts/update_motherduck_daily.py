@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Atualização diária do MotherDuck
-Executa CV Vendas, CV Repasses, CV Leads, CV Repasses Workflow e Sienge (Contratos Suprimentos, Pedidos Compras)
+Executa APIs não-Sienge (sem VGV): CV Vendas, CV Repasses, CV Leads, CV Leads Workflow Tempo, CV Repasses Workflow e Relatório
 """
 
 import asyncio
@@ -21,7 +21,7 @@ async def sistema_diario():
     print("SISTEMA DE ATUALIZACAO DIARIA")
     print("=" * 60)
     print(f"Timestamp: {datetime.now()}")
-    print(f"APIs: CV Vendas, CV Repasses, CV Leads, CV Leads Workflow Tempo, CV Repasses Workflow, Sienge Contratos Suprimentos, Sienge Pedidos Compras")
+    print("APIs: CV Vendas, CV Repasses, CV Leads, CV Leads Workflow Tempo, CV Repasses Workflow e Relatorio")
     
     start_time = datetime.now()
     
@@ -32,7 +32,6 @@ async def sistema_diario():
         from scripts.cv_leads_api import obter_dados_cv_leads
         from scripts.cv_leads_workflow_tempo_api import obter_dados_cv_leads_workflow_tempo
         from scripts.cv_repasses_workflow_api import obter_dados_cv_repasses_workflow
-        from scripts.cv_vgv_empreendimentos_api import obter_dados_vgv_empreendimentos
         import duckdb
         import pandas as pd
         
@@ -94,17 +93,8 @@ async def sistema_diario():
             df_cv_repasses_workflow = pd.DataFrame()
             print(f"AVISO: Falha ao coletar CV Repasses Workflow: {e}")
         
-        # 4.1 Coletar VGV Empreendimentos
-        print("\n4.1. Coletando dados VGV Empreendimentos...")
-        try:
-            df_vgv_empreendimentos = await obter_dados_vgv_empreendimentos(1, 20)
-            print(f"OK: VGV Empreendimentos: {len(df_vgv_empreendimentos)} registros")
-        except Exception as e:
-            df_vgv_empreendimentos = pd.DataFrame()
-            print(f"AVISO: Falha ao coletar VGV Empreendimentos: {e}")
-        
-        # 4.2 Coletar Relatórios (Download Automático)
-        print("\n4.2. Coletando dados de Relatórios...")
+        # 4.1 Coletar Relatórios (Download Automático)
+        print("\n4.1. Coletando dados de Relatórios...")
         try:
             from scripts.relatorio_download_api import obter_dados_relatorio_download
             
@@ -200,13 +190,6 @@ async def sistema_diario():
             count_workflow = conn.sql("SELECT COUNT(*) FROM main.cv_repasses_workflow").fetchone()[0]
             print(f"OK: CV Repasses Workflow upload: {count_workflow:,} registros")
         
-        # Upload VGV Empreendimentos
-        if df_vgv_empreendimentos is not None and not df_vgv_empreendimentos.empty:
-            conn.register("df_vgv_empreendimentos", df_vgv_empreendimentos)
-            conn.execute("CREATE OR REPLACE TABLE main.cv_vgv_empreendimentos AS SELECT * FROM df_vgv_empreendimentos")
-            count_vgv = conn.sql("SELECT COUNT(*) FROM main.cv_vgv_empreendimentos").fetchone()[0]
-            print(f"OK: VGV Empreendimentos upload: {count_vgv:,} registros")
-        
         # Upload Relatório
         if df_relatorio is not None and not df_relatorio.empty:
             conn.register("df_relatorio", df_relatorio)
@@ -228,9 +211,7 @@ async def sistema_diario():
         print(f"   - CV Leads: {len(df_cv_leads):,} registros")
         print(f"   - CV Leads Workflow Tempo: {len(df_cv_leads_workflow_tempo):,} registros")
         print(f"   - CV Repasses Workflow: {len(df_cv_repasses_workflow):,} registros")
-        print(f"   - VGV Empreendimentos: {len(df_vgv_empreendimentos):,} registros")
         print(f"   - Relatório Download: {len(df_relatorio):,} registros")
-        print("   - Sienge Vendas: Pausado (execucao 2x/semana)")
         
         return True
         
