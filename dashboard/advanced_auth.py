@@ -424,7 +424,7 @@ USERS_DATABASE = {
         "created": "2026-05-06",
         "last_login": None,
         "active": True,
-        "pages": ["vendas"],
+        "pages": ["vendas", "leads", "reservas", "motivo_fora_prazo"],
         "subpages": [],
     },
     "odair2d@hotmail.com": {
