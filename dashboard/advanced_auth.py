@@ -416,6 +416,17 @@ USERS_DATABASE = {
         "pages": ["administrativo"],
         "subpages": ["administrativo.acompanhamento_solicitacoes"]
     },
+    "tarcisio.costa@grupoprati.com": {
+        "password": "Pr@ti2026!Tarcisio",
+        "role": "analyst",
+        "name": "Tarcisio Costa",
+        "department": "Vendas",
+        "created": "2026-05-06",
+        "last_login": None,
+        "active": True,
+        "pages": ["vendas"],
+        "subpages": [],
+    },
     "odair2d@hotmail.com": {
         "password": "Pr@ti2025!Odair2",
         "role": "analyst",
@@ -757,6 +768,7 @@ def setup_auth_environment():
             <li>Cristiane Barbosa (analyst) - cristiane.barbosa@grupoprati.com</li>
             <li>Diogo Senise (analyst) - diogo.senise@grupoprati.com</li>
             <li>Jackson Frey (analyst) - jackson.frey@grupoprati.com</li>
+            <li>Tarcisio Costa (analyst) - tarcisio.costa@grupoprati.com</li>
         </ul>
         <p><strong>⚠️ Importante:</strong> Senhas são fornecidas individualmente por segurança!</p>
     </div>
