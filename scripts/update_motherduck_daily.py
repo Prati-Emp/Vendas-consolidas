@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
 Atualização diária do MotherDuck
-Executa APIs não-Sienge (sem VGV): CV Vendas, CV Repasses, CV Leads, CV Leads Workflow Tempo, CV Repasses Workflow e Relatório
+Executa APIs não-Sienge (sem VGV, sem CV Leads dedicados): CV Vendas, CV Repasses,
+CV Repasses Workflow e Relatório. CV Leads e Leads Workflow Tempo rodam em workflows dedicados.
 """
 
 import asyncio
@@ -21,7 +22,7 @@ async def sistema_diario():
     print("SISTEMA DE ATUALIZACAO DIARIA")
     print("=" * 60)
     print(f"Timestamp: {datetime.now()}")
-    print("APIs: CV Vendas, CV Repasses, CV Leads, CV Leads Workflow Tempo, CV Repasses Workflow e Relatorio")
+    print("APIs: CV Vendas, CV Repasses, CV Repasses Workflow e Relatorio")
     
     start_time = datetime.now()
     
@@ -29,8 +30,6 @@ async def sistema_diario():
         # Importar módulos necessários
         from scripts.cv_vendas_api import CVVendasAPIClient, processar_dados_cv_vendas
         from scripts.cv_repasses_api import obter_dados_cv_repasses
-        from scripts.cv_leads_api import obter_dados_cv_leads
-        from scripts.cv_leads_workflow_tempo_api import obter_dados_cv_leads_workflow_tempo
         from scripts.cv_repasses_workflow_api import obter_dados_cv_repasses_workflow
         import duckdb
         import pandas as pd
@@ -66,26 +65,8 @@ async def sistema_diario():
             df_cv_repasses = pd.DataFrame()
             print(f"AVISO: Falha ao coletar CV Repasses: {e}")
         
-        # 3. Coletar CV Leads
-        print("\n3. Coletando dados CV Leads...")
-        try:
-            df_cv_leads = await obter_dados_cv_leads()
-            print(f"OK: CV Leads: {len(df_cv_leads)} registros")
-        except Exception as e:
-            df_cv_leads = pd.DataFrame()
-            print(f"AVISO: Falha ao coletar CV Leads: {e}")
-        
-        # 3.1 Coletar CV Leads Workflow Tempo
-        print("\n3.1. Coletando dados CV Leads Workflow Tempo...")
-        try:
-            df_cv_leads_workflow_tempo = await obter_dados_cv_leads_workflow_tempo("2022-01-01")
-            print(f"OK: CV Leads Workflow Tempo: {len(df_cv_leads_workflow_tempo)} registros")
-        except Exception as e:
-            df_cv_leads_workflow_tempo = pd.DataFrame()
-            print(f"AVISO: Falha ao coletar CV Leads Workflow Tempo: {e}")
-        
-        # 4. Coletar CV Repasses Workflow
-        print("\n4. Coletando dados CV Repasses Workflow...")
+        # 3. Coletar CV Repasses Workflow
+        print("\n3. Coletando dados CV Repasses Workflow...")
         try:
             df_cv_repasses_workflow = await obter_dados_cv_repasses_workflow()
             print(f"OK: CV Repasses Workflow: {len(df_cv_repasses_workflow)} registros")
@@ -93,8 +74,8 @@ async def sistema_diario():
             df_cv_repasses_workflow = pd.DataFrame()
             print(f"AVISO: Falha ao coletar CV Repasses Workflow: {e}")
         
-        # 4.1 Coletar Relatórios (Download Automático)
-        print("\n4.1. Coletando dados de Relatórios...")
+        # 4. Coletar Relatórios (Download Automático)
+        print("\n4. Coletando dados de Relatórios...")
         try:
             from scripts.relatorio_download_api import obter_dados_relatorio_download
             
@@ -169,20 +150,6 @@ async def sistema_diario():
             count_rep = conn.sql("SELECT COUNT(*) FROM main.cv_repasses").fetchone()[0]
             print(f"OK: CV Repasses upload: {count_rep:,} registros")
         
-        # Upload CV Leads
-        if df_cv_leads is not None and not df_cv_leads.empty:
-            conn.register("df_cv_leads", df_cv_leads)
-            conn.execute("CREATE OR REPLACE TABLE main.cv_leads AS SELECT * FROM df_cv_leads")
-            count_leads = conn.sql("SELECT COUNT(*) FROM main.cv_leads").fetchone()[0]
-            print(f"OK: CV Leads upload: {count_leads:,} registros")
-        
-        # Upload CV Leads Workflow Tempo
-        if df_cv_leads_workflow_tempo is not None and not df_cv_leads_workflow_tempo.empty:
-            conn.register("df_cv_leads_workflow_tempo", df_cv_leads_workflow_tempo)
-            conn.execute("CREATE OR REPLACE TABLE main.cv_leads_workflow_tempo AS SELECT * FROM df_cv_leads_workflow_tempo")
-            count_leads_workflow = conn.sql("SELECT COUNT(*) FROM main.cv_leads_workflow_tempo").fetchone()[0]
-            print(f"OK: CV Leads Workflow Tempo upload: {count_leads_workflow:,} registros")
-        
         # Upload CV Repasses Workflow
         if df_cv_repasses_workflow is not None and not df_cv_repasses_workflow.empty:
             conn.register("df_cv_repasses_workflow", df_cv_repasses_workflow)
@@ -208,8 +175,6 @@ async def sistema_diario():
         print(f"Resumo:")
         print(f"   - CV Vendas: {len(df_cv_vendas):,} registros")
         print(f"   - CV Repasses: {len(df_cv_repasses):,} registros")
-        print(f"   - CV Leads: {len(df_cv_leads):,} registros")
-        print(f"   - CV Leads Workflow Tempo: {len(df_cv_leads_workflow_tempo):,} registros")
         print(f"   - CV Repasses Workflow: {len(df_cv_repasses_workflow):,} registros")
         print(f"   - Relatório Download: {len(df_relatorio):,} registros")
         
