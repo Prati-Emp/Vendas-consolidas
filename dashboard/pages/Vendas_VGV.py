@@ -22,12 +22,7 @@ except Exception as e:  # pragma: no cover - fallback para ambientes sem auth
     st.stop()
 
 from utils import display_navigation  # noqa: E402
-from utils.md_conn import (  # noqa: E402
-    get_date_range,
-    get_vgv_prosoluto_resumo,
-    get_vgv_por_situacao,
-    get_vgv_quantidade_por_situacao,
-)
+from utils.md_conn import get_vgv_prosoluto_resumo, get_vgv_por_situacao, get_vgv_quantidade_por_situacao  # noqa: E402
 from utils.formatters import format_brl, format_percent, format_int  # noqa: E402
 
 
@@ -163,37 +158,8 @@ def main():
         unsafe_allow_html=True,
     )
 
-    data_min_str, data_max_str = get_date_range()
-    col_ini, col_fim, _ = st.columns([1, 1, 3])
-    with col_ini:
-        data_inicio = st.date_input(
-            "Data inicial",
-            value=pd.Timestamp(data_min_str).date(),
-            min_value=pd.Timestamp(data_min_str).date(),
-            max_value=pd.Timestamp(data_max_str).date(),
-            help="Vendas com data de contrato/venda a partir desta data entram no VGV realizado e no Prosoluto.",
-        )
-    with col_fim:
-        data_fim = st.date_input(
-            "Data final",
-            value=pd.Timestamp(data_max_str).date(),
-            min_value=pd.Timestamp(data_min_str).date(),
-            max_value=pd.Timestamp(data_max_str).date(),
-            help="Vendas até esta data entram no VGV realizado e no Prosoluto.",
-        )
-    if data_inicio > data_fim:
-        st.error("A data inicial não pode ser maior que a data final.")
-        st.stop()
-
-    start_date_str = data_inicio.strftime("%Y-%m-%d")
-    end_date_str = data_fim.strftime("%Y-%m-%d")
-    st.caption(
-        f"Período de vendas: **{data_inicio.strftime('%d/%m/%Y')}** a "
-        f"**{data_fim.strftime('%d/%m/%Y')}** — filtra VGV vendido e Prosoluto."
-    )
-
     with st.spinner("Carregando resumo de VGV e Prosoluto por empreendimento..."):
-        df_resumo = get_vgv_prosoluto_resumo(start_date=start_date_str, end_date=end_date_str)
+        df_resumo = get_vgv_prosoluto_resumo()
 
     if df_resumo.empty:
         st.warning("Não há dados de VGV / Prosoluto para exibir no momento.")
@@ -212,7 +178,7 @@ def main():
 
     with tab_geral:
         st.markdown("### Quantidade de Unidades por Situação")
-        df_qtd_sit = get_vgv_quantidade_por_situacao(start_date=start_date_str, end_date=end_date_str)
+        df_qtd_sit = get_vgv_quantidade_por_situacao()
         if not df_qtd_sit.empty:
             outros_qtd = df_qtd_sit[
                 df_qtd_sit["nome_empreendimento"].str.strip().str.lower() != "geral prati"
@@ -272,7 +238,7 @@ def main():
             st.info("Nenhum dado de quantidade por situação disponível.")
 
         st.markdown("### VGV por Situação")
-        df_vgv_sit = get_vgv_por_situacao(start_date=start_date_str, end_date=end_date_str)
+        df_vgv_sit = get_vgv_por_situacao()
         if not df_vgv_sit.empty:
             outros_sit = df_vgv_sit[
                 df_vgv_sit["nome_empreendimento"].str.strip().str.lower() != "geral prati"
@@ -347,28 +313,28 @@ def main():
     with tab_analise:
         st.markdown("### Análise: Prosoluto e VGV Realizado")
 
-        mask_com_dados = (
+        df_com_prosoluto = df_resumo[
             (df_resumo["pct_prosoluto_antes"].fillna(0) != 0)
             | (df_resumo["pct_prosoluto_pos"].fillna(0) != 0)
-            | (df_resumo["vgv_vendido"].fillna(0) > 0)
-        )
-        df_com_dados = df_resumo[mask_com_dados]
+        ]
         empreendimentos = sorted(
-            df_com_dados["nome_empreendimento"].dropna().astype(str).str.strip().unique()
+            df_com_prosoluto["nome_empreendimento"].dropna().astype(str).str.strip().unique()
         )
-        col_emp, _ = st.columns([2, 3])
-        with col_emp:
-            empreendimentos_filtro = st.multiselect(
-                "Filtrar por empreendimento",
-                options=empreendimentos,
-                default=[],
-                placeholder="Selecione um ou mais (vazio = todos)",
-            )
-        df_analise_base = df_com_dados.copy()
+        empreendimentos_filtro = st.multiselect(
+            "Filtrar por empreendimento",
+            options=empreendimentos,
+            default=[],
+            placeholder="Selecione um ou mais empreendimentos (vazio = todos)",
+        )
+        df_analise_base = df_resumo.copy()
         if empreendimentos_filtro:
             df_analise_base = df_analise_base[
                 df_analise_base["nome_empreendimento"].str.strip().isin(empreendimentos_filtro)
             ]
+        df_analise_base = df_analise_base[
+            (df_analise_base["pct_prosoluto_antes"].fillna(0) != 0)
+            | (df_analise_base["pct_prosoluto_pos"].fillna(0) != 0)
+        ]
         mask_geral_analise = df_analise_base["nome_empreendimento"].str.strip().str.lower() == "geral prati"
         if mask_geral_analise.any():
             outros_analise = df_analise_base[~mask_geral_analise]
@@ -378,8 +344,8 @@ def main():
                     df_analise_base.loc[mask_geral_analise, col] = total
         if df_analise_base.empty:
             st.info(
-                "Nenhum empreendimento encontrado para o período e filtros selecionados. "
-                "Amplie o intervalo de datas ou remova o filtro de empreendimento."
+                "Nenhum empreendimento encontrado. Esta aba exibe apenas empreendimentos com "
+                "% Prosoluto antes ou pós chaves diferente de zero."
             )
         else:
             df_analise = _montar_tabela_analise(df_analise_base)
