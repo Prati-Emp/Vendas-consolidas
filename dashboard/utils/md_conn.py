@@ -676,6 +676,80 @@ def get_vgv_prosoluto_resumo() -> pd.DataFrame:
     return md_conn.run_query(sql)
 
 
+def get_cv_vendas_date_range() -> tuple:
+    """
+    Range de datas de venda (cv_vendas.data_venda) para filtro da aba Análise VGV.
+    """
+    md_conn = get_md_connection()
+    sql = """
+    SELECT
+        MIN(TRY_CAST(data_venda AS DATE)) AS data_min,
+        MAX(TRY_CAST(data_venda AS DATE)) AS data_max
+    FROM reservas.main.cv_vendas
+    WHERE data_venda IS NOT NULL
+    """
+    result = md_conn.run_query(sql)
+    if len(result) > 0 and result.iloc[0]["data_min"] is not None:
+        return (
+            result.iloc[0]["data_min"].strftime("%Y-%m-%d"),
+            result.iloc[0]["data_max"].strftime("%Y-%m-%d"),
+        )
+    return get_date_range()
+
+
+def get_vgv_analise_por_periodo(start_date: str, end_date: str) -> pd.DataFrame:
+    """
+    VGV por empreendimento para a aba Análise (incorporações, sem loteamentos).
+
+    - vgv_total: estoque atual (situação na view), sem filtro de período.
+    - vgv_vendido: unidades vendidas com venda (cv_vendas.data_venda) no período.
+    """
+    md_conn = get_md_connection()
+    sql = f"""
+    WITH vendas_periodo AS (
+        SELECT DISTINCT
+            TRY_CAST(v.idempreendimento AS BIGINT) AS id_empreendimento,
+            TRY_CAST(v.idunidade AS BIGINT) AS idunidade
+        FROM reservas.main.cv_vendas v
+        WHERE TRY_CAST(v.data_venda AS DATE) BETWEEN '{start_date}' AND '{end_date}'
+    ),
+    vgv_base AS (
+        SELECT
+            ve.id_empreendimento,
+            TRIM(ve.nome_empreendimento) AS nome_empreendimento,
+            SUM(COALESCE(ve."unidades.valor_total", 0)) AS vgv_total,
+            SUM(
+                CASE
+                    WHEN LOWER(COALESCE(ve."unidades.situacao", '')) IN (
+                        'vendido', 'vendida', 'assinado', 'escriturado'
+                    )
+                    AND EXISTS (
+                        SELECT 1
+                        FROM vendas_periodo vp
+                        WHERE vp.id_empreendimento = TRY_CAST(ve.id_empreendimento AS BIGINT)
+                          AND vp.idunidade = TRY_CAST(ve."unidades.idunidade" AS BIGINT)
+                    )
+                    THEN COALESCE(ve."unidades.valor_total", 0)
+                    ELSE 0
+                END
+            ) AS vgv_vendido
+        FROM informacoes_consolidadas.cv_vgv_empreendimentos_consolidado ve
+        WHERE LOWER(TRIM(COALESCE(ve."unidades.situacao", ''))) NOT LIKE 'bloquead%'
+          AND LOWER(TRIM(COALESCE(ve.nome_empreendimento, ''))) NOT LIKE 'loteamento%'
+        GROUP BY ve.id_empreendimento, TRIM(ve.nome_empreendimento)
+    )
+    SELECT
+        id_empreendimento,
+        nome_empreendimento,
+        vgv_total,
+        vgv_vendido,
+        vgv_total - vgv_vendido AS vgv_pendente
+    FROM vgv_base
+    ORDER BY nome_empreendimento
+    """
+    return md_conn.run_query(sql)
+
+
 def get_vgv_por_situacao() -> pd.DataFrame:
     """
     Retorna VGV por empreendimento e situação (unidades.situacao).
