@@ -24,6 +24,7 @@ except Exception as e:  # pragma: no cover - fallback para ambientes sem auth
 from utils import display_navigation  # noqa: E402
 from utils.md_conn import (  # noqa: E402
     get_cv_vendas_date_range,
+    get_prosoluto_analise_por_periodo,
     get_vgv_analise_por_periodo,
     get_vgv_prosoluto_resumo,
     get_vgv_por_situacao,
@@ -171,8 +172,41 @@ def _aplicar_vgv_periodo_analise(df: pd.DataFrame, df_vgv_periodo: pd.DataFrame)
     return df.drop(columns=["_nome_key"], errors="ignore")
 
 
-def _recalcular_geral_prati_vgv(df: pd.DataFrame) -> pd.DataFrame:
-    """Totaliza VGV do Geral Prati a partir dos demais empreendimentos (sem loteamentos)."""
+def _aplicar_prosoluto_periodo_analise(
+    df: pd.DataFrame, df_prosoluto_periodo: pd.DataFrame
+) -> pd.DataFrame:
+    """Substitui colunas de Prosoluto pelos valores calculados no período."""
+    if df_prosoluto_periodo.empty:
+        return df
+
+    df = df.copy()
+    pros_cols = [
+        "prosoluto_antes",
+        "prosoluto_pos",
+        "venda_fin_antes",
+        "venda_fin_pos",
+        "pct_prosoluto_antes",
+        "pct_prosoluto_pos",
+    ]
+    df = df.drop(columns=pros_cols, errors="ignore")
+
+    pros = df_prosoluto_periodo[
+        ["nome_empreendimento", "id_empreendimento"] + pros_cols
+    ].copy()
+    pros["_nome_key"] = _nome_key(pros["nome_empreendimento"])
+    pros = pros.drop_duplicates(subset=["_nome_key"], keep="first")
+
+    df["_nome_key"] = _nome_key(df["nome_empreendimento"])
+    merge_cols = ["_nome_key"] + [c for c in pros_cols if c in pros.columns]
+    df = df.merge(pros[merge_cols], on="_nome_key", how="left")
+    for col in pros_cols:
+        if col in df.columns:
+            df[col] = df[col].fillna(0.0)
+    return df.drop(columns=["_nome_key"], errors="ignore")
+
+
+def _recalcular_geral_prati_analise(df: pd.DataFrame) -> pd.DataFrame:
+    """Totaliza VGV e Prosoluto do Geral Prati (sem loteamentos)."""
     mask_geral = df["nome_empreendimento"].str.strip().str.lower() == "geral prati"
     if not mask_geral.any():
         return df
@@ -181,8 +215,21 @@ def _recalcular_geral_prati_vgv(df: pd.DataFrame) -> pd.DataFrame:
     outros = df[~mask_geral & ~mask_lote]
     for col in ["vgv_total", "vgv_vendido", "vgv_pendente"]:
         if col in df.columns:
-            total = outros[col].fillna(0.0).sum()
-            df.loc[mask_geral, col] = total
+            df.loc[mask_geral, col] = outros[col].fillna(0.0).sum()
+    if "prosoluto_antes" in df.columns:
+        pros_antes = outros["prosoluto_antes"].fillna(0.0).sum()
+        pros_pos = outros["prosoluto_pos"].fillna(0.0).sum()
+        venda_fin = outros["venda_fin_antes"].fillna(0.0).sum()
+        df.loc[mask_geral, "prosoluto_antes"] = pros_antes
+        df.loc[mask_geral, "prosoluto_pos"] = pros_pos
+        df.loc[mask_geral, "venda_fin_antes"] = venda_fin
+        df.loc[mask_geral, "venda_fin_pos"] = venda_fin
+        if venda_fin > 0:
+            df.loc[mask_geral, "pct_prosoluto_antes"] = pros_antes / venda_fin
+            df.loc[mask_geral, "pct_prosoluto_pos"] = pros_pos / venda_fin
+        else:
+            df.loc[mask_geral, "pct_prosoluto_antes"] = 0.0
+            df.loc[mask_geral, "pct_prosoluto_pos"] = 0.0
     return df
 
 
@@ -375,7 +422,7 @@ def main():
                 min_value=pd.Timestamp(data_min_str).date(),
                 max_value=pd.Timestamp(data_max_str).date(),
                 key="vgv_analise_data_inicio",
-                help="Filtra apenas o VGV vendido (realizado) neste período. Estoque e Prosoluto não mudam.",
+                help="Filtra VGV realizado e Prosoluto das vendas financiadas neste período.",
             )
         with col_fim:
             data_fim = st.date_input(
@@ -384,7 +431,7 @@ def main():
                 min_value=pd.Timestamp(data_min_str).date(),
                 max_value=pd.Timestamp(data_max_str).date(),
                 key="vgv_analise_data_fim",
-                help="Filtra apenas o VGV vendido (realizado) neste período.",
+                help="Filtra VGV realizado e Prosoluto das vendas financiadas neste período.",
             )
         if data_inicio > data_fim:
             st.error("A data inicial não pode ser maior que a data final.")
@@ -393,8 +440,9 @@ def main():
         start_vgv = data_inicio.strftime("%Y-%m-%d")
         end_vgv = data_fim.strftime("%Y-%m-%d")
         st.caption(
-            f"VGV realizado considera vendas de **{data_inicio.strftime('%d/%m/%Y')}** a "
-            f"**{data_fim.strftime('%d/%m/%Y')}**. Prosoluto e aba Estoque não usam este filtro."
+            f"Período **{data_inicio.strftime('%d/%m/%Y')}** a **{data_fim.strftime('%d/%m/%Y')}**: "
+            "filtra % VGV realizado e % Prosoluto (vendas financiadas no período). "
+            "A aba Estoque não usa este filtro."
         )
 
         periodo_completo = start_vgv == data_min_str and end_vgv == data_max_str
@@ -420,14 +468,31 @@ def main():
                 df_analise_base["nome_empreendimento"].str.strip().isin(empreendimentos_filtro)
             ]
         if periodo_completo:
-            df_analise_base = _recalcular_geral_prati_vgv(df_analise_base)
+            df_analise_base = _recalcular_geral_prati_analise(df_analise_base)
         else:
-            with st.spinner("Atualizando VGV do período..."):
+            with st.spinner("Atualizando indicadores do período..."):
                 df_vgv_periodo = get_vgv_analise_por_periodo(
                     start_date=start_vgv, end_date=end_vgv
                 )
+                df_prosoluto_periodo = get_prosoluto_analise_por_periodo(
+                    start_date=start_vgv, end_date=end_vgv
+                )
+            df_analise_base = _aplicar_prosoluto_periodo_analise(
+                df_analise_base, df_prosoluto_periodo
+            )
             df_analise_base = _aplicar_vgv_periodo_analise(df_analise_base, df_vgv_periodo)
-            df_analise_base = _recalcular_geral_prati_vgv(df_analise_base)
+            df_analise_base = df_analise_base[
+                (df_analise_base["pct_prosoluto_antes"].fillna(0) != 0)
+                | (df_analise_base["pct_prosoluto_pos"].fillna(0) != 0)
+                | (df_analise_base["vgv_vendido"].fillna(0) > 0)
+                | (
+                    df_analise_base["nome_empreendimento"]
+                    .str.strip()
+                    .str.lower()
+                    == "geral prati"
+                )
+            ]
+            df_analise_base = _recalcular_geral_prati_analise(df_analise_base)
         if df_analise_base.empty:
             st.info(
                 "Nenhum empreendimento encontrado. Esta aba exibe apenas empreendimentos com "
@@ -441,8 +506,8 @@ def main():
                 unsafe_allow_html=True,
             )
             st.caption(
-                "💡 % VGV realizado: incorporações (sem loteamentos). Numerador = vendas no período; "
-                "denominador = VGV total do estoque atual."
+                "💡 Incorporações (sem loteamentos). VGV: vendas no período ÷ estoque atual. "
+                "Prosoluto: parcelas das vendas financiadas com data_venda no período."
             )
 
             vgv_total_sum = df_analise_base["vgv_total"].fillna(0.0).sum()

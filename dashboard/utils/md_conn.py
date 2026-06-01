@@ -755,6 +755,96 @@ def get_vgv_analise_por_periodo(start_date: str, end_date: str) -> pd.DataFrame:
     return md_conn.run_query(sql)
 
 
+_TIPOS_PROSOLUTO_SQL = "'12', 'PM', 'AT', 'PB', 'PA', 'PI', 'PQ', 'PS'"
+
+
+def get_prosoluto_analise_por_periodo(start_date: str, end_date: str) -> pd.DataFrame:
+    """
+    Prosoluto antes/pós chaves por empreendimento, filtrado por data_venda das vendas
+    financiadas no período (mesma lógica da view prosoluto_antes_e_pos_chaves).
+    """
+    md_conn = get_md_connection()
+    sql = f"""
+    WITH data_corte AS (
+        SELECT
+            dc.id_empreendimento,
+            CAST(dc.data_fim_obra AS DATE) AS data_fim_obra
+        FROM planilhas.main.data_entrega_empreendimentos_prosoluto_antes_pos_chaves dc
+        WHERE dc.id_empreendimento IS NOT NULL AND dc.data_fim_obra IS NOT NULL
+    ),
+    parcelas_classificadas AS (
+        SELECT
+            TRY_CAST(v.codigointerno_empreendimento AS BIGINT) AS id_empreendimento,
+            cr.Valor_Devido,
+            CASE
+                WHEN TRY_CAST(cr.Data_Vencimento AS DATE) <= d.data_fim_obra THEN 'antes_chaves'
+                ELSE 'pos_chaves'
+            END AS periodo
+        FROM administracao.main.contas_recebidas_receber cr
+        INNER JOIN reservas.main.cv_vendas v
+            ON v.tipovenda = 'Venda Financiamento'
+           AND (COALESCE(CAST(cr.Cod_Centro_Custo AS VARCHAR), '') || COALESCE(TRIM(CAST(cr.Unidade AS VARCHAR)), ''))
+             = (COALESCE(CAST(v.codigointerno_empreendimento AS VARCHAR), '') || COALESCE(TRIM(CAST(v.unidade AS VARCHAR)), ''))
+        INNER JOIN data_corte d
+            ON TRY_CAST(v.codigointerno_empreendimento AS BIGINT) = d.id_empreendimento
+        WHERE cr.Tipo_Baixa IS NULL
+          AND cr.Tipo_Condicao IN ({_TIPOS_PROSOLUTO_SQL})
+          AND TRY_CAST(v.data_venda AS DATE) BETWEEN '{start_date}' AND '{end_date}'
+    ),
+    prosoluto_agg AS (
+        SELECT
+            id_empreendimento,
+            SUM(CASE WHEN periodo = 'antes_chaves' THEN COALESCE(Valor_Devido, 0) ELSE 0 END) AS prosoluto_antes,
+            SUM(CASE WHEN periodo = 'pos_chaves' THEN COALESCE(Valor_Devido, 0) ELSE 0 END) AS prosoluto_pos
+        FROM parcelas_classificadas
+        GROUP BY id_empreendimento
+    ),
+    denom_emp AS (
+        SELECT
+            TRY_CAST(codigointerno_empreendimento AS BIGINT) AS id_empreendimento,
+            SUM(valor_contrato) AS valor_venda_financiamento
+        FROM reservas.main.cv_vendas
+        WHERE tipovenda = 'Venda Financiamento'
+          AND codigointerno_empreendimento IS NOT NULL
+          AND TRY_CAST(data_venda AS DATE) BETWEEN '{start_date}' AND '{end_date}'
+        GROUP BY codigointerno_empreendimento
+    ),
+    dim AS (
+        SELECT
+            TRY_CAST(enterpriseId AS BIGINT) AS id_empreendimento,
+            MAX(nome_empreendimento) AS nome_empreendimento
+        FROM informacoes_consolidadas.dim_empreendimentos_dinamica
+        WHERE enterpriseId IS NOT NULL
+        GROUP BY 1
+    ),
+    base AS (
+        SELECT
+            COALESCE(p.id_empreendimento, d.id_empreendimento) AS id_empreendimento,
+            COALESCE(p.prosoluto_antes, 0) AS prosoluto_antes,
+            COALESCE(p.prosoluto_pos, 0) AS prosoluto_pos,
+            COALESCE(d.valor_venda_financiamento, 0) AS valor_venda_financiamento
+        FROM denom_emp d
+        FULL OUTER JOIN prosoluto_agg p ON p.id_empreendimento = d.id_empreendimento
+    )
+    SELECT
+        b.id_empreendimento,
+        COALESCE(dim.nome_empreendimento, CAST(b.id_empreendimento AS VARCHAR)) AS nome_empreendimento,
+        b.prosoluto_antes,
+        b.prosoluto_pos,
+        b.valor_venda_financiamento AS venda_fin_antes,
+        b.valor_venda_financiamento AS venda_fin_pos,
+        CASE WHEN b.valor_venda_financiamento > 0
+             THEN b.prosoluto_antes / b.valor_venda_financiamento ELSE 0 END AS pct_prosoluto_antes,
+        CASE WHEN b.valor_venda_financiamento > 0
+             THEN b.prosoluto_pos / b.valor_venda_financiamento ELSE 0 END AS pct_prosoluto_pos
+    FROM base b
+    LEFT JOIN dim ON dim.id_empreendimento = b.id_empreendimento
+    WHERE LOWER(TRIM(COALESCE(dim.nome_empreendimento, ''))) NOT LIKE 'loteamento%'
+    ORDER BY nome_empreendimento
+    """
+    return md_conn.run_query(sql)
+
+
 def get_vgv_por_situacao() -> pd.DataFrame:
     """
     Retorna VGV por empreendimento e situação (unidades.situacao).
