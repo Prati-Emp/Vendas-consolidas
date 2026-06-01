@@ -563,17 +563,17 @@ def get_vgv_prosoluto_resumo(start_date: Optional[str] = None, end_date: Optiona
     """
     Retorna uma tabela consolidada por empreendimento com:
     - VGV total, vendido e pendente (a partir de cv_vgv_empreendimentos_consolidado)
-    - Prosoluto antes e pós chaves (a partir da view prosoluto_antes_e_pos_chaves)
+    - Prosoluto antes e pós chaves (a partir da view prosoluto_antes_e_pos_chaves ou calculado dinamicamente)
     - id e nome do empreendimento preenchidos a partir de dim_empreendimentos_dinamica quando vazios.
 
     Os valores de prosoluto e o nome do empreendimento são alinhados pela coluna nome_empreendimento
     da view administracao.prosoluto_antes_e_pos_chaves, para permitir comparação direta com a view.
     Observação: a classificação de "vendido" (VGV) é baseada na coluna unidades.situacao.
-    Filtra as vendas (VGV Vendido) pelo período selecionado usando a coluna data_venda da cv_vendas.
+    Filtra as vendas (VGV Vendido e Prosoluto) pelo período selecionado usando a coluna data_venda da cv_vendas.
     """
     md_conn = get_md_connection()
 
-    # Se datas forem fornecidas, faz join com cv_vendas para filtrar as vendas do período
+    # Se datas forem fornecidas, faz join com cv_vendas para filtrar as vendas e o prosoluto do período
     if start_date and end_date:
         sql = f"""
         WITH vgv_filtrado AS (
@@ -614,24 +614,56 @@ def get_vgv_prosoluto_resumo(start_date: Optional[str] = None, end_date: Optiona
                 vgv_total - vgv_vendido AS vgv_pendente
             FROM vgv_base
         ),
+        data_corte AS (
+            SELECT
+                dc.id_empreendimento,
+                CAST(dc.data_fim_obra AS DATE) AS data_fim_obra
+            FROM planilhas.main.data_entrega_empreendimentos_prosoluto_antes_pos_chaves dc
+            WHERE dc.id_empreendimento IS NOT NULL AND dc.data_fim_obra IS NOT NULL
+        ),
+        parcelas_classificadas AS (
+            SELECT
+                TRY_CAST(v.codigointerno_empreendimento AS BIGINT) AS id_empreendimento,
+                cr.Valor_Devido,
+                CASE
+                    WHEN TRY_CAST(cr.Data_Vencimento AS DATE) <= d.data_fim_obra THEN 'antes_chaves'
+                    ELSE 'pos_chaves'
+                END AS periodo
+            FROM administracao.main.contas_recebidas_receber cr
+            INNER JOIN reservas.main.cv_vendas v
+                ON v.tipovenda = 'Venda Financiamento'
+               AND (COALESCE(CAST(cr.Cod_Centro_Custo AS VARCHAR), '') || COALESCE(TRIM(CAST(cr.Unidade AS VARCHAR)), ''))
+                 = (COALESCE(CAST(v.codigointerno_empreendimento AS VARCHAR), '') || COALESCE(TRIM(CAST(v.unidade AS VARCHAR)), ''))
+            INNER JOIN data_corte d
+                ON TRY_CAST(v.codigointerno_empreendimento AS BIGINT) = d.id_empreendimento
+            WHERE cr.Tipo_Baixa IS NULL
+              AND cr.Tipo_Condicao IN ('12', 'PM', 'AT', 'PB', 'PA', 'PI', 'PQ', 'PS')
+              AND (v.data_venda::DATE BETWEEN '{start_date}' AND '{end_date}')
+        ),
+        denom_emp AS (
+            SELECT
+                TRY_CAST(codigointerno_empreendimento AS BIGINT) AS id_empreendimento,
+                SUM(valor_contrato) AS valor_venda_financiamento
+            FROM reservas.main.cv_vendas
+            WHERE tipovenda = 'Venda Financiamento'
+              AND codigointerno_empreendimento IS NOT NULL
+              AND (data_venda::DATE BETWEEN '{start_date}' AND '{end_date}')
+            GROUP BY codigointerno_empreendimento
+        ),
         prosoluto_pivot AS (
             SELECT
-                id_empreendimento,
-                nome_empreendimento,
-                SUM(
-                    CASE WHEN periodo = 'antes_chaves' THEN COALESCE(valor_prosoluto, 0) ELSE 0 END
-                ) AS prosoluto_antes,
-                SUM(
-                    CASE WHEN periodo = 'pos_chaves' THEN COALESCE(valor_prosoluto, 0) ELSE 0 END
-                ) AS prosoluto_pos,
-                MAX(COALESCE(valor_venda_financiamento, 0)) AS valor_venda_financiamento
-            FROM administracao.prosoluto_antes_e_pos_chaves
-            GROUP BY id_empreendimento, nome_empreendimento
+                COALESCE(p.id_empreendimento, d.id_empreendimento) AS id_empreendimento,
+                SUM(CASE WHEN p.periodo = 'antes_chaves' THEN COALESCE(p.Valor_Devido, 0) ELSE 0 END) AS prosoluto_antes,
+                SUM(CASE WHEN p.periodo = 'pos_chaves' THEN COALESCE(p.Valor_Devido, 0) ELSE 0 END) AS prosoluto_pos,
+                MAX(COALESCE(d.valor_venda_financiamento, 0)) AS valor_venda_financiamento
+            FROM denom_emp d
+            FULL OUTER JOIN parcelas_classificadas p ON p.id_empreendimento = d.id_empreendimento
+            GROUP BY 1
         ),
         base AS (
             SELECT
-                p.id_empreendimento AS id_empreendimento,
-                COALESCE(p.nome_empreendimento, v.nome_empreendimento) AS nome_empreendimento,
+                COALESCE(p.id_empreendimento, v.id_empreendimento) AS id_empreendimento,
+                v.nome_empreendimento,
                 v.vgv_total,
                 v.vgv_vendido,
                 v.vgv_pendente,
@@ -645,7 +677,7 @@ def get_vgv_prosoluto_resumo(start_date: Optional[str] = None, end_date: Optiona
                      THEN p.prosoluto_pos / p.valor_venda_financiamento ELSE 0 END AS pct_prosoluto_pos
             FROM prosoluto_pivot p
             FULL OUTER JOIN vgv v
-                ON TRIM(COALESCE(p.nome_empreendimento, '')) = TRIM(COALESCE(v.nome_empreendimento, ''))
+                ON p.id_empreendimento = v.id_empreendimento
         ),
         dim AS (
             SELECT

@@ -153,29 +153,26 @@ def main():
     display_navigation()
     st.session_state["current_page"] = __file__
 
+    # Filtros de data na Sidebar para ficarem compactos e organizados
+    st.sidebar.markdown("### Período de Vendas")
+    data_inicio = st.sidebar.date_input(
+        "Data Inicial",
+        value=pd.Timestamp('2022-01-01').date(),
+        help="Filtra as vendas a partir desta data de contrato"
+    )
+    data_fim = st.sidebar.date_input(
+        "Data Final",
+        value=pd.Timestamp.now().date(),
+        help="Filtra as vendas até esta data de contrato"
+    )
+
+    start_date_str = data_inicio.strftime('%Y-%m-%d')
+    end_date_str = data_fim.strftime('%Y-%m-%d')
+
     st.markdown(
         '<h1 class="main-header">🏗️ Informações VGV</h1>',
         unsafe_allow_html=True,
     )
-
-    # Filtros de data no topo (acima das abas e filtros de empreendimento)
-    st.markdown("### Filtro de Período de Vendas")
-    col_d1, col_col2 = st.columns(2)
-    with col_d1:
-        data_inicio = st.date_input(
-            "Data Inicial (Vendas)",
-            value=pd.Timestamp('2022-01-01').date(),
-            help="Filtra as vendas a partir desta data de contrato"
-        )
-    with col_col2:
-        data_fim = st.date_input(
-            "Data Final (Vendas)",
-            value=pd.Timestamp.now().date(),
-            help="Filtra as vendas até esta data de contrato"
-        )
-
-    start_date_str = data_inicio.strftime('%Y-%m-%d')
-    end_date_str = data_fim.strftime('%Y-%m-%d')
 
     with st.spinner("Carregando resumo de VGV e Prosoluto por empreendimento..."):
         df_resumo = get_vgv_prosoluto_resumo(start_date=start_date_str, end_date=end_date_str)
