@@ -158,8 +158,27 @@ def main():
         unsafe_allow_html=True,
     )
 
+    # Filtros de data no topo (acima das abas e filtros de empreendimento)
+    st.markdown("### Filtro de Período de Vendas")
+    col_d1, col_col2 = st.columns(2)
+    with col_d1:
+        data_inicio = st.date_input(
+            "Data Inicial (Vendas)",
+            value=pd.Timestamp('2022-01-01').date(),
+            help="Filtra as vendas a partir desta data de contrato"
+        )
+    with col_col2:
+        data_fim = st.date_input(
+            "Data Final (Vendas)",
+            value=pd.Timestamp.now().date(),
+            help="Filtra as vendas até esta data de contrato"
+        )
+
+    start_date_str = data_inicio.strftime('%Y-%m-%d')
+    end_date_str = data_fim.strftime('%Y-%m-%d')
+
     with st.spinner("Carregando resumo de VGV e Prosoluto por empreendimento..."):
-        df_resumo = get_vgv_prosoluto_resumo()
+        df_resumo = get_vgv_prosoluto_resumo(start_date=start_date_str, end_date=end_date_str)
 
     if df_resumo.empty:
         st.warning("Não há dados de VGV / Prosoluto para exibir no momento.")
@@ -178,7 +197,7 @@ def main():
 
     with tab_geral:
         st.markdown("### Quantidade de Unidades por Situação")
-        df_qtd_sit = get_vgv_quantidade_por_situacao()
+        df_qtd_sit = get_vgv_quantidade_por_situacao(start_date=start_date_str, end_date=end_date_str)
         if not df_qtd_sit.empty:
             outros_qtd = df_qtd_sit[
                 df_qtd_sit["nome_empreendimento"].str.strip().str.lower() != "geral prati"
@@ -238,7 +257,7 @@ def main():
             st.info("Nenhum dado de quantidade por situação disponível.")
 
         st.markdown("### VGV por Situação")
-        df_vgv_sit = get_vgv_por_situacao()
+        df_vgv_sit = get_vgv_por_situacao(start_date=start_date_str, end_date=end_date_str)
         if not df_vgv_sit.empty:
             outros_sit = df_vgv_sit[
                 df_vgv_sit["nome_empreendimento"].str.strip().str.lower() != "geral prati"

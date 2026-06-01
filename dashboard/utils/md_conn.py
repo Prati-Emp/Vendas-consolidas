@@ -559,7 +559,7 @@ def get_kpis(start_date: str, end_date: str,
         }
 
 
-def get_vgv_prosoluto_resumo() -> pd.DataFrame:
+def get_vgv_prosoluto_resumo(start_date: Optional[str] = None, end_date: Optional[str] = None) -> pd.DataFrame:
     """
     Retorna uma tabela consolidada por empreendimento com:
     - VGV total, vendido e pendente (a partir de cv_vgv_empreendimentos_consolidado)
@@ -569,150 +569,334 @@ def get_vgv_prosoluto_resumo() -> pd.DataFrame:
     Os valores de prosoluto e o nome do empreendimento são alinhados pela coluna nome_empreendimento
     da view administracao.prosoluto_antes_e_pos_chaves, para permitir comparação direta com a view.
     Observação: a classificação de "vendido" (VGV) é baseada na coluna unidades.situacao.
+    Filtra as vendas (VGV Vendido) pelo período selecionado usando a coluna data_venda da cv_vendas.
     """
     md_conn = get_md_connection()
 
-    sql = """
-    WITH vgv_base AS (
+    # Se datas forem fornecidas, faz join com cv_vendas para filtrar as vendas do período
+    if start_date and end_date:
+        sql = f"""
+        WITH vgv_filtrado AS (
+            SELECT 
+                ve.id_empreendimento,
+                ve.nome_empreendimento,
+                ve."unidades.situacao" AS situacao,
+                ve."unidades.valor_total" AS valor_total,
+                cv.data_venda
+            FROM informacoes_consolidadas.cv_vgv_empreendimentos_consolidado ve
+            LEFT JOIN reservas.main.cv_vendas cv
+              ON cv.idempreendimento = ve.id_empreendimento
+             AND cv.idunidade = ve."unidades.idunidade"
+        ),
+        vgv_base AS (
+            SELECT
+                id_empreendimento,
+                nome_empreendimento,
+                SUM(COALESCE(valor_total, 0)) AS vgv_total,
+                SUM(
+                    CASE
+                        WHEN LOWER(COALESCE(situacao, '')) IN ('vendido', 'vendida', 'assinado', 'escriturado')
+                             AND (data_venda::DATE BETWEEN '{start_date}' AND '{end_date}')
+                        THEN COALESCE(valor_total, 0)
+                        ELSE 0
+                    END
+                ) AS vgv_vendido
+            FROM vgv_filtrado
+            WHERE LOWER(TRIM(COALESCE(situacao, ''))) NOT LIKE 'bloquead%'
+            GROUP BY id_empreendimento, nome_empreendimento
+        ),
+        vgv AS (
+            SELECT
+                id_empreendimento,
+                nome_empreendimento,
+                vgv_total,
+                vgv_vendido,
+                vgv_total - vgv_vendido AS vgv_pendente
+            FROM vgv_base
+        ),
+        prosoluto_pivot AS (
+            SELECT
+                id_empreendimento,
+                nome_empreendimento,
+                SUM(
+                    CASE WHEN periodo = 'antes_chaves' THEN COALESCE(valor_prosoluto, 0) ELSE 0 END
+                ) AS prosoluto_antes,
+                SUM(
+                    CASE WHEN periodo = 'pos_chaves' THEN COALESCE(valor_prosoluto, 0) ELSE 0 END
+                ) AS prosoluto_pos,
+                MAX(COALESCE(valor_venda_financiamento, 0)) AS valor_venda_financiamento
+            FROM administracao.prosoluto_antes_e_pos_chaves
+            GROUP BY id_empreendimento, nome_empreendimento
+        ),
+        base AS (
+            SELECT
+                p.id_empreendimento AS id_empreendimento,
+                COALESCE(p.nome_empreendimento, v.nome_empreendimento) AS nome_empreendimento,
+                v.vgv_total,
+                v.vgv_vendido,
+                v.vgv_pendente,
+                p.prosoluto_antes,
+                p.valor_venda_financiamento AS venda_fin_antes,
+                CASE WHEN COALESCE(p.valor_venda_financiamento, 0) > 0
+                     THEN p.prosoluto_antes / p.valor_venda_financiamento ELSE 0 END AS pct_prosoluto_antes,
+                p.prosoluto_pos,
+                p.valor_venda_financiamento AS venda_fin_pos,
+                CASE WHEN COALESCE(p.valor_venda_financiamento, 0) > 0
+                     THEN p.prosoluto_pos / p.valor_venda_financiamento ELSE 0 END AS pct_prosoluto_pos
+            FROM prosoluto_pivot p
+            FULL OUTER JOIN vgv v
+                ON TRIM(COALESCE(p.nome_empreendimento, '')) = TRIM(COALESCE(v.nome_empreendimento, ''))
+        ),
+        dim AS (
+            SELECT
+                TRY_CAST(enterpriseId AS BIGINT) AS enterpriseId,
+                nome_empreendimento
+            FROM informacoes_consolidadas.dim_empreendimentos_dinamica
+            WHERE enterpriseId IS NOT NULL
+        ),
+        dim_por_nome AS (
+            SELECT
+                TRIM(nome_empreendimento) AS nome_trim,
+                MAX(enterpriseId) AS enterpriseId,
+                MAX(nome_empreendimento) AS nome_empreendimento
+            FROM dim
+            GROUP BY TRIM(nome_empreendimento)
+        )
         SELECT
-            id_empreendimento,
-            nome_empreendimento,
-            SUM(COALESCE("unidades.valor_total", 0)) AS vgv_total,
-            SUM(
-                CASE
-                    WHEN LOWER(COALESCE("unidades.situacao", '')) IN (
-                        'vendido', 'vendida', 'assinado', 'escriturado'
-                    )
-                    THEN COALESCE("unidades.valor_total", 0)
-                    ELSE 0
-                END
-            ) AS vgv_vendido
-        FROM informacoes_consolidadas.cv_vgv_empreendimentos_consolidado
-        WHERE LOWER(TRIM(COALESCE("unidades.situacao", ''))) NOT LIKE 'bloquead%'
-        GROUP BY id_empreendimento, nome_empreendimento
-    ),
-    vgv AS (
+            COALESCE(base.id_empreendimento, dim_nome.enterpriseId) AS id_empreendimento,
+            COALESCE(
+                NULLIF(TRIM(base.nome_empreendimento), ''),
+                dim_id.nome_empreendimento,
+                dim_nome.nome_empreendimento
+            ) AS nome_empreendimento,
+            base.vgv_total,
+            base.vgv_vendido,
+            base.vgv_pendente,
+            base.prosoluto_antes,
+            base.venda_fin_antes,
+            base.pct_prosoluto_antes,
+            base.prosoluto_pos,
+            base.venda_fin_pos,
+            base.pct_prosoluto_pos
+        FROM base
+        LEFT JOIN dim dim_id ON dim_id.enterpriseId = base.id_empreendimento
+        LEFT JOIN dim_por_nome dim_nome
+            ON dim_nome.nome_trim = TRIM(COALESCE(base.nome_empreendimento, ''))
+            AND base.nome_empreendimento IS NOT NULL
+            AND TRIM(base.nome_empreendimento) <> ''
+        ORDER BY nome_empreendimento
+        """
+    else:
+        sql = """
+        WITH vgv_base AS (
+            SELECT
+                id_empreendimento,
+                nome_empreendimento,
+                SUM(COALESCE("unidades.valor_total", 0)) AS vgv_total,
+                SUM(
+                    CASE
+                        WHEN LOWER(COALESCE("unidades.situacao", '')) IN (
+                            'vendido', 'vendida', 'assinado', 'escriturado'
+                        )
+                        THEN COALESCE("unidades.valor_total", 0)
+                        ELSE 0
+                    END
+                ) AS vgv_vendido
+            FROM informacoes_consolidadas.cv_vgv_empreendimentos_consolidado
+            WHERE LOWER(TRIM(COALESCE("unidades.situacao", ''))) NOT LIKE 'bloquead%'
+            GROUP BY id_empreendimento, nome_empreendimento
+        ),
+        vgv AS (
+            SELECT
+                id_empreendimento,
+                nome_empreendimento,
+                vgv_total,
+                vgv_vendido,
+                vgv_total - vgv_vendido AS vgv_pendente
+            FROM vgv_base
+        ),
+        prosoluto_pivot AS (
+            SELECT
+                id_empreendimento,
+                nome_empreendimento,
+                SUM(
+                    CASE WHEN periodo = 'antes_chaves' THEN COALESCE(valor_prosoluto, 0) ELSE 0 END
+                ) AS prosoluto_antes,
+                SUM(
+                    CASE WHEN periodo = 'pos_chaves' THEN COALESCE(valor_prosoluto, 0) ELSE 0 END
+                ) AS prosoluto_pos,
+                MAX(COALESCE(valor_venda_financiamento, 0)) AS valor_venda_financiamento
+            FROM administracao.prosoluto_antes_e_pos_chaves
+            GROUP BY id_empreendimento, nome_empreendimento
+        ),
+        base AS (
+            SELECT
+                p.id_empreendimento AS id_empreendimento,
+                COALESCE(p.nome_empreendimento, v.nome_empreendimento) AS nome_empreendimento,
+                v.vgv_total,
+                v.vgv_vendido,
+                v.vgv_pendente,
+                p.prosoluto_antes,
+                p.valor_venda_financiamento AS venda_fin_antes,
+                CASE WHEN COALESCE(p.valor_venda_financiamento, 0) > 0
+                     THEN p.prosoluto_antes / p.valor_venda_financiamento ELSE 0 END AS pct_prosoluto_antes,
+                p.prosoluto_pos,
+                p.valor_venda_financiamento AS venda_fin_pos,
+                CASE WHEN COALESCE(p.valor_venda_financiamento, 0) > 0
+                     THEN p.prosoluto_pos / p.valor_venda_financiamento ELSE 0 END AS pct_prosoluto_pos
+            FROM prosoluto_pivot p
+            FULL OUTER JOIN vgv v
+                ON TRIM(COALESCE(p.nome_empreendimento, '')) = TRIM(COALESCE(v.nome_empreendimento, ''))
+        ),
+        dim AS (
+            SELECT
+                TRY_CAST(enterpriseId AS BIGINT) AS enterpriseId,
+                nome_empreendimento
+            FROM informacoes_consolidadas.dim_empreendimentos_dinamica
+            WHERE enterpriseId IS NOT NULL
+        ),
+        dim_por_nome AS (
+            SELECT
+                TRIM(nome_empreendimento) AS nome_trim,
+                MAX(enterpriseId) AS enterpriseId,
+                MAX(nome_empreendimento) AS nome_empreendimento
+            FROM dim
+            GROUP BY TRIM(nome_empreendimento)
+        )
         SELECT
-            id_empreendimento,
-            nome_empreendimento,
-            vgv_total,
-            vgv_vendido,
-            vgv_total - vgv_vendido AS vgv_pendente
-        FROM vgv_base
-    ),
-    prosoluto_pivot AS (
-        SELECT
-            id_empreendimento,
-            nome_empreendimento,
-            SUM(
-                CASE WHEN periodo = 'antes_chaves' THEN COALESCE(valor_prosoluto, 0) ELSE 0 END
-            ) AS prosoluto_antes,
-            SUM(
-                CASE WHEN periodo = 'pos_chaves' THEN COALESCE(valor_prosoluto, 0) ELSE 0 END
-            ) AS prosoluto_pos,
-            MAX(COALESCE(valor_venda_financiamento, 0)) AS valor_venda_financiamento
-        FROM administracao.prosoluto_antes_e_pos_chaves
-        GROUP BY id_empreendimento, nome_empreendimento
-    ),
-    base AS (
-        SELECT
-            p.id_empreendimento AS id_empreendimento,
-            COALESCE(p.nome_empreendimento, v.nome_empreendimento) AS nome_empreendimento,
-            v.vgv_total,
-            v.vgv_vendido,
-            v.vgv_pendente,
-            p.prosoluto_antes,
-            p.valor_venda_financiamento AS venda_fin_antes,
-            CASE WHEN COALESCE(p.valor_venda_financiamento, 0) > 0
-                 THEN p.prosoluto_antes / p.valor_venda_financiamento ELSE 0 END AS pct_prosoluto_antes,
-            p.prosoluto_pos,
-            p.valor_venda_financiamento AS venda_fin_pos,
-            CASE WHEN COALESCE(p.valor_venda_financiamento, 0) > 0
-                 THEN p.prosoluto_pos / p.valor_venda_financiamento ELSE 0 END AS pct_prosoluto_pos
-        FROM prosoluto_pivot p
-        FULL OUTER JOIN vgv v
-            ON TRIM(COALESCE(p.nome_empreendimento, '')) = TRIM(COALESCE(v.nome_empreendimento, ''))
-    ),
-    dim AS (
-        SELECT
-            TRY_CAST(enterpriseId AS BIGINT) AS enterpriseId,
-            nome_empreendimento
-        FROM informacoes_consolidadas.dim_empreendimentos_dinamica
-        WHERE enterpriseId IS NOT NULL
-    ),
-    dim_por_nome AS (
-        SELECT
-            TRIM(nome_empreendimento) AS nome_trim,
-            MAX(enterpriseId) AS enterpriseId,
-            MAX(nome_empreendimento) AS nome_empreendimento
-        FROM dim
-        GROUP BY TRIM(nome_empreendimento)
-    )
-    SELECT
-        COALESCE(base.id_empreendimento, dim_nome.enterpriseId) AS id_empreendimento,
-        COALESCE(
-            NULLIF(TRIM(base.nome_empreendimento), ''),
-            dim_id.nome_empreendimento,
-            dim_nome.nome_empreendimento
-        ) AS nome_empreendimento,
-        base.vgv_total,
-        base.vgv_vendido,
-        base.vgv_pendente,
-        base.prosoluto_antes,
-        base.venda_fin_antes,
-        base.pct_prosoluto_antes,
-        base.prosoluto_pos,
-        base.venda_fin_pos,
-        base.pct_prosoluto_pos
-    FROM base
-    LEFT JOIN dim dim_id ON dim_id.enterpriseId = base.id_empreendimento
-    LEFT JOIN dim_por_nome dim_nome
-        ON dim_nome.nome_trim = TRIM(COALESCE(base.nome_empreendimento, ''))
-        AND base.nome_empreendimento IS NOT NULL
-        AND TRIM(base.nome_empreendimento) <> ''
-    ORDER BY nome_empreendimento
-    """
+            COALESCE(base.id_empreendimento, dim_nome.enterpriseId) AS id_empreendimento,
+            COALESCE(
+                NULLIF(TRIM(base.nome_empreendimento), ''),
+                dim_id.nome_empreendimento,
+                dim_nome.nome_empreendimento
+            ) AS nome_empreendimento,
+            base.vgv_total,
+            base.vgv_vendido,
+            base.vgv_pendente,
+            base.prosoluto_antes,
+            base.venda_fin_antes,
+            base.pct_prosoluto_antes,
+            base.prosoluto_pos,
+            base.venda_fin_pos,
+            base.pct_prosoluto_pos
+        FROM base
+        LEFT JOIN dim dim_id ON dim_id.enterpriseId = base.id_empreendimento
+        LEFT JOIN dim_por_nome dim_nome
+            ON dim_nome.nome_trim = TRIM(COALESCE(base.nome_empreendimento, ''))
+            AND base.nome_empreendimento IS NOT NULL
+            AND TRIM(base.nome_empreendimento) <> ''
+        ORDER BY nome_empreendimento
+        """
 
     return md_conn.run_query(sql)
 
 
-def get_vgv_por_situacao() -> pd.DataFrame:
+def get_vgv_por_situacao(start_date: Optional[str] = None, end_date: Optional[str] = None) -> pd.DataFrame:
     """
     Retorna VGV por empreendimento e situação (unidades.situacao).
     Usado para tabela de VGV por situação na aba geral.
+    Filtra as vendas pelo período selecionado usando a coluna data_venda da cv_vendas.
     """
     md_conn = get_md_connection()
-    sql = """
-    SELECT
-        id_empreendimento,
-        nome_empreendimento,
-        COALESCE(NULLIF(TRIM("unidades.situacao"), ''), 'Não informado') AS situacao,
-        SUM(COALESCE("unidades.valor_total", 0)) AS valor
-    FROM informacoes_consolidadas.cv_vgv_empreendimentos_consolidado
-    WHERE LOWER(TRIM(COALESCE("unidades.situacao", ''))) NOT LIKE 'bloquead%'
-    GROUP BY id_empreendimento, nome_empreendimento, COALESCE(NULLIF(TRIM("unidades.situacao"), ''), 'Não informado')
-    ORDER BY nome_empreendimento, situacao
-    """
+    if start_date and end_date:
+        sql = f"""
+        WITH vgv_filtrado AS (
+            SELECT 
+                ve.id_empreendimento,
+                ve.nome_empreendimento,
+                ve."unidades.situacao" AS situacao,
+                ve."unidades.valor_total" AS valor_total,
+                cv.data_venda
+            FROM informacoes_consolidadas.cv_vgv_empreendimentos_consolidado ve
+            LEFT JOIN reservas.main.cv_vendas cv
+              ON cv.idempreendimento = ve.id_empreendimento
+             AND cv.idunidade = ve."unidades.idunidade"
+        )
+        SELECT
+            id_empreendimento,
+            nome_empreendimento,
+            COALESCE(NULLIF(TRIM(situacao), ''), 'Não informado') AS situacao,
+            SUM(
+                CASE 
+                    WHEN LOWER(COALESCE(situacao, '')) IN ('vendido', 'vendida', 'assinado', 'escriturado')
+                         AND (data_venda::DATE BETWEEN '{start_date}' AND '{end_date}')
+                    THEN COALESCE(valor_total, 0)
+                    WHEN LOWER(COALESCE(situacao, '')) NOT IN ('vendido', 'vendida', 'assinado', 'escriturado')
+                    THEN COALESCE(valor_total, 0)
+                    ELSE 0
+                END
+            ) AS valor
+        FROM vgv_filtrado
+        WHERE LOWER(TRIM(COALESCE(situacao, ''))) NOT LIKE 'bloquead%'
+        GROUP BY id_empreendimento, nome_empreendimento, COALESCE(NULLIF(TRIM(situacao), ''), 'Não informado')
+        ORDER BY nome_empreendimento, situacao
+        """
+    else:
+        sql = """
+        SELECT
+            id_empreendimento,
+            nome_empreendimento,
+            COALESCE(NULLIF(TRIM("unidades.situacao"), ''), 'Não informado') AS situacao,
+            SUM(COALESCE("unidades.valor_total", 0)) AS valor
+        FROM informacoes_consolidadas.cv_vgv_empreendimentos_consolidado
+        WHERE LOWER(TRIM(COALESCE("unidades.situacao", ''))) NOT LIKE 'bloquead%'
+        GROUP BY id_empreendimento, nome_empreendimento, COALESCE(NULLIF(TRIM("unidades.situacao"), ''), 'Não informado')
+        ORDER BY nome_empreendimento, situacao
+        """
     return md_conn.run_query(sql)
 
 
-def get_vgv_quantidade_por_situacao() -> pd.DataFrame:
+def get_vgv_quantidade_por_situacao(start_date: Optional[str] = None, end_date: Optional[str] = None) -> pd.DataFrame:
     """
     Retorna quantidade de unidades por empreendimento e situação (unidades.situacao).
     Usado para tabela de quantidades por situação na aba geral.
+    Filtra as vendas pelo período selecionado usando a coluna data_venda da cv_vendas.
     """
     md_conn = get_md_connection()
-    sql = """
-    SELECT
-        id_empreendimento,
-        nome_empreendimento,
-        COALESCE(NULLIF(TRIM("unidades.situacao"), ''), 'Não informado') AS situacao,
-        COUNT(*) AS quantidade
-    FROM informacoes_consolidadas.cv_vgv_empreendimentos_consolidado
-    WHERE LOWER(TRIM(COALESCE("unidades.situacao", ''))) NOT LIKE 'bloquead%'
-    GROUP BY id_empreendimento, nome_empreendimento, COALESCE(NULLIF(TRIM("unidades.situacao"), ''), 'Não informado')
-    ORDER BY nome_empreendimento, situacao
-    """
+    if start_date and end_date:
+        sql = f"""
+        WITH vgv_filtrado AS (
+            SELECT 
+                ve.id_empreendimento,
+                ve.nome_empreendimento,
+                ve."unidades.situacao" AS situacao,
+                cv.data_venda
+            FROM informacoes_consolidadas.cv_vgv_empreendimentos_consolidado ve
+            LEFT JOIN reservas.main.cv_vendas cv
+              ON cv.idempreendimento = ve.id_empreendimento
+             AND cv.idunidade = ve."unidades.idunidade"
+        )
+        SELECT
+            id_empreendimento,
+            nome_empreendimento,
+            COALESCE(NULLIF(TRIM(situacao), ''), 'Não informado') AS situacao,
+            SUM(
+                CASE 
+                    WHEN LOWER(COALESCE(situacao, '')) IN ('vendido', 'vendida', 'assinado', 'escriturado')
+                         AND (data_venda::DATE BETWEEN '{start_date}' AND '{end_date}')
+                    THEN 1
+                    WHEN LOWER(COALESCE(situacao, '')) NOT IN ('vendido', 'vendida', 'assinado', 'escriturado')
+                    THEN 1
+                    ELSE 0
+                END
+            ) AS quantidade
+        FROM vgv_filtrado
+        WHERE LOWER(TRIM(COALESCE(situacao, ''))) NOT LIKE 'bloquead%'
+        GROUP BY id_empreendimento, nome_empreendimento, COALESCE(NULLIF(TRIM(situacao), ''), 'Não informado')
+        ORDER BY nome_empreendimento, situacao
+        """
+    else:
+        sql = """
+        SELECT
+            id_empreendimento,
+            nome_empreendimento,
+            COALESCE(NULLIF(TRIM("unidades.situacao"), ''), 'Não informado') AS situacao,
+            COUNT(*) AS quantidade
+        FROM informacoes_consolidadas.cv_vgv_empreendimentos_consolidado
+        WHERE LOWER(TRIM(COALESCE("unidades.situacao", ''))) NOT LIKE 'bloquead%'
+        GROUP BY id_empreendimento, nome_empreendimento, COALESCE(NULLIF(TRIM("unidades.situacao"), ''), 'Não informado')
+        ORDER BY nome_empreendimento, situacao
+        """
     return md_conn.run_query(sql)
 
 
