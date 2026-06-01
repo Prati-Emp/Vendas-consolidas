@@ -142,23 +142,33 @@ def _montar_tabela_analise(df):
     return styled
 
 
+def _nome_key(series: pd.Series) -> pd.Series:
+    return series.fillna("").astype(str).str.strip().str.lower()
+
+
 def _aplicar_vgv_periodo_analise(df: pd.DataFrame, df_vgv_periodo: pd.DataFrame) -> pd.DataFrame:
-    """Substitui vgv_total/vgv_vendido pelos valores do período (aba Análise, sem loteamentos)."""
+    """
+    Atualiza apenas vgv_vendido com vendas no período.
+    vgv_total permanece do resumo (estoque atual, mesma base de antes).
+    """
     if df_vgv_periodo.empty:
         return df
 
     df = df.copy()
-    vgv_cols = ["vgv_total", "vgv_vendido", "vgv_pendente"]
-    df = df.drop(columns=vgv_cols, errors="ignore")
+    vgv_total = df["vgv_total"].fillna(0.0) if "vgv_total" in df.columns else None
 
-    vgv = df_vgv_periodo[["id_empreendimento"] + vgv_cols].drop_duplicates(
-        subset=["id_empreendimento"], keep="first"
-    )
-    df = df.merge(vgv, on="id_empreendimento", how="left")
-    for col in vgv_cols:
-        if col in df.columns:
-            df[col] = df[col].fillna(0.0)
-    return df
+    vgv = df_vgv_periodo[["nome_empreendimento", "vgv_vendido"]].copy()
+    vgv["_nome_key"] = _nome_key(vgv["nome_empreendimento"])
+    vgv = vgv.drop_duplicates(subset=["_nome_key"], keep="first")
+
+    df = df.drop(columns=["vgv_vendido", "vgv_pendente"], errors="ignore")
+    df["_nome_key"] = _nome_key(df["nome_empreendimento"])
+    df = df.merge(vgv[["_nome_key", "vgv_vendido"]], on="_nome_key", how="left")
+    df["vgv_vendido"] = df["vgv_vendido"].fillna(0.0)
+    if vgv_total is not None:
+        df["vgv_total"] = vgv_total
+    df["vgv_pendente"] = df["vgv_total"].fillna(0.0) - df["vgv_vendido"]
+    return df.drop(columns=["_nome_key"], errors="ignore")
 
 
 def _recalcular_geral_prati_vgv(df: pd.DataFrame) -> pd.DataFrame:
@@ -205,10 +215,13 @@ def main():
         st.warning("Não há dados de VGV / Prosoluto para exibir no momento.")
         return
 
-    # Totalizador: preencher Geral Prati com a soma de VGV dos demais empreendimentos
+    # Totalizador Geral Prati (incorporações; loteamentos ficam só na aba Estoque)
     mask_geral = df_resumo["nome_empreendimento"].str.strip().str.lower() == "geral prati"
     if mask_geral.any():
-        outros = df_resumo[~mask_geral]
+        mask_lote = df_resumo["nome_empreendimento"].str.strip().str.lower().str.startswith(
+            "loteamento"
+        )
+        outros = df_resumo[~mask_geral & ~mask_lote]
         for col in ["vgv_total", "vgv_vendido", "vgv_pendente"]:
             if col in df_resumo.columns:
                 total = outros[col].fillna(0.0).sum()
@@ -384,8 +397,7 @@ def main():
             f"**{data_fim.strftime('%d/%m/%Y')}**. Prosoluto e aba Estoque não usam este filtro."
         )
 
-        with st.spinner("Atualizando VGV do período..."):
-            df_vgv_periodo = get_vgv_analise_por_periodo(start_date=start_vgv, end_date=end_vgv)
+        periodo_completo = start_vgv == data_min_str and end_vgv == data_max_str
 
         df_com_prosoluto = df_resumo[
             (df_resumo["pct_prosoluto_antes"].fillna(0) != 0)
@@ -407,8 +419,15 @@ def main():
             df_analise_base = df_analise_base[
                 df_analise_base["nome_empreendimento"].str.strip().isin(empreendimentos_filtro)
             ]
-        df_analise_base = _aplicar_vgv_periodo_analise(df_analise_base, df_vgv_periodo)
-        df_analise_base = _recalcular_geral_prati_vgv(df_analise_base)
+        if periodo_completo:
+            df_analise_base = _recalcular_geral_prati_vgv(df_analise_base)
+        else:
+            with st.spinner("Atualizando VGV do período..."):
+                df_vgv_periodo = get_vgv_analise_por_periodo(
+                    start_date=start_vgv, end_date=end_vgv
+                )
+            df_analise_base = _aplicar_vgv_periodo_analise(df_analise_base, df_vgv_periodo)
+            df_analise_base = _recalcular_geral_prati_vgv(df_analise_base)
         if df_analise_base.empty:
             st.info(
                 "Nenhum empreendimento encontrado. Esta aba exibe apenas empreendimentos com "

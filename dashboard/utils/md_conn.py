@@ -701,15 +701,16 @@ def get_vgv_analise_por_periodo(start_date: str, end_date: str) -> pd.DataFrame:
     """
     VGV por empreendimento para a aba Análise (incorporações, sem loteamentos).
 
-    - vgv_total: estoque atual (situação na view), sem filtro de período.
-    - vgv_vendido: unidades vendidas com venda (cv_vendas.data_venda) no período.
+    - vgv_vendido: valor de unidades vendidas com data_venda no período (cv_vendas).
+      O vgv_total da aba Análise continua vindo do resumo consolidado (estoque atual).
     """
     md_conn = get_md_connection()
     sql = f"""
     WITH vendas_periodo AS (
         SELECT DISTINCT
             TRY_CAST(v.idempreendimento AS BIGINT) AS id_empreendimento,
-            TRY_CAST(v.idunidade AS BIGINT) AS idunidade
+            TRY_CAST(v.idunidade AS BIGINT) AS idunidade,
+            TRIM(CAST(v.unidade AS VARCHAR)) AS unidade_nome
         FROM reservas.main.cv_vendas v
         WHERE TRY_CAST(v.data_venda AS DATE) BETWEEN '{start_date}' AND '{end_date}'
     ),
@@ -717,7 +718,6 @@ def get_vgv_analise_por_periodo(start_date: str, end_date: str) -> pd.DataFrame:
         SELECT
             ve.id_empreendimento,
             TRIM(ve.nome_empreendimento) AS nome_empreendimento,
-            SUM(COALESCE(ve."unidades.valor_total", 0)) AS vgv_total,
             SUM(
                 CASE
                     WHEN LOWER(COALESCE(ve."unidades.situacao", '')) IN (
@@ -727,7 +727,13 @@ def get_vgv_analise_por_periodo(start_date: str, end_date: str) -> pd.DataFrame:
                         SELECT 1
                         FROM vendas_periodo vp
                         WHERE vp.id_empreendimento = TRY_CAST(ve.id_empreendimento AS BIGINT)
-                          AND vp.idunidade = TRY_CAST(ve."unidades.idunidade" AS BIGINT)
+                          AND (
+                            vp.idunidade = TRY_CAST(ve."unidades.idunidade" AS BIGINT)
+                            OR (
+                                vp.unidade_nome <> ''
+                                AND vp.unidade_nome = TRIM(CAST(ve."unidades.unidade" AS VARCHAR))
+                            )
+                          )
                     )
                     THEN COALESCE(ve."unidades.valor_total", 0)
                     ELSE 0
@@ -741,9 +747,8 @@ def get_vgv_analise_por_periodo(start_date: str, end_date: str) -> pd.DataFrame:
     SELECT
         id_empreendimento,
         nome_empreendimento,
-        vgv_total,
         vgv_vendido,
-        vgv_total - vgv_vendido AS vgv_pendente
+        0::DOUBLE AS vgv_pendente
     FROM vgv_base
     ORDER BY nome_empreendimento
     """
