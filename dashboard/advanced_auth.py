@@ -427,6 +427,28 @@ USERS_DATABASE = {
         "pages": ["vendas", "leads", "reservas", "motivo_fora_prazo"],
         "subpages": [],
     },
+    "karina.amorim@grupoprati.com": {
+        "password": "Pr@ti2026!Karina",
+        "role": "analyst",
+        "name": "Karina Amorim",
+        "department": "Vendas",
+        "created": "2026-06-18",
+        "last_login": None,
+        "active": True,
+        "pages": ["vendas", "leads", "reservas", "motivo_fora_prazo"],
+        "subpages": [],
+    },
+    "patricia.cruz@grupoprati.com": {
+        "password": "Pr@ti2026!Patricia",
+        "role": "analyst",
+        "name": "Patricia Cruz",
+        "department": "Vendas",
+        "created": "2026-06-18",
+        "last_login": None,
+        "active": True,
+        "pages": ["vendas", "leads", "reservas", "motivo_fora_prazo"],
+        "subpages": [],
+    },
     "odair2d@hotmail.com": {
         "password": "Pr@ti2025!Odair2",
         "role": "analyst",
@@ -769,6 +791,8 @@ def setup_auth_environment():
             <li>Diogo Senise (analyst) - diogo.senise@grupoprati.com</li>
             <li>Jackson Frey (analyst) - jackson.frey@grupoprati.com</li>
             <li>Tarcisio Costa (analyst) - tarcisio.costa@grupoprati.com</li>
+            <li>Karina Amorim (analyst) - karina.amorim@grupoprati.com</li>
+            <li>Patricia Cruz (analyst) - patricia.cruz@grupoprati.com</li>
         </ul>
         <p><strong>⚠️ Importante:</strong> Senhas são fornecidas individualmente por segurança!</p>
     </div>
