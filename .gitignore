@@ -51,6 +51,6 @@ chrome_profile_*/
 *_backup/
 backup_*/
 
-# Arquivos temporários problemáticos
-ersOdair_SantosDesktopCursorVendas_Consolidadas
-UsersOdair_SantosDesktopCursorVendas_Consolidadas*
+# Downloads temporários (relatórios Sienge e outros — dados sensíveis)
+downloads_tmp/
+UsersOdair_SantosDesktopCursorVendas_Consolidadasdownloads_tmp/
