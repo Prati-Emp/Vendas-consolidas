@@ -8,6 +8,17 @@ import pandas as pd
 from st_aggrid import AgGrid, GridOptionsBuilder, DataReturnMode, GridUpdateMode
 from typing import Dict, List, Any
 import json
+import sys
+from pathlib import Path
+
+APP_DIR = Path(__file__).resolve().parent.parent
+if str(APP_DIR) not in sys.path:
+    sys.path.append(str(APP_DIR))
+
+from project_paths import ensure_dashboard_on_path
+
+ensure_dashboard_on_path()
+from advanced_auth import require_auth, require_page_access  # noqa: E402
 
 # Importar utilitários locais
 from utils.md_conn import get_base_data
@@ -26,6 +37,9 @@ st.set_page_config(
     page_icon="📋",
     layout="wide"
 )
+
+require_auth(dashboard_title="Dashboard de Vendas Consolidadas")
+require_page_access("vendas")
 
 # CSS customizado para a página
 st.markdown("""

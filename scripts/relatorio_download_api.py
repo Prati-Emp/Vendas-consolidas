@@ -906,7 +906,7 @@ CONFIGURACOES_EXEMPLO = {
         'username_field': 'email',
         'password_field': 'senha',
         'username': 'usuario@empresa.com',
-        'password': 'senha123',
+        'password': 'ALTERE_A_SENHA',
         'tipo_arquivo': 'csv',  # ou 'excel'
         'seletor_botao_download': '#btn-download-csv',
         'separador_csv': ';',

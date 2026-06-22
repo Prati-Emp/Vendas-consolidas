@@ -10,8 +10,10 @@ import plotly.graph_objects as go
 from datetime import datetime, date, timedelta
 from typing import List, Optional
 
-# Importar sistema de autenticação
-from auth import require_auth
+from project_paths import ensure_dashboard_on_path
+
+ensure_dashboard_on_path()
+from advanced_auth import require_auth, require_page_access  # noqa: E402
 
 # Importar utilitários locais
 from utils.md_conn import (
@@ -360,8 +362,8 @@ def render_export_section():
 
 def main():
     """Função principal do app."""
-    # Proteger com autenticação
-    require_auth()
+    require_auth(dashboard_title="Dashboard de Vendas Consolidadas")
+    require_page_access("vendas")
     
     # Inicializar estado da sessão
     initialize_session_state()

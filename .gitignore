@@ -44,8 +44,25 @@ Thumbs.db
 # Node modules
 node_modules/
 
-# Chrome profiles
+# Perfil Chrome persistente (sessões e cookies — nunca versionar)
+chrome_profile_sienge_persistente/
 chrome_profile_*/
+
+# Autenticação legada (usar advanced_auth + portal_users.json / PORTAL_USERS_JSON)
+dashboard/multi_auth.py
+dashboard/auth.py
+streamlit_vendas/auth.py
+
+# Documentação interna / sensível
+streamlit_vendas/GUIA_SEGURANCA.md
+docs/*.docx
+
+# App legado duplicado (usar streamlit_vendas/)
+vendas_consolidadas/
+
+# Arquivos obsoletos
+*.bak
+**/*.bak
 
 # Backup files
 *_backup/
@@ -53,6 +70,7 @@ backup_*/
 
 # Downloads temporários (relatórios Sienge e outros — dados sensíveis)
 downloads_tmp/
+ersOdair_SantosDesktopCursorVendas_Consolidadas/
 UsersOdair_SantosDesktopCursorVendas_Consolidadasdownloads_tmp/
 ersOdair_SantosDesktopCursorVendas_Consolidadas/
 
