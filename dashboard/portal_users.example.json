@@ -1,0 +1,15 @@
+{
+  "usuario@grupoprati.com": {
+    "password": "AltereEstaSenhaForte!",
+    "role": "admin",
+    "name": "Nome do Usuario",
+    "department": "TI",
+    "created": "2026-01-01",
+    "last_login": null,
+    "active": true,
+    "subpages": [
+      "operacoes.jira",
+      "administrativo.repasses"
+    ]
+  }
+}

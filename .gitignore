@@ -14,6 +14,11 @@ docs/configuracao-ambiente.md
 # Documentação privada do sistema de controle de acesso
 .private/
 
+# Portal Streamlit — credenciais de acesso (nunca versionar)
+dashboard/CREDENCIAIS_USUARIOS.md
+dashboard/portal_users.json
+**/.streamlit/secrets.toml
+
 # Logs
 *.log
 
