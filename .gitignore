@@ -22,6 +22,8 @@ dashboard/portal_users.json
 # Documentação interna do portal (permissões e regras de negócio)
 dashboard/CONTROLE_ACESSO_PAGINAS.md
 dashboard/REGRAS_FILTROS.md
+dashboard/GUIA_USUARIOS.md
+dashboard/SISTEMA_CONTROLE_ACESSO.md
 
 # Logs
 *.log
