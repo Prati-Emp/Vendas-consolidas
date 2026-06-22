@@ -54,3 +54,19 @@ backup_*/
 # Downloads temporários (relatórios Sienge e outros — dados sensíveis)
 downloads_tmp/
 UsersOdair_SantosDesktopCursorVendas_Consolidadasdownloads_tmp/
+ersOdair_SantosDesktopCursorVendas_Consolidadas/
+
+# Raiz do repositório — manter apenas arquivos essenciais
+/*.py
+/*.bat
+/*.ps1
+/*.png
+/*.pbix
+/*.toml
+/*.md
+!README.md
+config_sienge.env
+!config_exemplo.env
+!config_relatorio_exemplo.env
+AVISO_ARQUIVO_ENV.md
+/Obras e Projetos.pbix
