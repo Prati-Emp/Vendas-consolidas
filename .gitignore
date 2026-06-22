@@ -19,6 +19,10 @@ dashboard/CREDENCIAIS_USUARIOS.md
 dashboard/portal_users.json
 **/.streamlit/secrets.toml
 
+# Documentação interna do portal (permissões e regras de negócio)
+dashboard/CONTROLE_ACESSO_PAGINAS.md
+dashboard/REGRAS_FILTROS.md
+
 # Logs
 *.log
 
