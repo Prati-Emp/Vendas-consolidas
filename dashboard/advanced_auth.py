@@ -23,13 +23,151 @@ from pathlib import Path as _Path
 _users_database: Optional[dict] = None
 _users_load_error: Optional[str] = None
 
+def _to_plain_dict(value):
+    """Converte AttrDict / SecretDict do Streamlit em dict Python."""
+    if isinstance(value, dict):
+        return {str(k): _to_plain_dict(v) for k, v in value.items()}
+    if hasattr(value, "_to_dict"):
+        return _to_plain_dict(value._to_dict())
+    if hasattr(value, "keys") and not isinstance(value, (str, bytes)):
+        try:
+            return {str(k): _to_plain_dict(value[k]) for k in value.keys()}
+        except Exception:
+            pass
+    return value
+
 
 def _parse_users_payload(raw) -> dict:
     if isinstance(raw, dict):
-        return raw
-    if isinstance(raw, str) and raw.strip():
-        return json.loads(raw)
+        return _to_plain_dict(raw)
+    if isinstance(raw, str):
+        text = raw.strip().lstrip("\ufeff")
+        if text.startswith('"""') and text.endswith('"""'):
+            text = text[3:-3].strip()
+        elif text.startswith("'''") and text.endswith("'''"):
+            text = text[3:-3].strip()
+        if text:
+            return json.loads(text)
     raise ValueError("Formato de usuarios invalido")
+
+
+def _looks_like_users_database(data: dict) -> bool:
+    if not data:
+        return False
+    return any(
+        isinstance(value, dict) and "password" in value
+        for value in data.values()
+    )
+
+
+def _coerce_users_database(raw) -> dict:
+    data = _parse_users_payload(raw)
+    if not isinstance(data, dict) or not _looks_like_users_database(data):
+        raise ValueError("JSON de usuarios invalido ou incompleto")
+    return data
+
+
+def _load_from_secrets_file() -> Optional[dict]:
+    """Fallback: le secrets.toml montado pelo Streamlit Cloud."""
+    try:
+        import tomllib
+    except ImportError:
+        try:
+            import tomli as tomllib  # type: ignore
+        except ImportError:
+            return None
+
+    root = _Path(__file__).resolve().parent.parent
+    dashboard = root / "dashboard"
+    candidates = [
+        dashboard / ".streamlit" / "secrets.toml",
+        root / ".streamlit" / "secrets.toml",
+    ]
+    for child in sorted(root.glob("streamlit_*")):
+        if child.is_dir():
+            candidates.append(child / ".streamlit" / "secrets.toml")
+
+    for path in candidates:
+        if not path.exists():
+            continue
+        try:
+            data = tomllib.loads(path.read_bytes())
+            for key in ("PORTAL_USERS_JSON", "portal_users_json", "portal_users"):
+                if key in data and data[key]:
+                    return _coerce_users_database(data[key])
+        except Exception:
+            continue
+    return None
+
+
+def _load_from_streamlit_secrets() -> Optional[dict]:
+    errors: List[str] = []
+
+    for key in ("PORTAL_USERS_JSON", "portal_users_json"):
+        raw = os.environ.get(key, "").strip()
+        if raw:
+            try:
+                return _coerce_users_database(raw)
+            except Exception as exc:
+                errors.append(f"env {key}: {exc}")
+
+    try:
+        secrets = st.secrets
+    except Exception as exc:
+        errors.append(f"st.secrets indisponivel: {exc}")
+        secrets = None
+
+    if secrets is not None:
+        for key in ("PORTAL_USERS_JSON", "portal_users_json", "portal_users"):
+            raw = None
+            try:
+                if hasattr(secrets, "get"):
+                    raw = secrets.get(key)
+            except Exception:
+                raw = None
+            if raw is None:
+                try:
+                    raw = secrets[key]
+                except Exception:
+                    raw = None
+            if raw:
+                try:
+                    return _coerce_users_database(raw)
+                except Exception as exc:
+                    errors.append(f"secrets {key}: {exc}")
+
+        try:
+            raw = getattr(secrets, "PORTAL_USERS_JSON", None)
+            if raw:
+                return _coerce_users_database(raw)
+        except Exception as exc:
+            errors.append(f"secrets attr: {exc}")
+
+        # Usuario colou o JSON direto na raiz dos secrets (emails como chaves)
+        root_users: dict = {}
+        try:
+            for key in secrets:
+                key_str = str(key)
+                if "@" not in key_str:
+                    continue
+                try:
+                    value = secrets[key]
+                except Exception:
+                    continue
+                if isinstance(value, dict) and "password" in value:
+                    root_users[key_str] = dict(value)
+        except Exception as exc:
+            errors.append(f"secrets root scan: {exc}")
+        if root_users:
+            return root_users
+
+    file_users = _load_from_secrets_file()
+    if file_users:
+        return file_users
+
+    if errors:
+        raise ValueError("; ".join(errors))
+    return None
 
 
 def _load_users_database() -> dict:
@@ -37,27 +175,43 @@ def _load_users_database() -> dict:
 
     if users_file.exists():
         with users_file.open(encoding="utf-8") as f:
-            return json.load(f)
+            return _coerce_users_database(json.load(f))
 
-    env_json = os.environ.get("PORTAL_USERS_JSON", "").strip()
-    if env_json:
-        return _parse_users_payload(env_json)
-
-    try:
-        secrets = st.secrets
-        for key in ("PORTAL_USERS_JSON", "portal_users_json"):
-            if key in secrets:
-                return _parse_users_payload(secrets[key])
-        if "portal_users" in secrets:
-            return _parse_users_payload(secrets["portal_users"])
-    except Exception:
-        pass
+    cloud_users = _load_from_streamlit_secrets()
+    if cloud_users:
+        return cloud_users
 
     raise FileNotFoundError(
         "Usuarios do portal nao configurados. "
-        "Local: copie portal_users.example.json para portal_users.json. "
-        "Streamlit Cloud: adicione o secret PORTAL_USERS_JSON com o JSON dos usuarios."
+        "Streamlit Cloud: cole o conteudo de dashboard/PORTAL_USERS_JSON_PARA_STREAMLIT.toml "
+        "em Settings -> Secrets e salve."
     )
+
+
+def _diagnose_users_config() -> str:
+    hints: List[str] = []
+    env_val = os.environ.get("PORTAL_USERS_JSON", "")
+    hints.append(f"env PORTAL_USERS_JSON: {'sim' if env_val else 'nao'} ({len(env_val)} chars)")
+
+    try:
+        in_secrets = "PORTAL_USERS_JSON" in st.secrets
+        hints.append(f"st.secrets PORTAL_USERS_JSON: {'sim' if in_secrets else 'nao'}")
+        if in_secrets:
+            raw = st.secrets["PORTAL_USERS_JSON"]
+            hints.append(f"tipo={type(raw).__name__}, chars={len(str(raw))}")
+    except Exception as exc:
+        hints.append(f"st.secrets erro: {exc}")
+
+    secrets_file = _Path(__file__).resolve().parent / ".streamlit" / "secrets.toml"
+    hints.append(f"secrets.toml: {'sim' if secrets_file.exists() else 'nao'}")
+    return " | ".join(hints)
+
+
+def reset_users_database_cache() -> None:
+    """Limpa cache apos alterar secrets (util em testes)."""
+    global _users_database, _users_load_error
+    _users_database = None
+    _users_load_error = None
 
 
 def get_users_database() -> dict:
@@ -85,14 +239,16 @@ def _ensure_users_configured() -> bool:
 **Para o administrador:**
 
 1. Abra **Manage app → Settings → Secrets** no Streamlit Cloud
-2. Adicione a chave `PORTAL_USERS_JSON` com o conteúdo do arquivo `dashboard/portal_users.json`
-3. Salve e aguarde o app reiniciar
-
-Localmente, copie `portal_users.example.json` para `portal_users.json` e preencha os usuarios.
+2. Cole o conteúdo de `dashboard/PORTAL_USERS_JSON_PARA_STREAMLIT.toml`
+3. **Importante:** use o formato com aspas simples por fora (`PORTAL_USERS_JSON = '...'`)
+   — não use aspas duplas `"` envolvendo o JSON diretamente, isso invalida o TOML
+4. Mantenha também os outros secrets do app (ex.: `MOTHERDUCK_TOKEN`)
+5. Salve e aguarde o app reiniciar
         """
     )
+    st.caption(_diagnose_users_config())
     if _users_load_error:
-        st.caption(_users_load_error)
+        st.caption(f"Detalhe: {_users_load_error}")
     return False
 
 
