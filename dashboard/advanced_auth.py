@@ -17,33 +17,83 @@ SESSION_TIMEOUT = 57600  # 16 horas (aumentado de 1h para garantir que a TV não
 PASSWORD_LENGTH = 12
 REQUIRE_SPECIAL_CHARS = True
 
-# Base de dados de usuarios — arquivo local nao versionado (ver portal_users.example.json)
+# Base de dados de usuarios — arquivo local ou PORTAL_USERS_JSON (Streamlit Cloud)
 from pathlib import Path as _Path
 
-def _load_users_database() -> dict:
-    import json as _json
+_users_database: Optional[dict] = None
+_users_load_error: Optional[str] = None
 
+
+def _parse_users_payload(raw) -> dict:
+    if isinstance(raw, dict):
+        return raw
+    if isinstance(raw, str) and raw.strip():
+        return json.loads(raw)
+    raise ValueError("Formato de usuarios invalido")
+
+
+def _load_users_database() -> dict:
     users_file = _Path(__file__).resolve().parent / "portal_users.json"
-    example_file = _Path(__file__).resolve().parent / "portal_users.example.json"
 
     if users_file.exists():
         with users_file.open(encoding="utf-8") as f:
-            return _json.load(f)
+            return json.load(f)
+
+    env_json = os.environ.get("PORTAL_USERS_JSON", "").strip()
+    if env_json:
+        return _parse_users_payload(env_json)
 
     try:
-        raw = st.secrets.get("PORTAL_USERS_JSON")
-        if raw:
-            return _json.loads(raw)
+        secrets = st.secrets
+        for key in ("PORTAL_USERS_JSON", "portal_users_json"):
+            if key in secrets:
+                return _parse_users_payload(secrets[key])
+        if "portal_users" in secrets:
+            return _parse_users_payload(secrets["portal_users"])
     except Exception:
         pass
 
     raise FileNotFoundError(
-        f"Arquivo de usuarios do portal nao encontrado: {users_file}. "
-        f"Copie {example_file.name} para portal_users.json e configure as credenciais, "
-        "ou defina PORTAL_USERS_JSON nos secrets do Streamlit Cloud."
+        "Usuarios do portal nao configurados. "
+        "Local: copie portal_users.example.json para portal_users.json. "
+        "Streamlit Cloud: adicione o secret PORTAL_USERS_JSON com o JSON dos usuarios."
     )
 
-USERS_DATABASE = _load_users_database()
+
+def get_users_database() -> dict:
+    """Carrega usuarios sob demanda (evita erro na importacao do modulo)."""
+    global _users_database, _users_load_error
+    if _users_database is not None:
+        return _users_database
+    try:
+        _users_database = _load_users_database()
+        _users_load_error = None
+    except Exception as exc:
+        _users_load_error = str(exc)
+        _users_database = {}
+    return _users_database
+
+
+def _ensure_users_configured() -> bool:
+    db = get_users_database()
+    if db:
+        return True
+
+    st.error("Configuracao de usuarios do portal ausente.")
+    st.markdown(
+        """
+**Para o administrador:**
+
+1. Abra **Manage app → Settings → Secrets** no Streamlit Cloud
+2. Adicione a chave `PORTAL_USERS_JSON` com o conteúdo do arquivo `dashboard/portal_users.json`
+3. Salve e aguarde o app reiniciar
+
+Localmente, copie `portal_users.example.json` para `portal_users.json` e preencha os usuarios.
+        """
+    )
+    if _users_load_error:
+        st.caption(_users_load_error)
+    return False
 
 
 def generate_strong_password(length: int = PASSWORD_LENGTH) -> str:
@@ -88,8 +138,9 @@ def verify_password(stored_password: str, provided_password: str) -> bool:
 
 def check_credentials(email: str, password: str) -> Optional[Dict]:
     """Verifica credenciais do usuário"""
-    if email in USERS_DATABASE:
-        user_data = USERS_DATABASE[email].copy()  # Fazer cópia para não modificar o original
+    users_db = get_users_database()
+    if email in users_db:
+        user_data = users_db[email].copy()  # Fazer cópia para não modificar o original
         if user_data["active"] and verify_password(user_data["password"], password):
             # Atualizar último login
             user_data["last_login"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -123,6 +174,9 @@ def get_current_user() -> Optional[Dict]:
 
 def login_form(dashboard_title: str = "Dashboard de Vendas") -> bool:
     """Exibe formulário de login avançado"""
+    if not _ensure_users_configured():
+        return False
+
     st.markdown(f"""
     <div style="text-align: center; padding: 1.5rem; background: linear-gradient(135deg, #1e3a8a 0%, #dc2626 100%); border-radius: 8px; margin-bottom: 1.5rem;">
         <h1 style="color: white; margin: 0; font-size: 1.8rem; font-weight: 600;">🔐 {dashboard_title}</h1>
@@ -226,7 +280,7 @@ def get_user_pages(user_data: Dict) -> List[str]:
         return custom_pages
 
     # Usuários cadastrados têm acesso total por padrão
-    if user_data.get('email') in USERS_DATABASE:
+    if user_data.get('email') in get_users_database():
         return ['vendas', 'leads', 'reservas', 'operacoes', 'administrativo', 'motivo_fora_prazo']
     
     # Usuários não cadastrados veem apenas Vendas
@@ -296,18 +350,19 @@ def get_all_users() -> Dict:
     """Retorna todos os usuários (apenas para admin)"""
     if not is_admin():
         return {}
-    return USERS_DATABASE
+    return get_users_database()
 
 def add_user(email: str, name: str, role: str, department: str) -> str:
     """Adiciona novo usuário (apenas para admin)"""
     if not is_admin():
         return "Acesso negado"
-    
-    if email in USERS_DATABASE:
+
+    users_db = get_users_database()
+    if email in users_db:
         return "Usuário já existe"
     
     password = generate_strong_password()
-    USERS_DATABASE[email] = {
+    users_db[email] = {
         "password": password,
         "role": role,
         "name": name,
@@ -323,8 +378,9 @@ def deactivate_user(email: str) -> str:
     if not is_admin():
         return "Acesso negado"
     
-    if email in USERS_DATABASE:
-        USERS_DATABASE[email]["active"] = False
+    users_db = get_users_database()
+    if email in users_db:
+        users_db[email]["active"] = False
         return "Usuário desativado"
     return "Usuário não encontrado"
 
@@ -334,7 +390,7 @@ def export_user_credentials() -> str:
         return "Acesso negado"
     
     credentials = []
-    for email, data in USERS_DATABASE.items():
+    for email, data in get_users_database().items():
         credentials.append(f"Email: {email}")
         credentials.append(f"Senha: {data['password']}")
         credentials.append(f"Nome: {data['name']}")
