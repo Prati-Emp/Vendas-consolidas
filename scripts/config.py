@@ -289,6 +289,18 @@ def get_api_config(api_name: str) -> Optional[APIConfig]:
             },
             rate_limit=60
         )
+
+    elif api_name == 'cv_times_imobiliarias':
+        return APIConfig(
+            name='CV Times Imobiliárias',
+            base_url='https://prati.cvcrm.com.br/api/v2/configuracoes/gestoes-time',
+            headers={
+                'accept': 'application/json',
+                'email': os.environ.get('CVCRM_EMAIL', ''),
+                'token': os.environ.get('CVCRM_TOKEN', '')
+            },
+            rate_limit=60
+        )
     
     return None
 
@@ -302,6 +314,7 @@ def get_all_rate_limits() -> Dict[str, int]:
         'cv_repasses_workflow': 60,
         'cv_vgv_empreendimentos': 60,
         'cv_comissoes': 60,
+        'cv_times_imobiliarias': 60,
         'sienge_vendas_realizadas': 50,
         'sienge_vendas_canceladas': 50,
         'sienge_contratos_suprimentos': 50,
