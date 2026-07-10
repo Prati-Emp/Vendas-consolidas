@@ -9,10 +9,15 @@ replicando a lógica das medidas padrão do Power BI:
   - Valor_Inadimplente = parcelas clientes vencidas (Data_Vencimento <= hoje)
   - % Inadimplência = Valor_Inadimplente / cr_valor_devido
 A foto é datada com o dia em que rodou (data_snapshot) e mes_referencia = fechamento do mês anterior.
+
+Filtro de parcelas: Tipo_Baixa IS NULL  OU  Tipo_Baixa = 'Recebimento'
+(inclui parcelas em aberto e as baixadas como Recebimento, alinhando ao total do relatório Sienge)
 """
 
 import asyncio
 
+# Parcelas consideradas: abertas (NULL) ou baixadas como Recebimento
+FILTRO_ABERTA = "(Tipo_Baixa IS NULL OR TRIM(Tipo_Baixa) = 'Recebimento')"
 # Clientes: exclui CP, MC, FI, FG
 FILTRO_TIPO_CONDICAO = "(Tipo_Condicao IS NULL OR TRIM(Tipo_Condicao) NOT IN ('CP','MC','FI','FG'))"
 # Caixa: apenas CP, MC, FI, FG
@@ -97,11 +102,11 @@ async def sistema_snapshot_inadimplencia():
         print(f"\n3. Calculando fechamento de {mes_ref} (data snapshot: {hoje_str})...")
 
         # Regra de inadimplência:
-        # - Parcelas abertas: Tipo_Baixa IS NULL
+        # - Parcelas consideradas: abertas (Tipo_Baixa IS NULL) OU Tipo_Baixa = 'Recebimento'
         # - Data_Vencimento < primeiro dia do mês seguinte ao mes_referencia (data_corte_inadimplente_str)
         # - Mesmo filtro de Tipo_Condicao utilizado nas medidas de CR/Inadimplência do Power BI
         cond_inad = (
-            "Tipo_Baixa IS NULL AND "
+            f"({FILTRO_ABERTA}) AND "
             f"TRY_CAST(Data_Vencimento AS DATE) < '{data_corte_inadimplente_str}'::DATE"
         )
 
@@ -111,8 +116,8 @@ async def sistema_snapshot_inadimplencia():
             (data_snapshot, mes_referencia, cod_centro_custo, centro_custo, cr_valor_devido, cr_valor_devido_caixa, cr_valor_devido_clientes_e_caixa, valor_inadimplente, pct_inadimplencia)
             WITH base AS (
                 SELECT
-                    SUM(CASE WHEN Tipo_Baixa IS NULL AND ({FILTRO_TIPO_CONDICAO}) THEN Valor_Corrigido ELSE 0 END) AS cr_clientes,
-                    SUM(CASE WHEN Tipo_Baixa IS NULL AND ({FILTRO_TIPO_CONDICAO_CAIXA}) THEN Valor_Corrigido ELSE 0 END) AS cr_caixa,
+                    SUM(CASE WHEN ({FILTRO_ABERTA}) AND ({FILTRO_TIPO_CONDICAO}) THEN Valor_Corrigido ELSE 0 END) AS cr_clientes,
+                    SUM(CASE WHEN ({FILTRO_ABERTA}) AND ({FILTRO_TIPO_CONDICAO_CAIXA}) THEN Valor_Corrigido ELSE 0 END) AS cr_caixa,
                     SUM(CASE WHEN {cond_inad} AND ({FILTRO_TIPO_CONDICAO}) THEN Valor_Corrigido ELSE 0 END) AS inad_clientes
                 FROM contas_recebidas_receber
             )
@@ -138,19 +143,19 @@ async def sistema_snapshot_inadimplencia():
                 '{mes_ref}'         AS mes_referencia,
                 Cod_Centro_Custo    AS cod_centro_custo,
                 Centro_Custo        AS centro_custo,
-                SUM(CASE WHEN Tipo_Baixa IS NULL AND ({FILTRO_TIPO_CONDICAO}) THEN Valor_Corrigido ELSE 0 END)
+                SUM(CASE WHEN ({FILTRO_ABERTA}) AND ({FILTRO_TIPO_CONDICAO}) THEN Valor_Corrigido ELSE 0 END)
                     AS cr_valor_devido,
-                SUM(CASE WHEN Tipo_Baixa IS NULL AND ({FILTRO_TIPO_CONDICAO_CAIXA}) THEN Valor_Corrigido ELSE 0 END)
+                SUM(CASE WHEN ({FILTRO_ABERTA}) AND ({FILTRO_TIPO_CONDICAO_CAIXA}) THEN Valor_Corrigido ELSE 0 END)
                     AS cr_valor_devido_caixa,
-                SUM(CASE WHEN Tipo_Baixa IS NULL AND ({FILTRO_TIPO_CONDICAO}) THEN Valor_Corrigido ELSE 0 END)
-                  + SUM(CASE WHEN Tipo_Baixa IS NULL AND ({FILTRO_TIPO_CONDICAO_CAIXA}) THEN Valor_Corrigido ELSE 0 END)
+                SUM(CASE WHEN ({FILTRO_ABERTA}) AND ({FILTRO_TIPO_CONDICAO}) THEN Valor_Corrigido ELSE 0 END)
+                  + SUM(CASE WHEN ({FILTRO_ABERTA}) AND ({FILTRO_TIPO_CONDICAO_CAIXA}) THEN Valor_Corrigido ELSE 0 END)
                     AS cr_valor_devido_clientes_e_caixa,
                 SUM(CASE WHEN {cond_inad} AND ({FILTRO_TIPO_CONDICAO}) THEN Valor_Corrigido ELSE 0 END)
                     AS valor_inadimplente,
                 CASE
-                    WHEN SUM(CASE WHEN Tipo_Baixa IS NULL AND ({FILTRO_TIPO_CONDICAO}) THEN Valor_Corrigido ELSE 0 END) = 0 THEN 0
+                    WHEN SUM(CASE WHEN ({FILTRO_ABERTA}) AND ({FILTRO_TIPO_CONDICAO}) THEN Valor_Corrigido ELSE 0 END) = 0 THEN 0
                     ELSE SUM(CASE WHEN {cond_inad} AND ({FILTRO_TIPO_CONDICAO}) THEN Valor_Corrigido ELSE 0 END)
-                       / SUM(CASE WHEN Tipo_Baixa IS NULL AND ({FILTRO_TIPO_CONDICAO}) THEN Valor_Corrigido ELSE 0 END)
+                       / SUM(CASE WHEN ({FILTRO_ABERTA}) AND ({FILTRO_TIPO_CONDICAO}) THEN Valor_Corrigido ELSE 0 END)
                 END AS pct_inadimplencia
             FROM contas_recebidas_receber
             WHERE Cod_Centro_Custo IS NOT NULL AND Centro_Custo IS NOT NULL
