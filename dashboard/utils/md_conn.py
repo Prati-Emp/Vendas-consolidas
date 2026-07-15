@@ -252,21 +252,37 @@ def build_optional_filters(midia: Optional[List[str]] = None,
     return filter_sql, params
 
 
-def get_imobiliaria_grupos() -> List[str]:
-    """Lista grupos de imobiliária distintos (vendas externas)."""
+def get_imobiliaria_grupos() -> List[Dict[str, Any]]:
+    """
+    Lista grupos de imobiliária distintos (vendas externas), com id e nome.
+    Preferência: id_imobiliaria_grupo das vendas (equivale ao idtime / meta).
+    """
     md_conn = get_md_connection()
     sql = """
-    SELECT DISTINCT TRIM(CAST(imobiliaria_grupo AS VARCHAR)) AS value
+    SELECT
+        TRY_CAST(id_imobiliaria_grupo AS BIGINT) AS id_imobiliaria_grupo,
+        TRIM(CAST(imobiliaria_grupo AS VARCHAR)) AS imobiliaria_grupo
     FROM informacoes_consolidadas.sienge_vendas_consolidadas
     WHERE value IS NOT NULL
       AND imobiliaria_grupo IS NOT NULL
       AND TRIM(CAST(imobiliaria_grupo AS VARCHAR)) <> ''
-    ORDER BY value
+    GROUP BY 1, 2
+    ORDER BY 2
     """
     result = md_conn.run_query(sql)
     if result.empty:
         return []
-    return result["value"].tolist()
+    grupos: List[Dict[str, Any]] = []
+    for _, row in result.iterrows():
+        grupos.append({
+            "id_imobiliaria_grupo": (
+                int(row["id_imobiliaria_grupo"])
+                if pd.notna(row["id_imobiliaria_grupo"])
+                else None
+            ),
+            "imobiliaria_grupo": str(row["imobiliaria_grupo"]).strip(),
+        })
+    return grupos
 
 def get_base_data(start_date: str, end_date: str, 
                  midia: Optional[List[str]] = None,
@@ -1153,19 +1169,16 @@ def get_metas_periodo_internas(start_date: str, end_date: str,
     return total_meta
 
 def get_metas_periodo_externas(start_date: str, end_date: str, 
-                               empreendimento: Optional[str] = None) -> float:
+                               empreendimento: Optional[str] = None,
+                               imobiliaria_grupo: Optional[str] = None,
+                               id_imobiliaria_grupo: Optional[int] = None) -> float:
     """
     Obtém meta total de vendas externas para o período selecionado.
     A partir de 2026, usa a tabela específica de metas externas.
     Até dez/2025, usa a meta geral (mesma lógica de get_metas_periodo).
-    
-    Args:
-        start_date: Data inicial
-        end_date: Data final
-        empreendimento: Nome do empreendimento (opcional)
-        
-    Returns:
-        Valor total da meta
+
+    Quando imobiliaria_grupo / id_imobiliaria_grupo é informado, filtra a meta
+    do time/grupo em metas_vendas_externas (apenas 2026+; não aplica rateio 70% de 2025).
     """
     md_conn = get_md_connection()
     
@@ -1177,6 +1190,10 @@ def get_metas_periodo_externas(start_date: str, end_date: str,
     # Verificar se há datas em 2026 ou depois
     tem_2026_ou_depois = end_dt.year >= 2026
     tem_2025_ou_antes = start_dt.year <= 2025
+    filtrar_por_grupo = (
+        (imobiliaria_grupo is not None and str(imobiliaria_grupo).strip() != "")
+        or id_imobiliaria_grupo is not None
+    )
     
     total_meta = 0.0
     meses_abreviacoes = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 
@@ -1195,8 +1212,8 @@ def get_metas_periodo_externas(start_date: str, end_date: str,
         if len(emp_result) > 0:
             enterprise_id = emp_result.iloc[0]['enterpriseId']
     
-    # Processar período de 2025 ou antes (usar meta geral)
-    if tem_2025_ou_antes:
+    # Processar período de 2025 ou antes (usar meta geral) — só quando NÃO filtra por grupo
+    if tem_2025_ou_antes and not filtrar_por_grupo:
         # Limitar end_date para dez/2025 se necessário
         periodo_2025_end = min(end_dt.date(), date(2025, 12, 31))
         
@@ -1267,20 +1284,26 @@ def get_metas_periodo_externas(start_date: str, end_date: str,
             colunas_ano = [f'"{mes}/{ano_curto}"' for mes in meses_abreviacoes]
             colunas_str = ', '.join(colunas_ano)
             
-            # Buscar da meta específica de vendas externas
+            where_parts = []
+            params_meta: List[Any] = []
             if enterprise_id:
-                sql = f"""
-                SELECT {colunas_str}
-                FROM informacoes_consolidadas.metas_vendas_externas
-                WHERE "Codigo empreendimento" = '{enterprise_id}'
-                """
-            else:
-                sql = f"""
-                SELECT {colunas_str}
-                FROM informacoes_consolidadas.metas_vendas_externas
-                """
+                where_parts.append('"Codigo empreendimento" = ?')
+                params_meta.append(enterprise_id)
+            if id_imobiliaria_grupo is not None:
+                where_parts.append("TRY_CAST(id_imobiliaria_grupo AS BIGINT) = ?")
+                params_meta.append(int(id_imobiliaria_grupo))
+            elif imobiliaria_grupo and str(imobiliaria_grupo).strip():
+                where_parts.append("TRIM(CAST(imobiliaria_grupo AS VARCHAR)) = ?")
+                params_meta.append(str(imobiliaria_grupo).strip())
+
+            where_sql = f" WHERE {' AND '.join(where_parts)}" if where_parts else ""
+            sql = f"""
+            SELECT {colunas_str}
+            FROM informacoes_consolidadas.metas_vendas_externas
+            {where_sql}
+            """
             
-            result = md_conn.run_query(sql)
+            result = md_conn.run_query(sql, params_meta if params_meta else None)
             
             # Processar meses do ano no período
             current_date = max(periodo_2026_start, date(ano, 1, 1))

@@ -806,7 +806,9 @@ def main():
         st.warning(f"Não foi possível carregar grupos de imobiliária: {e}")
         grupos_imobiliaria = []
 
-    tab_labels = ["Vendas Geral", "Vendas Internas", "Vendas Externas"] + grupos_imobiliaria
+    tab_labels = ["Vendas Geral", "Vendas Internas", "Vendas Externas"] + [
+        g["imobiliaria_grupo"] for g in grupos_imobiliaria
+    ]
     tabs = st.tabs(tab_labels)
 
     with tabs[0]:
@@ -849,17 +851,31 @@ def main():
         )
 
     for idx, grupo in enumerate(grupos_imobiliaria):
+        nome_grupo = grupo["imobiliaria_grupo"]
+        id_grupo = grupo.get("id_imobiliaria_grupo")
+        try:
+            meta_grupo = get_metas_periodo_externas(
+                data_inicial_str,
+                data_final_str,
+                empreendimento_selecionado,
+                imobiliaria_grupo=nome_grupo,
+                id_imobiliaria_grupo=id_grupo,
+            )
+        except Exception as e:
+            st.error(f"❌ Erro ao calcular metas do grupo {nome_grupo}: {e}")
+            meta_grupo = 0.0
+
         with tabs[3 + idx]:
             render_vendas_tab(
-                grupo,
+                nome_grupo,
                 data_inicial_str, data_final_str,
                 midia_selecionada, tipovenda_selecionada,
                 empreendimento_selecionado, corretor_selecionado,
                 imobiliaria_selecionada,
-                meta_total_periodo_externas,
+                meta_grupo,
                 meta_ratio=1.0,
                 mostrar_house_analysis=False,
-                imobiliaria_grupo=[grupo],
+                imobiliaria_grupo=[nome_grupo],
             )
 
     # Footer
