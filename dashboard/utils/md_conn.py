@@ -198,19 +198,17 @@ def build_optional_filters(midia: Optional[List[str]] = None,
                           tipovenda: Optional[List[str]] = None,
                           empreendimento: Optional[str] = None,
                           corretor: Optional[List[str]] = None,
-                          imobiliaria: Optional[List[str]] = None) -> tuple:
+                          imobiliaria: Optional[List[str]] = None,
+                          imobiliaria_grupo: Optional[List[str]] = None,
+                          filtro_grupo: Optional[str] = None) -> tuple:
     """
-    Constrói filtros opcionais para midia, tipovenda, empreendimento, corretor e imobiliaria.
-    
-    Args:
-        midia: Lista de mídias para filtrar
-        tipovenda: Lista de tipos de venda para filtrar
-        empreendimento: Nome do empreendimento para filtrar
-        corretor: Lista de corretores para filtrar
-        imobiliaria: Lista de imobiliárias para filtrar
-        
-    Returns:
-        Tuple com (filtro_sql, parametros)
+    Constrói filtros opcionais para midia, tipovenda, empreendimento, corretor,
+    imobiliaria e imobiliaria_grupo.
+
+    filtro_grupo:
+        - "interna": vendas sem grupo de imobiliária
+        - "externa": vendas com grupo preenchido
+        - None: sem filtro por presença de grupo
     """
     filters = []
     params = []
@@ -238,9 +236,37 @@ def build_optional_filters(midia: Optional[List[str]] = None,
         placeholders = ','.join(['?' for _ in imobiliaria])
         filters.append(f"COALESCE(NULLIF(TRIM(imobiliaria), ''), '—') IN ({placeholders})")
         params.extend(imobiliaria)
+
+    grupo_expr = "TRIM(CAST(imobiliaria_grupo AS VARCHAR))"
+    if filtro_grupo == "interna":
+        filters.append(f"(imobiliaria_grupo IS NULL OR {grupo_expr} = '')")
+    elif filtro_grupo == "externa":
+        filters.append(f"(imobiliaria_grupo IS NOT NULL AND {grupo_expr} <> '')")
+
+    if imobiliaria_grupo and len(imobiliaria_grupo) > 0:
+        placeholders = ','.join(['?' for _ in imobiliaria_grupo])
+        filters.append(f"{grupo_expr} IN ({placeholders})")
+        params.extend([str(g).strip() for g in imobiliaria_grupo])
     
     filter_sql = " AND ".join(filters) if filters else ""
     return filter_sql, params
+
+
+def get_imobiliaria_grupos() -> List[str]:
+    """Lista grupos de imobiliária distintos (vendas externas)."""
+    md_conn = get_md_connection()
+    sql = """
+    SELECT DISTINCT TRIM(CAST(imobiliaria_grupo AS VARCHAR)) AS value
+    FROM informacoes_consolidadas.sienge_vendas_consolidadas
+    WHERE value IS NOT NULL
+      AND imobiliaria_grupo IS NOT NULL
+      AND TRIM(CAST(imobiliaria_grupo AS VARCHAR)) <> ''
+    ORDER BY value
+    """
+    result = md_conn.run_query(sql)
+    if result.empty:
+        return []
+    return result["value"].tolist()
 
 def get_base_data(start_date: str, end_date: str, 
                  midia: Optional[List[str]] = None,
@@ -342,27 +368,20 @@ def get_vendas_with_metas(start_date: str, end_date: str,
                          tipovenda: Optional[List[str]] = None,
                          empreendimento: Optional[str] = None,
                          corretor: Optional[List[str]] = None,
-                         imobiliaria: Optional[List[str]] = None) -> pd.DataFrame:
+                         imobiliaria: Optional[List[str]] = None,
+                         imobiliaria_grupo: Optional[List[str]] = None,
+                         filtro_grupo: Optional[str] = None) -> pd.DataFrame:
     """
     Obtém vendas com metas correspondentes.
-    
-    Args:
-        start_date: Data inicial
-        end_date: Data final
-        midia: Lista de mídias (opcional)
-        tipovenda: Lista de tipos de venda (opcional)
-        empreendimento: Nome do empreendimento (opcional)
-        corretor: Lista de corretores (opcional)
-        imobiliaria: Lista de imobiliárias (opcional)
-        
-    Returns:
-        DataFrame com vendas e metas
     """
     md_conn = get_md_connection()
     
     # Construir filtros
     date_filter = build_date_filter(start_date, end_date)
-    optional_filter, params = build_optional_filters(midia, tipovenda, empreendimento, corretor, imobiliaria)
+    optional_filter, params = build_optional_filters(
+        midia, tipovenda, empreendimento, corretor, imobiliaria,
+        imobiliaria_grupo=imobiliaria_grupo, filtro_grupo=filtro_grupo,
+    )
     
     sql = f"""
     WITH vendas AS (
@@ -371,6 +390,7 @@ def get_vendas_with_metas(start_date: str, end_date: str,
             nome_empreendimento,
             COALESCE(NULLIF(TRIM(imobiliaria), ''), '—') AS imobiliaria,
             COALESCE(NULLIF(TRIM(corretor), ''), '—') AS corretor,
+            NULLIF(TRIM(CAST(imobiliaria_grupo AS VARCHAR)), '') AS imobiliaria_grupo,
             midia,
             tipovenda,
             contractDate::DATE AS contractDate,
@@ -442,25 +462,20 @@ def get_timeline_data(start_date: str, end_date: str,
                      tipovenda: Optional[List[str]] = None,
                      empreendimento: Optional[str] = None,
                      corretor: Optional[List[str]] = None,
-                     imobiliaria: Optional[List[str]] = None) -> pd.DataFrame:
+                     imobiliaria: Optional[List[str]] = None,
+                     imobiliaria_grupo: Optional[List[str]] = None,
+                     filtro_grupo: Optional[str] = None) -> pd.DataFrame:
     """
     Obtém dados para timeline mensal.
-    
-    Args:
-        start_date: Data inicial
-        end_date: Data final
-        midia: Lista de mídias (opcional)
-        tipovenda: Lista de tipos de venda (opcional)
-        empreendimento: Nome do empreendimento (opcional)
-        
-    Returns:
-        DataFrame com dados mensais agregados
     """
     md_conn = get_md_connection()
     
     # Construir filtros
     date_filter = build_date_filter(start_date, end_date)
-    optional_filter, params = build_optional_filters(midia, tipovenda, empreendimento, corretor, imobiliaria)
+    optional_filter, params = build_optional_filters(
+        midia, tipovenda, empreendimento, corretor, imobiliaria,
+        imobiliaria_grupo=imobiliaria_grupo, filtro_grupo=filtro_grupo,
+    )
     
     sql = f"""
     WITH base AS (
@@ -494,27 +509,20 @@ def get_kpis(start_date: str, end_date: str,
             tipovenda: Optional[List[str]] = None,
             empreendimento: Optional[str] = None,
             corretor: Optional[List[str]] = None,
-            imobiliaria: Optional[List[str]] = None) -> Dict[str, Any]:
+            imobiliaria: Optional[List[str]] = None,
+            imobiliaria_grupo: Optional[List[str]] = None,
+            filtro_grupo: Optional[str] = None) -> Dict[str, Any]:
     """
     Obtém KPIs principais.
-    
-    Args:
-        start_date: Data inicial
-        end_date: Data final
-        midia: Lista de mídias (opcional)
-        tipovenda: Lista de tipos de venda (opcional)
-        empreendimento: Nome do empreendimento (opcional)
-        corretor: Lista de corretores (opcional)
-        imobiliaria: Lista de imobiliárias (opcional)
-        
-    Returns:
-        Dicionário com KPIs
     """
     md_conn = get_md_connection()
     
     # Construir filtros
     date_filter = build_date_filter(start_date, end_date)
-    optional_filter, params = build_optional_filters(midia, tipovenda, empreendimento, corretor, imobiliaria)
+    optional_filter, params = build_optional_filters(
+        midia, tipovenda, empreendimento, corretor, imobiliaria,
+        imobiliaria_grupo=imobiliaria_grupo, filtro_grupo=filtro_grupo,
+    )
     
     sql = f"""
     WITH base AS (
@@ -1307,26 +1315,20 @@ def get_top_empreendimentos(start_date: str, end_date: str,
                            empreendimento: Optional[str] = None,
                            corretor: Optional[List[str]] = None,
                            imobiliaria: Optional[List[str]] = None,
-                           limit: int = 10) -> pd.DataFrame:
+                           limit: int = 10,
+                           imobiliaria_grupo: Optional[List[str]] = None,
+                           filtro_grupo: Optional[str] = None) -> pd.DataFrame:
     """
     Obtém top empreendimentos por valor e quantidade.
-    
-    Args:
-        start_date: Data inicial
-        end_date: Data final
-        midia: Lista de mídias (opcional)
-        tipovenda: Lista de tipos de venda (opcional)
-        empreendimento: Nome do empreendimento (opcional)
-        limit: Limite de resultados
-        
-    Returns:
-        DataFrame com top empreendimentos
     """
     md_conn = get_md_connection()
     
     # Construir filtros
     date_filter = build_date_filter(start_date, end_date)
-    optional_filter, params = build_optional_filters(midia, tipovenda, empreendimento, corretor, imobiliaria)
+    optional_filter, params = build_optional_filters(
+        midia, tipovenda, empreendimento, corretor, imobiliaria,
+        imobiliaria_grupo=imobiliaria_grupo, filtro_grupo=filtro_grupo,
+    )
     
     sql = f"""
     WITH base AS (
@@ -1482,27 +1484,20 @@ def get_analytics_corretor(start_date: str, end_date: str,
                           tipovenda: Optional[List[str]] = None,
                           empreendimento: Optional[str] = None,
                           corretor: Optional[List[str]] = None,
-                          imobiliaria: Optional[List[str]] = None) -> pd.DataFrame:
+                          imobiliaria: Optional[List[str]] = None,
+                          imobiliaria_grupo: Optional[List[str]] = None,
+                          filtro_grupo: Optional[str] = None) -> pd.DataFrame:
     """
     Obtém análise por corretor.
-    
-    Args:
-        start_date: Data inicial
-        end_date: Data final
-        midia: Lista de mídias (opcional)
-        tipovenda: Lista de tipos de venda (opcional)
-        empreendimento: Nome do empreendimento (opcional)
-        corretor: Lista de corretores (opcional)
-        imobiliaria: Lista de imobiliárias (opcional)
-        
-    Returns:
-        DataFrame com análise por corretor
     """
     md_conn = get_md_connection()
     
     # Construir filtros
     date_filter = build_date_filter(start_date, end_date)
-    optional_filter, params = build_optional_filters(midia, tipovenda, empreendimento, corretor, imobiliaria)
+    optional_filter, params = build_optional_filters(
+        midia, tipovenda, empreendimento, corretor, imobiliaria,
+        imobiliaria_grupo=imobiliaria_grupo, filtro_grupo=filtro_grupo,
+    )
     
     sql = f"""
     WITH base AS (
@@ -1564,27 +1559,20 @@ def get_analytics_imobiliaria(start_date: str, end_date: str,
                              tipovenda: Optional[List[str]] = None,
                              empreendimento: Optional[str] = None,
                              corretor: Optional[List[str]] = None,
-                             imobiliaria: Optional[List[str]] = None) -> pd.DataFrame:
+                             imobiliaria: Optional[List[str]] = None,
+                             imobiliaria_grupo: Optional[List[str]] = None,
+                             filtro_grupo: Optional[str] = None) -> pd.DataFrame:
     """
     Obtém análise por imobiliária.
-    
-    Args:
-        start_date: Data inicial
-        end_date: Data final
-        midia: Lista de mídias (opcional)
-        tipovenda: Lista de tipos de venda (opcional)
-        empreendimento: Nome do empreendimento (opcional)
-        corretor: Lista de corretores (opcional)
-        imobiliaria: Lista de imobiliárias (opcional)
-        
-    Returns:
-        DataFrame com análise por imobiliária
     """
     md_conn = get_md_connection()
     
     # Construir filtros
     date_filter = build_date_filter(start_date, end_date)
-    optional_filter, params = build_optional_filters(midia, tipovenda, empreendimento, corretor, imobiliaria)
+    optional_filter, params = build_optional_filters(
+        midia, tipovenda, empreendimento, corretor, imobiliaria,
+        imobiliaria_grupo=imobiliaria_grupo, filtro_grupo=filtro_grupo,
+    )
     
     sql = f"""
     SELECT 

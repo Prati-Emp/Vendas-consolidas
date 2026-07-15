@@ -8,7 +8,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime, date, timedelta
-from typing import List, Optional, Tuple
+from typing import List, Optional
 import sys
 from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
@@ -34,6 +34,7 @@ from utils.md_conn import (
     get_timeline_data,
     get_top_empreendimentos,
     get_unique_values,
+    get_imobiliaria_grupos,
     get_vendas_with_metas,
     get_metas_periodo,
     get_metas_periodo_internas,
@@ -111,16 +112,12 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
-def split_imobiliarias_por_origem(imobiliarias: List[str]) -> Tuple[List[str], List[str]]:
-    """Classifica imobiliárias em internas (Prati) e externas."""
-    internas, externas = [], []
-    for nome in imobiliarias:
-        nome_normalizado = str(nome or "").upper()
-        if "PRATI" in nome_normalizado:
-            internas.append(nome)
-        else:
-            externas.append(nome)
-    return internas, externas
+def classificar_origem_por_grupo(serie_grupo: pd.Series) -> pd.Series:
+    """Sem imobiliaria_grupo = interna; com grupo = externa."""
+    grupo = serie_grupo.fillna("").astype(str).str.strip()
+    return grupo.apply(
+        lambda g: "Venda Interna" if g == "" else "Venda Externa (Imobiliárias)"
+    )
 
 
 def resolve_imobiliaria_filter(
@@ -402,21 +399,30 @@ def render_top_empreendimentos(top_empreendimentos: pd.DataFrame, key_suffix: st
 def render_house_analysis(data_inicial: str, data_final: str, 
                          midia_selecionada: List[str], tipovenda_selecionada: List[str],
                          empreendimento_selecionado: str, corretor_selecionado: List[str],
-                         imobiliaria_selecionada: List[str], key_suffix: str = ""):
+                         imobiliaria_selecionada: List[str], key_suffix: str = "",
+                         imobiliaria_grupo: Optional[List[str]] = None,
+                         filtro_grupo: Optional[str] = None):
     """Renderiza análise House vs Imobiliárias."""
-    st.subheader("🏠 Análise Vendas House x Imobiliárias")
+    st.subheader("🏠 Análise Vendas Internas x Externas")
     
     # Obter dados com análise de origem
-    vendas_data = get_vendas_with_metas(data_inicial, data_final, midia_selecionada, tipovenda_selecionada, empreendimento_selecionado, corretor_selecionado, imobiliaria_selecionada)
+    vendas_data = get_vendas_with_metas(
+        data_inicial, data_final, midia_selecionada, tipovenda_selecionada,
+        empreendimento_selecionado, corretor_selecionado, imobiliaria_selecionada,
+        imobiliaria_grupo=imobiliaria_grupo, filtro_grupo=filtro_grupo,
+    )
     
     if vendas_data.empty:
         st.warning("Nenhum dado disponível para o período selecionado.")
         return
     
-    # Classificar vendas como House (Prati) ou Externa
-    vendas_data['tipo_venda_origem'] = vendas_data['imobiliaria'].apply(
-        lambda x: 'Venda Interna (Prati)' if 'PRATI' in str(x).upper() else 'Venda Externa (Imobiliárias)'
-    )
+    # Classificar por imobiliaria_grupo (null = interna)
+    if "imobiliaria_grupo" in vendas_data.columns:
+        vendas_data["tipo_venda_origem"] = classificar_origem_por_grupo(vendas_data["imobiliaria_grupo"])
+    else:
+        vendas_data["tipo_venda_origem"] = vendas_data["imobiliaria"].apply(
+            lambda x: "Venda Interna" if "PRATI" in str(x).upper() else "Venda Externa (Imobiliárias)"
+        )
     
     # Análise agregada
     analise_origem = vendas_data.groupby('tipo_venda_origem').agg({
@@ -445,33 +451,42 @@ def render_house_analysis(data_inicial: str, data_final: str,
     with col2:
         # Taxa House (calculada por valor, não por quantidade)
         total_valor = vendas_data['value'].sum()
-        valor_house = vendas_data[vendas_data['tipo_venda_origem'] == 'Venda Interna (Prati)']['value'].sum()
+        valor_house = vendas_data[vendas_data['tipo_venda_origem'] == 'Venda Interna']['value'].sum()
         taxa_house = (valor_house / total_valor * 100) if total_valor > 0 else 0
         
         st.metric(
             "Taxa House",
             f"{taxa_house:.1f}%",
-            help=f"Percentual de vendas e mútuos realizados pela Prati: {taxa_house:.1f}%\n\nRegra: Calculado pelo valor das vendas"
+            help=f"Percentual de vendas internas (sem imobiliaria_grupo): {taxa_house:.1f}%\n\nRegra: Calculado pelo valor das vendas"
         )
 
 def render_empreendimentos_estratificados(data_inicial: str, data_final: str,
                                          midia_selecionada: List[str], tipovenda_selecionada: List[str],
                                          empreendimento_selecionado: str, corretor_selecionado: List[str],
-                                         imobiliaria_selecionada: List[str], key_suffix: str = ""):
+                                         imobiliaria_selecionada: List[str], key_suffix: str = "",
+                                         imobiliaria_grupo: Optional[List[str]] = None,
+                                         filtro_grupo: Optional[str] = None):
     """Renderiza tabela estratificada por empreendimento."""
-    st.subheader("🏢 Vendas por Empreendimento (House x Externa)")
+    st.subheader("🏢 Vendas por Empreendimento (Interna x Externa)")
     
     # Obter dados
-    vendas_data = get_vendas_with_metas(data_inicial, data_final, midia_selecionada, tipovenda_selecionada, empreendimento_selecionado, corretor_selecionado, imobiliaria_selecionada)
+    vendas_data = get_vendas_with_metas(
+        data_inicial, data_final, midia_selecionada, tipovenda_selecionada,
+        empreendimento_selecionado, corretor_selecionado, imobiliaria_selecionada,
+        imobiliaria_grupo=imobiliaria_grupo, filtro_grupo=filtro_grupo,
+    )
     
     if vendas_data.empty:
         st.warning("Nenhum dado disponível para o período selecionado.")
         return
     
     # Classificar vendas
-    vendas_data['tipo_venda_origem'] = vendas_data['imobiliaria'].apply(
-        lambda x: 'Venda Interna (Prati)' if 'PRATI' in str(x).upper() else 'Venda Externa (Imobiliárias)'
-    )
+    if "imobiliaria_grupo" in vendas_data.columns:
+        vendas_data["tipo_venda_origem"] = classificar_origem_por_grupo(vendas_data["imobiliaria_grupo"])
+    else:
+        vendas_data["tipo_venda_origem"] = vendas_data["imobiliaria"].apply(
+            lambda x: "Venda Interna" if "PRATI" in str(x).upper() else "Venda Externa (Imobiliárias)"
+        )
     
     # Criar pivot table
     quantidade = vendas_data.pivot_table(
@@ -495,9 +510,9 @@ def render_empreendimentos_estratificados(data_inicial: str, data_final: str,
     estratificacao['Empreendimento'] = quantidade['nome_empreendimento']
     
     # Adicionar colunas com tratamento para colunas que podem não existir
-    estratificacao['Quantidade (Interna)'] = quantidade.get('Venda Interna (Prati)', 0)
+    estratificacao['Quantidade (Interna)'] = quantidade.get('Venda Interna', 0)
     estratificacao['Quantidade (Externa)'] = quantidade.get('Venda Externa (Imobiliárias)', 0)
-    valor_interno = valor.get('Venda Interna (Prati)', 0)
+    valor_interno = valor.get('Venda Interna', 0)
     valor_externo = valor.get('Venda Externa (Imobiliárias)', 0)
     estratificacao['Valor Total (Interna)'] = valor_interno
     estratificacao['Valor Total (Externa)'] = valor_externo
@@ -516,13 +531,13 @@ def render_empreendimentos_estratificados(data_inicial: str, data_final: str,
     estratificacao['Taxa House (%)'] = estratificacao['Taxa House (%)'].apply(lambda v: f"{v:.1f}%")
     
     # Calcular totais
-    total_valor_interno = vendas_data[vendas_data['tipo_venda_origem'] == 'Venda Interna (Prati)']['value'].sum()
+    total_valor_interno = vendas_data[vendas_data['tipo_venda_origem'] == 'Venda Interna']['value'].sum()
     total_valor_externo = vendas_data[vendas_data['tipo_venda_origem'] == 'Venda Externa (Imobiliárias)']['value'].sum()
     taxa_house_total = (total_valor_interno / (total_valor_interno + total_valor_externo) * 100) if (total_valor_interno + total_valor_externo) > 0 else 0
 
     totais = pd.DataFrame([{
         'Empreendimento': 'Total',
-        'Quantidade (Interna)': vendas_data[vendas_data['tipo_venda_origem'] == 'Venda Interna (Prati)']['value'].count(),
+        'Quantidade (Interna)': vendas_data[vendas_data['tipo_venda_origem'] == 'Venda Interna']['value'].count(),
         'Quantidade (Externa)': vendas_data[vendas_data['tipo_venda_origem'] == 'Venda Externa (Imobiliárias)']['value'].count(),
         'Valor Total (Interna)': format_currency(total_valor_interno),
         'Valor Total (Externa)': format_currency(total_valor_externo),
@@ -558,8 +573,10 @@ def render_vendas_tab(
     mostrar_analise_imobiliaria: bool = True,
     mostrar_house_analysis: bool = True,
     mostrar_vpl_imobiliaria: bool = True,
+    filtro_grupo: Optional[str] = None,
+    imobiliaria_grupo: Optional[List[str]] = None,
 ):
-    """Renderiza o conteúdo completo de uma aba (geral, interna ou externa)."""
+    """Renderiza o conteúdo completo de uma aba (geral, interna, externa ou grupo)."""
     imobiliaria_filter = resolve_imobiliaria_filter(imobiliaria_selecionada, imobiliarias_override)
 
     if imobiliarias_override is not None and not imobiliarias_override:
@@ -578,20 +595,24 @@ def render_vendas_tab(
                 data_inicial, data_final,
                 midia_selecionada, tipovenda_selecionada,
                 empreendimento_selecionado, corretor_selecionado,
-                imobiliaria_param
+                imobiliaria_param,
+                imobiliaria_grupo=imobiliaria_grupo,
+                filtro_grupo=filtro_grupo,
             )
             top_empreendimentos = get_top_empreendimentos(
                 data_inicial, data_final,
                 midia_selecionada, tipovenda_selecionada,
                 empreendimento_selecionado, corretor_selecionado,
-                imobiliaria_param, limit=10
+                imobiliaria_param, limit=10,
+                imobiliaria_grupo=imobiliaria_grupo,
+                filtro_grupo=filtro_grupo,
             )
     except Exception as e:
         st.error(f"❌ Erro ao carregar dados de {titulo_tab}: {str(e)}")
         return
 
     # Criar key_suffix único baseado no título da aba
-    key_suffix = titulo_tab.lower().replace(" ", "_")
+    key_suffix = titulo_tab.lower().replace(" ", "_").replace("-", "_")
     
     render_kpis(kpis)
     st.markdown("---")
@@ -610,7 +631,9 @@ def render_vendas_tab(
             midia_selecionada, tipovenda_selecionada,
             empreendimento_selecionado, corretor_selecionado,
             imobiliaria_list,
-            key_suffix=key_suffix
+            key_suffix=key_suffix,
+            imobiliaria_grupo=imobiliaria_grupo,
+            filtro_grupo=filtro_grupo,
         )
         st.markdown("---")
 
@@ -619,7 +642,9 @@ def render_vendas_tab(
         midia_selecionada, tipovenda_selecionada,
         empreendimento_selecionado, corretor_selecionado,
         imobiliaria_list,
-        key_suffix=key_suffix
+        key_suffix=key_suffix,
+        imobiliaria_grupo=imobiliaria_grupo,
+        filtro_grupo=filtro_grupo,
     )
     st.markdown("---")
 
@@ -629,7 +654,9 @@ def render_vendas_tab(
         empreendimento_selecionado, corretor_selecionado,
         imobiliaria_list,
         mostrar_vpl_imobiliaria=mostrar_vpl_imobiliaria,
-        key_suffix=key_suffix
+        key_suffix=key_suffix,
+        imobiliaria_grupo=imobiliaria_grupo,
+        filtro_grupo=filtro_grupo,
     )
     st.markdown("---")
 
@@ -639,7 +666,9 @@ def render_vendas_tab(
             midia_selecionada, tipovenda_selecionada,
             empreendimento_selecionado, corretor_selecionado,
             imobiliaria_list,
-            key_suffix=key_suffix
+            key_suffix=key_suffix,
+            imobiliaria_grupo=imobiliaria_grupo,
+            filtro_grupo=filtro_grupo,
         )
 
 
@@ -771,11 +800,16 @@ def main():
         st.error(f"❌ Erro ao calcular metas externas: {str(e)}")
         meta_total_periodo_externas = 0.0
 
-    imobiliarias_internas, imobiliarias_externas = split_imobiliarias_por_origem(imobiliarias_disponiveis)
+    try:
+        grupos_imobiliaria = get_imobiliaria_grupos()
+    except Exception as e:
+        st.warning(f"Não foi possível carregar grupos de imobiliária: {e}")
+        grupos_imobiliaria = []
 
-    tab_geral, tab_interna, tab_externa = st.tabs(["Vendas Geral", "Vendas Internas", "Vendas Externas"])
+    tab_labels = ["Vendas Geral", "Vendas Internas", "Vendas Externas"] + grupos_imobiliaria
+    tabs = st.tabs(tab_labels)
 
-    with tab_geral:
+    with tabs[0]:
         render_vendas_tab(
             "Vendas Geral",
             data_inicial_str, data_final_str,
@@ -786,7 +820,7 @@ def main():
             meta_ratio=1.0
         )
 
-    with tab_interna:
+    with tabs[1]:
         render_vendas_tab(
             "Vendas Internas",
             data_inicial_str, data_final_str,
@@ -794,14 +828,14 @@ def main():
             empreendimento_selecionado, corretor_selecionado,
             imobiliaria_selecionada,
             meta_total_periodo_internas,
-            imobiliarias_override=imobiliarias_internas,
-            meta_ratio=1.0,  # Meta já vem calculada corretamente (30% em 2025, 100% da meta específica em 2026+)
+            meta_ratio=1.0,
             mostrar_analise_imobiliaria=False,
             mostrar_house_analysis=False,
-            mostrar_vpl_imobiliaria=False
+            mostrar_vpl_imobiliaria=False,
+            filtro_grupo="interna",
         )
 
-    with tab_externa:
+    with tabs[2]:
         render_vendas_tab(
             "Vendas Externas",
             data_inicial_str, data_final_str,
@@ -809,10 +843,24 @@ def main():
             empreendimento_selecionado, corretor_selecionado,
             imobiliaria_selecionada,
             meta_total_periodo_externas,
-            imobiliarias_override=imobiliarias_externas,
-            meta_ratio=1.0,  # Meta já vem calculada corretamente (70% em 2025, 100% da meta específica em 2026+)
-            mostrar_house_analysis=False
+            meta_ratio=1.0,
+            mostrar_house_analysis=False,
+            filtro_grupo="externa",
         )
+
+    for idx, grupo in enumerate(grupos_imobiliaria):
+        with tabs[3 + idx]:
+            render_vendas_tab(
+                grupo,
+                data_inicial_str, data_final_str,
+                midia_selecionada, tipovenda_selecionada,
+                empreendimento_selecionado, corretor_selecionado,
+                imobiliaria_selecionada,
+                meta_total_periodo_externas,
+                meta_ratio=1.0,
+                mostrar_house_analysis=False,
+                imobiliaria_grupo=[grupo],
+            )
 
     # Footer
     st.markdown("---")
@@ -829,7 +877,9 @@ def render_analytics_corretor(data_inicial: str, data_final: str,
                              empreendimento_selecionado: str, corretor_selecionado: List[str],
                              imobiliaria_selecionada: List[str],
                              mostrar_vpl_imobiliaria: bool = True,
-                             key_suffix: str = ""):
+                             key_suffix: str = "",
+                             imobiliaria_grupo: Optional[List[str]] = None,
+                             filtro_grupo: Optional[str] = None):
     """Renderiza quadro analítico por corretor."""
     st.subheader("👨‍💼 Análise por Corretor")
     
@@ -838,12 +888,18 @@ def render_analytics_corretor(data_inicial: str, data_final: str,
         tipovenda_selecionada,
         empreendimento_selecionado,
         corretor_selecionado,
-        imobiliaria_selecionada
+        imobiliaria_selecionada,
+        imobiliaria_grupo=imobiliaria_grupo,
+        filtro_grupo=filtro_grupo,
     )
     
     # Obter dados
     try:
-        analytics_data = get_analytics_corretor(data_inicial, data_final, midia_selecionada, tipovenda_selecionada, empreendimento_selecionado, corretor_selecionado, imobiliaria_selecionada)
+        analytics_data = get_analytics_corretor(
+            data_inicial, data_final, midia_selecionada, tipovenda_selecionada,
+            empreendimento_selecionado, corretor_selecionado, imobiliaria_selecionada,
+            imobiliaria_grupo=imobiliaria_grupo, filtro_grupo=filtro_grupo,
+        )
         
         if analytics_data.empty:
             st.warning("Nenhum dado disponível para análise por corretor.")
@@ -1123,13 +1179,19 @@ def render_analytics_imobiliaria(data_inicial: str, data_final: str,
                                  midia_selecionada: List[str], tipovenda_selecionada: List[str],
                                  empreendimento_selecionado: str, corretor_selecionado: List[str],
                                  imobiliaria_selecionada: List[str],
-                                 key_suffix: str = ""):
+                                 key_suffix: str = "",
+                                 imobiliaria_grupo: Optional[List[str]] = None,
+                                 filtro_grupo: Optional[str] = None):
     """Renderiza quadro analítico por imobiliária."""
     st.subheader("🏢 Análise por Imobiliária")
     
     # Obter dados
     try:
-        analytics_data = get_analytics_imobiliaria(data_inicial, data_final, midia_selecionada, tipovenda_selecionada, empreendimento_selecionado, corretor_selecionado, imobiliaria_selecionada)
+        analytics_data = get_analytics_imobiliaria(
+            data_inicial, data_final, midia_selecionada, tipovenda_selecionada,
+            empreendimento_selecionado, corretor_selecionado, imobiliaria_selecionada,
+            imobiliaria_grupo=imobiliaria_grupo, filtro_grupo=filtro_grupo,
+        )
         
         if analytics_data.empty:
             st.warning("Nenhum dado disponível para análise por imobiliária.")
