@@ -372,23 +372,45 @@ def processar_dados_cv_leads(dados: List[Dict[str, Any]]) -> pd.DataFrame:
     
     logger.info("Colunas de status criadas com lógica hierárquica aplicada")
 
-    # Criar coluna data_consolidada com fallback
-    logger.info("Criando coluna 'data_consolidada' com fallback...")
-    
-    if 'data_reativacao' in df.columns and 'Data_cad' in df.columns:
-        # Inicializar com data_reativacao
-        df['data_consolidada'] = df['data_reativacao']
-        
-        # Aplicar fallback para Data_cad quando data_reativacao estiver vazio
-        mask_vazio = (df['data_reativacao'].isna()) | (df['data_reativacao'] == '') | (df['data_reativacao'] == 'NaT')
-        df.loc[mask_vazio, 'data_consolidada'] = df.loc[mask_vazio, 'Data_cad']
-        
-        # Converter para datetime se necessário
-        df['data_consolidada'] = pd.to_datetime(df['data_consolidada'], errors='coerce')
-        
-        logger.info("Coluna 'data_consolidada' criada com fallback para Data_cad")
+    # Criar coluna data_consolidada: data mais recente entre
+    # ultima_data_conversao, data_reativacao e Data_cad.
+    # Assim a conversão prevalece quando for mais recente que as demais.
+    logger.info(
+        "Criando coluna 'data_consolidada' "
+        "(mais recente entre conversao, reativacao e cadastro)..."
+    )
+
+    if 'Data_cad' in df.columns:
+        candidatos = pd.DataFrame(index=df.index)
+        candidatos['cadastro'] = pd.to_datetime(df['Data_cad'], errors='coerce')
+
+        if 'data_reativacao' in df.columns:
+            candidatos['reativacao'] = pd.to_datetime(
+                df['data_reativacao'], errors='coerce'
+            )
+        else:
+            candidatos['reativacao'] = pd.NaT
+
+        if 'ultima_data_conversao' in df.columns:
+            candidatos['conversao'] = pd.to_datetime(
+                df['ultima_data_conversao'], errors='coerce'
+            )
+        else:
+            candidatos['conversao'] = pd.NaT
+
+        # Mais recente entre as três; valores nulos são ignorados no max
+        df['data_consolidada'] = candidatos[
+            ['conversao', 'reativacao', 'cadastro']
+        ].max(axis=1)
+
+        logger.info(
+            "Coluna 'data_consolidada' criada "
+            "(max entre conversao, reativacao e cadastro)"
+        )
     else:
-        logger.warning("Colunas 'data_reativacao' ou 'Data_cad' não encontradas para criar data_consolidada")
+        logger.warning(
+            "Coluna 'Data_cad' não encontrada para criar data_consolidada"
+        )
 
     # Criar coluna motivo_cancelamento_consolidada com tratamento de texto
     logger.info("Criando coluna 'motivo_cancelamento_consolidada' com tratamento de texto...")
