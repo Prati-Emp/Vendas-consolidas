@@ -6,7 +6,16 @@
 - etapa sintetica para leads SEM workflow (situacao atual do cv_leads)
 - etapa final sintetica quando Situacao atual e desfecho
   (Venda realizada / Descartado) e nao existe no workflow
-- data_entrada/saida, ciclo, desfecho, ordem
+- data_entrada/saida, ciclos, checkpoints (venda/descarte como EVENTO)
+
+Checkpoints / peculiaridade CV workflow tempo:
+- Em "Venda Realizada", o data_cad da API muitas vezes e a SAIDA da venda
+  (ex.: voltou a Aguardando em 02/07). A ENTRADA na venda e a data da etapa
+  anterior (ex.: Com Reserva em 31/01/2025). data_evento / data_entrada_etapa
+  da venda usam essa correcao; data_saida_venda / data_registro_etapa guardam
+  o timestamp bruto da API.
+- Apos sair da venda, n_ciclo_lead sobe e o fluxo recomeça até novo
+  checkpoint (descarte/venda).
 
 Tambem remove views antigas/nao utilizadas, se existirem:
 - cv_leads_consolidado
@@ -63,7 +72,7 @@ WITH leads AS (
         COALESCE(
             TRY_CAST(data_reativacao AS TIMESTAMP),
             TRY_CAST(Data_cad AS TIMESTAMP)
-        ) AS data_inicio_ciclo
+        ) AS data_inicio_ciclo_cadastro
     FROM reservas.main.cv_leads
 ),
 wf_raw AS (
@@ -105,8 +114,8 @@ sem_workflow_sintetico AS (
         CAST(NULL AS VARCHAR) AS sigla,
         CAST(NULL AS BIGINT) AS tempo_minutos,
         CAST(NULL AS VARCHAR) AS ativo_wf,
-        l.data_inicio_ciclo AS data_entrada_etapa,
-        l.data_inicio_ciclo AS referencia_data_wf,
+        l.data_inicio_ciclo_cadastro AS data_entrada_etapa,
+        l.data_inicio_ciclo_cadastro AS referencia_data_wf,
         CAST(NULL AS VARCHAR) AS referencia_wf,
         'cv_leads' AS origem_etapa
     FROM leads AS l
@@ -141,13 +150,19 @@ etapas AS (
 etapas_ord AS (
     SELECT
         e.*,
-        CASE WHEN e.origem_etapa = 'cv_leads' THEN 1 ELSE 0 END AS ord_origem,
+        e.data_entrada_etapa AS data_registro_etapa,
         ROW_NUMBER() OVER (
             PARTITION BY e.idlead
             ORDER BY e.data_entrada_etapa ASC NULLS LAST,
                      CASE WHEN e.origem_etapa = 'cv_leads' THEN 1 ELSE 0 END ASC,
                      COALESCE(e.idtempo, 999999999999) ASC
         ) AS n_etapa,
+        LAG(e.data_entrada_etapa) OVER (
+            PARTITION BY e.idlead
+            ORDER BY e.data_entrada_etapa ASC NULLS LAST,
+                     CASE WHEN e.origem_etapa = 'cv_leads' THEN 1 ELSE 0 END ASC,
+                     COALESCE(e.idtempo, 999999999999) ASC
+        ) AS data_etapa_anterior,
         LEAD(e.data_entrada_etapa) OVER (
             PARTITION BY e.idlead
             ORDER BY e.data_entrada_etapa ASC NULLS LAST,
@@ -162,10 +177,76 @@ etapas_ord AS (
         ) AS rn_desc
     FROM etapas AS e
 ),
+etapas_evt AS (
+    SELECT
+        o.* EXCLUDE (data_entrada_etapa),
+        CASE
+            WHEN lower(trim(o.situacao_etapa)) = 'venda realizada' THEN 'venda'
+            WHEN lower(trim(o.situacao_etapa)) = 'descartado' THEN 'descarte'
+            ELSE NULL
+        END AS tipo_evento,
+        (lower(trim(o.situacao_etapa)) IN {DESFECHOS_SQL}) AS flag_checkpoint,
+        -- CV workflow: em "Venda Realizada", data_cad costuma ser a SAIDA da venda
+        -- (ex.: voltou a Aguardando). A ENTRADA na venda e a data da etapa anterior
+        -- (ex.: Com Reserva em 31/01/2025 no lead 4632).
+        CASE
+            WHEN lower(trim(o.situacao_etapa)) = 'venda realizada'
+                THEN COALESCE(o.data_etapa_anterior, o.data_registro_etapa)
+            ELSE o.data_registro_etapa
+        END AS data_entrada_etapa,
+        CASE
+            WHEN lower(trim(o.situacao_etapa)) = 'venda realizada'
+                THEN COALESCE(o.data_etapa_anterior, o.data_registro_etapa)
+            WHEN lower(trim(o.situacao_etapa)) = 'descartado'
+                THEN o.data_registro_etapa
+            ELSE NULL
+        END AS data_evento,
+        CASE
+            WHEN lower(trim(o.situacao_etapa)) = 'venda realizada'
+                 AND o.data_proxima_etapa IS NOT NULL
+                THEN o.data_registro_etapa
+            ELSE NULL
+        END AS data_saida_venda
+    FROM etapas_ord AS o
+),
+etapas_ciclo AS (
+    SELECT
+        e.*,
+        1 + COALESCE(
+            SUM(CASE WHEN e.flag_checkpoint THEN 1 ELSE 0 END) OVER (
+                PARTITION BY e.idlead
+                ORDER BY e.n_etapa
+                ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
+            ),
+            0
+        ) AS n_ciclo_lead,
+        -- Inicio DESTE ciclo (por linha): cadastro, ou saida do checkpoint anterior
+        MAX(
+            CASE
+                WHEN e.flag_checkpoint THEN COALESCE(e.data_saida_venda, e.data_registro_etapa)
+                ELSE NULL
+            END
+        ) OVER (
+            PARTITION BY e.idlead
+            ORDER BY e.n_etapa
+            ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
+        ) AS data_fim_checkpoint_anterior
+    FROM etapas_evt AS e
+),
+agg_lead AS (
+    SELECT
+        idlead,
+        MAX(n_ciclo_lead) AS n_ciclo_atual,
+        MAX(CASE WHEN tipo_evento = 'venda' THEN data_evento END) AS data_ultima_venda,
+        MAX(CASE WHEN tipo_evento = 'descarte' THEN data_evento END) AS data_ultimo_descarte,
+        COUNT(*) FILTER (WHERE tipo_evento = 'venda') AS qtd_vendas_historico,
+        COUNT(*) FILTER (WHERE tipo_evento = 'descarte') AS qtd_descartes_historico
+    FROM etapas_ciclo
+    GROUP BY idlead
+),
 ciclo AS (
     SELECT
         l.idlead,
-        l.data_inicio_ciclo,
         CASE
             WHEN l.situacao_atual_norm = 'venda realizada' THEN 'venda'
             WHEN l.situacao_atual_norm = 'descartado' THEN 'descartado'
@@ -177,18 +258,26 @@ ciclo AS (
                 THEN l.data_cancelamento
             WHEN l.situacao_atual_norm IN {DESFECHOS_SQL}
                 THEN (
-                    SELECT MAX(o.data_entrada_etapa)
-                    FROM etapas_ord AS o
-                    WHERE o.idlead = l.idlead
-                      AND lower(trim(o.situacao_etapa)) = l.situacao_atual_norm
+                    SELECT MAX(ec.data_evento)
+                    FROM etapas_ciclo AS ec
+                    WHERE ec.idlead = l.idlead
+                      AND lower(trim(ec.situacao_etapa)) = l.situacao_atual_norm
                 )
             ELSE NULL
-        END AS data_desfecho
+        END AS data_desfecho,
+        a.n_ciclo_atual,
+        a.data_ultima_venda,
+        a.data_ultimo_descarte,
+        a.qtd_vendas_historico,
+        a.qtd_descartes_historico,
+        l.data_inicio_ciclo_cadastro
     FROM leads AS l
+    LEFT JOIN agg_lead AS a ON l.idlead = a.idlead
 )
 SELECT
     o.idlead,
     o.n_etapa,
+    o.n_ciclo_lead,
     o.idtempo,
     o.idsituacao,
     o.situacao_etapa,
@@ -196,8 +285,15 @@ SELECT
     o.tempo_minutos,
     o.ativo_wf,
     o.origem_etapa,
+    o.tipo_evento,
+    o.flag_checkpoint,
+    o.data_evento,
+    o.data_registro_etapa,
+    o.data_saida_venda,
+    (NOT o.flag_checkpoint) AS flag_etapa_fluxo,
     o.data_entrada_etapa,
     CASE
+        WHEN o.data_saida_venda IS NOT NULL THEN o.data_saida_venda
         WHEN o.data_proxima_etapa IS NOT NULL THEN o.data_proxima_etapa
         WHEN c.tipo_desfecho <> 'em_aberto'
              AND lower(trim(o.situacao_etapa)) = lower(trim(l.situacao_atual))
@@ -207,10 +303,15 @@ SELECT
         ELSE NULL
     END AS data_saida_etapa,
     (o.rn_desc = 1) AS flag_etapa_final,
-    c.data_inicio_ciclo,
+    COALESCE(o.data_fim_checkpoint_anterior, c.data_inicio_ciclo_cadastro) AS data_inicio_ciclo,
     c.data_desfecho,
     c.tipo_desfecho,
-    (o.data_entrada_etapa IS NULL OR o.data_entrada_etapa >= c.data_inicio_ciclo) AS flag_no_ciclo_atual,
+    c.n_ciclo_atual,
+    (o.n_ciclo_lead = c.n_ciclo_atual) AS flag_no_ciclo_atual,
+    c.data_ultima_venda,
+    c.data_ultimo_descarte,
+    c.qtd_vendas_historico,
+    c.qtd_descartes_historico,
     COALESCE(c.data_desfecho, o.data_entrada_etapa) AS data_consolidada,
     l.situacao_atual,
     l.nome_situacao_anterior_lead,
@@ -247,7 +348,7 @@ SELECT
     l.data_consolidada_legado,
     o.referencia_data_wf,
     o.referencia_wf
-FROM etapas_ord AS o
+FROM etapas_ciclo AS o
 INNER JOIN leads AS l ON o.idlead = l.idlead
 LEFT JOIN ciclo AS c ON o.idlead = c.idlead
 """
@@ -306,7 +407,23 @@ def main():
         .to_string(index=False)
     )
 
-    print("\n4) Nomes antigos ainda existem?")
+    print("\n4) Checkpoints jul/2026...")
+    print(
+        conn.sql(
+            """
+            SELECT
+              count(DISTINCT idlead) FILTER (WHERE tipo_evento = 'venda') AS vendas_evento_jul,
+              count(DISTINCT idlead) FILTER (WHERE tipo_evento = 'descarte') AS descartes_evento_jul
+            FROM cv_leads_workflow_historico_situacao
+            WHERE CAST(data_evento AS DATE)
+                  BETWEEN DATE '2026-07-01' AND DATE '2026-07-31'
+            """
+        )
+        .fetchdf()
+        .to_string(index=False)
+    )
+
+    print("\n5) Nomes antigos ainda existem?")
     still = conn.sql(
         """
         SELECT table_name
