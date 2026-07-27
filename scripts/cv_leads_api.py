@@ -141,15 +141,20 @@ class CVLeadsAPIClient:
                             "Imobiliaria": item.get("imobiliaria"),
                             "nome_situacao_anterior_lead": item.get("nome_situacao_anterior_lead"),
                             "gestor": item.get("gestor"),
+                            "empreendimento": item.get("empreendimento"),
                             "empreendimento_ultimo": item.get("empreendimento_ultimo"),
                             "empreendimento_primeiro": item.get("empreendimento_primeiro"),
+                            "idempreendimento": item.get("idempreendimento"),
+                            "idempreendimento_ultimo": item.get("idempreendimento_ultimo"),
+                            "idempreendimento_primeiro": item.get("idempreendimento_primeiro"),
+                            "codigointerno_empreendimento": item.get("codigointerno_empreendimento"),
                             "referencia_data": item.get("referencia_data"),
                             "data_reativacao": item.get("data_reativacao"),
-            "corretor": item.get("corretor"),
-            "corretor_ultimo": item.get("corretor_ultimo"),
-            "tags": item.get("tags"),
-            "midia_original": item.get("midia_original"),
-            "midia_ultimo": item.get("midia_ultimo"),
+                            "corretor": item.get("corretor"),
+                            "corretor_ultimo": item.get("corretor_ultimo"),
+                            "tags": item.get("tags"),
+                            "midia_original": item.get("midia_original"),
+                            "midia_ultimo": item.get("midia_ultimo"),
                             "motivo_cancelamento": item.get("motivo_cancelamento"),
                             "data_cancelamento": item.get("data_cancelamento"),
                             "ultima_data_conversao": item.get("ultima_data_conversao"),
@@ -295,6 +300,61 @@ def processar_dados_cv_leads(dados: List[Dict[str, Any]]) -> pd.DataFrame:
         mask_vazio = (df['midia_consolidada'] == '') | (df['midia_consolidada'] == 'nan') | (df['midia_consolidada'].isna())
         df.loc[mask_vazio, 'midia_consolidada'] = df.loc[mask_vazio, 'midia_original'].fillna('')
         logger.info("Coluna 'midia_consolidada' criada com fallback para midia_original")
+
+    # IDs de empreendimento: tipagem numérica nullable (0 da API = sem valor)
+    for col_id in [
+        'idempreendimento',
+        'idempreendimento_primeiro',
+        'idempreendimento_ultimo',
+        'codigointerno_empreendimento',
+    ]:
+        if col_id in df.columns:
+            s = pd.to_numeric(df[col_id], errors='coerce')
+            s = s.where(s != 0)
+            df[col_id] = s.astype('Int64')
+
+    # empreendimento_consolidado: ultimo -> empreendimento -> primeiro
+    emp_cols = [
+        c for c in ('empreendimento_ultimo', 'empreendimento', 'empreendimento_primeiro')
+        if c in df.columns
+    ]
+    if emp_cols:
+        df['empreendimento_consolidado'] = ''
+        for col in emp_cols:
+            vals = df[col].fillna('').astype(str)
+            mask_vazio = (
+                (df['empreendimento_consolidado'] == '')
+                | (df['empreendimento_consolidado'] == 'nan')
+                | (df['empreendimento_consolidado'].isna())
+            )
+            mask_src = mask_vazio & (vals != '') & (vals.str.lower() != 'nan')
+            df.loc[mask_src, 'empreendimento_consolidado'] = vals.loc[mask_src]
+        logger.info(
+            "Coluna 'empreendimento_consolidado' criada "
+            "(ultimo -> empreendimento -> primeiro)"
+        )
+
+    # idempreendimento_consolidado: IDs internos do CV (nao e enterpriseId)
+    id_emp_cols = [
+        c for c in ('idempreendimento_ultimo', 'idempreendimento', 'idempreendimento_primeiro')
+        if c in df.columns
+    ]
+    if id_emp_cols:
+        df['idempreendimento_consolidado'] = pd.Series(pd.NA, index=df.index, dtype='Int64')
+        for col in id_emp_cols:
+            mask_vazio = df['idempreendimento_consolidado'].isna()
+            df.loc[mask_vazio, 'idempreendimento_consolidado'] = df.loc[mask_vazio, col]
+        logger.info(
+            "Coluna 'idempreendimento_consolidado' criada "
+            "(ultimo -> idempreendimento -> primeiro; 0 tratado como nulo)"
+        )
+
+    # enterprise_id: chave de join com dim/metas/vgv (= codigointerno_empreendimento)
+    if 'codigointerno_empreendimento' in df.columns:
+        df['enterprise_id'] = df['codigointerno_empreendimento']
+        logger.info(
+            "Coluna 'enterprise_id' criada a partir de codigointerno_empreendimento"
+        )
 
     # Criar colunas de status baseadas em tags com lógica hierárquica
     logger.info("Criando colunas de status baseadas em tags...")

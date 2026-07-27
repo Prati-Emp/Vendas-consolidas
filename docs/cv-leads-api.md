@@ -50,8 +50,16 @@ params = {
   "Imobiliaria": "string",
   "nome_situacao_anterior_lead": "string",
   "gestor": "string",
+  "empreendimento": "string",
   "empreendimento_primeiro": "string",
   "empreendimento_ultimo": "string",
+  "empreendimento_consolidado": "string (ultimo -> empreendimento -> primeiro)",
+  "idempreendimento": "integer",
+  "idempreendimento_primeiro": "integer",
+  "idempreendimento_ultimo": "integer",
+  "idempreendimento_consolidado": "integer (IDs internos CV; ultimo -> idempreendimento -> primeiro; 0=nulo)",
+  "codigointerno_empreendimento": "integer (chave de join com dim/enterpriseId; 0=nulo)",
+  "enterprise_id": "integer (alias de codigointerno_empreendimento)",
   "referencia_data": "YYYY-MM-DD",
   "data_reativacao": "YYYY-MM-DD",
   "corretor": "string",
@@ -183,8 +191,16 @@ CREATE TABLE main.cv_leads (
     Imobiliaria VARCHAR,
     nome_situacao_anterior_lead VARCHAR,
     gestor VARCHAR,
+    empreendimento VARCHAR,
     empreendimento_primeiro VARCHAR,
     empreendimento_ultimo VARCHAR,
+    empreendimento_consolidado VARCHAR, -- ultimo -> empreendimento -> primeiro
+    idempreendimento BIGINT,
+    idempreendimento_primeiro BIGINT,
+    idempreendimento_ultimo BIGINT,
+    idempreendimento_consolidado BIGINT, -- IDs internos CV (ultimo -> id -> primeiro; 0=nulo)
+    codigointerno_empreendimento BIGINT, -- join com dim.enterpriseId
+    enterprise_id BIGINT, -- alias de codigointerno_empreendimento
     referencia_data TIMESTAMP,
     data_reativacao TIMESTAMP,
     corretor VARCHAR,
