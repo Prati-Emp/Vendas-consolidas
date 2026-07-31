@@ -74,6 +74,18 @@ def get_api_config(api_name: str) -> Optional[APIConfig]:
             },
             rate_limit=60
         )
+
+    elif api_name == 'cv_assistencias_workflow_tempo':
+        return APIConfig(
+            name='CV Assistencias Workflow Tempo',
+            base_url='https://prati.cvcrm.com.br/api/v1/cvdw/assistencias/workflow/tempo',
+            headers={
+                'accept': 'application/json',
+                'email': os.environ.get('CVCRM_EMAIL', ''),
+                'token': os.environ.get('CVCRM_TOKEN', '')
+            },
+            rate_limit=60
+        )
     
     elif api_name == 'cv_repasses_workflow':
         # Mesmas credenciais de CV Vendas, endpoint diferente
@@ -323,6 +335,7 @@ def get_all_rate_limits() -> Dict[str, int]:
         'cv_repasses': 60,
         'cv_leads': 60,
         'cv_leads_workflow_tempo': 60,
+        'cv_assistencias_workflow_tempo': 60,
         'cv_repasses_workflow': 60,
         'cv_vgv_empreendimentos': 60,
         'cv_comissoes': 60,
