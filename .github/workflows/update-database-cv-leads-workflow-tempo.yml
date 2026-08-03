@@ -2,8 +2,8 @@ name: Update Database - CV Leads Workflow Tempo
 
 on:
   schedule:
-    # 02:00 BRT (05:00 UTC) — apos CV Leads dedicado para reduzir disputa de lock
-    - cron: '0 5 * * *'
+    # 01:00 BRT (04:00 UTC) — apos CV Leads dedicado para reduzir disputa de lock
+    - cron: '0 4 * * *'
   workflow_dispatch:
     inputs:
       reason:

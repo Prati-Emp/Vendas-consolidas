@@ -2,8 +2,8 @@ name: Update Database - Sienge Diário Geral
 
 on:
   schedule:
-    # Executar diariamente às 02:30 BRT (05:30 UTC)
-    - cron: '30 5 * * *'
+    # 01:20 BRT (04:20 UTC) — antecipado p/ concluir até 07:00 BRT (atraso típico GitHub ~4h)
+    - cron: '20 4 * * *'
   workflow_dispatch:
     inputs:
       reason:

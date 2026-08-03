@@ -2,8 +2,8 @@ name: Update Database - CV Corretores
 
 on:
   schedule:
-    # Executar diariamente as 01:15 BRT (04:15 UTC)
-    - cron: '15 4 * * *'
+    # 00:15 BRT (03:15 UTC) — antecipado p/ concluir até 07:00 BRT (atraso típico GitHub ~4h)
+    - cron: '15 3 * * *'
   workflow_dispatch:
     inputs:
       reason:

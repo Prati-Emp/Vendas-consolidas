@@ -2,8 +2,8 @@ name: Update Database - Jira Jurídico
 
 on:
   schedule:
-    # Executar diariamente às 01:10 BRT (04:10 UTC)
-    - cron: '10 4 * * *'
+    # 00:10 BRT (03:10 UTC) — antecipado p/ concluir até 07:00 BRT (atraso típico GitHub ~4h)
+    - cron: '10 3 * * *'
   workflow_dispatch:
     inputs:
       reason:

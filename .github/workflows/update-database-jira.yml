@@ -2,8 +2,8 @@ name: Update Database - Jira
 
 on:
   schedule:
-    # Executar diariamente às 01:00 BRT (04:00 UTC)
-    - cron: '0 4 * * *'  # Diariamente às 04:00 UTC (01:00 BRT)
+    # 00:00 BRT (03:00 UTC) — antecipado p/ concluir até 07:00 BRT (atraso típico GitHub ~4h)
+    - cron: '0 3 * * *'
   workflow_dispatch:
     inputs:
       reason:

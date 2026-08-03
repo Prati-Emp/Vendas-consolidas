@@ -2,8 +2,8 @@ name: Update Database - Sienge Contas a Receber (Diário)
 
 on:
   schedule:
-    # Executar diariamente às 02:45 BRT (05:45 UTC)
-    - cron: '45 5 * * *'
+    # 01:30 BRT (04:30 UTC) — antecipado p/ concluir até 07:00 BRT (atraso típico GitHub ~4h)
+    - cron: '30 4 * * *'
   workflow_dispatch:
     inputs:
       reason:

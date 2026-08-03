@@ -2,8 +2,8 @@ name: Update Database - CV Leads
 
 on:
   schedule:
-    # 01:30 BRT (04:30 UTC) — apos inicio da daily non-sienge (01:00 BRT)
-    - cron: '30 4 * * *'
+    # 00:30 BRT (03:30 UTC) — apos inicio da daily non-sienge (00:00 BRT)
+    - cron: '30 3 * * *'
   workflow_dispatch:
     inputs:
       reason:

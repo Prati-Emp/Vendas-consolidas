@@ -2,8 +2,8 @@ name: Update Database - CV Comissões (Diário)
 
 on:
   schedule:
-    # Executar diariamente às 03:45 BRT (07:45 UTC)
-    - cron: '45 7 * * *'
+    # 02:15 BRT (05:15 UTC) — antecipado p/ concluir até 07:00 BRT (atraso típico GitHub ~4h)
+    - cron: '15 5 * * *'
   workflow_dispatch:
     inputs:
       reason:
