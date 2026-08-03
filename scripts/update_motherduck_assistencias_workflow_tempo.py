@@ -75,7 +75,8 @@ async def sistema_assistencias_workflow_tempo():
                     COUNT(*) as total,
                     COUNT(DISTINCT idassistencia) as assistencias,
                     SUM(CASE WHEN finalizada THEN 1 ELSE 0 END) as finalizadas,
-                    SUM(CASE WHEN cancelada THEN 1 ELSE 0 END) as canceladas
+                    SUM(CASE WHEN cancelada THEN 1 ELSE 0 END) as canceladas,
+                    SUM(CASE WHEN objetos IS NOT NULL AND objetos <> '' THEN 1 ELSE 0 END) as com_objeto
                 FROM cv_assistencias_workflow_tempo
             """).fetchone()
             print("\nEstatisticas:")
@@ -83,6 +84,7 @@ async def sistema_assistencias_workflow_tempo():
             print(f"   - Assistencias distintas: {stats[1]:,}")
             print(f"   - Linhas com finalizada: {stats[2]:,}")
             print(f"   - Linhas com cancelada: {stats[3]:,}")
+            print(f"   - Linhas com objeto: {stats[4]:,}")
         except Exception as e:
             print(f"AVISO: Erro ao verificar tabela: {e}")
 
