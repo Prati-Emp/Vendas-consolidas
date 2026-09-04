@@ -87,39 +87,61 @@ class CVRepassesAPIClient:
         if not self.config:
             raise ValueError("Configuração da API CV Repasses não encontrada")
 
-    async def get_pagina(self, pagina: int = 1, a_partir: str = '2020-01-01', ate: Optional[str] = None) -> Dict[str, Any]:
+    async def get_pagina(
+        self,
+        pagina: int = 1,
+        a_partir: Optional[str] = None,
+        ate: Optional[str] = None,
+        registros_por_pagina: int = 500,
+    ) -> Dict[str, Any]:
         endpoint = ""
-        if not ate:
-            ate = datetime.now().strftime('%Y-%m-%d')
-        params = {
+        params: Dict[str, Any] = {
             'pagina': pagina,
-            'a_partir_data_referencia': a_partir,
-            'ate_data_referencia': ate,
-            'registros_por_pagina': 100,
+            'registros_por_pagina': registros_por_pagina,
         }
+        # Nao enviar ate_data_referencia por padrao: o CVDW corta registros
+        # cuja referencia_data fica fora do dia (ex.: 78 investidores do Vera Cruz).
+        if a_partir:
+            params['a_partir_data_referencia'] = a_partir
+        if ate:
+            params['ate_data_referencia'] = ate
         logger.info(f"Buscando CV Repasses - Página {pagina}")
         return await make_api_request('cv_repasses', endpoint, params)
 
-    async def get_all(self, a_partir: str = '2020-01-01', ate: Optional[str] = None) -> List[Dict[str, Any]]:
+    async def get_all(
+        self,
+        a_partir: Optional[str] = None,
+        ate: Optional[str] = None,
+        registros_por_pagina: int = 500,
+    ) -> List[Dict[str, Any]]:
         pagina = 1
         todos: List[Dict[str, Any]] = []
-        vazias = 0
-        max_vazias = 3
         while True:
-            result = await self.get_pagina(pagina, a_partir, ate)
+            result = await self.get_pagina(
+                pagina, a_partir, ate, registros_por_pagina=registros_por_pagina
+            )
             if not result.get('success'):
                 logger.error(f"Erro na página {pagina}: {result.get('error')}")
                 break
-            dados = result.get('data', {}).get('dados', [])
+            payload = result.get('data') or {}
+            dados = payload.get('dados') or []
+            total_paginas = payload.get('total_de_paginas')
+            logger.info(
+                "Página %s - %s registros (acumulado %s, total_paginas=%s)",
+                pagina,
+                len(dados),
+                len(todos) + len(dados),
+                total_paginas,
+            )
             if not dados:
-                vazias += 1
-                if vazias >= max_vazias:
-                    break
-            else:
-                vazias = 0
-                todos.extend(dados)
+                break
+            todos.extend(dados)
+            if total_paginas and pagina >= int(total_paginas):
+                break
+            if len(dados) < registros_por_pagina:
+                break
             pagina += 1
-            await asyncio.sleep(0.2)
+            await asyncio.sleep(0.25)
         logger.info(f"Total repasses: {len(todos)}")
         return todos
 
@@ -215,7 +237,11 @@ def _montar_mapa_de_para(df_de_para: Optional[pd.DataFrame]) -> Dict[str, str]:
     return mapping
 
 
-def processar_cv_repasses(dados: List[Dict[str, Any]], df_de_para: Optional[pd.DataFrame] = None) -> pd.DataFrame:
+def processar_cv_repasses(
+    dados: List[Dict[str, Any]],
+    df_de_para: Optional[pd.DataFrame] = None,
+    filtrar_situacoes: bool = True,
+) -> pd.DataFrame:
     if not dados:
         return pd.DataFrame()
 
@@ -277,10 +303,13 @@ def processar_cv_repasses(dados: List[Dict[str, Any]], df_de_para: Optional[pd.D
 
     df = _expandir_campos_adicionais(df)
 
-    # Filtrar "Venda a Investidor", "Distrato" e "Cancelado"
-    df = df[~df['Para'].isin(['Venda a Investidor', 'Distrato', 'Cancelado'])]
+    # Recorte operacional (dashboard/reservas). A tabela completa ignora este filtro.
+    if filtrar_situacoes:
+        df = df[~df['Para'].isin(['Venda a Investidor', 'Distrato', 'Cancelado'])]
+        df['fonte'] = 'cv_repasses'
+    else:
+        df['fonte'] = 'cv_repasses_todas_condicoes'
 
-    df['fonte'] = 'cv_repasses'
     df['processado_em'] = datetime.now()
     return df
 
@@ -308,6 +337,13 @@ async def obter_dados_cv_repasses() -> pd.DataFrame:
     dados = await client.get_all()
     de_para = carregar_de_para_motherduck()
     return processar_cv_repasses(dados, de_para)
+
+
+async def obter_dados_cv_repasses_todas_condicoes() -> pd.DataFrame:
+    client = CVRepassesAPIClient()
+    dados = await client.get_all()
+    de_para = carregar_de_para_motherduck()
+    return processar_cv_repasses(dados, de_para, filtrar_situacoes=False)
 
 
 if __name__ == '__main__':
