@@ -9,12 +9,15 @@ Adaptação do M do Power BI:
 - Filtros de data (a_partir_data_referencia, ate_data_referencia) podem ser passados como query se necessário
 - Seleção de colunas conforme M e transformação de tipos
 - Junção de-para por 'situacao' para coluna derivada "Para"
+- Expansão de campos_adicionais em colunas campo_*
 """
 
 import asyncio
 import logging
+import re
+import unicodedata
 from datetime import datetime
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, Iterable
 import pandas as pd
 import duckdb
 import os
@@ -65,6 +68,18 @@ MAPEAMENTO_SITUACAO_PADRAO = {
     "Cancelado": "Cancelado",
 }
 
+# Nomes estáveis para campos adicionais conhecidos (CV CRM).
+# Novos campos no endpoint viram campo_* automaticamente via slug.
+CAMPOS_ADICIONAIS_COLUNAS = {
+    "Contrato Faturado": "campo_contrato_faturado",
+    "Escritura Lavrada?": "campo_escritura_lavrada",
+    "Escritura Registrada?": "campo_escritura_registrada",
+    "Valor de Financiamento diferente do Contrato": "campo_valor_financiamento_diferente_contrato",
+    "Tipo de Financiamento": "campo_tipo_financiamento",
+    "Data De Vencimento de Análise de Credito": "campo_data_vencimento_analise_credito",
+    "Data para seguir com o contrato": "campo_data_seguir_contrato",
+}
+
 
 class CVRepassesAPIClient:
     def __init__(self):
@@ -107,6 +122,85 @@ class CVRepassesAPIClient:
             await asyncio.sleep(0.2)
         logger.info(f"Total repasses: {len(todos)}")
         return todos
+
+
+def _nome_coluna_campo(nome: str) -> str:
+    chave = str(nome).strip()
+    if chave in CAMPOS_ADICIONAIS_COLUNAS:
+        return CAMPOS_ADICIONAIS_COLUNAS[chave]
+    slug = unicodedata.normalize('NFKD', chave).encode('ascii', 'ignore').decode('ascii')
+    slug = slug.lower()
+    slug = re.sub(r'[^a-z0-9]+', '_', slug).strip('_')
+    return f'campo_{slug}' if slug else 'campo_sem_nome'
+
+
+def _iter_campos_adicionais(valor: Any) -> Iterable[Dict[str, Any]]:
+    if valor is None:
+        return
+    try:
+        if pd.isna(valor):
+            return
+    except (ValueError, TypeError):
+        pass
+    if isinstance(valor, dict):
+        yield valor
+        return
+    itens: Any
+    try:
+        itens = list(valor)
+    except TypeError:
+        return
+    for item in itens:
+        if isinstance(item, dict):
+            yield item
+        elif hasattr(item, '_asdict'):
+            yield item._asdict()
+
+
+def _expandir_campos_adicionais(df: pd.DataFrame) -> pd.DataFrame:
+    """Abre campos_adicionais (lista de structs da API) em colunas campo_*."""
+    for col in CAMPOS_ADICIONAIS_COLUNAS.values():
+        if col not in df.columns:
+            df[col] = pd.NA
+
+    if 'campos_adicionais' not in df.columns:
+        return df
+
+    pares: List[tuple] = []
+    for idx, valor in df['campos_adicionais'].items():
+        for campo in _iter_campos_adicionais(valor):
+            nome = str(campo.get('nome') or '').strip()
+            if not nome:
+                continue
+            val = campo.get('valor')
+            if val is None:
+                continue
+            try:
+                if pd.isna(val):
+                    continue
+            except (ValueError, TypeError):
+                pass
+            val_str = str(val).strip()
+            if not val_str:
+                continue
+            pares.append((idx, _nome_coluna_campo(nome), val_str))
+
+    colunas_novas = sorted({col for _, col, _ in pares})
+    for col in colunas_novas:
+        if col not in df.columns:
+            df[col] = pd.NA
+    for idx, col, val in pares:
+        df.at[idx, col] = val
+
+    campo_cols = [c for c in df.columns if c.startswith('campo_')]
+    for col in campo_cols:
+        df[col] = df[col].astype('string')
+
+    logger.info(
+        "Campos adicionais expandidos: %s",
+        colunas_novas or list(CAMPOS_ADICIONAIS_COLUNAS.values()),
+    )
+    return df.drop(columns=['campos_adicionais'], errors='ignore')
 
 
 def _montar_mapa_de_para(df_de_para: Optional[pd.DataFrame]) -> Dict[str, str]:
@@ -180,6 +274,8 @@ def processar_cv_repasses(dados: List[Dict[str, Any]], df_de_para: Optional[pd.D
         df['Para'] = df['situacao'].map(mapping).fillna('Sem Mapeamento')
     else:
         df['Para'] = 'Sem Mapeamento'
+
+    df = _expandir_campos_adicionais(df)
 
     # Filtrar "Venda a Investidor", "Distrato" e "Cancelado"
     df = df[~df['Para'].isin(['Venda a Investidor', 'Distrato', 'Cancelado'])]

@@ -101,7 +101,11 @@ def load_repasses_raw() -> pd.DataFrame:
         cliente,
         correspondente,
         data_alteracao_status,
-        data_venda
+        data_venda,
+        campo_contrato_faturado,
+        campo_escritura_lavrada,
+        campo_escritura_registrada,
+        campo_tipo_financiamento
     FROM reservas.cv_repasses
     WHERE referencia IS NOT NULL
     """
@@ -581,6 +585,10 @@ def render_visao_geral(df: pd.DataFrame):
         "situacao_detalhada": "Situação",
         "correspondente": "Correspondente",
         "data_alteracao_status": "Última Alteração",
+        "campo_contrato_faturado": "Contrato Faturado",
+        "campo_escritura_lavrada": "Escritura Lavrada",
+        "campo_escritura_registrada": "Escritura Registrada",
+        "campo_tipo_financiamento": "Tipo de Financiamento",
         "idrepasse": "ID Repasse",
         "idreserva": "ID Reserva",
         "idsituacao": "ID Situação"
